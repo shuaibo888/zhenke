@@ -1,0 +1,32 @@
+{
+  "private": true,
+  "author": "zhang <2062951832@qq.com>",
+  "scripts": {
+    "dev": "umi dev",
+    "build": "umi build",
+    "postinstall": "umi setup",
+    "setup": "umi setup",
+    "start": "npm run dev",
+    "test": "npm run test:access && npm run test:product-filters && npm run test:product-editor && npm run test:order-management && npm run test:admin-dashboard && npm run test:pages",
+    "test:access": "tsx src/utils/access.test.ts",
+    "test:product-filters": "tsx src/utils/productFilters.test.ts",
+    "test:product-editor": "tsx src/utils/productEditor.test.ts",
+    "test:order-management": "tsx src/utils/orderManagement.test.ts",
+    "test:admin-dashboard": "tsx src/utils/adminDashboard.test.ts",
+    "test:pages": "tsx src/pages/index.structure.test.ts"
+  },
+  "dependencies": {
+    "@ant-design/charts": "^2.6.7",
+    "@ant-design/icons": "^6.2.5",
+    "antd": "^6.4.4",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "umi": "^4.6.65"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "tsx": "^4.20.6",
+    "typescript": "^5.0.3"
+  }
+}

@@ -1,0 +1,45 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+const source = readFileSync(resolve(process.cwd(), 'src/pages/index.tsx'), 'utf8');
+
+assert.match(source, /管理员登录/);
+assert.match(source, /fetchAdminCaptcha/);
+assert.match(source, /restoreAdminSession/);
+assert.match(source, /商城用户/);
+assert.match(source, /fetchShopUsers/);
+assert.match(source, /updateShopUserLevel/);
+assert.match(source, /updateShopUserStatus/);
+assert.match(source, /商品管理/);
+assert.match(source, /搜索商品名、匠人\/品牌或商家/);
+assert.match(source, /全部分类/);
+assert.match(source, /全部状态/);
+assert.match(source, /resetProductFilters/);
+assert.match(source, /商品详细介绍/);
+assert.match(source, /上传商品图/);
+assert.match(source, /编辑商品/);
+assert.match(source, /订单管理/);
+assert.match(source, /搜索订单号或买家/);
+assert.match(source, /全部订单状态/);
+assert.match(source, /订单详情/);
+assert.match(source, /同意退款/);
+assert.match(source, /已退款/);
+assert.match(source, /验证报告/);
+assert.match(source, /toggleReportStatus/);
+assert.match(source, /商家管理/);
+assert.match(source, /toggleMerchantStatus/);
+assert.match(source, /今日订单数/);
+assert.match(source, /用户数/);
+assert.match(source, /订单状态分布/);
+assert.match(source, /近 7 日订单趋势/);
+assert.match(source, /商品状态占比/);
+assert.match(source, /@ant-design\/charts/);
+assert.match(source, /Line/);
+assert.match(source, /Pie/);
+assert.doesNotMatch(source, /今日处理/);
+assert.doesNotMatch(source, /优先发货与内容兜底/);
+assert.match(source, /filterRowsForSession/);
+assert.match(source, /loginType/);
+
+console.log('admin page structure ok');

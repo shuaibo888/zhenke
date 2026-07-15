@@ -1,0 +1,246 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
+
+const pageSource = readFileSync(new URL('./index.tsx', import.meta.url), 'utf8');
+
+test('primary navigation only exposes reviews and profile', () => {
+  assert.match(pageSource, /type TabKey = 'reviews' \| 'profile';/);
+  assert.match(pageSource, /\{ key: 'reviews', label: '甄客验'/);
+  assert.match(pageSource, /\{ key: 'profile', label: '我的'/);
+  assert.doesNotMatch(pageSource, /\{ key: 'goods', label: '好物'/);
+  assert.doesNotMatch(pageSource, /\{ key: 'verify', label: '真实验'/);
+  assert.doesNotMatch(pageSource, /\{ key: 'notifications', label: '消息'/);
+  assert.match(pageSource, /useState<TabKey>\('reviews'\)/);
+  assert.match(pageSource, /setActiveTab\('reviews'\)/);
+  assert.match(pageSource, /activeTab === 'reviews' && journeyView === 'feed' && renderReviews\(\)/);
+});
+
+test('profile contains the existing message list', () => {
+  const profileStart = pageSource.indexOf('const renderProfile = () =>');
+  const profileEnd = pageSource.indexOf('if (!activeUser)', profileStart);
+  const profileBlock = pageSource.slice(profileStart, profileEnd);
+
+  assert.notEqual(profileStart, -1);
+  assert.match(profileBlock, /<h3>消息<\/h3>/);
+  assert.match(profileBlock, /notifications\.map/);
+  assert.doesNotMatch(pageSource, /const renderNotifications = \(\) =>/);
+});
+
+test('profile uses a menu layer before rendering each detail section', () => {
+  const profileStart = pageSource.indexOf('const renderProfile = () =>');
+  const profileEnd = pageSource.indexOf('if (!activeUser)', profileStart);
+  const profileBlock = pageSource.slice(profileStart, profileEnd);
+
+  assert.match(pageSource, /type ProfileView = 'menu' \| 'orders' \| 'trials' \| 'reports' \| 'earnings' \| 'messages';/);
+  assert.match(pageSource, /useState<ProfileView>\('menu'\)/);
+  assert.match(profileBlock, /profileView === 'menu'/);
+  assert.match(profileBlock, /className=\{styles\.profileMenuGrid\}/);
+  assert.match(profileBlock, /onClick=\{\(\) => setProfileView\(item\.key\)\}/);
+  assert.match(profileBlock, /返回“我的”/);
+  assert.match(profileBlock, /profileView === 'orders'/);
+  assert.match(profileBlock, /profileView === 'trials'/);
+  assert.match(profileBlock, /profileView === 'reports'/);
+  assert.match(profileBlock, /profileView === 'earnings'/);
+  assert.match(profileBlock, /profileView === 'messages'/);
+});
+
+test('profile orders expose logistics and render a logistics modal', () => {
+  assert.match(pageSource, /查看物流/);
+  assert.match(pageSource, /selectedLogisticsOrder/);
+  assert.match(pageSource, /title="物流详情"/);
+  assert.match(pageSource, /getLogisticsView/);
+});
+
+test('profile renders trials, zhenke reports, and earnings', () => {
+  const profileStart = pageSource.indexOf('const renderProfile = () =>');
+  const profileEnd = pageSource.indexOf('if (!activeUser)', profileStart);
+  const profileBlock = pageSource.slice(profileStart, profileEnd);
+
+  assert.match(profileBlock, /<h3>我的试用<\/h3>/);
+  assert.match(profileBlock, /去发布甄客验/);
+  assert.match(profileBlock, /<h3>我的甄客验<\/h3>/);
+  assert.doesNotMatch(profileBlock, /<h3>我的验证<\/h3>/);
+  assert.match(profileBlock, /<h3>我的收益<\/h3>/);
+  assert.match(profileBlock, /累计收益/);
+  assert.match(profileBlock, /待结算/);
+  assert.match(profileBlock, /已结算/);
+});
+
+test('product journey covers recruitment, evidence, report detail, and attribution', () => {
+  assert.match(pageSource, /招募中/);
+  assert.match(pageSource, /正在寻找甄客/);
+  assert.match(pageSource, /申请验证/);
+  assert.match(pageSource, /商家自证与溯源/);
+  assert.match(pageSource, /查看 \/ 购买该商品/);
+  assert.match(pageSource, /本次成交产生的服务费归/);
+  assert.match(pageSource, /fromReviewId/);
+  assert.match(pageSource, /fromVerifierId/);
+  assert.match(pageSource, /getProductJourneyState/);
+  assert.match(pageSource, /applyForRecruitment/);
+});
+
+test('home shell uses a masthead plus nav row without a repeated trust strip', () => {
+  assert.match(pageSource, /className=\{styles\.masthead\}/);
+  assert.match(pageSource, /className=\{styles\.navBar\}/);
+  assert.match(pageSource, /真正的消费指南，信任就从一次次验证里长出来。/);
+  assert.doesNotMatch(pageSource, /className=\{styles\.trustStrip\}/);
+  assert.doesNotMatch(pageSource, /<h1>㤫者商城<\/h1>/);
+});
+
+test('masthead account action exposes a hover logout menu', () => {
+  const accountMenuBlock =
+    pageSource.slice(pageSource.indexOf('className={styles.accountMenu}'), pageSource.indexOf('className={styles.accountDropdown}')) ?? '';
+
+  assert.match(pageSource, /className=\{styles\.accountMenu\}/);
+  assert.match(pageSource, /className=\{styles\.accountButton\}/);
+  assert.match(pageSource, /styles\.accountAvatar/);
+  assert.match(pageSource, /styles\.accountName/);
+  assert.match(pageSource, /styles\.accountRole/);
+  assert.match(pageSource, /className=\{styles\.logoutButton\}/);
+  assert.match(pageSource, /退出登录/);
+  assert.doesNotMatch(accountMenuBlock, /<Badge/);
+});
+
+test('masthead exposes a shipping address action beside account info', () => {
+  assert.match(pageSource, /className=\{styles\.addressButton\}/);
+  assert.match(pageSource, /收货地址/);
+  assert.match(pageSource, /setAddressOpen\(true\)/);
+  assert.match(pageSource, /title="我的地址"/);
+  assert.match(pageSource, /label="收货人"/);
+  assert.match(pageSource, /label="手机号"/);
+  assert.match(pageSource, /china-division/);
+  assert.match(pageSource, /pcaCode/);
+  assert.match(pageSource, /Cascader/);
+  assert.match(pageSource, /name="region"/);
+  assert.match(pageSource, /label="所在地区"/);
+  assert.match(pageSource, /请选择省市区/);
+  assert.match(pageSource, /label="详细地址"/);
+});
+
+test('shipping addresses support multiple entries and a default radio action', () => {
+  assert.match(pageSource, /type ShippingAddress/);
+  assert.match(pageSource, /seedShippingAddresses/);
+  assert.match(pageSource, /shippingAddresses/);
+  assert.match(pageSource, /defaultShippingAddress/);
+  assert.match(pageSource, /Radio/);
+  assert.match(pageSource, /设为默认/);
+  assert.match(pageSource, /新增地址/);
+  assert.match(pageSource, /handleSetDefaultAddress/);
+  assert.match(pageSource, /handleStartNewAddress/);
+  assert.match(pageSource, /className=\{styles\.addressList\}/);
+});
+
+test('address region data uses a static china-division json import for browser bundling', () => {
+  assert.match(pageSource, /from 'china-division\/dist\/pca-code\.json'/);
+  assert.doesNotMatch(pageSource, /from 'china-division'/);
+});
+
+test('verification publishing requires choosing a reviewable purchased or trial product', () => {
+  assert.match(pageSource, /getReviewableProductsFromOrders/);
+  assert.match(pageSource, /name="productId"/);
+  assert.match(pageSource, /选择可发布商品/);
+  assert.match(pageSource, /trialReviewableProducts/);
+});
+
+test('cart checkout footer shows a clear item-count checkout action', () => {
+  assert.match(pageSource, /className=\{styles\.checkoutButton\}/);
+  assert.match(pageSource, /结算 \{cartCount\} 件/);
+});
+
+test('avatar editing uses local file upload instead of URL input', () => {
+  assert.match(pageSource, /type="file"/);
+  assert.match(pageSource, /accept="image\/\*"/);
+  assert.match(pageSource, /uploadAvatarFile/);
+  assert.doesNotMatch(pageSource, /label="图片 URL"/);
+});
+
+test('goods image preview opens only from product image button', () => {
+  assert.match(pageSource, /className=\{styles\.productImageButton\}/);
+  assert.match(pageSource, /aria-label=\{`查看\$\{product\.title\}图片详情`\}/);
+  assert.match(pageSource, /className=\{styles\.productBodyButton\}/);
+
+  const bodyButtonStart = pageSource.indexOf('className={styles.productBodyButton}');
+  const bodyButtonEnd = pageSource.indexOf('</button>', bodyButtonStart);
+  const bodyButtonBlock = pageSource.slice(bodyButtonStart, bodyButtonEnd);
+
+  assert.notEqual(bodyButtonStart, -1);
+  assert.doesNotMatch(bodyButtonBlock, /setImageProduct/);
+});
+
+test('goods cards expose cart and direct buy actions outside the selectable body', () => {
+  assert.match(pageSource, /const handleBuyNow = \(product: Product, attribution\?: ReportAttribution\)/);
+  assert.match(pageSource, /className=\{styles\.productQuickActions\}/);
+  assert.match(pageSource, /handleAddToCart\(product\)/);
+  assert.match(pageSource, /加入购物车/);
+  assert.match(pageSource, /立即购买/);
+
+  const bodyButtonStart = pageSource.indexOf('className={styles.productBodyButton}');
+  const bodyButtonEnd = pageSource.indexOf('</button>', bodyButtonStart);
+  const bodyButtonBlock = pageSource.slice(bodyButtonStart, bodyButtonEnd);
+
+  assert.notEqual(bodyButtonStart, -1);
+  assert.doesNotMatch(bodyButtonBlock, /加入购物车/);
+  assert.doesNotMatch(bodyButtonBlock, /立即购买/);
+});
+
+test('direct buy opens an order confirmation modal before creating the order', () => {
+  const buyNowStart = pageSource.indexOf('const handleBuyNow = (product: Product, attribution?: ReportAttribution)');
+  const buyNowEnd = pageSource.indexOf('const handleAdvanceOrder', buyNowStart);
+  const buyNowBlock = pageSource.slice(buyNowStart, buyNowEnd);
+
+  assert.notEqual(buyNowStart, -1);
+  assert.match(pageSource, /pendingBuyProduct/);
+  assert.match(pageSource, /handleConfirmBuyNow/);
+  assert.match(pageSource, /title="确认订单"/);
+  assert.match(pageSource, /商品信息/);
+  assert.match(pageSource, /收货地址/);
+  assert.match(pageSource, /确认下单/);
+  assert.match(pageSource, /formatShippingAddress\(defaultShippingAddress\)/);
+  assert.doesNotMatch(buyNowBlock, /createOrdersFromCart/);
+  assert.doesNotMatch(buyNowBlock, /setActiveTab\('profile'\)/);
+});
+
+test('shipping address modal rises above order confirmation when opened from direct buy', () => {
+  const orderModalStart = pageSource.indexOf('title="确认订单"');
+  const orderModalEnd = pageSource.indexOf('<Modal', orderModalStart + 1);
+  const orderModalBlock = pageSource.slice(orderModalStart, orderModalEnd);
+  const addressModalStart = pageSource.indexOf('title="我的地址"');
+  const addressModalEnd = pageSource.indexOf('<Modal', addressModalStart + 1);
+  const addressModalBlock = pageSource.slice(addressModalStart, addressModalEnd);
+
+  assert.notEqual(orderModalStart, -1);
+  assert.notEqual(addressModalStart, -1);
+  assert.match(pageSource, /const orderConfirmModalZIndex = 1000;/);
+  assert.match(pageSource, /const addressModalOverOrderZIndex = 1300;/);
+  assert.match(orderModalBlock, /zIndex=\{orderConfirmModalZIndex\}/);
+  assert.match(addressModalBlock, /zIndex=\{pendingBuyProduct \? addressModalOverOrderZIndex : undefined\}/);
+});
+
+test('goods card cart action stays compact and text visible', () => {
+  const actionStart = pageSource.indexOf('className={styles.productQuickActions}');
+  const actionEnd = pageSource.indexOf('</div>', actionStart);
+  const actionBlock = pageSource.slice(actionStart, actionEnd);
+  const styleSource = readFileSync(new URL('./index.less', import.meta.url), 'utf8');
+
+  assert.notEqual(actionStart, -1);
+  assert.doesNotMatch(actionBlock, /icon=\{<ShoppingCartOutlined \/>}/);
+  assert.match(styleSource, /\.productQuickActions\s+:global\(\.ant-btn\)\s+\{[^}]*padding-inline: 8px;/);
+  assert.match(styleSource, /\.productQuickActions\s+:global\(\.ant-btn\)\s+\{[^}]*white-space: nowrap;/);
+});
+
+test('goods card copy has its own padded content area', () => {
+  const styleSource = readFileSync(new URL('./index.less', import.meta.url), 'utf8');
+
+  assert.match(styleSource, /\.productBodyButton\s+\{[^}]*padding: 16px 18px 14px;/);
+  assert.match(styleSource, /\.productQuickActions\s+\{[^}]*padding: 0 18px 18px;/);
+});
+
+test('goods card titles truncate long names without changing card height', () => {
+  const styleSource = readFileSync(new URL('./index.less', import.meta.url), 'utf8');
+
+  assert.match(pageSource, /<h3 title=\{product\.title\}>\{product\.title\}<\/h3>/);
+  assert.match(styleSource, /\.productBodyButton h3\s+\{[^}]*overflow: hidden;/);
+  assert.match(styleSource, /\.productBodyButton h3\s+\{[^}]*text-overflow: ellipsis;/);
+  assert.match(styleSource, /\.productBodyButton h3\s+\{[^}]*white-space: nowrap;/);
+});
