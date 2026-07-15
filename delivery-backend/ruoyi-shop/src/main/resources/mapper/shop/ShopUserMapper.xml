@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.shop.mapper.ShopUserMapper">
+    <resultMap id="ShopUserResult" type="ShopUser">
+        <id property="userId" column="user_id" />
+        <result property="userName" column="user_name" />
+        <result property="nickName" column="nick_name" />
+        <result property="password" column="password" />
+        <result property="phonenumber" column="phonenumber" />
+        <result property="email" column="email" />
+        <result property="avatar" column="avatar" />
+        <result property="levelId" column="level_id" />
+        <result property="levelCode" column="level_code" />
+        <result property="levelName" column="level_name" />
+        <result property="reviewEligible" column="review_eligible" />
+        <result property="trialEligible" column="trial_eligible" />
+        <result property="status" column="status" />
+        <result property="delFlag" column="del_flag" />
+        <result property="loginIp" column="login_ip" />
+        <result property="loginDate" column="login_date" />
+        <result property="pwdUpdateDate" column="pwd_update_date" />
+        <result property="createTime" column="create_time" />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <resultMap id="ShopMemberLevelResult" type="ShopMemberLevel">
+        <id property="levelId" column="level_id" />
+        <result property="levelCode" column="level_code" />
+        <result property="levelName" column="level_name" />
+        <result property="levelOrder" column="level_order" />
+        <result property="badgeTone" column="badge_tone" />
+        <result property="isDefault" column="is_default" />
+        <result property="status" column="status" />
+    </resultMap>
+
+    <sql id="selectShopUser">
+        select u.user_id, u.user_name, u.nick_name, u.password, u.phonenumber,
+               u.email, u.avatar, u.level_id, l.level_code, l.level_name,
+               u.review_eligible, u.trial_eligible, u.status, u.del_flag,
+               u.login_ip, u.login_date, u.pwd_update_date, u.create_time, u.update_time
+        from shop_user u
+        left join shop_member_level l on l.level_id = u.level_id
+    </sql>
+
+    <select id="selectById" parameterType="Long" resultMap="ShopUserResult">
+        <include refid="selectShopUser" /> where u.user_id = #{userId} and u.del_flag = '0'
+    </select>
+    <select id="selectByUsername" parameterType="String" resultMap="ShopUserResult">
+        <include refid="selectShopUser" /> where u.user_name = #{username} and u.del_flag = '0' limit 1
+    </select>
+    <select id="countByUsername" parameterType="String" resultType="int">
+        select count(1) from shop_user where user_name = #{username} and del_flag = '0'
+    </select>
+
+    <select id="selectAdminList" parameterType="ShopUser" resultMap="ShopUserResult">
+        <include refid="selectShopUser" />
+        <where>
+            u.del_flag = '0'
+            <if test="userName != null and userName != ''">
+                and (u.user_name like concat('%', #{userName}, '%') or u.nick_name like concat('%', #{userName}, '%'))
+            </if>
+            <if test="status != null and status != ''">and u.status = #{status}</if>
+            <if test="levelId != null">and u.level_id = #{levelId}</if>
+        </where>
+        order by u.user_id desc
+    </select>
+
+    <select id="selectEnabledLevels" resultMap="ShopMemberLevelResult">
+        select level_id, level_code, level_name, level_order, badge_tone, is_default, status
+        from shop_member_level
+        where status = '0'
+        order by level_order
+    </select>
+
+    <select id="countEnabledLevelById" parameterType="Long" resultType="int">
+        select count(1) from shop_member_level where level_id = #{levelId} and status = '0'
+    </select>
+
+    <insert id="insert" parameterType="ShopUser" useGeneratedKeys="true" keyProperty="userId">
+        insert into shop_user
+        (user_name, nick_name, password, level_id, review_eligible, trial_eligible,
+         status, del_flag, pwd_update_date, create_by, create_time)
+        values
+        (#{userName}, #{nickName}, #{password}, #{levelId}, #{reviewEligible}, #{trialEligible},
+         #{status}, #{delFlag}, sysdate(), #{createBy}, sysdate())
+    </insert>
+
+    <update id="updateLoginInfo">
+        update shop_user set login_ip = #{loginIp}, login_date = sysdate(), update_time = sysdate()
+        where user_id = #{userId} and del_flag = '0'
+    </update>
+    <update id="updateProfile" parameterType="ShopUser">
+        update shop_user
+        <set>
+            <if test="nickName != null">nick_name = #{nickName},</if>
+            <if test="avatar != null">avatar = #{avatar},</if>
+            update_time = sysdate()
+        </set>
+        where user_id = #{userId} and del_flag = '0'
+    </update>
+    <update id="updatePassword">
+        update shop_user set password = #{password}, pwd_update_date = sysdate(), update_time = sysdate()
+        where user_id = #{userId} and del_flag = '0'
+    </update>
+
+    <update id="updateStatus">
+        update shop_user
+        set status = #{status}, update_by = #{updateBy}, update_time = sysdate()
+        where user_id = #{userId} and del_flag = '0'
+    </update>
+
+    <update id="updateLevel">
+        update shop_user
+        set level_id = #{levelId}, update_by = #{updateBy}, update_time = sysdate()
+        where user_id = #{userId} and del_flag = '0'
+    </update>
+</mapper>

@@ -1,0 +1,35 @@
+{
+  "private": true,
+  "author": "zhang <2062951832@qq.com>",
+  "scripts": {
+    "dev": "umi dev",
+    "build": "umi build",
+    "postinstall": "umi setup",
+    "setup": "umi setup",
+    "start": "npm run dev",
+    "test": "npm run test:auth && npm run test:catalog && npm run test:cart && npm run test:orders && npm run test:commerce && npm run test:avatar && npm run test:profile && npm run test:journey && npm run test:pages && npm run test:dev-server",
+    "test:auth": "tsx src/utils/authRules.test.ts",
+    "test:catalog": "tsx src/utils/productCatalog.test.ts",
+    "test:cart": "tsx src/utils/cart.test.ts",
+    "test:orders": "tsx src/utils/orders.test.ts",
+    "test:commerce": "tsx src/mocks/commerce.test.ts",
+    "test:avatar": "tsx src/utils/avatarUpload.test.ts",
+    "test:profile": "tsx src/utils/profileData.test.ts",
+    "test:journey": "tsx src/utils/productJourney.test.ts",
+    "test:pages": "tsx src/pages/index.structure.test.ts",
+    "test:dev-server": "tsx src/devServerConfig.test.ts"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^6.2.5",
+    "antd": "^6.4.4",
+    "china-division": "^2.7.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "umi": "^4.6.65"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.0.3"
+  }
+}

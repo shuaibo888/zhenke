@@ -1,0 +1,62 @@
+# Deployment-only files
+/zhenke/
+**/*.docx
+
+# IDE metadata
+/.idea/
+**/.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+# Java build output
+**/target/
+*.class
+
+# Node dependencies and build output
+**/node_modules/
+**/dist/
+**/.umi/
+**/.umi-production/
+**/.npm-cache/
+**/.turbo/
+**/.turbopack/
+**/.playwright-cli/
+**/output/
+**/playwright-report/
+**/test-results/
+
+# Local environment overrides
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+**/application-local.yml
+**/application-local.yaml
+**/application-*-local.yml
+**/application-*-local.yaml
+
+# Logs, caches, and temporary files
+**/logs/
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+.cache/
+.swc/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Packaged deployment archives
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+
+# Upstream repository metadata not applicable to this project
+**/.github/FUNDING.yml
