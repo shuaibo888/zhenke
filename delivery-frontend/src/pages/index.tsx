@@ -30,10 +30,9 @@ import {
   earningRecords,
   logisticsRecords,
   notifications,
-  orders as seedOrders,
   productEvidence,
 } from '@/mocks/commerce';
-import type { EarningRecord, Merchant, Order, Product, ReportAttribution, TrialRecord, TrialRecruitment, VerifyReport } from '@/types';
+import type { EarningRecord, MemberRole, Merchant, Order, Product, ReportAttribution, TrialRecord, TrialRecruitment, VerifyReport } from '@/types';
 import type { AuthUser } from '@/utils/authRules';
 import {
   changeShopPassword,
@@ -54,28 +53,36 @@ import {
   type ShopShippingAddress,
 } from '@/services/shopAuth';
 import {
+  addShopCartItem,
   applyForTrial,
+  cancelShopOrder,
+  checkoutShopCart,
   confirmTrialReceived,
+  createShopOrders,
+  deleteShopCartItem,
   fetchHomeFeed,
+  fetchShopCart,
+  fetchShopOrders,
   fetchMyTrialApplications,
   fetchProductCategories,
   fetchPublicProduct,
   fetchPublishedReport,
   publishVerificationReport,
+  updateShopCartItem,
   uploadShopContentFile,
   type HomeFeedItemDto,
   type ProductCategoryDto,
   type PublicProductDto,
+  type ShopCartItemDto,
+  type ShopOrderDto,
   type TrialApplicationDto,
   type VerificationReportDto,
 } from '@/services/shopContent';
 import { uploadAvatarFile } from '@/utils/avatarUpload';
-import { addProductToCart, changeCartItemQuantity, getCartCount, getCartTotal, removeCartItem, type CartItem } from '@/utils/cart';
+import { getCartCount, getCartTotal, type CartItem } from '@/utils/cart';
 import {
   advanceOrderStatus,
-  cancelOrder,
   canCancelOrder,
-  createOrdersFromCart,
   orderStatusMeta,
 } from '@/utils/orders';
 import { findProductForReport, getCatalogProducts, type ProductCategoryFilter, type ProductSortKey } from '@/utils/productCatalog';
@@ -282,6 +289,63 @@ function mapTrialApplication(dto: TrialApplicationDto): TrialRecord {
   };
 }
 
+function mapShopCartItem(dto: ShopCartItemDto): CartItem {
+  return {
+    cartItemId: dto.cartItemId,
+    quantity: dto.quantity,
+    product: {
+      id: dto.productId,
+      title: dto.productName,
+      artisanName: dto.merchantName,
+      category: dto.categoryCode,
+      categoryName: dto.categoryName,
+      imageUrl: dto.coverUrl,
+      cover: `url("${dto.coverUrl}")`,
+      price: Number(dto.price),
+      isVerified: false,
+      verifyCount: 0,
+      detail: '',
+      tags: [dto.categoryName],
+      stock: dto.stock,
+      purchasable: dto.productStatus === 'ON_SALE' && dto.stock > 0,
+    },
+  };
+}
+
+function mapShopOrder(dto: ShopOrderDto, role: MemberRole): Order {
+  const statusMap: Record<ShopOrderDto['status'], Order['status']> = {
+    PENDING_PAYMENT: 'unpaid',
+    PAID: 'paid',
+    SHIPPED: 'shipped',
+    RECEIVED: 'completed',
+    CANCELLED: 'canceled',
+  };
+  const firstItem = dto.items?.[0];
+  const productTitle = dto.items.length > 1
+    ? `${firstItem?.productName ?? '商品'}等${dto.items.length}种商品`
+    : firstItem?.productName ?? '商品';
+  return {
+    id: dto.orderId,
+    orderNo: dto.orderNo,
+    productId: firstItem?.productId ?? 0,
+    productTitle,
+    status: statusMap[dto.status],
+    quantity: dto.itemCount,
+    amount: Number(dto.totalAmount),
+    returnDays: roleMeta[role].returnDays,
+    merchantName: dto.merchantName,
+    createdAt: dto.createTime,
+    items: dto.items.map((item) => ({
+      productId: item.productId,
+      productTitle: item.productName,
+      coverUrl: item.coverUrl,
+      unitPrice: Number(item.unitPrice),
+      quantity: item.quantity,
+      amount: Number(item.lineAmount),
+    })),
+  };
+}
+
 export default function HomePage() {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -303,7 +367,8 @@ export default function HomePage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [imageProduct, setImageProduct] = useState<Product | null>(null);
   const [reports, setReports] = useState<VerifyReport[]>([]);
-  const [userOrders, setUserOrders] = useState<Order[]>(seedOrders);
+  const [userOrders, setUserOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
   const [trials, setTrials] = useState<TrialRecord[]>([]);
   const [earnings, setEarnings] = useState<EarningRecord[]>(earningRecords);
   const [recruitments, setRecruitments] = useState<TrialRecruitment[]>([]);
@@ -313,6 +378,9 @@ export default function HomePage() {
   const [journeyReport, setJourneyReport] = useState<VerifyReport | null>(null);
   const [selectedLogisticsOrder, setSelectedLogisticsOrder] = useState<Order | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartLoading, setCartLoading] = useState(false);
+  const [cartMutatingId, setCartMutatingId] = useState<number | null>(null);
+  const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportImageUrls, setReportImageUrls] = useState<string[]>([]);
   const [reportVideoUrl, setReportVideoUrl] = useState<string>();
@@ -460,6 +528,40 @@ export default function HomePage() {
   useEffect(() => {
     let mounted = true;
     if (!currentUser) {
+      setCartItems([]);
+      setUserOrders([]);
+      setCartLoading(false);
+      setOrdersLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    setCartLoading(true);
+    setOrdersLoading(true);
+    Promise.all([fetchShopCart(), fetchShopOrders()])
+      .then(([cart, orders]) => {
+        if (!mounted) return;
+        setCartItems(cart.map(mapShopCartItem));
+        setUserOrders(orders.map((order) => mapShopOrder(order, currentUser.role)));
+      })
+      .catch((error) => {
+        if (mounted) message.error(error instanceof Error ? error.message : '购物车和订单加载失败');
+      })
+      .finally(() => {
+        if (mounted) {
+          setCartLoading(false);
+          setOrdersLoading(false);
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!currentUser) {
       setShippingAddresses([]);
       setAddressesLoading(false);
       return () => {
@@ -541,6 +643,8 @@ export default function HomePage() {
   const handleLogout = async () => {
     await logoutShopUser();
     setCurrentUser(null);
+    setCartItems([]);
+    setUserOrders([]);
     setActiveTab('reviews');
     setCartOpen(false);
     setDetailOpen(false);
@@ -692,25 +796,84 @@ export default function HomePage() {
     }
   };
 
-  const handleAddToCart = (product: Product, attribution?: ReportAttribution) => {
+  const handleAddToCart = async (product: Product, _attribution?: ReportAttribution) => {
     if (product.purchasable === false || product.stock === 0) {
       message.warning('该商品当前无库存，暂不能购买');
       return;
     }
-    setCartItems((items) => addProductToCart(items, product, attribution));
-    message.success('已加入购物车');
+    if (!activeUser) {
+      message.info('请先登录后再加入购物车');
+      return;
+    }
+    setCartMutatingId(product.id);
+    try {
+      const saved = mapShopCartItem(await addShopCartItem(product.id));
+      setCartItems((items) => {
+        const exists = items.some((item) => item.product.id === product.id);
+        return exists
+          ? items.map((item) => (item.product.id === product.id ? saved : item))
+          : [saved, ...items];
+      });
+      message.success('已加入购物车');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '加入购物车失败');
+    } finally {
+      setCartMutatingId(null);
+    }
   };
 
-  const handleCheckout = () => {
-    if (!activeUser || cartItems.length === 0) return;
+  const handleCartQuantity = async (item: CartItem, quantity: number) => {
+    if (!item.cartItemId) return;
+    setCartMutatingId(item.product.id);
+    try {
+      if (quantity <= 0) {
+        await deleteShopCartItem(item.cartItemId);
+        setCartItems((items) => items.filter((current) => current.cartItemId !== item.cartItemId));
+      } else {
+        const saved = mapShopCartItem(await updateShopCartItem(item.cartItemId, quantity));
+        setCartItems((items) => items.map((current) => current.cartItemId === item.cartItemId ? saved : current));
+      }
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '购物车更新失败');
+    } finally {
+      setCartMutatingId(null);
+    }
+  };
 
-    const createdOrders = createOrdersFromCart(cartItems, activeUser.role);
-    setUserOrders((items) => [...createdOrders, ...items]);
-    setCartItems([]);
-    setCartOpen(false);
-    setActiveTab('profile');
-    setProfileView('orders');
-    message.success('下单成功，请在我的订单中继续付款');
+  const handleRemoveCartItem = async (item: CartItem) => {
+    if (!item.cartItemId) return;
+    setCartMutatingId(item.product.id);
+    try {
+      await deleteShopCartItem(item.cartItemId);
+      setCartItems((items) => items.filter((current) => current.cartItemId !== item.cartItemId));
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '移除购物车商品失败');
+    } finally {
+      setCartMutatingId(null);
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (!activeUser || cartItems.length === 0) return;
+    if (!defaultShippingAddress || !isShippingAddressReady) {
+      message.info('请先完善默认收货地址');
+      openAddressDialog();
+      return;
+    }
+    setOrderSubmitting(true);
+    try {
+      const created = await checkoutShopCart(defaultShippingAddress.id);
+      setUserOrders((items) => [...created.map((order) => mapShopOrder(order, activeUser.role)), ...items]);
+      setCartItems([]);
+      setCartOpen(false);
+      setActiveTab('profile');
+      setProfileView('orders');
+      message.success('下单成功，请在我的订单中继续付款');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '下单失败');
+    } finally {
+      setOrderSubmitting(false);
+    }
   };
 
   const handleBuyNow = (product: Product, attribution?: ReportAttribution) => {
@@ -827,31 +990,31 @@ export default function HomePage() {
 
   const handlePay = () => {
     if (!payOrder) return;
-
-    setPaying(true);
-    setTimeout(() => {
-      setUserOrders((items) => items.map((item) => (item.id === payOrder.id ? advanceOrderStatus(item) : item)));
-      setPaying(false);
-      setPayOrder(null);
-      message.success('支付成功，商家将尽快为您发货');
-    }, 1500);
+    setPayOrder(null);
+    message.info('订单已经创建，真实支付将在下一阶段接入');
   };
 
-  const handleConfirmBuyNow = () => {
-    if (!activeUser || !pendingBuyProduct || !isShippingAddressReady) return;
-
-    const [createdOrder] = createOrdersFromCart(
-      [{ product: pendingBuyProduct, quantity: 1, attribution: pendingBuyAttribution }],
-      activeUser.role,
-    );
-    setSelectedProduct(pendingBuyProduct);
-    setUserOrders((items) => [createdOrder, ...items]);
-    setCartOpen(false);
-    setPendingBuyProduct(null);
-    setPendingBuyAttribution(undefined);
-    setActiveTab('profile');
-    setProfileView('orders');
-    message.success('下单成功，请在我的订单中继续付款');
+  const handleConfirmBuyNow = async () => {
+    if (!activeUser || !pendingBuyProduct || !defaultShippingAddress || !isShippingAddressReady) return;
+    setOrderSubmitting(true);
+    try {
+      const created = await createShopOrders({
+        addressId: defaultShippingAddress.id,
+        items: [{ productId: pendingBuyProduct.id, quantity: 1 }],
+      });
+      setSelectedProduct(pendingBuyProduct);
+      setUserOrders((items) => [...created.map((order) => mapShopOrder(order, activeUser.role)), ...items]);
+      setCartOpen(false);
+      setPendingBuyProduct(null);
+      setPendingBuyAttribution(undefined);
+      setActiveTab('profile');
+      setProfileView('orders');
+      message.success('下单成功，请在我的订单中继续付款');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '下单失败');
+    } finally {
+      setOrderSubmitting(false);
+    }
   };
 
   const handleCancelOrder = (orderId: number) => {
@@ -862,9 +1025,17 @@ export default function HomePage() {
       content: `当前身份为${roleMeta[activeUser.role].label}，支持 ${roleMeta[activeUser.role].returnDays} 天退换。取消后订单会变为已取消。`,
       okText: '确认取消',
       cancelText: '再想想',
-      onOk: () => {
-        setUserOrders((items) => items.map((order) => (order.id === orderId ? cancelOrder(order) : order)));
-        message.success('订单已取消');
+      onOk: async () => {
+        try {
+          const cancelled = await cancelShopOrder(orderId);
+          setUserOrders((items) => items.map((order) => order.id === orderId
+            ? mapShopOrder(cancelled, activeUser.role)
+            : order));
+          message.success('订单已取消，库存已恢复');
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : '订单取消失败');
+          throw error;
+        }
       },
     });
   };
@@ -1138,6 +1309,7 @@ export default function HomePage() {
             type="primary"
             size="large"
             disabled={cartItems.length === 0}
+            loading={orderSubmitting}
             onClick={handleCheckout}
           >
             结算 {cartCount} 件
@@ -1145,7 +1317,9 @@ export default function HomePage() {
         </div>
       }
     >
-      {cartItems.length === 0 ? (
+      {cartLoading ? (
+        <div className={styles.emptyCart}><Spin /></div>
+      ) : cartItems.length === 0 ? (
         <div className={styles.emptyCart}>
           <ShoppingCartOutlined />
           <strong>购物车还是空的</strong>
@@ -1164,7 +1338,8 @@ export default function HomePage() {
                     size="small"
                     type="text"
                     icon={<DeleteOutlined />}
-                    onClick={() => setCartItems((items) => removeCartItem(items, item.product.id))}
+                    loading={cartMutatingId === item.product.id}
+                    onClick={() => void handleRemoveCartItem(item)}
                   />
                 </div>
                 <span>{formatPrice(item.product.price)}</span>
@@ -1173,14 +1348,16 @@ export default function HomePage() {
                     aria-label={`减少${item.product.title}`}
                     size="small"
                     icon={<MinusOutlined />}
-                    onClick={() => setCartItems((items) => changeCartItemQuantity(items, item.product.id, item.quantity - 1))}
+                    disabled={cartMutatingId === item.product.id}
+                    onClick={() => void handleCartQuantity(item, item.quantity - 1)}
                   />
                   <b>{item.quantity}</b>
                   <Button
                     aria-label={`增加${item.product.title}`}
                     size="small"
                     icon={<PlusOutlined />}
-                    onClick={() => setCartItems((items) => changeCartItemQuantity(items, item.product.id, item.quantity + 1))}
+                    disabled={cartMutatingId === item.product.id || item.quantity >= (item.product.stock ?? 99)}
+                    onClick={() => void handleCartQuantity(item, item.quantity + 1)}
                   />
                   <em>{formatPrice(item.product.price * item.quantity)}</em>
                 </div>
@@ -1582,7 +1759,7 @@ export default function HomePage() {
             value={category}
             onChange={(value) => setCategory(value as ProductCategoryFilter)}
             options={[
-              { label: '全部分类', value: 'all' },
+              { label: '全部', value: 'all' },
               ...productCategories.map((item) => ({ label: item.categoryName, value: item.categoryCode })),
             ]}
           />
@@ -1590,7 +1767,7 @@ export default function HomePage() {
             value={homeContentType}
             onChange={(value) => setHomeContentType(value as 'ALL' | 'TRIAL' | 'REPORT')}
             options={[
-              { label: '全部内容', value: 'ALL' },
+              { label: '全部', value: 'ALL' },
               { label: '试用招募', value: 'TRIAL' },
               { label: '验证报告', value: 'REPORT' },
             ]}
@@ -1908,7 +2085,7 @@ export default function HomePage() {
         {profileView === 'orders' && (
           <section className={styles.orderPanel}>
             <h3>我的订单</h3>
-            {userOrders.map((order) => (
+            {ordersLoading ? <Spin /> : userOrders.map((order) => (
               <div className={styles.orderItem} key={order.id}>
                 <div>
                   <strong>{order.productTitle}</strong>
@@ -1944,7 +2121,7 @@ export default function HomePage() {
                 </div>
               </div>
             ))}
-            {userOrders.length === 0 && <p className={styles.empty}>还没有订单。</p>}
+            {!ordersLoading && userOrders.length === 0 && <p className={styles.empty}>还没有订单。</p>}
           </section>
         )}
 
@@ -2372,7 +2549,7 @@ export default function HomePage() {
                 <span>应付金额</span>
                 <strong>{formatPrice(pendingBuyProduct.price)}</strong>
               </div>
-              <Button type="primary" size="large" disabled={!isShippingAddressReady} onClick={handleConfirmBuyNow}>
+              <Button type="primary" size="large" disabled={!isShippingAddressReady} loading={orderSubmitting} onClick={handleConfirmBuyNow}>
                 确认下单
               </Button>
             </div>

@@ -4,6 +4,18 @@ import { test } from 'node:test';
 
 const pageSource = readFileSync(new URL('./index.tsx', import.meta.url), 'utf8');
 const authServiceSource = readFileSync(new URL('../services/shopAuth.ts', import.meta.url), 'utf8');
+const contentServiceSource = readFileSync(new URL('../services/shopContent.ts', import.meta.url), 'utf8');
+
+test('cart and first-stage orders use authenticated server APIs', () => {
+  assert.match(contentServiceSource, /\/shop\/users\/me\/cart/);
+  assert.match(contentServiceSource, /\/shop\/orders\/from-cart/);
+  assert.match(contentServiceSource, /\/shop\/orders\/\$\{orderId\}\/cancel/);
+  assert.match(pageSource, /Promise\.all\(\[fetchShopCart\(\), fetchShopOrders\(\)\]\)/);
+  assert.match(pageSource, /checkoutShopCart\(defaultShippingAddress\.id\)/);
+  assert.match(pageSource, /createShopOrders\(/);
+  assert.doesNotMatch(pageSource, /orders as seedOrders/);
+  assert.doesNotMatch(pageSource, /createOrdersFromCart\(/);
+});
 
 test('merchant application is available on the public home page without a shop-user session', () => {
   assert.match(pageSource, /onClick=\{openMerchantApplication\}/);

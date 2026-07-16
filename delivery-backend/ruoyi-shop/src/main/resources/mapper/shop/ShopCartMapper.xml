@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.shop.mapper.ShopCartMapper">
+    <resultMap id="ShopCartItemResult" type="ShopCartItem">
+        <id property="cartItemId" column="cart_item_id" />
+        <result property="userId" column="user_id" />
+        <result property="productId" column="product_id" />
+        <result property="quantity" column="quantity" />
+        <result property="merchantId" column="merchant_id" />
+        <result property="merchantName" column="merchant_name" />
+        <result property="categoryCode" column="category_code" />
+        <result property="categoryName" column="category_name" />
+        <result property="productName" column="product_name" />
+        <result property="coverUrl" column="cover_url" />
+        <result property="price" column="price" />
+        <result property="stock" column="stock" />
+        <result property="productStatus" column="product_status" />
+    </resultMap>
+
+    <resultMap id="ShopProductResult" type="ShopProduct">
+        <id property="productId" column="product_id" />
+        <result property="merchantId" column="merchant_id" />
+        <result property="merchantName" column="merchant_name" />
+        <result property="categoryId" column="category_id" />
+        <result property="categoryCode" column="category_code" />
+        <result property="categoryName" column="category_name" />
+        <result property="productName" column="product_name" />
+        <result property="coverUrl" column="cover_url" />
+        <result property="price" column="price" />
+        <result property="stock" column="stock" />
+        <result property="status" column="product_status" />
+    </resultMap>
+
+    <sql id="selectCartItem">
+        select ci.cart_item_id, ci.user_id, ci.product_id, ci.quantity,
+               p.merchant_id, m.company_name as merchant_name,
+               c.category_code, c.category_name, p.product_name, p.cover_url,
+               p.price, p.stock, p.status as product_status
+        from shop_cart_item ci
+        inner join shop_product p on p.product_id = ci.product_id and p.del_flag = '0'
+        inner join shop_merchant m on m.merchant_id = p.merchant_id and m.del_flag = '0'
+        inner join shop_product_category c on c.category_id = p.category_id
+    </sql>
+
+    <select id="lockEnabledUser" parameterType="Long" resultType="Long">
+        select user_id from shop_user
+        where user_id = #{userId} and status = '0' and del_flag = '0'
+        for update
+    </select>
+
+    <select id="selectUserItems" parameterType="Long" resultMap="ShopCartItemResult">
+        <include refid="selectCartItem" />
+        where ci.user_id = #{userId}
+        order by ci.cart_item_id desc
+    </select>
+
+    <select id="selectUserItem" resultMap="ShopCartItemResult">
+        <include refid="selectCartItem" />
+        where ci.user_id = #{userId} and ci.cart_item_id = #{cartItemId}
+        limit 1
+    </select>
+
+    <select id="selectUserProduct" resultMap="ShopCartItemResult">
+        <include refid="selectCartItem" />
+        where ci.user_id = #{userId} and ci.product_id = #{productId}
+        limit 1
+    </select>
+
+    <select id="selectOrderableProductForUpdate" parameterType="Long" resultMap="ShopProductResult">
+        select p.product_id, p.merchant_id, m.company_name as merchant_name,
+               p.category_id, c.category_code, c.category_name, p.product_name,
+               p.cover_url, p.price, p.stock, p.status as product_status
+        from shop_product p
+        inner join shop_merchant m on m.merchant_id = p.merchant_id
+        inner join shop_product_category c on c.category_id = p.category_id
+        where p.product_id = #{productId} and p.status = 'ON_SALE' and p.del_flag = '0'
+          and m.audit_status = 'APPROVED' and m.status = '0' and m.del_flag = '0'
+          and c.status = '0'
+        for update
+    </select>
+
+    <insert id="insert" parameterType="ShopCartItem" useGeneratedKeys="true" keyProperty="cartItemId">
+        insert into shop_cart_item (user_id, product_id, quantity, create_time, update_time)
+        values (#{userId}, #{productId}, #{quantity}, sysdate(), sysdate())
+    </insert>
+
+    <update id="updateQuantity">
+        update shop_cart_item set quantity = #{quantity}, update_time = sysdate()
+        where user_id = #{userId} and cart_item_id = #{cartItemId}
+    </update>
+
+    <delete id="delete">
+        delete from shop_cart_item where user_id = #{userId} and cart_item_id = #{cartItemId}
+    </delete>
+
+    <delete id="deleteUserProducts">
+        delete from shop_cart_item
+        where user_id = #{userId} and product_id in
+        <foreach collection="productIds" item="productId" open="(" separator="," close=")">
+            #{productId}
+        </foreach>
+    </delete>
+</mapper>

@@ -1,6 +1,7 @@
 import type { Product, ReportAttribution } from '@/types';
 
 export interface CartItem {
+  cartItemId?: number;
   product: Product;
   quantity: number;
   attribution?: ReportAttribution;

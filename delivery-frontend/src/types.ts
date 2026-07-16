@@ -83,6 +83,16 @@ export interface Order {
   quantity: number;
   amount: number;
   returnDays: number;
+  merchantName?: string;
+  createdAt?: string;
+  items?: Array<{
+    productId: number;
+    productTitle: string;
+    coverUrl: string;
+    unitPrice: number;
+    quantity: number;
+    amount: number;
+  }>;
   fromReviewId?: number;
   fromVerifierId?: number;
   review?: OrderReview;

@@ -134,6 +134,60 @@ export interface TrialApplicationDto {
   applicationDeadline?: string;
 }
 
+export interface ShopCartItemDto {
+  cartItemId: number;
+  userId: number;
+  productId: number;
+  quantity: number;
+  merchantId: number;
+  merchantName: string;
+  categoryCode: ProductCategoryDto['categoryCode'];
+  categoryName: string;
+  productName: string;
+  coverUrl: string;
+  price: number;
+  stock: number;
+  productStatus: 'DRAFT' | 'ON_SALE' | 'OFF_SALE';
+}
+
+export interface ShopOrderDto {
+  orderId: number;
+  orderNo: string;
+  userId: number;
+  merchantId: number;
+  merchantName: string;
+  status: 'PENDING_PAYMENT' | 'PAID' | 'SHIPPED' | 'RECEIVED' | 'CANCELLED';
+  totalAmount: number;
+  itemCount: number;
+  cancelTime?: string;
+  createTime: string;
+  updateTime: string;
+  items: Array<{
+    orderItemId: number;
+    productId: number;
+    productName: string;
+    coverUrl: string;
+    unitPrice: number;
+    quantity: number;
+    lineAmount: number;
+  }>;
+  address?: {
+    recipient: string;
+    phone: string;
+    provinceCode: string;
+    cityCode: string;
+    districtCode: string;
+    detail: string;
+  };
+  statusLogs?: Array<{
+    logId: number;
+    fromStatus?: string;
+    toStatus: string;
+    remark: string;
+    createTime: string;
+  }>;
+}
+
 export async function fetchHomeFeed(categoryCode?: string, contentType: 'ALL' | 'TRIAL' | 'REPORT' = 'ALL') {
   const params = new URLSearchParams({ pageNum: '1', pageSize: '100', contentType });
   if (categoryCode) params.set('categoryCode', categoryCode);
@@ -180,6 +234,71 @@ export async function applyForTrial(campaignId: number, body: {
 export async function fetchMyTrialApplications() {
   const result = await requestApi<ApiResponse<TrialApplicationDto[]>>('/shop/trials/me/applications', {}, true);
   return result.data ?? [];
+}
+
+export async function fetchShopCart() {
+  const result = await requestApi<ApiResponse<ShopCartItemDto[]>>('/shop/users/me/cart', {}, true);
+  return Array.isArray(result.data) ? result.data : [];
+}
+
+export async function addShopCartItem(productId: number, quantity = 1) {
+  const result = await requestApi<ApiResponse<ShopCartItemDto>>(
+    '/shop/users/me/cart',
+    { method: 'POST', body: JSON.stringify({ productId, quantity }) },
+    true,
+  );
+  if (!result.data) throw new Error('加入购物车失败');
+  return result.data;
+}
+
+export async function updateShopCartItem(cartItemId: number, quantity: number) {
+  const result = await requestApi<ApiResponse<ShopCartItemDto>>(
+    `/shop/users/me/cart/${cartItemId}`,
+    { method: 'PUT', body: JSON.stringify({ quantity }) },
+    true,
+  );
+  if (!result.data) throw new Error('购物车更新失败');
+  return result.data;
+}
+
+export async function deleteShopCartItem(cartItemId: number) {
+  await requestApi<ApiResponse>(`/shop/users/me/cart/${cartItemId}`, { method: 'DELETE' }, true);
+}
+
+export async function fetchShopOrders() {
+  const result = await requestApi<ApiResponse<ShopOrderDto[]>>('/shop/orders', {}, true);
+  return Array.isArray(result.data) ? result.data : [];
+}
+
+export async function createShopOrders(body: {
+  addressId: number;
+  items: Array<{ productId: number; quantity: number }>;
+}) {
+  const result = await requestApi<ApiResponse<ShopOrderDto[]>>(
+    '/shop/orders',
+    { method: 'POST', body: JSON.stringify(body) },
+    true,
+  );
+  return Array.isArray(result.data) ? result.data : [];
+}
+
+export async function checkoutShopCart(addressId: number) {
+  const result = await requestApi<ApiResponse<ShopOrderDto[]>>(
+    '/shop/orders/from-cart',
+    { method: 'POST', body: JSON.stringify({ addressId }) },
+    true,
+  );
+  return Array.isArray(result.data) ? result.data : [];
+}
+
+export async function cancelShopOrder(orderId: number) {
+  const result = await requestApi<ApiResponse<ShopOrderDto>>(
+    `/shop/orders/${orderId}/cancel`,
+    { method: 'PUT' },
+    true,
+  );
+  if (!result.data) throw new Error('订单取消失败');
+  return result.data;
 }
 
 export async function confirmTrialReceived(applicationId: number) {
