@@ -3,6 +3,34 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 const pageSource = readFileSync(new URL('./index.tsx', import.meta.url), 'utf8');
+const authServiceSource = readFileSync(new URL('../services/shopAuth.ts', import.meta.url), 'utf8');
+
+test('merchant application is available on the public home page without a shop-user session', () => {
+  assert.match(pageSource, /onClick=\{openMerchantApplication\}/);
+  assert.match(pageSource, /商家后台账号/);
+  assert.match(pageSource, /renderAuth\(\)[\s\S]*renderMerchantModal\(\)/);
+  assert.doesNotMatch(pageSource, /请先登录商城账号/);
+  assert.match(authServiceSource, /\/shop\/merchants\/apply/);
+  assert.match(authServiceSource, /\/shop\/merchants\/status/);
+  assert.doesNotMatch(authServiceSource, /\/shop\/merchants\/me/);
+});
+
+test('login waits for a confirmed captcha state and exposes retry on load failure', () => {
+  assert.match(pageSource, /captchaReady/);
+  assert.match(pageSource, /captchaLoading/);
+  assert.match(pageSource, /captchaLoadError/);
+  assert.match(pageSource, /验证码尚未准备好，请重新获取后再登录/);
+  assert.match(pageSource, /重新获取/);
+  assert.match(pageSource, /验证码尚未准备好，请重新获取后再提交/);
+  assert.doesNotMatch(pageSource, /\.catch\(\(\) => undefined\)/);
+});
+
+test('merchant commitment switches are direct Form.Item controls', () => {
+  assert.match(pageSource, /name="acceptsVerificationRecruitment"[\s\S]*?extra="我承诺发起验证招募（不验证不上架）"[\s\S]*?>\s*<Switch/);
+  assert.match(pageSource, /name="acceptsPublicWelfare"[\s\S]*?extra="我接受公益分成"[\s\S]*?>\s*<Switch/);
+  assert.match(pageSource, /name="agreeProtocol"[\s\S]*?extra="我已阅读并同意《商家入驻协议》[^\"]*"[\s\S]*?>\s*<Switch/);
+  assert.doesNotMatch(pageSource, /<Switch[^>]*\/>\s*<span className=\{styles\.switchLabel\}>/);
+});
 
 test('primary navigation only exposes reviews and profile', () => {
   assert.match(pageSource, /type TabKey = 'reviews' \| 'profile';/);
@@ -58,7 +86,8 @@ test('profile renders trials, zhenke reports, and earnings', () => {
   const profileBlock = pageSource.slice(profileStart, profileEnd);
 
   assert.match(profileBlock, /<h3>我的试用<\/h3>/);
-  assert.match(profileBlock, /去发布甄客验/);
+  assert.match(profileBlock, /确认收货/);
+  assert.match(profileBlock, /自愿发布甄客验/);
   assert.match(profileBlock, /<h3>我的甄客验<\/h3>/);
   assert.doesNotMatch(profileBlock, /<h3>我的验证<\/h3>/);
   assert.match(profileBlock, /<h3>我的收益<\/h3>/);
@@ -77,7 +106,8 @@ test('product journey covers recruitment, evidence, report detail, and attributi
   assert.match(pageSource, /fromReviewId/);
   assert.match(pageSource, /fromVerifierId/);
   assert.match(pageSource, /getProductJourneyState/);
-  assert.match(pageSource, /applyForRecruitment/);
+  assert.match(pageSource, /applyForTrial/);
+  assert.match(pageSource, /fetchMyTrialApplications/);
 });
 
 test('home shell uses a masthead plus nav row without a repeated trust strip', () => {
@@ -136,11 +166,21 @@ test('address region data uses a static china-division json import for browser b
   assert.doesNotMatch(pageSource, /from 'china-division'/);
 });
 
-test('verification publishing requires choosing a reviewable purchased or trial product', () => {
-  assert.match(pageSource, /getReviewableProductsFromOrders/);
+test('verification publishing requires a received trial application', () => {
+  assert.match(pageSource, /publishVerificationReport/);
+  assert.match(pageSource, /trial\.status === 'pending_report'/);
   assert.match(pageSource, /name="productId"/);
   assert.match(pageSource, /选择可发布商品/);
   assert.match(pageSource, /trialReviewableProducts/);
+  assert.doesNotMatch(pageSource, /getReviewableProductsFromOrders/);
+});
+
+test('verification uploads keep resource URLs outside the form event value', () => {
+  assert.match(pageSource, /useState<string\[\]>\(\[\]\)/);
+  assert.match(pageSource, /setReportImageUrls/);
+  assert.match(pageSource, /setReportVideoUrl/);
+  assert.doesNotMatch(pageSource, /<Form\.Item name="images"/);
+  assert.doesNotMatch(pageSource, /<Form\.Item name="video"/);
 });
 
 test('cart checkout footer shows a clear item-count checkout action', () => {

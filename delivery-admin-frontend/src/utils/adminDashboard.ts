@@ -87,10 +87,12 @@ export function buildMerchantOverview(products: ManagedProduct[], orders: Manage
 export function buildProductStatusPie(products: ManagedProduct[]) {
   const onSaleCount = products.filter((product) => product.status === 'onSale').length;
   const offSaleCount = products.filter((product) => product.status === 'offSale').length;
+  const draftCount = products.filter((product) => product.status === 'draft').length;
 
   return [
     { status: '在售', count: onSaleCount },
     { status: '已下架', count: offSaleCount },
+    { status: '草稿', count: draftCount },
   ].filter((item) => item.count > 0);
 }
 

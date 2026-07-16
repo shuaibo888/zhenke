@@ -43,10 +43,21 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { merchantAccounts as seedMerchantAccounts, seedOrders, seedProducts, seedReports, seedTrialRecruitments } from '@/mocks/admin';
-import type { AdminSession, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialRecruitment, MerchantAccount, NavKey, ProductCategory, ProductStatus, ShopMemberLevel, ShopUserAccount } from '@/types';
+import { seedOrders, seedReports } from '@/mocks/admin';
+import type { AdminSession, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, NavKey, ProductCategory, ProductCategoryOption, ProductStatus, ShopMemberLevel, ShopUserAccount } from '@/types';
 import {
+  auditMerchantTrialApplication,
+  createMerchantProduct,
+  createMerchantTrial,
   fetchAdminCaptcha,
+  auditMerchant,
+  fetchAllProductCategories,
+  fetchManagedProducts,
+  fetchManagedTrials,
+  fetchMerchantDetail,
+  fetchMerchantTrialApplications,
+  fetchMerchants,
+  fetchProductCategories,
   fetchShopMemberLevels,
   fetchShopUsers,
   loginAdmin,
@@ -54,6 +65,13 @@ import {
   restoreAdminSession,
   updateShopUserLevel,
   updateShopUserStatus,
+  updateMerchantStatus,
+  updateMerchantProduct,
+  updateMerchantProductSaleStatus,
+  updateMerchantTrialStatus,
+  updateProductCategory,
+  shipMerchantTrialApplication,
+  uploadAdminFile,
   type CaptchaState,
 } from '@/services/adminApi';
 import { filterRowsForSession, getAvailableNavKeys, hasGlobalAccess } from '@/utils/access';
@@ -62,11 +80,9 @@ import {
   buildOrderTrendChart,
   buildProductStatusPie,
   getDashboardStats,
-  toggleMerchantStatus,
   toggleReportStatus,
 } from '@/utils/adminDashboard';
 import { filterOrders, refundOrderById, shipOrderById, type OrderStatusFilter } from '@/utils/orderManagement';
-import { saveProductDraft } from '@/utils/productEditor';
 import { filterProducts, type ProductCategoryFilter, type ProductStatusFilter } from '@/utils/productFilters';
 import styles from './index.less';
 
@@ -98,30 +114,32 @@ type LoginFormValues = {
 };
 
 type ProductFormValues = {
-  merchantId?: number;
   title: string;
-  artisanName: string;
-  category: ProductCategory;
-  status: ProductStatus;
+  subtitle?: string;
+  categoryId: number;
   imageUrl: string;
   detail: string;
   price: number;
-  cost: number;
   stock: number;
 };
 
 type MerchantFormValues = {
-  name: string;
-  ownerName: string;
-  phone: string;
-  username: string;
-  password: string;
+  decision: 'APPROVED' | 'REJECTED';
+  auditRemark?: string;
 };
 
 type TrialFormValues = {
   productId: number;
+  campaignTitle: string;
+  campaignSummary: string;
   targetCount: number;
   deadline: string;
+};
+
+type TrialApplicationActionFormValues = {
+  auditRemark?: string;
+  carrier?: string;
+  trackingNo?: string;
 };
 
 const adminTheme = {
@@ -143,13 +161,14 @@ const navMeta: Record<NavKey, { label: string; icon: React.ReactNode }> = {
   merchants: { label: '商家管理', icon: <TeamOutlined /> },
 };
 
-const categoryMeta: Record<ProductCategory, { label: string; color: string }> = {
+const categoryMeta: Partial<Record<ProductCategory, { label: string; color: string }>> = {
   verified: { label: '已得验', color: 'green' },
   local: { label: '在地特产', color: 'blue' },
   other: { label: '普通好物', color: 'default' },
 };
 
 const productStatusMeta: Record<ProductStatus, { label: string; color: string }> = {
+  draft: { label: '草稿', color: 'gold' },
   onSale: { label: '在售', color: 'green' },
   offSale: { label: '已下架', color: 'default' },
 };
@@ -174,11 +193,24 @@ function AdminWorkspace() {
   const [captcha, setCaptcha] = useState<CaptchaState>({ enabled: false, image: '', uuid: '' });
   const [activeNav, setActiveNav] = useState<NavKey>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [products, setProducts] = useState<ManagedProduct[]>(seedProducts);
+  const [products, setProducts] = useState<ManagedProduct[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productSaving, setProductSaving] = useState(false);
+  const [productCategories, setProductCategories] = useState<ProductCategoryOption[]>([]);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [categoryDrafts, setCategoryDrafts] = useState<ProductCategoryOption[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [orders, setOrders] = useState<ManagedOrder[]>(seedOrders);
   const [reports, setReports] = useState<ManagedReport[]>(seedReports);
-  const [trialRecruitments, setTrialRecruitments] = useState<ManagedTrialRecruitment[]>(seedTrialRecruitments);
-  const [merchants, setMerchants] = useState<MerchantAccount[]>(seedMerchantAccounts);
+  const [trialRecruitments, setTrialRecruitments] = useState<ManagedTrialRecruitment[]>([]);
+  const [trialsLoading, setTrialsLoading] = useState(false);
+  const [trialSaving, setTrialSaving] = useState(false);
+  const [trialApplications, setTrialApplications] = useState<ManagedTrialApplication[]>([]);
+  const [trialApplicationsLoading, setTrialApplicationsLoading] = useState(false);
+  const [trialApplicationAction, setTrialApplicationAction] = useState<'reject' | 'ship' | null>(null);
+  const [selectedTrialApplication, setSelectedTrialApplication] = useState<ManagedTrialApplication | null>(null);
+  const [merchants, setMerchants] = useState<MerchantAccount[]>([]);
+  const [merchantsLoading, setMerchantsLoading] = useState(false);
   const [shopUsers, setShopUsers] = useState<ShopUserAccount[]>([]);
   const [shopUserTotal, setShopUserTotal] = useState(0);
   const [shopUsersLoading, setShopUsersLoading] = useState(false);
@@ -202,9 +234,11 @@ function AdminWorkspace() {
   const [trialModalOpen, setTrialModalOpen] = useState(false);
   const [productForm] = Form.useForm<ProductFormValues>();
   const [trialForm] = Form.useForm<TrialFormValues>();
+  const [trialApplicationActionForm] = Form.useForm<TrialApplicationActionFormValues>();
   const [loginForm] = Form.useForm<LoginFormValues>();
   const { message, modal } = AntApp.useApp();
   const productImageUrl = Form.useWatch('imageUrl', productForm);
+  const merchantAuditDecision = Form.useWatch('decision', merchantForm);
   const getMerchantName = (merchantId: number) => merchants.find((merchant) => merchant.id === merchantId)?.name ?? '未知商家';
 
   const visibleProducts = useMemo(() => filterRowsForSession(products, session), [products, session]);
@@ -235,7 +269,8 @@ function AdminWorkspace() {
   const hasPermission = (permission: string) =>
     Boolean(session?.permissions?.includes('*:*:*') || session?.permissions?.includes(permission));
   const availableNavKeys = getAvailableNavKeys(session).filter(
-    (key) => key !== 'users' || hasPermission('shop:user:list'),
+    (key) => (key !== 'users' || hasPermission('shop:user:list'))
+      && (key !== 'merchants' || hasPermission('shop:merchant:list')),
   );
 
   const stats = useMemo(() => {
@@ -282,6 +317,61 @@ function AdminWorkspace() {
     }
   };
 
+  const loadMerchants = async () => {
+    setMerchantsLoading(true);
+    try {
+      const result = await fetchMerchants();
+      setMerchants(result.rows);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '商家列表加载失败');
+    } finally {
+      setMerchantsLoading(false);
+    }
+  };
+
+  const loadProducts = async (currentSession = session) => {
+    if (!currentSession) return;
+    setProductsLoading(true);
+    try {
+      const [productResult, categories] = await Promise.all([
+        fetchManagedProducts(currentSession),
+        fetchProductCategories(),
+      ]);
+      setProducts(productResult.rows);
+      setProductCategories(categories);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '商品列表加载失败');
+    } finally {
+      setProductsLoading(false);
+    }
+  };
+
+  const loadTrials = async (currentSession = session) => {
+    if (!currentSession) return;
+    setTrialsLoading(true);
+    try {
+      const result = await fetchManagedTrials(currentSession);
+      setTrialRecruitments(result.rows);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '试用招募加载失败');
+    } finally {
+      setTrialsLoading(false);
+    }
+  };
+
+  const loadTrialApplications = async (currentSession = session) => {
+    if (currentSession?.loginType !== 'merchant') return;
+    setTrialApplicationsLoading(true);
+    try {
+      const result = await fetchMerchantTrialApplications();
+      setTrialApplications(result.rows);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '试用申请加载失败');
+    } finally {
+      setTrialApplicationsLoading(false);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
     restoreAdminSession()
@@ -300,6 +390,18 @@ function AdminWorkspace() {
   }, []);
 
   useEffect(() => {
+    if (!session) return;
+    const permissions = session.permissions ?? [];
+    if (permissions.includes('*:*:*') || permissions.includes('shop:product:list')) {
+      void loadProducts(session);
+    }
+    if (permissions.includes('*:*:*') || permissions.includes('shop:trial:list')) {
+      void loadTrials(session);
+      if (session.loginType === 'merchant') void loadTrialApplications(session);
+    }
+  }, [session?.id]);
+
+  useEffect(() => {
     if (session?.loginType !== 'admin') return;
     const permissions = session.permissions ?? [];
     if (!permissions.includes('*:*:*') && !permissions.includes('shop:user:list')) return;
@@ -313,6 +415,9 @@ function AdminWorkspace() {
         setUserPage(1);
       })
       .catch((error) => message.error(error instanceof Error ? error.message : '用户列表加载失败'));
+    if (permissions.includes('*:*:*') || permissions.includes('shop:merchant:list')) {
+      void loadMerchants();
+    }
   }, [session?.id]);
 
   const handleLogin = async (values: LoginFormValues) => {
@@ -342,6 +447,10 @@ function AdminWorkspace() {
     resetProductFilters();
     resetOrderFilters();
     setShopUsers([]);
+    setProducts([]);
+    setProductCategories([]);
+    setTrialRecruitments([]);
+    setTrialApplications([]);
     setShopUserTotal(0);
     loginForm.resetFields();
     await loadCaptcha();
@@ -353,6 +462,37 @@ function AdminWorkspace() {
     setProductKeyword('');
   };
 
+  const openCategorySettings = async () => {
+    setCategoryModalOpen(true);
+    setCategoriesLoading(true);
+    try {
+      setCategoryDrafts(await fetchAllProductCategories());
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '分类加载失败');
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  const saveCategory = async (categoryItem: ProductCategoryOption) => {
+    try {
+      await updateProductCategory(categoryItem.categoryId, {
+        categoryName: categoryItem.categoryName.trim(),
+        categorySort: categoryItem.categorySort,
+        status: categoryItem.status,
+      });
+      const [allCategories, enabledCategories] = await Promise.all([
+        fetchAllProductCategories(),
+        fetchProductCategories(),
+      ]);
+      setCategoryDrafts(allCategories);
+      setProductCategories(enabledCategories);
+      message.success('分类设置已保存，商品关联保持不变');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '分类保存失败');
+    }
+  };
+
   const resetOrderFilters = () => {
     setOrderStatusFilter('all');
     setOrderKeyword('');
@@ -362,13 +502,10 @@ function AdminWorkspace() {
     setEditingProductId(null);
     productForm.resetFields();
     productForm.setFieldsValue({
-      merchantId: isAdmin ? merchants[0]?.id : session?.merchantId,
-      category: 'verified',
-      status: 'onSale',
-      imageUrl: '/goods/cafedou.jpg',
+      categoryId: productCategories[0]?.categoryId,
+      imageUrl: '',
       detail: '',
       price: 99,
-      cost: 49,
       stock: 20,
     });
     setProductDrawerOpen(true);
@@ -377,15 +514,12 @@ function AdminWorkspace() {
   const openEditProduct = (product: ManagedProduct) => {
     setEditingProductId(product.id);
     productForm.setFieldsValue({
-      merchantId: product.merchantId,
       title: product.title,
-      artisanName: product.artisanName,
-      category: product.category,
-      status: product.status,
+      subtitle: product.subtitle,
+      categoryId: product.categoryId,
       imageUrl: product.imageUrl,
       detail: product.detail,
       price: product.price,
-      cost: product.cost,
       stock: product.stock,
     });
     setProductDrawerOpen(true);
@@ -397,48 +531,42 @@ function AdminWorkspace() {
     productForm.resetFields();
   };
 
-  const handleProductImageUpload = (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      message.warning('请上传图片文件');
-      return Upload.LIST_IGNORE;
+  const handleSaveProduct = async (values: ProductFormValues) => {
+    if (session?.loginType !== 'merchant') return;
+    setProductSaving(true);
+    try {
+      const body = {
+        categoryId: values.categoryId,
+        productName: values.title.trim(),
+        subtitle: values.subtitle?.trim(),
+        detail: values.detail.trim(),
+        coverUrl: values.imageUrl.trim(),
+        price: values.price,
+        stock: values.stock,
+        imageUrls: [values.imageUrl.trim()],
+      };
+      if (editingProductId) await updateMerchantProduct(editingProductId, body);
+      else await createMerchantProduct(body);
+      await loadProducts(session);
+      closeProductDrawer();
+      message.success(editingProductId ? '商品已更新' : '商品已保存为草稿');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '商品保存失败');
+    } finally {
+      setProductSaving(false);
     }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      productForm.setFieldValue('imageUrl', String(reader.result));
-      message.success('图片已添加到商品表单');
-    };
-    reader.readAsDataURL(file);
-
-    return false;
   };
 
-  const handleSaveProduct = (values: ProductFormValues) => {
-    const merchantId = isAdmin ? values.merchantId : session?.merchantId;
-
-    if (!merchantId) {
-      message.error('请选择商家');
-      return;
+  const toggleProductStatus = async (product: ManagedProduct) => {
+    if (session?.loginType !== 'merchant') return;
+    const nextStatus = product.status === 'onSale' ? 'OFF_SALE' : 'ON_SALE';
+    try {
+      await updateMerchantProductSaleStatus(product.id, nextStatus);
+      await loadProducts(session);
+      message.success(nextStatus === 'ON_SALE' ? '商品已上架' : '商品已下架');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '商品状态更新失败');
     }
-
-    setProducts(
-      saveProductDraft(
-        products,
-        {
-          ...values,
-          merchantId,
-        },
-        editingProductId,
-      ),
-    );
-    closeProductDrawer();
-    message.success(editingProductId ? '商品已更新' : '商品已保存');
-  };
-
-  const toggleProductStatus = (product: ManagedProduct) => {
-    const nextStatus: ProductStatus = product.status === 'onSale' ? 'offSale' : 'onSale';
-    setProducts((items) => items.map((item) => (item.id === product.id ? { ...item, status: nextStatus } : item)));
-    message.success(nextStatus === 'onSale' ? '商品已上架' : '商品已下架');
   };
 
   const openPublishTrial = (product?: ManagedProduct) => {
@@ -446,6 +574,8 @@ function AdminWorkspace() {
     if (product) {
       trialForm.setFieldsValue({
         productId: product.id,
+        campaignTitle: `${product.title}线上试用招募`,
+        campaignSummary: '申请通过后由商家寄送，确认收货后可自愿发布真实验证报告。',
         targetCount: 5,
       });
     }
@@ -457,30 +587,32 @@ function AdminWorkspace() {
     trialForm.resetFields();
   };
 
-  const handlePublishTrial = (values: TrialFormValues) => {
+  const handlePublishTrial = async (values: TrialFormValues) => {
     const product = visibleProducts.find((p) => p.id === values.productId);
     if (!product) {
       message.error('请选择有效的商品');
       return;
     }
 
-    const today = new Date();
-    const newTrial: ManagedTrialRecruitment = {
-      id: Date.now(),
-      merchantId: product.merchantId,
-      productId: product.id,
-      productTitle: product.title,
-      targetCount: values.targetCount,
-      claimedCount: 0,
-      deadline: values.deadline,
-      applicantCount: 0,
-      status: 'recruiting',
-      createdAt: today.toISOString().slice(0, 10) + ' ' + today.toTimeString().slice(0, 5),
-    };
-
-    setTrialRecruitments((items) => [newTrial, ...items]);
-    closeTrialModal();
-    message.success('试用招募已发布');
+    if (!session || session.loginType !== 'merchant') return;
+    setTrialSaving(true);
+    try {
+      const campaign = await createMerchantTrial({
+        productId: values.productId,
+        campaignTitle: values.campaignTitle.trim(),
+        campaignSummary: values.campaignSummary.trim(),
+        targetCount: values.targetCount,
+        applicationDeadline: `${values.deadline} 23:59:59`,
+      });
+      await updateMerchantTrialStatus(campaign.campaignId, 'RECRUITING');
+      await loadTrials(session);
+      closeTrialModal();
+      message.success('试用招募已发布');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '试用招募发布失败');
+    } finally {
+      setTrialSaving(false);
+    }
   };
 
   const handleEndTrial = (trial: ManagedTrialRecruitment) => {
@@ -489,13 +621,64 @@ function AdminWorkspace() {
       content: `「${trial.productTitle}」的试用招募将提前结束。`,
       okText: '结束招募',
       cancelText: '再想想',
-      onOk: () => {
-        setTrialRecruitments((items) =>
-          items.map((item) => (item.id === trial.id ? { ...item, status: 'ended' } : item)),
-        );
+      onOk: async () => {
+        if (!session || session.loginType !== 'merchant') return;
+        await updateMerchantTrialStatus(trial.id, 'CLOSED');
+        await loadTrials(session);
         message.success('招募已结束');
       },
     });
+  };
+
+  const approveTrialApplication = (application: ManagedTrialApplication) => {
+    modal.confirm({
+      title: '确认通过试用申请？',
+      content: `通过后可为 ${application.recipientName} 安排寄送。`,
+      okText: '通过申请',
+      cancelText: '取消',
+      onOk: async () => {
+        await auditMerchantTrialApplication(application.applicationId, 'APPROVED');
+        await Promise.all([loadTrialApplications(), loadTrials()]);
+        message.success('试用申请已通过');
+      },
+    });
+  };
+
+  const openTrialApplicationAction = (application: ManagedTrialApplication, action: 'reject' | 'ship') => {
+    setSelectedTrialApplication(application);
+    setTrialApplicationAction(action);
+    trialApplicationActionForm.resetFields();
+  };
+
+  const closeTrialApplicationAction = () => {
+    setSelectedTrialApplication(null);
+    setTrialApplicationAction(null);
+    trialApplicationActionForm.resetFields();
+  };
+
+  const submitTrialApplicationAction = async (values: TrialApplicationActionFormValues) => {
+    if (!selectedTrialApplication || !trialApplicationAction) return;
+    try {
+      if (trialApplicationAction === 'reject') {
+        await auditMerchantTrialApplication(
+          selectedTrialApplication.applicationId,
+          'REJECTED',
+          values.auditRemark?.trim(),
+        );
+        message.success('试用申请已驳回');
+      } else {
+        await shipMerchantTrialApplication(
+          selectedTrialApplication.applicationId,
+          values.carrier?.trim() ?? '',
+          values.trackingNo?.trim() ?? '',
+        );
+        message.success('试用商品已发货');
+      }
+      closeTrialApplicationAction();
+      await loadTrialApplications();
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '试用申请处理失败');
+    }
   };
 
   const shipOrder = (order: ManagedOrder) => {
@@ -533,50 +716,42 @@ function AdminWorkspace() {
     message.success(report.status === 'published' ? '验证报告已下架' : '验证报告已上架');
   };
 
-  const handleToggleMerchantStatus = (merchant: MerchantAccount) => {
-    setMerchants((items) => toggleMerchantStatus(items, merchant.id));
-    message.success(merchant.status === 'active' ? '商家已禁用' : '商家已启用');
-  };
-
-  const handleOpenCreateMerchant = () => {
-    setEditingMerchantId(null);
-    merchantForm.resetFields();
-    setMerchantModalOpen(true);
-  };
-
-  const handleOpenEditMerchant = (merchant: MerchantAccount) => {
-    setEditingMerchantId(merchant.id);
-    merchantForm.setFieldsValue({
-      name: merchant.name,
-      ownerName: merchant.ownerName,
-      phone: merchant.phone,
-      username: merchant.username,
-      password: merchant.password,
-    });
-    setMerchantModalOpen(true);
-  };
-
-  const handleSaveMerchant = (values: MerchantFormValues) => {
-    if (editingMerchantId) {
-      setMerchants((items) =>
-        items.map((merchant) =>
-          merchant.id === editingMerchantId ? { ...merchant, ...values } : merchant,
-        ),
-      );
-      message.success('商家信息已更新');
-    } else {
-      const newMerchant: MerchantAccount = {
-        id: Date.now(),
-        ...values,
-        productCount: 0,
-        orderCount: 0,
-        status: 'active',
-      };
-      setMerchants((items) => [...items, newMerchant]);
-      message.success('商家已新增');
+  const handleToggleMerchantStatus = async (merchant: MerchantAccount) => {
+    try {
+      await updateMerchantStatus(merchant.id, merchant.status === 'active' ? '1' : '0');
+      await loadMerchants();
+      message.success(merchant.status === 'active' ? '商家已停用，现有登录会话已失效' : '商家已启用');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '商家状态更新失败');
     }
-    setMerchantModalOpen(false);
-    setEditingMerchantId(null);
+  };
+
+  const handleOpenAuditMerchant = (merchant: MerchantAccount) => {
+    setEditingMerchantId(merchant.id);
+    merchantForm.resetFields();
+    merchantForm.setFieldsValue({ decision: 'APPROVED' });
+    setMerchantModalOpen(true);
+  };
+
+  const handleOpenMerchantDetail = async (merchant: MerchantAccount) => {
+    try {
+      setDetailMerchant(await fetchMerchantDetail(merchant.id));
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '商家详情加载失败');
+    }
+  };
+
+  const handleSaveMerchant = async (values: MerchantFormValues) => {
+    if (!editingMerchantId) return;
+    try {
+      await auditMerchant(editingMerchantId, values);
+      setMerchantModalOpen(false);
+      setEditingMerchantId(null);
+      await loadMerchants();
+      message.success(values.decision === 'APPROVED' ? '审核通过，商家后台账号已创建' : '申请已驳回');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '商家审核失败');
+    }
   };
 
   const handleShopUserStatusChange = async (user: ShopUserAccount, enabled: boolean) => {
@@ -698,17 +873,16 @@ function AdminWorkspace() {
     {
       title: '分类',
       dataIndex: 'category',
-      render: (category: ProductCategory) => <Tag color={categoryMeta[category].color}>{categoryMeta[category].label}</Tag>,
+      render: (_: ProductCategory, product) => (
+        <Tag color={categoryMeta[product.category]?.color ?? 'blue'}>
+          {product.categoryName ?? categoryMeta[product.category]?.label ?? product.category}
+        </Tag>
+      ),
     },
     {
-      title: '售价/成本',
+      title: '售价',
       dataIndex: 'price',
-      render: (_, product) => (
-        <Space orientation="vertical" size={0}>
-          <span>{formatMoney(product.price)}</span>
-          <span className={styles.subText}>成本 {formatMoney(product.cost)}</span>
-        </Space>
-      ),
+      render: (price: number) => formatMoney(price),
     },
     { title: '库存', dataIndex: 'stock' },
     { title: '销量', dataIndex: 'sales' },
@@ -722,16 +896,20 @@ function AdminWorkspace() {
       key: 'actions',
       render: (_, product) => (
         <Space>
-          <Button size="small" icon={<EditOutlined />} onClick={() => openEditProduct(product)}>
-            编辑商品
-          </Button>
-          <Button size="small" onClick={() => toggleProductStatus(product)}>
-            {product.status === 'onSale' ? '下架' : '上架'}
-          </Button>
-          {!isAdmin && (
-            <Button size="small" type="primary" onClick={() => openPublishTrial(product)}>
-              发布试用
-            </Button>
+          {isAdmin ? <span className={styles.subText}>仅查看</span> : (
+            <>
+              <Button size="small" icon={<EditOutlined />} onClick={() => openEditProduct(product)}>
+                编辑商品
+              </Button>
+              <Button size="small" onClick={() => void toggleProductStatus(product)}>
+                {product.status === 'onSale' ? '下架' : '上架'}
+              </Button>
+              {product.status === 'onSale' && (
+                <Button size="small" type="primary" onClick={() => openPublishTrial(product)}>
+                  发布试用
+                </Button>
+              )}
+            </>
           )}
         </Space>
       ),
@@ -832,7 +1010,9 @@ function AdminWorkspace() {
       title: '状态',
       dataIndex: 'status',
       render: (status: ManagedTrialRecruitment['status']) => (
-        <Tag color={status === 'recruiting' ? 'green' : 'default'}>{status === 'recruiting' ? '招募中' : '已结束'}</Tag>
+        <Tag color={status === 'recruiting' ? 'green' : status === 'draft' ? 'gold' : 'default'}>
+          {({ draft: '草稿', recruiting: '招募中', closed: '已关闭', finished: '已完成', ended: '已结束' } as const)[status]}
+        </Tag>
       ),
     },
     { title: '发布时间', dataIndex: 'createdAt' },
@@ -840,9 +1020,69 @@ function AdminWorkspace() {
       title: '操作',
       key: 'actions',
       render: (_, trial) => (
-        <Button size="small" disabled={trial.status === 'ended'} onClick={() => handleEndTrial(trial)}>
-          结束招募
-        </Button>
+        isAdmin ? <span className={styles.subText}>仅查看</span> : (
+          <Button size="small" disabled={trial.status !== 'recruiting'} onClick={() => handleEndTrial(trial)}>
+            结束招募
+          </Button>
+        )
+      ),
+    },
+  ];
+
+  const trialApplicationStatusMeta: Record<ManagedTrialApplication['status'], { label: string; color: string }> = {
+    APPLIED: { label: '待审核', color: 'gold' },
+    APPROVED: { label: '待发货', color: 'blue' },
+    REJECTED: { label: '已驳回', color: 'red' },
+    SHIPPED: { label: '待收货', color: 'cyan' },
+    RECEIVED: { label: '可发布报告', color: 'green' },
+    COMPLETED: { label: '已发布报告', color: 'purple' },
+    EXPIRED: { label: '已过期', color: 'default' },
+  };
+
+  const trialApplicationColumns: ColumnsType<ManagedTrialApplication> = [
+    { title: '商品', dataIndex: 'productName' },
+    { title: '申请用户', key: 'user', render: (_, item) => item.nickName || item.userName },
+    { title: '申请理由', dataIndex: 'applyReason', ellipsis: true },
+    {
+      title: '收货信息',
+      key: 'shipping',
+      render: (_, item) => (
+        <div>
+          <div>{item.recipientName} · {item.recipientPhone}</div>
+          <div className={styles.subText}>{item.shippingAddress}</div>
+        </div>
+      ),
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      render: (status: ManagedTrialApplication['status']) => (
+        <Tag color={trialApplicationStatusMeta[status].color}>{trialApplicationStatusMeta[status].label}</Tag>
+      ),
+    },
+    {
+      title: '物流',
+      key: 'logistics',
+      render: (_, item) => item.trackingNo ? `${item.carrier} ${item.trackingNo}` : '-',
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      render: (_, item) => (
+        <Space>
+          {item.status === 'APPLIED' && (
+            <>
+              <Button size="small" type="primary" onClick={() => approveTrialApplication(item)}>通过</Button>
+              <Button size="small" danger onClick={() => openTrialApplicationAction(item, 'reject')}>驳回</Button>
+            </>
+          )}
+          {item.status === 'APPROVED' && (
+            <Button size="small" type="primary" icon={<TruckOutlined />} onClick={() => openTrialApplicationAction(item, 'ship')}>
+              发货
+            </Button>
+          )}
+          {!['APPLIED', 'APPROVED'].includes(item.status) && <span className={styles.subText}>等待用户流程</span>}
+        </Space>
       ),
     },
   ];
@@ -1123,9 +1363,16 @@ function AdminWorkspace() {
                     <p className={styles.eyebrow}>商品上架、库存、成本</p>
                     <h3>商品管理</h3>
                   </div>
-                  <Button type="primary" icon={<PlusOutlined />} onClick={openCreateProduct}>
-                    新增商品
-                  </Button>
+                  {isAdmin && hasPermission('shop:category:edit') && (
+                    <Button icon={<EditOutlined />} onClick={() => void openCategorySettings()}>
+                      分类设置
+                    </Button>
+                  )}
+                  {!isAdmin && hasPermission('shop:product:add') && (
+                    <Button type="primary" icon={<PlusOutlined />} onClick={openCreateProduct}>
+                      新增商品
+                    </Button>
+                  )}
                 </div>
                 <div className={styles.productToolbar}>
                   <Input
@@ -1142,9 +1389,7 @@ function AdminWorkspace() {
                     onChange={setProductCategoryFilter}
                     options={[
                       { label: '全部分类', value: 'all' },
-                      { label: '已得验', value: 'verified' },
-                      { label: '在地特产', value: 'local' },
-                      { label: '普通好物', value: 'other' },
+                      ...productCategories.map((item) => ({ label: item.categoryName, value: item.categoryCode })),
                     ]}
                   />
                   <Select<ProductStatusFilter>
@@ -1153,6 +1398,7 @@ function AdminWorkspace() {
                     onChange={setProductStatusFilter}
                     options={[
                       { label: '全部状态', value: 'all' },
+                      { label: '草稿', value: 'draft' },
                       { label: '在售', value: 'onSale' },
                       { label: '已下架', value: 'offSale' },
                       { label: '试用中', value: 'trial' },
@@ -1165,7 +1411,7 @@ function AdminWorkspace() {
                     共 {filteredProducts.length} / {visibleProducts.length} 个商品
                   </span>
                 </div>
-                <Table rowKey="id" columns={productColumns} dataSource={filteredProducts} pagination={{ pageSize: 6 }} />
+                <Table loading={productsLoading} rowKey="id" columns={productColumns} dataSource={filteredProducts} pagination={{ pageSize: 6 }} />
               </section>
             )}
 
@@ -1224,7 +1470,26 @@ function AdminWorkspace() {
                     </Button>
                   )}
                 </div>
-                <Table rowKey="id" columns={trialColumns} dataSource={visibleTrials} pagination={{ pageSize: 6 }} />
+                <Table loading={trialsLoading} rowKey="id" columns={trialColumns} dataSource={visibleTrials} pagination={{ pageSize: 6 }} />
+                {!isAdmin && (
+                  <div style={{ marginTop: 28 }}>
+                    <div className={styles.tableHeader}>
+                      <div>
+                        <p className={styles.eyebrow}>申请审核、线上寄送与确认收货</p>
+                        <h3>试用申请</h3>
+                      </div>
+                      <Button icon={<ReloadOutlined />} onClick={() => void loadTrialApplications()}>刷新申请</Button>
+                    </div>
+                    <Table
+                      loading={trialApplicationsLoading}
+                      rowKey="applicationId"
+                      columns={trialApplicationColumns}
+                      dataSource={trialApplications}
+                      scroll={{ x: 1100 }}
+                      pagination={{ pageSize: 6 }}
+                    />
+                  </div>
+                )}
               </section>
             )}
 
@@ -1247,17 +1512,20 @@ function AdminWorkspace() {
                     <p className={styles.eyebrow}>管理员专属</p>
                     <h3>商家管理</h3>
                   </div>
-                  <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenCreateMerchant}>
-                    新增商家
+                  <Button icon={<ReloadOutlined />} onClick={() => void loadMerchants()} loading={merchantsLoading}>
+                    刷新
                   </Button>
                 </div>
                 <Table
                   rowKey="id"
                   dataSource={merchants}
+                  loading={merchantsLoading}
                   pagination={false}
                   scroll={{ x: 900 }}
                   columns={[
-                    { title: '商家', dataIndex: 'name', width: 120 },
+                    { title: '申请商家', dataIndex: 'name', width: 140 },
+                    { title: '申请编号', dataIndex: 'applicationNo', width: 190 },
+                    { title: '后台账号', dataIndex: 'username', width: 120 },
                     { title: '负责人', dataIndex: 'ownerName', width: 80 },
                     { title: '手机号', dataIndex: 'phone', width: 120 },
                     { title: '公司地址', dataIndex: 'companyAddress', ellipsis: true },
@@ -1266,10 +1534,17 @@ function AdminWorkspace() {
                     { title: '订单数', dataIndex: 'orderCount', width: 70 },
                     {
                       title: '状态',
-                      dataIndex: 'status',
-                      width: 80,
-                      render: (status: MerchantAccount['status']) => (
-                        <Tag color={status === 'active' ? 'green' : 'default'}>{status === 'active' ? '启用' : '禁用'}</Tag>
+                      key: 'status',
+                      width: 150,
+                      render: (_, merchant: MerchantAccount) => (
+                        <Space size={4}>
+                          <Tag color={merchant.auditStatus === 'approved' ? 'green' : merchant.auditStatus === 'rejected' ? 'red' : 'processing'}>
+                            {merchant.auditStatus === 'approved' ? '已通过' : merchant.auditStatus === 'rejected' ? '已驳回' : '待审核'}
+                          </Tag>
+                          {merchant.auditStatus === 'approved' && (
+                            <Tag color={merchant.status === 'active' ? 'blue' : 'default'}>{merchant.status === 'active' ? '启用' : '停用'}</Tag>
+                          )}
+                        </Space>
                       ),
                     },
                     {
@@ -1280,9 +1555,13 @@ function AdminWorkspace() {
                         <Dropdown
                           menu={{
                             items: [
-                              { key: 'view', label: '查看入驻材料', onClick: () => setDetailMerchant(merchant) },
-                              { key: 'edit', label: '编辑', onClick: () => handleOpenEditMerchant(merchant) },
-                              { key: 'toggle', label: merchant.status === 'active' ? '禁用' : '启用', onClick: () => handleToggleMerchantStatus(merchant) },
+                              { key: 'view', label: '查看材料与审核记录', onClick: () => void handleOpenMerchantDetail(merchant) },
+                              ...(merchant.auditStatus === 'pending'
+                                ? [{ key: 'audit', label: '审核', onClick: () => handleOpenAuditMerchant(merchant) }]
+                                : []),
+                              ...(merchant.auditStatus === 'approved'
+                                ? [{ key: 'toggle', label: merchant.status === 'active' ? '停用' : '启用', onClick: () => void handleToggleMerchantStatus(merchant) }]
+                                : []),
                             ],
                           }}
                         >
@@ -1298,6 +1577,75 @@ function AdminWorkspace() {
         </Layout>
       </Layout>
 
+      <Modal
+        title="固定四分类设置"
+        open={categoryModalOpen}
+        onCancel={() => setCategoryModalOpen(false)}
+        footer={null}
+        width={760}
+        destroyOnHidden
+      >
+        <p className={styles.subText}>分类编码永久稳定；修改显示名称、排序或启停不会改变已有商品关联。</p>
+        <Table
+          loading={categoriesLoading}
+          rowKey="categoryId"
+          pagination={false}
+          dataSource={categoryDrafts}
+          columns={[
+            { title: '稳定编码', dataIndex: 'categoryCode' },
+            {
+              title: '显示名称',
+              key: 'name',
+              render: (_, item: ProductCategoryOption) => (
+                <Input
+                  value={item.categoryName}
+                  maxLength={50}
+                  onChange={(event) => setCategoryDrafts((rows) => rows.map((row) => (
+                    row.categoryId === item.categoryId ? { ...row, categoryName: event.target.value } : row
+                  )))}
+                />
+              ),
+            },
+            {
+              title: '排序',
+              key: 'sort',
+              width: 100,
+              render: (_, item: ProductCategoryOption) => (
+                <InputNumber
+                  min={1}
+                  max={9999}
+                  value={item.categorySort}
+                  onChange={(value) => setCategoryDrafts((rows) => rows.map((row) => (
+                    row.categoryId === item.categoryId ? { ...row, categorySort: value ?? 1 } : row
+                  )))}
+                />
+              ),
+            },
+            {
+              title: '启用',
+              key: 'status',
+              width: 90,
+              render: (_, item: ProductCategoryOption) => (
+                <Switch
+                  checked={item.status === '0'}
+                  onChange={(checked) => setCategoryDrafts((rows) => rows.map((row) => (
+                    row.categoryId === item.categoryId ? { ...row, status: checked ? '0' : '1' } : row
+                  )))}
+                />
+              ),
+            },
+            {
+              title: '操作',
+              key: 'action',
+              width: 90,
+              render: (_, item: ProductCategoryOption) => (
+                <Button type="primary" size="small" onClick={() => void saveCategory(item)}>保存</Button>
+              ),
+            },
+          ]}
+        />
+      </Modal>
+
       <Drawer
         title={editingProductId ? '编辑商品' : '新增商品'}
         size="large"
@@ -1306,66 +1654,55 @@ function AdminWorkspace() {
         destroyOnHidden
       >
         <Form form={productForm} layout="vertical" onFinish={handleSaveProduct}>
-          {isAdmin && (
-            <Form.Item name="merchantId" label="所属商家" rules={[{ required: true, message: '请选择商家' }]}>
-              <Select
-                options={merchants.map((merchant) => ({
-                  label: merchant.name,
-                  value: merchant.id,
-                }))}
-              />
-            </Form.Item>
-          )}
           <Form.Item name="title" label="商品名" rules={[{ required: true, message: '请输入商品名' }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="artisanName" label="匠人/品牌" rules={[{ required: true, message: '请输入匠人或品牌' }]}>
-            <Input />
+          <Form.Item name="subtitle" label="商品副标题" rules={[{ max: 200, message: '副标题不能超过 200 个字' }]}>
+            <Input placeholder="一句话说明商品特点（选填）" />
           </Form.Item>
-          <Form.Item label="商品图片" required>
+          <Form.Item label="商品封面" required>
             <div className={styles.uploadBlock}>
               <div className={styles.uploadPreview} style={{ backgroundImage: productImageUrl ? `url(${productImageUrl})` : undefined }}>
                 {!productImageUrl && <span>暂无图片</span>}
               </div>
               <div className={styles.uploadActions}>
-                <Upload accept="image/*" showUploadList={false} beforeUpload={handleProductImageUpload}>
-                  <Button icon={<UploadOutlined />}>上传商品图</Button>
+                <Upload
+                  accept="image/*"
+                  showUploadList={false}
+                  customRequest={async (options) => {
+                    try {
+                      const url = await uploadAdminFile(options.file as File);
+                      productForm.setFieldValue('imageUrl', url);
+                      options.onSuccess?.({ url });
+                      message.success('商品封面上传成功');
+                    } catch (error) {
+                      options.onError?.(error as Error);
+                      message.error(error instanceof Error ? error.message : '商品封面上传失败');
+                    }
+                  }}
+                >
+                  <Button icon={<UploadOutlined />}>上传商品封面</Button>
                 </Upload>
-                <p>支持本地图片预览；接入后端后替换为 /api/admin/upload 返回的 URL。</p>
+                <p>上传成功后会自动填写资源地址，也可以手动输入已有图片地址。</p>
               </div>
             </div>
-            <Form.Item name="imageUrl" noStyle rules={[{ required: true, message: '请上传商品图片' }]}>
-              <Input type="hidden" />
+            <Form.Item name="imageUrl" noStyle rules={[{ required: true, message: '请输入商品封面地址' }, { max: 500 }]}>
+              <Input placeholder="例如 /profile/upload/2026/07/product.jpg" />
             </Form.Item>
           </Form.Item>
-          <Form.Item name="category" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
+          <Form.Item name="categoryId" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
             <Select
-              options={[
-                { label: '已得验', value: 'verified' },
-                { label: '在地特产', value: 'local' },
-                { label: '普通好物', value: 'other' },
-              ]}
+              options={productCategories.map((item) => ({ label: item.categoryName, value: item.categoryId }))}
             />
           </Form.Item>
           <Space size={12} className={styles.formRow}>
             <Form.Item name="price" label="售价" rules={[{ required: true, message: '请输入售价' }]}>
-              <InputNumber min={0} precision={2} prefix="¥" />
-            </Form.Item>
-            <Form.Item name="cost" label="成本价" rules={[{ required: true, message: '请输入成本价' }]}>
-              <InputNumber min={0} precision={2} prefix="¥" />
+              <InputNumber min={0.01} precision={2} prefix="¥" />
             </Form.Item>
             <Form.Item name="stock" label="库存" rules={[{ required: true, message: '请输入库存' }]}>
               <InputNumber min={0} precision={0} />
             </Form.Item>
           </Space>
-          <Form.Item name="status" label="状态" rules={[{ required: true, message: '请选择状态' }]}>
-            <Select
-              options={[
-                { label: '在售', value: 'onSale' },
-                { label: '已下架', value: 'offSale' },
-              ]}
-            />
-          </Form.Item>
           <Form.Item
             name="detail"
             label="商品详细介绍"
@@ -1376,7 +1713,7 @@ function AdminWorkspace() {
           >
             <Input.TextArea rows={5} showCount maxLength={500} placeholder="介绍产地、工艺、规格、适合人群和使用建议" />
           </Form.Item>
-          <Button type="primary" htmlType="submit" block icon={<CheckCircleOutlined />}>
+          <Button loading={productSaving} type="primary" htmlType="submit" block icon={<CheckCircleOutlined />}>
             {editingProductId ? '保存修改' : '保存商品'}
           </Button>
         </Form>
@@ -1487,7 +1824,7 @@ function AdminWorkspace() {
         )}
       </Drawer>
       <Modal
-        title={editingMerchantId ? '编辑商家' : '新增商家'}
+        title="商家入驻审核"
         open={merchantModalOpen}
         onCancel={() => setMerchantModalOpen(false)}
         footer={null}
@@ -1495,31 +1832,19 @@ function AdminWorkspace() {
         destroyOnClose
       >
         <Form form={merchantForm} layout="vertical" onFinish={handleSaveMerchant}>
-          <Form.Item name="name" label="商家名称" rules={[{ required: true, message: '请输入商家名称' }]}>
-            <Input size="large" placeholder="请输入商家名称" />
-          </Form.Item>
-          <Form.Item name="ownerName" label="负责人" rules={[{ required: true, message: '请输入负责人姓名' }]}>
-            <Input size="large" placeholder="请输入负责人姓名" />
+          <Form.Item name="decision" label="审核结论" rules={[{ required: true, message: '请选择审核结论' }]}>
+            <Select size="large" options={[{ value: 'APPROVED', label: '审核通过' }, { value: 'REJECTED', label: '审核驳回' }]} />
           </Form.Item>
           <Form.Item
-            name="phone"
-            label="手机号"
-            rules={[
-              { required: true, message: '请输入手机号' },
-              { pattern: /^1\d{10}$/, message: '请输入 11 位手机号' },
-            ]}
+            name="auditRemark"
+            label="审核意见"
+            rules={merchantAuditDecision === 'REJECTED' ? [{ required: true, message: '驳回时必须填写原因' }] : undefined}
           >
-            <Input size="large" placeholder="请输入 11 位手机号" />
-          </Form.Item>
-          <Form.Item name="username" label="登录账号" rules={[{ required: true, message: '请输入登录账号' }]}>
-            <Input size="large" placeholder="请输入登录账号" />
-          </Form.Item>
-          <Form.Item name="password" label="登录密码" rules={[{ required: true, message: '请输入登录密码' }]}>
-            <Input.Password size="large" placeholder="请输入登录密码" />
+            <Input.TextArea rows={4} maxLength={500} showCount placeholder="填写审核说明或驳回原因" />
           </Form.Item>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', paddingTop: 8 }}>
             <Button onClick={() => setMerchantModalOpen(false)}>取消</Button>
-            <Button type="primary" htmlType="submit">保存</Button>
+            <Button type="primary" htmlType="submit">确认审核</Button>
           </div>
         </Form>
       </Modal>
@@ -1535,12 +1860,18 @@ function AdminWorkspace() {
         <Form form={trialForm} layout="vertical" onFinish={handlePublishTrial}>
           <Form.Item name="productId" label="选择商品" rules={[{ required: true, message: '请选择商品' }]}>
             <Select placeholder="请选择要发布试用的商品" size="large">
-              {visibleProducts.map((product) => (
+              {visibleProducts.filter((product) => product.status === 'onSale').map((product) => (
                 <Select.Option key={product.id} value={product.id}>
                   {product.title}
                 </Select.Option>
               ))}
             </Select>
+          </Form.Item>
+          <Form.Item name="campaignTitle" label="招募标题" rules={[{ required: true, message: '请输入招募标题' }, { max: 120 }]}>
+            <Input size="large" placeholder="请输入招募标题" />
+          </Form.Item>
+          <Form.Item name="campaignSummary" label="招募说明" rules={[{ required: true, message: '请输入招募说明' }, { max: 500 }]}>
+            <Input.TextArea rows={4} showCount maxLength={500} placeholder="说明申请、寄送、确认收货和报告发布规则" />
           </Form.Item>
           <Form.Item name="targetCount" label="招募人数" rules={[{ required: true, message: '请输入招募人数' }]}>
             <InputNumber min={1} max={100} size="large" style={{ width: '100%' }} placeholder="请输入招募人数" />
@@ -1550,8 +1881,37 @@ function AdminWorkspace() {
           </Form.Item>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', paddingTop: 8 }}>
             <Button onClick={closeTrialModal}>取消</Button>
-            <Button type="primary" htmlType="submit">发布</Button>
+            <Button loading={trialSaving} type="primary" htmlType="submit">发布</Button>
           </div>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={trialApplicationAction === 'ship' ? '填写线上试用物流' : '驳回试用申请'}
+        open={Boolean(trialApplicationAction && selectedTrialApplication)}
+        onCancel={closeTrialApplicationAction}
+        footer={null}
+        destroyOnHidden
+      >
+        <Form form={trialApplicationActionForm} layout="vertical" onFinish={submitTrialApplicationAction}>
+          {trialApplicationAction === 'reject' ? (
+            <Form.Item name="auditRemark" label="驳回原因" rules={[{ required: true, message: '请输入驳回原因' }, { max: 500 }]}>
+              <Input.TextArea rows={4} showCount maxLength={500} />
+            </Form.Item>
+          ) : (
+            <>
+              <Form.Item name="carrier" label="物流公司" rules={[{ required: true, message: '请输入物流公司' }, { max: 50 }]}>
+                <Input placeholder="例如：顺丰速运" />
+              </Form.Item>
+              <Form.Item name="trackingNo" label="物流单号" rules={[{ required: true, message: '请输入物流单号' }, { max: 100 }]}>
+                <Input placeholder="请输入物流单号" />
+              </Form.Item>
+            </>
+          )}
+          <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+            <Button onClick={closeTrialApplicationAction}>取消</Button>
+            <Button type="primary" htmlType="submit">确认</Button>
+          </Space>
         </Form>
       </Modal>
 
@@ -1621,6 +1981,16 @@ function AdminWorkspace() {
                   {detailMerchant.acceptsPublicWelfare ? '已接受' : '未接受'}
                 </Tag>
               </div>
+            </div>
+
+            <div className={styles.detailSection}>
+              <h4>审核记录</h4>
+              {detailMerchant.auditLogs?.length ? detailMerchant.auditLogs.map((log) => (
+                <div className={styles.detailRow} key={log.logId}>
+                  <span className={styles.detailLabel}>{({ SUBMIT: '提交申请', RESUBMIT: '重新提交', APPROVE: '审核通过', REJECT: '审核驳回', ENABLE: '启用商家', DISABLE: '停用商家' } as const)[log.action]}</span>
+                  <span>{log.operatorName} · {log.createTime ?? '-'} · {log.auditRemark || '无备注'}</span>
+                </div>
+              )) : <p className={styles.detailText}>暂无审核记录</p>}
             </div>
           </div>
         )}

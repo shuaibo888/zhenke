@@ -32,23 +32,37 @@ import {
   notifications,
   orders as seedOrders,
   productEvidence,
-  products,
-  reports as seedReports,
-  trialRecords as seedTrialRecords,
-  trialRecruitments as seedTrialRecruitments,
 } from '@/mocks/commerce';
 import type { EarningRecord, Merchant, Order, Product, ReportAttribution, TrialRecord, TrialRecruitment, VerifyReport } from '@/types';
 import type { AuthUser } from '@/utils/authRules';
 import {
   changeShopPassword,
+  fetchMyMerchantApplication,
   fetchShopCaptcha,
   loginShopUser,
   logoutShopUser,
   registerShopUser,
   restoreShopSession,
+  submitMerchantApplication,
   updateShopProfile,
   type CaptchaState,
 } from '@/services/shopAuth';
+import {
+  applyForTrial,
+  confirmTrialReceived,
+  fetchHomeFeed,
+  fetchMyTrialApplications,
+  fetchProductCategories,
+  fetchPublicProduct,
+  fetchPublishedReport,
+  publishVerificationReport,
+  uploadShopContentFile,
+  type HomeFeedItemDto,
+  type ProductCategoryDto,
+  type PublicProductDto,
+  type TrialApplicationDto,
+  type VerificationReportDto,
+} from '@/services/shopContent';
 import { uploadAvatarFile } from '@/utils/avatarUpload';
 import { addProductToCart, changeCartItemQuantity, getCartCount, getCartTotal, removeCartItem, type CartItem } from '@/utils/cart';
 import {
@@ -56,11 +70,10 @@ import {
   cancelOrder,
   canCancelOrder,
   createOrdersFromCart,
-  getReviewableProductsFromOrders,
   orderStatusMeta,
 } from '@/utils/orders';
 import { findProductForReport, getCatalogProducts, type ProductCategoryFilter, type ProductSortKey } from '@/utils/productCatalog';
-import { applyForRecruitment, getProductJourneyState } from '@/utils/productJourney';
+import { getProductJourneyState } from '@/utils/productJourney';
 import {
   calculateEarningAmount,
   getLogisticsView,
@@ -110,17 +123,20 @@ const commerceTheme = {
 type ProfileDialog = 'name' | 'password' | 'avatar' | null;
 type ReportFormValues = {
   productId: number;
-  images: string[];
-  video?: string;
   experience: string;
   shortcoming: string;
   fitCrowd: string;
   recommend: boolean;
 };
 type MerchantFormValues = {
+  accountUsername: string;
+  password: string;
+  code?: string;
   companyName: string;
   companyAddress: string;
-  businessLicense: string[];
+  contactName: string;
+  contactPhone: string;
+  businessLicense: string;
   productIntro: string;
   originTraceability: string;
   acceptsVerificationRecruitment: boolean;
@@ -128,6 +144,7 @@ type MerchantFormValues = {
   agreeProtocol: boolean;
 };
 type AddressFormValues = { recipient: string; phone: string; region: string[]; detail: string };
+type TrialApplyFormValues = { applyReason: string };
 type ShippingAddress = AddressFormValues & { id: number; isDefault: boolean };
 type RegionNode = { code: string; name: string; children?: RegionNode[] };
 type RegionOption = { value: string; label: string; children?: RegionOption[] };
@@ -210,28 +227,107 @@ function renderUserAvatar(user: AuthUser, className: string) {
   return <span className={className}>{getAvatarLetter(user)}</span>;
 }
 
+function mapPublicProduct(dto: PublicProductDto, verifyCount: number): Product {
+  return {
+    id: dto.productId,
+    title: dto.productName,
+    artisanName: dto.merchantName,
+    category: dto.categoryCode,
+    categoryName: dto.categoryName,
+    imageUrl: dto.coverUrl,
+    cover: `url("${dto.coverUrl}")`,
+    price: Number(dto.price),
+    isVerified: verifyCount > 0,
+    verifyCount,
+    detail: dto.detail,
+    tags: [dto.categoryName, ...(dto.subtitle ? [dto.subtitle] : [])],
+    stock: dto.stock,
+    purchasable: dto.stock > 0,
+  };
+}
+
+function mapVerificationReport(dto: VerificationReportDto): VerifyReport {
+  const images = (dto.resources ?? [])
+    .filter((item) => item.resourceType === 'IMAGE')
+    .map((item) => item.resourceUrl);
+  const video = (dto.resources ?? []).find((item) => item.resourceType === 'VIDEO')?.resourceUrl;
+  return {
+    id: dto.reportId,
+    productId: dto.productId,
+    productTitle: dto.productName,
+    userId: dto.shopUserId,
+    userName: dto.nickName || dto.userName,
+    userRole: 'zhenke',
+    images: images.length > 0 ? images : [dto.productCoverUrl],
+    video,
+    experience: dto.experience,
+    shortcoming: dto.shortcoming,
+    fitCrowd: dto.fitCrowd,
+    recommend: dto.recommend === '0',
+    usefulCount: 0,
+    usefulByMe: false,
+    createdAt: dto.publishedAt,
+  };
+}
+
+function mapTrialApplication(dto: TrialApplicationDto): TrialRecord {
+  const statusMap: Record<TrialApplicationDto['status'], TrialRecord['status']> = {
+    APPLIED: 'applied',
+    APPROVED: 'approved',
+    REJECTED: 'rejected',
+    SHIPPED: 'shipped',
+    RECEIVED: 'pending_report',
+    COMPLETED: 'completed',
+    EXPIRED: 'overdue',
+  };
+  return {
+    id: dto.applicationId,
+    applicationId: dto.applicationId,
+    productId: dto.productId,
+    productTitle: dto.productName,
+    status: statusMap[dto.status],
+    claimedAt: dto.createTime?.slice(0, 10) ?? '',
+    deadline: dto.applicationDeadline?.slice(0, 10) ?? dto.createTime?.slice(0, 10) ?? '',
+    completedAt: dto.completedAt?.slice(0, 10),
+    carrier: dto.carrier,
+    trackingNo: dto.trackingNo,
+  };
+}
+
 export default function HomePage() {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [captcha, setCaptcha] = useState<CaptchaState>({ enabled: false, image: '', uuid: '' });
+  const [captchaReady, setCaptchaReady] = useState(false);
+  const [captchaLoading, setCaptchaLoading] = useState(true);
+  const [captchaLoadError, setCaptchaLoadError] = useState('');
   const [activeTab, setActiveTab] = useState<TabKey>('reviews');
   const [profileView, setProfileView] = useState<ProfileView>('menu');
   const [category, setCategory] = useState<ProductCategoryFilter>('all');
+  const [homeContentType, setHomeContentType] = useState<'ALL' | 'TRIAL' | 'REPORT'>('ALL');
   const [sortMode, setSortMode] = useState<ProductSortKey>('latestVerified');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(products[0]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [homeFeed, setHomeFeed] = useState<HomeFeedItemDto[]>([]);
+  const [productCategories, setProductCategories] = useState<ProductCategoryDto[]>([]);
+  const [contentLoading, setContentLoading] = useState(true);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [imageProduct, setImageProduct] = useState<Product | null>(null);
-  const [reports, setReports] = useState<VerifyReport[]>(seedReports);
+  const [reports, setReports] = useState<VerifyReport[]>([]);
   const [userOrders, setUserOrders] = useState<Order[]>(seedOrders);
-  const [trials, setTrials] = useState<TrialRecord[]>(seedTrialRecords);
+  const [trials, setTrials] = useState<TrialRecord[]>([]);
   const [earnings, setEarnings] = useState<EarningRecord[]>(earningRecords);
-  const [recruitments, setRecruitments] = useState<TrialRecruitment[]>(seedTrialRecruitments);
+  const [recruitments, setRecruitments] = useState<TrialRecruitment[]>([]);
+  const [applyingRecruitment, setApplyingRecruitment] = useState<TrialRecruitment | null>(null);
+  const [trialApplying, setTrialApplying] = useState(false);
   const [journeyView, setJourneyView] = useState<JourneyView>('feed');
   const [journeyReport, setJourneyReport] = useState<VerifyReport | null>(null);
   const [selectedLogisticsOrder, setSelectedLogisticsOrder] = useState<Order | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [reportOpen, setReportOpen] = useState(false);
+  const [reportImageUrls, setReportImageUrls] = useState<string[]>([]);
+  const [reportVideoUrl, setReportVideoUrl] = useState<string>();
   const [detailOpen, setDetailOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
@@ -251,26 +347,76 @@ export default function HomePage() {
   const [profileDialog, setProfileDialog] = useState<ProfileDialog>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [merchantOpen, setMerchantOpen] = useState(false);
-  const [merchants, setMerchants] = useState<Merchant[]>([]);
-  const [businessLicenseImages, setBusinessLicenseImages] = useState<string[]>([]);
-  const [agreeProtocol, setAgreeProtocol] = useState(false);
+  const [merchantApplication, setMerchantApplication] = useState<Merchant | null>(null);
+  const [merchantLoading, setMerchantLoading] = useState(false);
+  const [merchantSubmitting, setMerchantSubmitting] = useState(false);
   const [form] = Form.useForm();
   const [authForm] = Form.useForm();
   const [nameForm] = Form.useForm();
   const [merchantForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
   const [addressForm] = Form.useForm();
+  const [trialApplyForm] = Form.useForm<TrialApplyFormValues>();
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
-  const reportImages = Form.useWatch('images', form) as string[] | undefined;
-  const reportVideo = Form.useWatch('video', form) as string | undefined;
-
   const activeUser = currentUser;
 
-  const loadCaptcha = async () => {
+  const loadCaptcha = async (showError = true) => {
+    setCaptchaLoading(true);
+    setCaptchaLoadError('');
     try {
-      setCaptcha(await fetchShopCaptcha());
+      const nextCaptcha = await fetchShopCaptcha();
+      setCaptcha(nextCaptcha);
+      setCaptchaReady(true);
+      return true;
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '验证码加载失败');
+      const errorMessage = error instanceof Error ? error.message : '验证码加载失败';
+      setCaptcha({ enabled: true, image: '', uuid: '' });
+      setCaptchaReady(false);
+      setCaptchaLoadError(errorMessage);
+      if (showError) message.error(errorMessage);
+      return false;
+    } finally {
+      setCaptchaLoading(false);
+    }
+  };
+
+  const loadHomeContent = async () => {
+    setContentLoading(true);
+    try {
+      const categoryCode = category === 'all' ? undefined : category;
+      const [feedResult, categories] = await Promise.all([
+        fetchHomeFeed(categoryCode, homeContentType),
+        fetchProductCategories(),
+      ]);
+      const rows = Array.isArray(feedResult.rows) ? feedResult.rows : [];
+      const productIds = Array.from(new Set(rows.map((item) => item.productId)));
+      const reportIds = rows.filter((item) => item.contentType === 'REPORT').map((item) => item.contentId);
+      const [productDtos, reportDtos] = await Promise.all([
+        Promise.all(productIds.map(fetchPublicProduct)),
+        Promise.all(reportIds.map(fetchPublishedReport)),
+      ]);
+      const reportCountByProduct = rows.reduce((counts, item) => {
+        if (item.contentType === 'REPORT') counts.set(item.productId, (counts.get(item.productId) ?? 0) + 1);
+        return counts;
+      }, new Map<number, number>());
+      setProductCategories(categories);
+      setHomeFeed(rows);
+      setProducts(productDtos.map((item) => mapPublicProduct(item, reportCountByProduct.get(item.productId) ?? 0)));
+      setReports(reportDtos.map(mapVerificationReport));
+      setRecruitments(rows.flatMap((item) => item.contentType === 'TRIAL' && item.trial ? [{
+        id: item.contentId,
+        productId: item.productId,
+        targetCount: item.trial.targetCount,
+        claimedCount: item.trial.approvedCount,
+        deadline: item.trial.applicationDeadline.slice(0, 10),
+        applicantUserIds: [],
+        campaignTitle: item.title,
+        campaignSummary: item.summary,
+      }] : []));
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '首页内容加载失败');
+    } finally {
+      setContentLoading(false);
     }
   };
 
@@ -285,9 +431,54 @@ export default function HomePage() {
       });
     fetchShopCaptcha()
       .then((nextCaptcha) => {
-        if (mounted) setCaptcha(nextCaptcha);
+        if (mounted) {
+          setCaptcha(nextCaptcha);
+          setCaptchaReady(true);
+          setCaptchaLoadError('');
+        }
       })
-      .catch(() => undefined);
+      .catch((error) => {
+        if (mounted) {
+          setCaptcha({ enabled: true, image: '', uuid: '' });
+          setCaptchaReady(false);
+          setCaptchaLoadError(error instanceof Error ? error.message : '验证码加载失败');
+        }
+      })
+      .finally(() => {
+        if (mounted) setCaptchaLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    void loadHomeContent();
+  }, [category, homeContentType]);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setTrials([]);
+      return;
+    }
+    fetchMyTrialApplications()
+      .then((items) => setTrials(items.map(mapTrialApplication)))
+      .catch((error) => message.error(error instanceof Error ? error.message : '我的试用加载失败'));
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    let mounted = true;
+    setMerchantLoading(true);
+    fetchMyMerchantApplication()
+      .then((application) => {
+        if (mounted) setMerchantApplication(application);
+      })
+      .catch((error) => {
+        if (mounted) message.error(error instanceof Error ? error.message : '商家入驻状态加载失败');
+      })
+      .finally(() => {
+        if (mounted) setMerchantLoading(false);
+      });
     return () => {
       mounted = false;
     };
@@ -300,6 +491,11 @@ export default function HomePage() {
   };
 
   const handleAuthSubmit = async (values: AuthFormValues) => {
+    if (authMode === 'login' && (!captchaReady || captchaLoading || (captcha.enabled && (!captcha.uuid || !captcha.image)))) {
+      message.warning('验证码尚未准备好，请重新获取后再登录');
+      await loadCaptcha();
+      return;
+    }
     setAuthSubmitting(true);
     try {
       if (authMode === 'register') {
@@ -342,22 +538,17 @@ export default function HomePage() {
 
   const userMeta = activeUser ? roleMeta[activeUser.role] : roleMeta.zhenke;
   const selectedReports = reports.filter((item) => item.productId === selectedProduct?.id);
-  const purchasedReviewableProducts = activeUser
-    ? getReviewableProductsFromOrders(products, userOrders, reports, activeUser.id)
-    : [];
   const trialReviewableProducts = products.filter((product) =>
     trials.some((trial) => trial.productId === product.id && trial.status === 'pending_report'),
   );
-  const reviewableProducts = Array.from(
-    new Map([...purchasedReviewableProducts, ...trialReviewableProducts].map((product) => [product.id, product])).values(),
-  );
+  const reviewableProducts = trialReviewableProducts;
   const canReview = Boolean(
     activeUser &&
       selectedProduct &&
       reviewableProducts.some((product) => product.id === selectedProduct.id),
   );
 
-  const catalogProducts = useMemo(() => getCatalogProducts(products, reports, category, sortMode), [category, reports, sortMode]);
+  const catalogProducts = useMemo(() => getCatalogProducts(products, reports, category, sortMode), [category, products, reports, sortMode]);
   const cartCount = getCartCount(cartItems);
   const cartTotal = getCartTotal(cartItems);
   const earningsSummary = summarizeEarnings(earnings);
@@ -411,6 +602,8 @@ export default function HomePage() {
 
   const openReportModal = (product?: Product) => {
     form.resetFields();
+    setReportImageUrls([]);
+    setReportVideoUrl(undefined);
 
     if (product && reviewableProducts.some((item) => item.id === product.id)) {
       form.setFieldsValue({ productId: product.id });
@@ -419,16 +612,16 @@ export default function HomePage() {
     setReportOpen(true);
   };
 
-  const handlePublish = (values: ReportFormValues) => {
+  const handlePublish = async (values: ReportFormValues) => {
     if (!activeUser) return;
     const reportProduct = reviewableProducts.find((product) => product.id === values.productId);
 
     if (!reportProduct) {
-      message.warning('请选择已完成购买或已领取试用的商品');
+      message.warning('请选择已确认收货且尚未发布报告的试用商品');
       return;
     }
 
-    if (!values.images || values.images.length === 0) {
+    if (reportImageUrls.length === 0) {
       message.warning('请上传至少1张实拍图');
       return;
     }
@@ -450,39 +643,43 @@ export default function HomePage() {
       return;
     }
 
-    const nextReport: VerifyReport = {
-      id: Date.now(),
-      productId: reportProduct.id,
-      productTitle: reportProduct.title,
-      userId: activeUser.id,
-      userName: activeUser.name,
-      userRole: activeUser.role,
-      images: values.images,
-      video: values.video,
-      experience: values.experience,
-      shortcoming: values.shortcoming,
-      fitCrowd: values.fitCrowd || '真实使用后再判断',
-      recommend: values.recommend,
-      usefulCount: 0,
-      usefulByMe: false,
-      createdAt: '刚刚',
-    };
-
-    setSelectedProduct(reportProduct);
-    setReports((prev) => [nextReport, ...prev]);
-    setTrials((items) =>
-      items.map((trial) =>
-        trial.productId === reportProduct.id && trial.status === 'pending_report'
-          ? { ...trial, status: 'completed', completedAt: '2026-07-05' }
-          : trial,
-      ),
-    );
-    setReportOpen(false);
-    form.resetFields();
-    message.success('甄客验已发布，已进入信任区');
+    const trial = trials.find((item) => item.productId === reportProduct.id && item.status === 'pending_report');
+    if (!trial?.applicationId) {
+      message.warning('没有找到已确认收货且尚未发布报告的试用');
+      return;
+    }
+    try {
+      const resources = [
+        ...reportImageUrls.filter((url) => !url.startsWith('blob:')).map((resourceUrl) => ({ resourceType: 'IMAGE' as const, resourceUrl })),
+        ...(reportVideoUrl && !reportVideoUrl.startsWith('blob:') ? [{ resourceType: 'VIDEO' as const, resourceUrl: reportVideoUrl }] : []),
+      ];
+      await publishVerificationReport({
+        trialApplicationId: trial.applicationId,
+        experience: values.experience.trim(),
+        shortcoming: shortcomingTrimmed,
+        fitCrowd: values.fitCrowd?.trim() || '真实使用后再判断',
+        recommend: Boolean(values.recommend),
+        resources,
+      });
+      const applications = await fetchMyTrialApplications();
+      setTrials(applications.map(mapTrialApplication));
+      await loadHomeContent();
+      setSelectedProduct(reportProduct);
+      setReportOpen(false);
+      form.resetFields();
+      setReportImageUrls([]);
+      setReportVideoUrl(undefined);
+      message.success('甄客验已发布，已进入首页内容流');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '验证报告发布失败');
+    }
   };
 
   const handleAddToCart = (product: Product, attribution?: ReportAttribution) => {
+    if (product.purchasable === false || product.stock === 0) {
+      message.warning('该商品当前无库存，暂不能购买');
+      return;
+    }
     setCartItems((items) => addProductToCart(items, product, attribution));
     message.success('已加入购物车');
   };
@@ -500,6 +697,10 @@ export default function HomePage() {
   };
 
   const handleBuyNow = (product: Product, attribution?: ReportAttribution) => {
+    if (product.purchasable === false || product.stock === 0) {
+      message.warning('该商品当前无库存，暂不能购买');
+      return;
+    }
     if (!activeUser) return;
 
     setSelectedProduct(product);
@@ -761,51 +962,46 @@ export default function HomePage() {
     }
   };
 
-  const handleMerchantSubmit = (values: Omit<MerchantFormValues, 'businessLicense'>) => {
-    if (!values.companyName) {
-      message.warning('请输入公司名称');
+  const handleMerchantSubmit = async (values: MerchantFormValues) => {
+    if (!captchaReady || captchaLoading || (captcha.enabled && (!captcha.uuid || !captcha.image))) {
+      message.warning('验证码尚未准备好，请重新获取后再提交');
+      await loadCaptcha();
       return;
     }
-    if (!values.companyAddress) {
-      message.warning('请输入公司地址');
-      return;
+    setMerchantSubmitting(true);
+    try {
+      const application = await submitMerchantApplication({ ...values, uuid: captcha.uuid });
+      setMerchantApplication(application);
+      setMerchantOpen(false);
+      merchantForm.resetFields();
+      message.success('入驻申请已提交，请等待平台审核');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '商家入驻申请提交失败');
+      merchantForm.resetFields(['code']);
+      await loadCaptcha();
+    } finally {
+      setMerchantSubmitting(false);
     }
-    if (businessLicenseImages.length === 0) {
-      message.warning('请上传营业执照');
-      return;
-    }
-    if (!values.productIntro) {
-      message.warning('请输入产品介绍');
-      return;
-    }
-    if (!values.originTraceability) {
-      message.warning('请输入产地溯源信息');
-      return;
-    }
-    if (!agreeProtocol) {
-      message.warning('请勾选协议');
-      return;
-    }
+  };
 
-    const newMerchant: Merchant = {
-      id: Date.now(),
-      userId: 0,
-      companyName: values.companyName,
-      companyAddress: values.companyAddress,
-      businessLicense: businessLicenseImages[0],
-      productIntro: values.productIntro,
-      originTraceability: values.originTraceability,
-      acceptsPublicWelfare: values.acceptsPublicWelfare ?? false,
-      acceptsVerificationRecruitment: values.acceptsVerificationRecruitment ?? false,
-      registeredAt: new Date().toISOString(),
-    };
-
-    setMerchants((prev) => [...prev, newMerchant]);
-    setMerchantOpen(false);
-    setBusinessLicenseImages([]);
-    setAgreeProtocol(false);
-    merchantForm.resetFields();
-    message.success('入驻申请已提交！平台已完成存证，不做审核。自证材料将作为未来纠纷的法律证据。');
+  const openMerchantApplication = () => {
+    if (merchantApplication?.auditStatus === 'REJECTED') {
+      merchantForm.setFieldsValue({
+        accountUsername: merchantApplication.accountUsername,
+        companyName: merchantApplication.companyName,
+        companyAddress: merchantApplication.companyAddress,
+        contactName: merchantApplication.contactName,
+        contactPhone: merchantApplication.contactPhone,
+        businessLicense: merchantApplication.businessLicense,
+        productIntro: merchantApplication.productIntro,
+        originTraceability: merchantApplication.originTraceability,
+        acceptsVerificationRecruitment: true,
+        acceptsPublicWelfare: true,
+        agreeProtocol: true,
+      });
+    }
+    void loadCaptcha();
+    setMerchantOpen(true);
   };
 
   const handleOpenReportProduct = (report: VerifyReport) => {
@@ -830,32 +1026,51 @@ export default function HomePage() {
   };
 
   const handleApplyForVerification = (recruitment: TrialRecruitment) => {
-    if (!activeUser) return;
-    const result = applyForRecruitment(recruitment, activeUser.id);
-
-    if (!result.ok) {
-      message.info(result.reason === 'already_applied' ? '你已经申请过该商品' : '本期验证名额已满');
+    if (!activeUser) {
+      message.info('请先登录');
       return;
     }
-
-    const product = products.find((item) => item.id === recruitment.productId);
-    setRecruitments((items) => items.map((item) => (item.id === recruitment.id ? result.recruitment : item)));
-
-    if (product && !trials.some((trial) => trial.productId === product.id && trial.status === 'pending_report')) {
-      setTrials((items) => [
-        {
-          id: Date.now(),
-          productId: product.id,
-          productTitle: product.title,
-          status: 'pending_report',
-          claimedAt: '2026-07-05',
-          deadline: '2026-07-12',
-        },
-        ...items,
-      ]);
+    if (!isShippingAddressReady || !defaultShippingAddress) {
+      message.info('请先完善默认收货地址');
+      openAddressDialog();
+      return;
     }
+    trialApplyForm.resetFields();
+    setApplyingRecruitment(recruitment);
+  };
 
-    message.success('申请成功，试用任务已加入“我的试用”');
+  const submitTrialApplication = async (values: TrialApplyFormValues) => {
+    if (!applyingRecruitment || !defaultShippingAddress) return;
+    setTrialApplying(true);
+    try {
+      await applyForTrial(applyingRecruitment.id, {
+        applyReason: values.applyReason.trim(),
+        recipientName: defaultShippingAddress.recipient,
+        recipientPhone: defaultShippingAddress.phone,
+        shippingAddress: formatShippingAddress(defaultShippingAddress),
+      });
+      const applications = await fetchMyTrialApplications();
+      setTrials(applications.map(mapTrialApplication));
+      setApplyingRecruitment(null);
+      trialApplyForm.resetFields();
+      message.success('申请已提交，可在“我的试用”查看审核和寄送进度');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '试用申请提交失败');
+    } finally {
+      setTrialApplying(false);
+    }
+  };
+
+  const handleConfirmTrialReceived = async (trial: TrialRecord) => {
+    if (!trial.applicationId) return;
+    try {
+      await confirmTrialReceived(trial.applicationId);
+      const applications = await fetchMyTrialApplications();
+      setTrials(applications.map(mapTrialApplication));
+      message.success('已确认收货，现在可以自愿发布验证报告');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '确认收货失败');
+    }
   };
 
   const renderCartDrawer = () => (
@@ -967,7 +1182,7 @@ export default function HomePage() {
           >
             <Input.Password size="large" prefix={<LockOutlined />} placeholder="字母 + 数字" />
           </Form.Item>
-          {authMode === 'login' && captcha.enabled && (
+          {authMode === 'login' && captchaReady && captcha.enabled && (
             <Form.Item name="code" label="验证码" rules={[{ required: true, message: '请输入验证码结果' }]}>
               <div className={styles.captchaRow}>
                 <Input size="large" autoComplete="off" />
@@ -977,7 +1192,27 @@ export default function HomePage() {
               </div>
             </Form.Item>
           )}
-          <Button block type="primary" size="large" htmlType="submit" icon={<LoginOutlined />} loading={authSubmitting}>
+          {authMode === 'login' && !captchaReady && (
+            <Form.Item label="验证码" required>
+              <div className={styles.captchaRow}>
+                <span className={styles.hint}>
+                  {captchaLoading ? '验证码加载中，请稍候…' : captchaLoadError || '验证码暂时无法加载'}
+                </span>
+                <Button htmlType="button" onClick={() => void loadCaptcha()} loading={captchaLoading}>
+                  重新获取
+                </Button>
+              </div>
+            </Form.Item>
+          )}
+          <Button
+            block
+            type="primary"
+            size="large"
+            htmlType="submit"
+            icon={<LoginOutlined />}
+            loading={authSubmitting}
+            disabled={authMode === 'login' && (!captchaReady || captchaLoading || (captcha.enabled && (!captcha.uuid || !captcha.image)))}
+          >
             {authMode === 'login' ? '登录' : '注册'}
           </Button>
         </Form>
@@ -996,11 +1231,11 @@ export default function HomePage() {
         <Button
           block
           size="large"
-          onClick={() => setMerchantOpen(true)}
+          onClick={openMerchantApplication}
           icon={<SafetyCertificateOutlined />}
           className={styles.merchantButton}
         >
-          商家入驻
+          {merchantApplication ? `商家申请：${({ PENDING: '审核中', APPROVED: '已通过', REJECTED: '已驳回' } as const)[merchantApplication.auditStatus]}` : '商家入驻'}
         </Button>
       </section>
     </main>
@@ -1013,8 +1248,6 @@ export default function HomePage() {
       onCancel={() => {
         setMerchantOpen(false);
         merchantForm.resetFields();
-        setBusinessLicenseImages([]);
-        setAgreeProtocol(false);
       }}
       footer={null}
       width={600}
@@ -1022,78 +1255,118 @@ export default function HomePage() {
       bodyStyle={{ maxHeight: 'calc(100vh - 240px)', overflowY: 'auto' }}
     >
       <div className={styles.merchantIntro}>
-        <p>提交公司资质、产品介绍、产地溯源等"自证材料"。</p>
+        <p>提交公司资质、联系人、产品介绍和产地溯源材料，平台审核通过后会创建商家后台账号。</p>
         <p className={styles.merchantWarning}>
           <SafetyCertificateOutlined />
-          平台只做存证、不做审核（"我们不是工商局，没资格审核"）。自证材料 = 未来纠纷的法律证据。
+          平台将保存申请与每次审核记录；请保证材料真实、完整且资源地址可访问。
         </p>
+        {merchantLoading && <Spin size="small" />}
+        {merchantApplication && (
+          <p>
+            申请编号：{merchantApplication.applicationNo} · 当前状态：
+            <Tag color={merchantApplication.auditStatus === 'APPROVED' ? 'success' : merchantApplication.auditStatus === 'REJECTED' ? 'error' : 'processing'}>
+              {({ PENDING: '审核中', APPROVED: '审核通过', REJECTED: '审核驳回' } as const)[merchantApplication.auditStatus]}
+            </Tag>
+            {merchantApplication.auditRemark ? `审核意见：${merchantApplication.auditRemark}` : ''}
+          </p>
+        )}
       </div>
+      {(!merchantApplication || merchantApplication.auditStatus === 'REJECTED') && (
       <Form layout="vertical" form={merchantForm} onFinish={handleMerchantSubmit}>
-        <Form.Item name="companyName" label="公司名称">
+        <Form.Item name="accountUsername" label="商家后台账号" rules={[{ required: true, message: '请输入商家后台账号' }, { pattern: /^[A-Za-z0-9_]{4,30}$/, message: '请输入4到30位字母、数字或下划线' }]}>
+          <Input placeholder="审核通过后使用此账号登录商家后台" />
+        </Form.Item>
+        <Form.Item name="password" label="商家后台密码" rules={[{ required: true, message: '请输入商家后台密码' }, { min: 6, max: 50 }, { pattern: /^(?=.*[A-Za-z])(?=.*\d).+$/, message: '密码必须同时包含字母和数字' }]}>
+          <Input.Password placeholder="审核通过后使用此密码登录商家后台" />
+        </Form.Item>
+        <Form.Item name="companyName" label="公司名称" rules={[{ required: true, message: '请输入公司名称' }, { max: 100 }]}>
           <Input placeholder="请输入公司名称" />
         </Form.Item>
-        <Form.Item name="companyAddress" label="公司地址">
+        <Form.Item name="companyAddress" label="公司地址" rules={[{ required: true, message: '请输入公司地址' }, { max: 255 }]}>
           <Input placeholder="请输入公司地址" />
         </Form.Item>
-        <Form.Item label="营业执照">
-          <Upload
-            listType="picture"
-            beforeUpload={(file) => {
-              if (!file.type.startsWith('image/')) {
-                message.warning('请上传图片文件');
-                return false;
-              }
-              const reader = new FileReader();
-              reader.onload = () => {
-                setBusinessLicenseImages((prev) => [...prev, String(reader.result)]);
-              };
-              reader.readAsDataURL(file);
-              return false;
-            }}
-            fileList={businessLicenseImages.map((url, index) => ({
-              uid: String(index),
-              name: `营业执照${index + 1}`,
-              status: 'done' as const,
-              url,
-            }))}
-            onRemove={(file) => {
-              setBusinessLicenseImages((prev) => prev.filter((_, index) => String(index) !== file.uid));
-            }}
-          >
-            <Button icon={<UploadOutlined />}>上传营业执照</Button>
-          </Upload>
+        <Form.Item name="contactName" label="联系人" rules={[{ required: true, message: '请输入联系人' }, { max: 30 }]}>
+          <Input placeholder="请输入联系人姓名" />
         </Form.Item>
-        <Form.Item name="productIntro" label="产品介绍">
+        <Form.Item
+          name="contactPhone"
+          label="联系电话"
+          rules={[{ required: true, message: '请输入联系电话' }, { pattern: /^[0-9+\- ]{6,20}$/, message: '联系电话格式不正确' }]}
+        >
+          <Input placeholder="请输入手机号或固定电话" />
+        </Form.Item>
+        <Form.Item name="businessLicense" label="营业执照资源地址" rules={[{ required: true, message: '请输入营业执照图片或资源地址' }, { max: 500 }]}>
+          <Input placeholder="https://...（正式文件上传将在上传模块接入）" />
+        </Form.Item>
+        <Form.Item name="productIntro" label="产品介绍" rules={[{ required: true, message: '请输入产品介绍' }, { max: 2000 }]}>
           <Input.TextArea rows={4} placeholder="请介绍您的产品特点、优势等" />
         </Form.Item>
-        <Form.Item name="originTraceability" label="产地溯源">
+        <Form.Item name="originTraceability" label="产地溯源" rules={[{ required: true, message: '请输入产地溯源信息' }, { max: 2000 }]}>
           <Input.TextArea rows={4} placeholder="请描述产品的产地来源、生产流程等溯源信息" />
         </Form.Item>
-        <Form.Item name="acceptsVerificationRecruitment" label="入驻门槛" valuePropName="checked" initialValue={false}>
+        <Form.Item
+          name="acceptsVerificationRecruitment"
+          label="入驻门槛"
+          valuePropName="checked"
+          extra="我承诺发起验证招募（不验证不上架）"
+          rules={[{ validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('必须承诺发起验证招募')) }]}
+        >
           <Switch checkedChildren="已阅读" unCheckedChildren="未阅读" />
-          <span className={styles.switchLabel}>我承诺发起验证招募（不验证不上架）</span>
         </Form.Item>
-        <Form.Item name="acceptsPublicWelfare" label="公益分成" valuePropName="checked" initialValue={false}>
+        <Form.Item
+          name="acceptsPublicWelfare"
+          label="公益分成"
+          valuePropName="checked"
+          extra="我接受公益分成"
+          rules={[{ validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('必须接受公益分成约定')) }]}
+        >
           <Switch checkedChildren="已同意" unCheckedChildren="未同意" />
-          <span className={styles.switchLabel}>我接受公益分成</span>
         </Form.Item>
-        <Form.Item label="协议">
-          <Switch
-            checked={agreeProtocol}
-            onChange={setAgreeProtocol}
-            checkedChildren="已勾选"
-            unCheckedChildren="未勾选"
-          />
-          <span className={styles.switchLabel}>
-            我已阅读并同意《商家入驻协议》，承诺所提交的自证材料真实有效，自愿接受平台存证
-          </span>
+        <Form.Item
+          name="agreeProtocol"
+          label="协议"
+          valuePropName="checked"
+          extra="我已阅读并同意《商家入驻协议》，承诺所提交材料真实有效并接受平台审核与留痕"
+          rules={[{ validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('请阅读并同意商家入驻协议')) }]}
+        >
+          <Switch checkedChildren="已勾选" unCheckedChildren="未勾选" />
         </Form.Item>
+        {captchaReady && captcha.enabled && (
+          <Form.Item name="code" label="验证码" rules={[{ required: true, message: '请输入验证码' }]}>
+            <div className={styles.captchaRow}>
+              <Input placeholder="请输入验证码" />
+              <button type="button" className={styles.captchaButton} onClick={loadCaptcha} title="刷新验证码">
+                <img src={captcha.image} alt="验证码" />
+              </button>
+            </div>
+          </Form.Item>
+        )}
+        {!captchaReady && (
+          <Form.Item label="验证码" required>
+            <div className={styles.captchaRow}>
+              <span className={styles.hint}>
+                {captchaLoading ? '验证码加载中，请稍候…' : captchaLoadError || '验证码暂时无法加载'}
+              </span>
+              <Button htmlType="button" onClick={() => void loadCaptcha()} loading={captchaLoading}>
+                重新获取
+              </Button>
+            </div>
+          </Form.Item>
+        )}
         <Form.Item>
-          <Button block type="primary" size="large" htmlType="submit">
-            提交入驻（仅存证，不审核）
+          <Button
+            block
+            type="primary"
+            size="large"
+            htmlType="submit"
+            loading={merchantSubmitting}
+            disabled={!captchaReady || captchaLoading || (captcha.enabled && (!captcha.uuid || !captcha.image))}
+          >
+            提交入驻申请
           </Button>
         </Form.Item>
       </Form>
+      )}
     </Modal>
   );
 
@@ -1230,32 +1503,22 @@ export default function HomePage() {
   );
 
   const renderReviews = () => {
-    const recruitingItems = recruitments.filter(
-      (item) => getProductJourneyState(item.productId, reports) === 'recruiting',
-    );
-    const mixedItems: Array<
+    const mixedItems = homeFeed.reduce<Array<
       | { type: 'report'; data: VerifyReport }
       | { type: 'recruitment'; data: TrialRecruitment & { product: Product } }
-    > = [];
-    let reportIdx = 0;
-    let recruitIdx = 0;
-    const step = 3;
-    while (reportIdx < reports.length || recruitIdx < recruitingItems.length) {
-      for (let i = 0; i < step && reportIdx < reports.length; i++) {
-        mixedItems.push({ type: 'report', data: reports[reportIdx] });
-        reportIdx++;
+    >>((items, item) => {
+      if (item.contentType === 'REPORT') {
+        const report = reports.find((candidate) => candidate.id === item.contentId);
+        if (report) items.push({ type: 'report', data: report });
+        return items;
       }
-      if (recruitIdx < recruitingItems.length) {
-        const product = products.find((p) => p.id === recruitingItems[recruitIdx].productId);
-        if (product) {
-          mixedItems.push({
-            type: 'recruitment',
-            data: { ...recruitingItems[recruitIdx], product },
-          });
-        }
-        recruitIdx++;
+      const recruitment = recruitments.find((candidate) => candidate.id === item.contentId);
+      const product = products.find((candidate) => candidate.id === item.productId);
+      if (recruitment && product) {
+        items.push({ type: 'recruitment', data: { ...recruitment, product } });
       }
-    }
+      return items;
+    }, []);
     return (
       <main className={styles.singleColumn}>
         <div className={styles.sectionHeader}>
@@ -1267,6 +1530,26 @@ export default function HomePage() {
             发布甄客验
           </Button>
         </div>
+        <div className={styles.catalogControls} style={{ marginBottom: 20 }}>
+          <Segmented
+            value={category}
+            onChange={(value) => setCategory(value as ProductCategoryFilter)}
+            options={[
+              { label: '全部分类', value: 'all' },
+              ...productCategories.map((item) => ({ label: item.categoryName, value: item.categoryCode })),
+            ]}
+          />
+          <Segmented
+            value={homeContentType}
+            onChange={(value) => setHomeContentType(value as 'ALL' | 'TRIAL' | 'REPORT')}
+            options={[
+              { label: '全部内容', value: 'ALL' },
+              { label: '试用招募', value: 'TRIAL' },
+              { label: '验证报告', value: 'REPORT' },
+            ]}
+          />
+        </div>
+        {contentLoading && <div className={styles.sessionLoading}><Spin /></div>}
         <div className={styles.reportGrid}>
           {mixedItems.map((item, index) => {
             if (item.type === 'report') {
@@ -1297,7 +1580,7 @@ export default function HomePage() {
                 <div className={styles.reportGridContent}>
                   <p className={styles.reportGridTitle}>{product.title}</p>
                   <p className={styles.recruitGridDesc}>
-                    免费试用，7 天内提交真实甄客验
+                    {recruitment.campaignSummary || '申请通过后由商家寄送，确认收货后可自愿发布真实甄客验。'}
                   </p>
                   <div className={styles.recruitGridInfo}>
                     <span>寻找 {recruitment.targetCount} 人</span>
@@ -1308,7 +1591,7 @@ export default function HomePage() {
                       <span className={`${styles.recruitTag}`}>招募</span>
                       <span className={styles.reportGridName}>截止 {recruitment.deadline}</span>
                     </div>
-                    <Button size="small" type="primary" onClick={(e) => { e.stopPropagation(); openProductJourney(product); }}>
+                    <Button size="small" type="primary" onClick={(e) => { e.stopPropagation(); handleApplyForVerification(recruitment); }}>
                       申请
                     </Button>
                   </div>
@@ -1317,6 +1600,7 @@ export default function HomePage() {
             );
           })}
         </div>
+        {!contentLoading && mixedItems.length === 0 && <p className={styles.empty}>当前分类还没有正在招募的试用或已发布的验证报告。</p>}
       </main>
     );
   };
@@ -1637,9 +1921,14 @@ export default function HomePage() {
                   </div>
                   <div>
                     <Tag color={deadlineMeta.tone === 'danger' ? 'error' : deadlineMeta.tone}>{deadlineMeta.label}</Tag>
+                    {trial.status === 'shipped' && (
+                      <Button size="small" type="primary" onClick={() => void handleConfirmTrialReceived(trial)}>
+                        确认收货
+                      </Button>
+                    )}
                     {trial.status === 'pending_report' && trialProduct && (
                       <Button size="small" type="primary" onClick={() => openReportModal(trialProduct)}>
-                        去发布甄客验
+                        自愿发布甄客验
                       </Button>
                     )}
                   </div>
@@ -1722,6 +2011,7 @@ export default function HomePage() {
             </div>
           </section>
         )}
+
       </main>
     );
   };
@@ -1885,6 +2175,23 @@ export default function HomePage() {
         )}
       </Modal>
 
+      <Modal
+        title="申请线上试用"
+        open={Boolean(applyingRecruitment)}
+        onCancel={() => setApplyingRecruitment(null)}
+        footer={null}
+        destroyOnHidden
+      >
+        <Form form={trialApplyForm} layout="vertical" onFinish={submitTrialApplication}>
+          <p>{applyingRecruitment?.campaignTitle}</p>
+          <Form.Item name="applyReason" label="申请理由" rules={[{ required: true, message: '请填写申请理由' }, { max: 1000 }]}>
+            <Input.TextArea rows={5} showCount maxLength={1000} placeholder="请说明你的使用场景，以及愿意如何客观体验产品" />
+          </Form.Item>
+          {defaultShippingAddress && <p className={styles.hint}>寄送至：{formatShippingAddress(defaultShippingAddress)}</p>}
+          <Button block type="primary" htmlType="submit" loading={trialApplying}>提交申请</Button>
+        </Form>
+      </Modal>
+
       <Modal title="写验证报告" open={reportOpen} onCancel={() => setReportOpen(false)} footer={null}>
         <Form layout="vertical" form={form} onFinish={handlePublish}>
           <Form.Item name="productId" label="选择可发布商品" rules={[{ required: true, message: '请选择可发布商品' }]}>
@@ -1897,20 +2204,25 @@ export default function HomePage() {
               }))}
             />
           </Form.Item>
-          {reviewableProducts.length === 0 && <p className={styles.hint}>暂无可发布甄客验的商品：需要完成购买或领取试用。</p>}
-          <Form.Item name="images" label="实拍图（必填，至少1张）" rules={[{ required: true, message: '请上传至少1张实拍图' }]}>
+          {reviewableProducts.length === 0 && <p className={styles.hint}>暂无可发布甄客验的商品：线上试用确认收货后才可发布。</p>}
+          <Form.Item label="实拍图（必填，至少1张）" required>
             <Upload
               listType="picture-card"
               maxCount={9}
-              beforeUpload={() => false}
-              onChange={(info) => {
-                const newFileList = info.fileList.map((file) => ({
-                  ...file,
-                  url: URL.createObjectURL(file.originFileObj!),
-                }));
-                form.setFieldsValue({ images: newFileList.map((f) => f.url) });
+              customRequest={async (options) => {
+                try {
+                  const url = await uploadShopContentFile(options.file as File);
+                  setReportImageUrls((current) => current.includes(url) ? current : [...current, url]);
+                  options.onSuccess?.({ url });
+                } catch (error) {
+                  options.onError?.(error as Error);
+                  message.error(error instanceof Error ? error.message : '图片上传失败');
+                }
               }}
-              fileList={reportImages?.map((url: string, index: number) => ({
+              onRemove={(file) => {
+                setReportImageUrls((current) => current.filter((url) => url !== file.url));
+              }}
+              fileList={reportImageUrls.map((url: string, index: number) => ({
                 uid: String(index),
                 name: `图片${index + 1}`,
                 status: 'done',
@@ -1923,17 +2235,22 @@ export default function HomePage() {
               </div>
             </Upload>
           </Form.Item>
-          <Form.Item name="video" label="短视频（可选，开箱/使用）">
+          <Form.Item label="短视频（可选，开箱/使用）">
             <Upload
               accept="video/*"
               maxCount={1}
-              beforeUpload={() => false}
-              onChange={(info) => {
-                if (info.file.originFileObj) {
-                  form.setFieldsValue({ video: URL.createObjectURL(info.file.originFileObj) });
+              customRequest={async (options) => {
+                try {
+                  const url = await uploadShopContentFile(options.file as File);
+                  setReportVideoUrl(url);
+                  options.onSuccess?.({ url });
+                } catch (error) {
+                  options.onError?.(error as Error);
+                  message.error(error instanceof Error ? error.message : '视频上传失败');
                 }
               }}
-              fileList={reportVideo ? [{ uid: '1', name: '视频', status: 'done', url: reportVideo }] : []}
+              onRemove={() => { setReportVideoUrl(undefined); }}
+              fileList={reportVideoUrl ? [{ uid: '1', name: '视频', status: 'done', url: reportVideoUrl }] : []}
             >
               <Button icon={<UploadOutlined />}>上传视频</Button>
             </Upload>

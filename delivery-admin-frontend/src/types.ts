@@ -1,8 +1,8 @@
 export type LoginType = 'admin' | 'merchant';
 
-export type ProductCategory = 'verified' | 'local' | 'other';
+export type ProductCategory = 'verified' | 'local' | 'other' | `CATEGORY_${1 | 2 | 3 | 4}`;
 
-export type ProductStatus = 'onSale' | 'offSale';
+export type ProductStatus = 'draft' | 'onSale' | 'offSale';
 
 export type OrderStatus = 'unpaid' | 'paid' | 'shipped' | 'completed' | 'canceled' | 'refunded';
 
@@ -50,8 +50,11 @@ export interface ShopMemberLevel {
 
 export interface MerchantAccount {
   id: number;
-  username: string;
-  password: string;
+  merchantId?: number;
+  applicationNo?: string;
+  username?: string;
+  /** 仅兼容旧演示数据；真实接口永不返回或回显密码。 */
+  password?: string;
   name: string;
   ownerName: string;
   phone: string;
@@ -64,15 +67,33 @@ export interface MerchantAccount {
   registeredAt?: string;
   productCount: number;
   orderCount: number;
+  auditStatus?: 'pending' | 'approved' | 'rejected';
+  auditRemark?: string;
+  auditBy?: string;
+  auditTime?: string;
   status: 'active' | 'disabled';
+  auditLogs?: MerchantAuditLog[];
+}
+
+export interface MerchantAuditLog {
+  logId: number;
+  action: 'SUBMIT' | 'RESUBMIT' | 'APPROVE' | 'REJECT' | 'ENABLE' | 'DISABLE';
+  fromStatus?: string;
+  toStatus?: string;
+  auditRemark?: string;
+  operatorName: string;
+  createTime?: string;
 }
 
 export interface ManagedProduct {
   id: number;
   merchantId: number;
   title: string;
+  subtitle?: string;
   artisanName: string;
   category: ProductCategory;
+  categoryId?: number;
+  categoryName?: string;
   status: ProductStatus;
   imageUrl: string;
   detail: string;
@@ -81,6 +102,14 @@ export interface ManagedProduct {
   stock: number;
   sales: number;
   verifyCount: number;
+}
+
+export interface ProductCategoryOption {
+  categoryId: number;
+  categoryCode: `CATEGORY_${1 | 2 | 3 | 4}`;
+  categoryName: string;
+  categorySort: number;
+  status: '0' | '1';
 }
 
 export interface ManagedOrder {
@@ -125,6 +154,27 @@ export interface ManagedTrialRecruitment {
   claimedCount: number;
   deadline: string;
   applicantCount: number;
-  status: 'recruiting' | 'ended';
+  status: 'draft' | 'recruiting' | 'closed' | 'finished' | 'ended';
   createdAt: string;
+}
+
+export interface ManagedTrialApplication {
+  applicationId: number;
+  campaignId: number;
+  merchantId: number;
+  productId: number;
+  productName: string;
+  campaignTitle: string;
+  shopUserId: number;
+  userName: string;
+  nickName?: string;
+  applyReason: string;
+  recipientName: string;
+  recipientPhone: string;
+  shippingAddress: string;
+  status: 'APPLIED' | 'APPROVED' | 'REJECTED' | 'SHIPPED' | 'RECEIVED' | 'COMPLETED' | 'EXPIRED';
+  auditRemark?: string;
+  carrier?: string;
+  trackingNo?: string;
+  createTime?: string;
 }

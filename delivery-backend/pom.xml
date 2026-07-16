@@ -20,7 +20,6 @@
         <spring-boot.version>3.5.14</spring-boot.version>
         <mybatis-spring-boot.version>3.0.5</mybatis-spring-boot.version>
         <druid.version>1.2.28</druid.version>
-        <yauaa.version>8.1.1</yauaa.version>
         <kaptcha.version>2.3.3</kaptcha.version>
         <pagehelper.boot.version>2.1.1</pagehelper.boot.version>
         <fastjson.version>2.0.62</fastjson.version>
@@ -51,13 +50,6 @@
                 <groupId>com.alibaba</groupId>
                 <artifactId>druid-spring-boot-3-starter</artifactId>
                 <version>${druid.version}</version>
-            </dependency>
-
-            <!-- 解析客户端操作系统、浏览器等 -->
-            <dependency>
-                <groupId>nl.basjes.parse.useragent</groupId>
-                <artifactId>yauaa</artifactId>
-                <version>${yauaa.version}</version>
             </dependency>
 
             <!-- pagehelper 分页插件 -->

@@ -1,20 +1,31 @@
 export type MemberRole = 'zhenke' | 'yanzhenke' | 'xinzhenke';
 
-export type ProductCategory = 'verified' | 'local' | 'other';
+export type ProductCategory = 'verified' | 'local' | 'other' | `CATEGORY_${1 | 2 | 3 | 4}`;
 
 export type OrderStatus = 'unpaid' | 'paid' | 'shipped' | 'completed' | 'canceled';
 
 export interface Merchant {
-  id: number;
-  userId: number;
+  merchantId: number;
+  applicationNo: string;
+  accountUsername: string;
   companyName: string;
   companyAddress: string;
-  businessLicense?: string;
+  contactName: string;
+  contactPhone: string;
+  businessLicense: string;
   productIntro: string;
   originTraceability: string;
-  acceptsPublicWelfare: boolean;
-  acceptsVerificationRecruitment: boolean;
-  registeredAt: string;
+  acceptsPublicWelfare: '0' | '1';
+  acceptsVerificationRecruitment: '0' | '1';
+  protocolAgreed: '0' | '1';
+  auditStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+  auditRemark?: string;
+  adminUserId?: number;
+  adminUsername?: string;
+  status: '0' | '1';
+  auditBy?: string;
+  auditTime?: string;
+  createTime?: string;
 }
 
 export interface User {
@@ -33,6 +44,7 @@ export interface Product {
   title: string;
   artisanName: string;
   category: ProductCategory;
+  categoryName?: string;
   imageUrl: string;
   cover: string;
   price: number;
@@ -40,6 +52,8 @@ export interface Product {
   verifyCount: number;
   detail: string;
   tags: string[];
+  stock?: number;
+  purchasable?: boolean;
 }
 
 export interface VerifyReport {
@@ -105,16 +119,19 @@ export interface LogisticsInfo {
   events: LogisticsEvent[];
 }
 
-export type TrialStatus = 'pending_report' | 'completed' | 'overdue';
+export type TrialStatus = 'applied' | 'approved' | 'rejected' | 'shipped' | 'pending_report' | 'completed' | 'overdue';
 
 export interface TrialRecord {
   id: number;
+  applicationId?: number;
   productId: number;
   productTitle: string;
   status: TrialStatus;
   claimedAt: string;
   deadline: string;
   completedAt?: string;
+  carrier?: string;
+  trackingNo?: string;
 }
 
 export type EarningStatus = 'pending' | 'settled';
@@ -140,6 +157,8 @@ export interface TrialRecruitment {
   claimedCount: number;
   deadline: string;
   applicantUserIds: number[];
+  campaignTitle?: string;
+  campaignSummary?: string;
 }
 
 export interface ProductEvidence {

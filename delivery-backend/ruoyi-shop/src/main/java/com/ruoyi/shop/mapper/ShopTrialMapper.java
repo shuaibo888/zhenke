@@ -1,0 +1,53 @@
+package com.ruoyi.shop.mapper;
+
+import java.util.List;
+import org.apache.ibatis.annotations.Param;
+import com.ruoyi.shop.domain.ShopTrialApplication;
+import com.ruoyi.shop.domain.ShopTrialCampaign;
+import com.ruoyi.shop.domain.ShopVerificationReport;
+import com.ruoyi.shop.domain.ShopVerificationReportResource;
+import com.ruoyi.shop.domain.vo.ShopHomeFeedItem;
+
+public interface ShopTrialMapper
+{
+    List<ShopTrialCampaign> selectMerchantCampaigns(@Param("merchantId") Long merchantId,
+            @Param("query") ShopTrialCampaign query);
+    List<ShopTrialCampaign> selectAdminCampaigns(ShopTrialCampaign query);
+    ShopTrialCampaign selectMerchantCampaign(@Param("merchantId") Long merchantId,
+            @Param("campaignId") Long campaignId);
+    ShopTrialCampaign selectPublicCampaign(Long campaignId);
+    int countRecruitingCampaigns(Long productId);
+    int insertCampaign(ShopTrialCampaign campaign);
+    int updateCampaignStatus(@Param("merchantId") Long merchantId, @Param("campaignId") Long campaignId,
+            @Param("fromStatus") String fromStatus, @Param("toStatus") String toStatus,
+            @Param("updateBy") String updateBy);
+    Long lockProductForCampaign(@Param("merchantId") Long merchantId, @Param("campaignId") Long campaignId);
+
+    List<ShopTrialApplication> selectMerchantApplications(@Param("merchantId") Long merchantId,
+            @Param("campaignId") Long campaignId, @Param("status") String status);
+    ShopTrialApplication selectMerchantApplication(@Param("merchantId") Long merchantId,
+            @Param("applicationId") Long applicationId);
+    List<ShopTrialApplication> selectUserApplications(Long shopUserId);
+    ShopTrialApplication selectUserApplication(@Param("shopUserId") Long shopUserId,
+            @Param("applicationId") Long applicationId);
+    int countUserCampaignApplication(@Param("campaignId") Long campaignId, @Param("shopUserId") Long shopUserId);
+    Long lockCampaignForApplication(@Param("merchantId") Long merchantId,
+            @Param("applicationId") Long applicationId);
+    int insertApplication(ShopTrialApplication application);
+    int auditApplication(@Param("merchantId") Long merchantId, @Param("applicationId") Long applicationId,
+            @Param("decision") String decision, @Param("auditRemark") String auditRemark);
+    int shipApplication(@Param("merchantId") Long merchantId, @Param("applicationId") Long applicationId,
+            @Param("carrier") String carrier, @Param("trackingNo") String trackingNo);
+    int confirmReceived(@Param("shopUserId") Long shopUserId, @Param("applicationId") Long applicationId);
+    int completeApplication(@Param("shopUserId") Long shopUserId, @Param("applicationId") Long applicationId);
+
+    int countReportByApplication(Long trialApplicationId);
+    int insertReport(ShopVerificationReport report);
+    int insertReportResource(ShopVerificationReportResource resource);
+    List<ShopVerificationReportResource> selectReportResources(Long reportId);
+    ShopVerificationReport selectReportById(Long reportId);
+    List<ShopVerificationReport> selectUserReports(Long shopUserId);
+    List<ShopVerificationReport> selectMerchantReports(Long merchantId);
+    List<ShopHomeFeedItem> selectHomeFeed(@Param("categoryCode") String categoryCode,
+            @Param("contentType") String contentType);
+}

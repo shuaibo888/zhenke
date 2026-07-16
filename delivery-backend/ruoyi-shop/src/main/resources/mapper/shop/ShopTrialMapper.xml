@@ -1,0 +1,382 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.shop.mapper.ShopTrialMapper">
+    <resultMap id="ShopTrialCampaignResult" type="ShopTrialCampaign">
+        <id property="campaignId" column="campaign_id" />
+        <result property="merchantId" column="merchant_id" />
+        <result property="productId" column="product_id" />
+        <result property="productName" column="product_name" />
+        <result property="productCoverUrl" column="product_cover_url" />
+        <result property="categoryCode" column="category_code" />
+        <result property="categoryName" column="category_name" />
+        <result property="campaignTitle" column="campaign_title" />
+        <result property="campaignSummary" column="campaign_summary" />
+        <result property="targetCount" column="target_count" />
+        <result property="applicantCount" column="applicant_count" />
+        <result property="approvedCount" column="approved_count" />
+        <result property="applicationDeadline" column="application_deadline" />
+        <result property="status" column="campaign_status" />
+        <result property="publishedAt" column="published_at" />
+        <result property="createTime" column="campaign_create_time" />
+        <result property="updateTime" column="campaign_update_time" />
+    </resultMap>
+
+    <resultMap id="ShopTrialApplicationResult" type="ShopTrialApplication">
+        <id property="applicationId" column="application_id" />
+        <result property="campaignId" column="campaign_id" />
+        <result property="merchantId" column="merchant_id" />
+        <result property="productId" column="product_id" />
+        <result property="productName" column="product_name" />
+        <result property="campaignTitle" column="campaign_title" />
+        <result property="shopUserId" column="shop_user_id" />
+        <result property="userName" column="user_name" />
+        <result property="nickName" column="nick_name" />
+        <result property="applyReason" column="apply_reason" />
+        <result property="recipientName" column="recipient_name" />
+        <result property="recipientPhone" column="recipient_phone" />
+        <result property="shippingAddress" column="shipping_address" />
+        <result property="status" column="application_status" />
+        <result property="auditRemark" column="audit_remark" />
+        <result property="carrier" column="carrier" />
+        <result property="trackingNo" column="tracking_no" />
+        <result property="auditTime" column="audit_time" />
+        <result property="shippedAt" column="shipped_at" />
+        <result property="receivedAt" column="received_at" />
+        <result property="completedAt" column="completed_at" />
+        <result property="createTime" column="application_create_time" />
+        <result property="applicationDeadline" column="application_deadline" />
+    </resultMap>
+
+    <resultMap id="ShopReportResourceResult" type="ShopVerificationReportResource">
+        <id property="resourceId" column="resource_id" />
+        <result property="reportId" column="report_id" />
+        <result property="resourceType" column="resource_type" />
+        <result property="resourceUrl" column="resource_url" />
+        <result property="resourceSort" column="resource_sort" />
+    </resultMap>
+
+    <resultMap id="ShopVerificationReportResult" type="ShopVerificationReport">
+        <id property="reportId" column="report_id" />
+        <result property="productId" column="product_id" />
+        <result property="productName" column="product_name" />
+        <result property="productCoverUrl" column="product_cover_url" />
+        <result property="merchantId" column="merchant_id" />
+        <result property="merchantName" column="merchant_name" />
+        <result property="categoryCode" column="category_code" />
+        <result property="categoryName" column="category_name" />
+        <result property="trialApplicationId" column="trial_application_id" />
+        <result property="shopUserId" column="shop_user_id" />
+        <result property="userName" column="user_name" />
+        <result property="nickName" column="nick_name" />
+        <result property="experience" column="experience" />
+        <result property="shortcoming" column="shortcoming" />
+        <result property="fitCrowd" column="fit_crowd" />
+        <result property="recommend" column="recommend" />
+        <result property="status" column="report_status" />
+        <result property="publishedAt" column="published_at" />
+    </resultMap>
+
+    <resultMap id="ShopHomeFeedResult" type="ShopHomeFeedItem">
+        <result property="contentType" column="content_type" />
+        <result property="contentId" column="content_id" />
+        <result property="productId" column="product_id" />
+        <result property="merchantId" column="merchant_id" />
+        <result property="merchantName" column="merchant_name" />
+        <result property="categoryCode" column="category_code" />
+        <result property="categoryName" column="category_name" />
+        <result property="title" column="title" />
+        <result property="summary" column="summary" />
+        <result property="coverUrl" column="cover_url" />
+        <result property="publishedAt" column="published_at" />
+        <result property="purchasable" column="purchasable" />
+        <association property="trial" javaType="ShopHomeTrialSummary" notNullColumn="target_count">
+            <result property="targetCount" column="target_count" />
+            <result property="approvedCount" column="approved_count" />
+            <result property="applicationDeadline" column="application_deadline" />
+        </association>
+        <association property="report" javaType="ShopHomeReportSummary" notNullColumn="report_user_id">
+            <result property="shopUserId" column="report_user_id" />
+            <result property="userName" column="report_user_name" />
+            <result property="shortcoming" column="report_shortcoming" />
+            <result property="recommend" column="report_recommend" />
+        </association>
+    </resultMap>
+
+    <sql id="selectCampaign">
+        select c.campaign_id, c.merchant_id, c.product_id, p.product_name,
+               p.cover_url as product_cover_url, pc.category_code, pc.category_name,
+               c.campaign_title, c.campaign_summary, c.target_count,
+               (select count(1) from shop_trial_application a where a.campaign_id = c.campaign_id) as applicant_count,
+               (select count(1) from shop_trial_application a where a.campaign_id = c.campaign_id
+                  and a.status in ('APPROVED', 'SHIPPED', 'RECEIVED', 'COMPLETED')) as approved_count,
+               c.application_deadline, c.status as campaign_status, c.published_at,
+               c.create_time as campaign_create_time, c.update_time as campaign_update_time
+        from shop_trial_campaign c
+        inner join shop_product p on p.product_id = c.product_id and p.del_flag = '0'
+        inner join shop_product_category pc on pc.category_id = p.category_id
+        inner join shop_merchant m on m.merchant_id = c.merchant_id and m.del_flag = '0'
+    </sql>
+
+    <select id="selectMerchantCampaigns" resultMap="ShopTrialCampaignResult">
+        <include refid="selectCampaign" />
+        <where>
+            c.merchant_id = #{merchantId}
+            <if test="query.productId != null">and c.product_id = #{query.productId}</if>
+            <if test="query.status != null and query.status != ''">and c.status = #{query.status}</if>
+        </where>
+        order by c.campaign_id desc
+    </select>
+
+    <select id="selectAdminCampaigns" parameterType="ShopTrialCampaign" resultMap="ShopTrialCampaignResult">
+        <include refid="selectCampaign" />
+        <where>
+            <if test="merchantId != null">c.merchant_id = #{merchantId}</if>
+            <if test="productId != null">and c.product_id = #{productId}</if>
+            <if test="status != null and status != ''">and c.status = #{status}</if>
+        </where>
+        order by c.campaign_id desc
+    </select>
+
+    <select id="selectMerchantCampaign" resultMap="ShopTrialCampaignResult">
+        <include refid="selectCampaign" />
+        where c.merchant_id = #{merchantId} and c.campaign_id = #{campaignId}
+    </select>
+
+    <select id="selectPublicCampaign" parameterType="Long" resultMap="ShopTrialCampaignResult">
+        <include refid="selectCampaign" />
+        where c.campaign_id = #{campaignId} and c.status = 'RECRUITING'
+          and c.application_deadline &gt; sysdate()
+          and m.audit_status = 'APPROVED' and m.status = '0'
+          and p.status = 'ON_SALE' and pc.status = '0'
+    </select>
+
+    <select id="countRecruitingCampaigns" parameterType="Long" resultType="int">
+        select count(1) from shop_trial_campaign
+        where product_id = #{productId} and status = 'RECRUITING' and application_deadline &gt; sysdate()
+    </select>
+
+    <insert id="insertCampaign" parameterType="ShopTrialCampaign" useGeneratedKeys="true" keyProperty="campaignId">
+        insert into shop_trial_campaign
+        (merchant_id, product_id, campaign_title, campaign_summary, target_count,
+         application_deadline, status, create_by, create_time, update_by, update_time)
+        values
+        (#{merchantId}, #{productId}, #{campaignTitle}, #{campaignSummary}, #{targetCount},
+         #{applicationDeadline}, 'DRAFT', #{createBy}, sysdate(), #{updateBy}, sysdate())
+    </insert>
+
+    <update id="updateCampaignStatus">
+        update shop_trial_campaign
+        set status = #{toStatus},
+            published_at = case when #{toStatus} = 'RECRUITING' then sysdate() else published_at end,
+            update_by = #{updateBy}, update_time = sysdate()
+        where campaign_id = #{campaignId} and merchant_id = #{merchantId} and status = #{fromStatus}
+    </update>
+
+    <select id="lockProductForCampaign" resultType="Long">
+        select p.product_id
+        from shop_product p
+        inner join shop_trial_campaign c on c.product_id = p.product_id
+        where c.campaign_id = #{campaignId} and c.merchant_id = #{merchantId}
+        for update
+    </select>
+
+    <sql id="selectApplication">
+        select a.application_id, a.campaign_id, c.merchant_id, c.product_id,
+               p.product_name, c.campaign_title, a.shop_user_id, u.user_name, u.nick_name,
+               a.apply_reason, a.recipient_name, a.recipient_phone, a.shipping_address,
+               a.status as application_status, a.audit_remark, a.carrier, a.tracking_no,
+               a.audit_time, a.shipped_at, a.received_at, a.completed_at,
+               a.create_time as application_create_time, c.application_deadline
+        from shop_trial_application a
+        inner join shop_trial_campaign c on c.campaign_id = a.campaign_id
+        inner join shop_product p on p.product_id = c.product_id
+        inner join shop_user u on u.user_id = a.shop_user_id
+    </sql>
+
+    <select id="selectMerchantApplications" resultMap="ShopTrialApplicationResult">
+        <include refid="selectApplication" />
+        <where>
+            c.merchant_id = #{merchantId}
+            <if test="campaignId != null">and a.campaign_id = #{campaignId}</if>
+            <if test="status != null and status != ''">and a.status = #{status}</if>
+        </where>
+        order by a.application_id desc
+    </select>
+
+    <select id="selectMerchantApplication" resultMap="ShopTrialApplicationResult">
+        <include refid="selectApplication" />
+        where c.merchant_id = #{merchantId} and a.application_id = #{applicationId}
+    </select>
+
+    <select id="selectUserApplications" parameterType="Long" resultMap="ShopTrialApplicationResult">
+        <include refid="selectApplication" />
+        where a.shop_user_id = #{shopUserId}
+        order by a.application_id desc
+    </select>
+
+    <select id="selectUserApplication" resultMap="ShopTrialApplicationResult">
+        <include refid="selectApplication" />
+        where a.shop_user_id = #{shopUserId} and a.application_id = #{applicationId}
+    </select>
+
+    <select id="countUserCampaignApplication" resultType="int">
+        select count(1) from shop_trial_application
+        where campaign_id = #{campaignId} and shop_user_id = #{shopUserId}
+    </select>
+
+    <select id="lockCampaignForApplication" resultType="Long">
+        select c.campaign_id
+        from shop_trial_campaign c
+        inner join shop_trial_application a on a.campaign_id = c.campaign_id
+        where a.application_id = #{applicationId} and c.merchant_id = #{merchantId}
+        for update
+    </select>
+
+    <insert id="insertApplication" parameterType="ShopTrialApplication" useGeneratedKeys="true" keyProperty="applicationId">
+        insert into shop_trial_application
+        (campaign_id, shop_user_id, apply_reason, recipient_name, recipient_phone,
+         shipping_address, status, create_time, update_time)
+        values
+        (#{campaignId}, #{shopUserId}, #{applyReason}, #{recipientName}, #{recipientPhone},
+         #{shippingAddress}, 'APPLIED', sysdate(), sysdate())
+    </insert>
+
+    <update id="auditApplication">
+        update shop_trial_application a
+        inner join shop_trial_campaign c on c.campaign_id = a.campaign_id
+        left join (
+          select campaign_id, count(1) as approved_count
+          from shop_trial_application
+          where status in ('APPROVED', 'SHIPPED', 'RECEIVED', 'COMPLETED')
+          group by campaign_id
+        ) capacity on capacity.campaign_id = a.campaign_id
+        set a.status = #{decision}, a.audit_remark = #{auditRemark},
+            a.audit_time = sysdate(), a.update_time = sysdate()
+        where a.application_id = #{applicationId} and c.merchant_id = #{merchantId}
+          and a.status = 'APPLIED'
+          and (#{decision} = 'REJECTED' or coalesce(capacity.approved_count, 0) &lt; c.target_count)
+    </update>
+
+    <update id="shipApplication">
+        update shop_trial_application a
+        inner join shop_trial_campaign c on c.campaign_id = a.campaign_id
+        set a.status = 'SHIPPED', a.carrier = #{carrier}, a.tracking_no = #{trackingNo},
+            a.shipped_at = sysdate(), a.update_time = sysdate()
+        where a.application_id = #{applicationId} and c.merchant_id = #{merchantId}
+          and a.status = 'APPROVED'
+    </update>
+
+    <update id="confirmReceived">
+        update shop_trial_application
+        set status = 'RECEIVED', received_at = sysdate(), update_time = sysdate()
+        where application_id = #{applicationId} and shop_user_id = #{shopUserId} and status = 'SHIPPED'
+    </update>
+
+    <update id="completeApplication">
+        update shop_trial_application
+        set status = 'COMPLETED', completed_at = sysdate(), update_time = sysdate()
+        where application_id = #{applicationId} and shop_user_id = #{shopUserId} and status = 'RECEIVED'
+    </update>
+
+    <select id="countReportByApplication" parameterType="Long" resultType="int">
+        select count(1) from shop_verification_report where trial_application_id = #{trialApplicationId}
+    </select>
+
+    <insert id="insertReport" parameterType="ShopVerificationReport" useGeneratedKeys="true" keyProperty="reportId">
+        insert into shop_verification_report
+        (product_id, trial_application_id, shop_user_id, experience, shortcoming,
+         fit_crowd, recommend, status, published_at, create_time, update_time)
+        values
+        (#{productId}, #{trialApplicationId}, #{shopUserId}, #{experience}, #{shortcoming},
+         #{fitCrowd}, #{recommend}, 'PUBLISHED', sysdate(), sysdate(), sysdate())
+    </insert>
+
+    <insert id="insertReportResource" parameterType="ShopVerificationReportResource" useGeneratedKeys="true" keyProperty="resourceId">
+        insert into shop_verification_report_resource
+        (report_id, resource_type, resource_url, resource_sort, create_time)
+        values (#{reportId}, #{resourceType}, #{resourceUrl}, #{resourceSort}, sysdate())
+    </insert>
+
+    <select id="selectReportResources" parameterType="Long" resultMap="ShopReportResourceResult">
+        select resource_id, report_id, resource_type, resource_url, resource_sort
+        from shop_verification_report_resource where report_id = #{reportId}
+        order by resource_sort, resource_id
+    </select>
+
+    <sql id="selectReport">
+        select r.report_id, r.product_id, p.product_name, p.cover_url as product_cover_url,
+               p.merchant_id, m.company_name as merchant_name, pc.category_code, pc.category_name,
+               r.trial_application_id, r.shop_user_id, u.user_name, u.nick_name,
+               r.experience, r.shortcoming, r.fit_crowd, r.recommend,
+               r.status as report_status, r.published_at
+        from shop_verification_report r
+        inner join shop_product p on p.product_id = r.product_id
+        inner join shop_merchant m on m.merchant_id = p.merchant_id
+        inner join shop_product_category pc on pc.category_id = p.category_id
+        inner join shop_user u on u.user_id = r.shop_user_id
+    </sql>
+
+    <select id="selectReportById" parameterType="Long" resultMap="ShopVerificationReportResult">
+        <include refid="selectReport" /> where r.report_id = #{reportId}
+    </select>
+
+    <select id="selectUserReports" parameterType="Long" resultMap="ShopVerificationReportResult">
+        <include refid="selectReport" /> where r.shop_user_id = #{shopUserId}
+        order by r.report_id desc
+    </select>
+
+    <select id="selectMerchantReports" parameterType="Long" resultMap="ShopVerificationReportResult">
+        <include refid="selectReport" /> where p.merchant_id = #{merchantId}
+        order by r.report_id desc
+    </select>
+
+    <select id="selectHomeFeed" resultMap="ShopHomeFeedResult">
+        select feed.* from (
+          select 'TRIAL' as content_type, c.campaign_id as content_id,
+                 p.product_id, p.merchant_id, m.company_name as merchant_name,
+                 pc.category_code, pc.category_name, c.campaign_title as title,
+                 c.campaign_summary as summary, p.cover_url,
+                 c.published_at, (p.stock &gt; 0) as purchasable,
+                 c.target_count,
+                 (select count(1) from shop_trial_application a
+                   where a.campaign_id = c.campaign_id
+                     and a.status in ('APPROVED', 'SHIPPED', 'RECEIVED', 'COMPLETED')) as approved_count,
+                 c.application_deadline,
+                 null as report_user_id, null as report_user_name,
+                 null as report_shortcoming, null as report_recommend
+          from shop_trial_campaign c
+          inner join shop_product p on p.product_id = c.product_id and p.del_flag = '0'
+          inner join shop_merchant m on m.merchant_id = p.merchant_id and m.del_flag = '0'
+          inner join shop_product_category pc on pc.category_id = p.category_id
+          where c.status = 'RECRUITING' and c.application_deadline &gt; sysdate()
+            and m.audit_status = 'APPROVED' and m.status = '0'
+            and p.status = 'ON_SALE' and pc.status = '0'
+          union all
+          select 'REPORT' as content_type, r.report_id as content_id,
+                 p.product_id, p.merchant_id, m.company_name as merchant_name,
+                 pc.category_code, pc.category_name, p.product_name as title,
+                 substring(r.experience, 1, 180) as summary,
+                 coalesce((select rr.resource_url from shop_verification_report_resource rr
+                           where rr.report_id = r.report_id order by rr.resource_sort, rr.resource_id limit 1), p.cover_url) as cover_url,
+                 r.published_at, (p.stock &gt; 0) as purchasable,
+                 null as target_count, null as approved_count, null as application_deadline,
+                 r.shop_user_id as report_user_id, coalesce(u.nick_name, u.user_name) as report_user_name,
+                 r.shortcoming as report_shortcoming, r.recommend as report_recommend
+          from shop_verification_report r
+          inner join shop_product p on p.product_id = r.product_id and p.del_flag = '0'
+          inner join shop_merchant m on m.merchant_id = p.merchant_id and m.del_flag = '0'
+          inner join shop_product_category pc on pc.category_id = p.category_id
+          inner join shop_user u on u.user_id = r.shop_user_id and u.del_flag = '0'
+          where r.status = 'PUBLISHED'
+            and m.audit_status = 'APPROVED' and m.status = '0'
+            and p.status = 'ON_SALE' and pc.status = '0'
+        ) feed
+        <where>
+          <if test="categoryCode != null and categoryCode != ''">feed.category_code = #{categoryCode}</if>
+          <if test="contentType != null and contentType != '' and contentType != 'ALL'">
+            and feed.content_type = #{contentType}
+          </if>
+        </where>
+        order by feed.published_at desc, feed.content_id desc
+    </select>
+</mapper>

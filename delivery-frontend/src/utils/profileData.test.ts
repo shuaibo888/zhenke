@@ -36,7 +36,7 @@ test('getLogisticsView maps order states to preparing, transit, delivered, and e
   assert.equal(getLogisticsView({ ...baseOrder, status: 'canceled' }, logistics).kind, 'none');
 });
 
-test('getTrialDeadlineMeta returns remaining days and overdue copy', () => {
+test('getTrialDeadlineMeta describes received, shipped, and overdue trial states', () => {
   const pending: TrialRecord = {
     id: 1,
     productId: 2,
@@ -48,8 +48,9 @@ test('getTrialDeadlineMeta returns remaining days and overdue copy', () => {
 
   assert.deepEqual(getTrialDeadlineMeta(pending, '2026-07-05'), {
     tone: 'processing',
-    label: '剩余 3 天',
+    label: '已确认收货，可自愿发布甄客验',
   });
+  assert.equal(getTrialDeadlineMeta({ ...pending, status: 'shipped' }, '2026-07-05').label, '商家已发货，请收货后确认');
   assert.equal(getTrialDeadlineMeta({ ...pending, status: 'overdue' }, '2026-07-09').tone, 'danger');
 });
 

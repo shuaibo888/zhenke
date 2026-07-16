@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.shop.mapper.ShopMerchantMapper">
+    <resultMap id="ShopMerchantResult" type="ShopMerchant">
+        <id property="merchantId" column="merchant_id" />
+        <result property="applicationNo" column="application_no" />
+        <result property="accountUsername" column="account_username" />
+        <result property="accountPassword" column="account_password" />
+        <result property="queryTokenHash" column="query_token_hash" />
+        <result property="companyName" column="company_name" />
+        <result property="companyAddress" column="company_address" />
+        <result property="contactName" column="contact_name" />
+        <result property="contactPhone" column="contact_phone" />
+        <result property="businessLicense" column="business_license" />
+        <result property="productIntro" column="product_intro" />
+        <result property="originTraceability" column="origin_traceability" />
+        <result property="acceptsVerificationRecruitment" column="accepts_verification_recruitment" />
+        <result property="acceptsPublicWelfare" column="accepts_public_welfare" />
+        <result property="protocolAgreed" column="protocol_agreed" />
+        <result property="auditStatus" column="audit_status" />
+        <result property="auditRemark" column="audit_remark" />
+        <result property="adminUserId" column="admin_user_id" />
+        <result property="adminUsername" column="admin_username" />
+        <result property="status" column="status" />
+        <result property="delFlag" column="del_flag" />
+        <result property="auditBy" column="audit_by" />
+        <result property="auditTime" column="audit_time" />
+        <result property="createBy" column="create_by" />
+        <result property="createTime" column="merchant_create_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="updateTime" column="merchant_update_time" />
+        <result property="remark" column="remark" />
+    </resultMap>
+
+    <resultMap id="ShopMerchantAuditLogResult" type="ShopMerchantAuditLog">
+        <id property="logId" column="log_id" />
+        <result property="merchantId" column="merchant_id" />
+        <result property="action" column="action" />
+        <result property="fromStatus" column="from_status" />
+        <result property="toStatus" column="to_status" />
+        <result property="auditRemark" column="audit_remark" />
+        <result property="operatorType" column="operator_type" />
+        <result property="operatorId" column="operator_id" />
+        <result property="operatorName" column="operator_name" />
+        <result property="createTime" column="create_time" />
+    </resultMap>
+
+    <sql id="selectMerchant">
+        select m.merchant_id, m.application_no, m.account_username, m.account_password, m.query_token_hash,
+               m.company_name, m.company_address, m.contact_name, m.contact_phone,
+               m.business_license, m.product_intro, m.origin_traceability,
+               m.accepts_verification_recruitment, m.accepts_public_welfare, m.protocol_agreed,
+               m.audit_status, m.audit_remark, m.admin_user_id, su.user_name as admin_username,
+               m.status, m.del_flag, m.audit_by, m.audit_time, m.create_by,
+               m.create_time as merchant_create_time, m.update_by,
+               m.update_time as merchant_update_time, m.remark
+        from shop_merchant m
+        left join sys_user su on su.user_id = m.admin_user_id and su.del_flag = '0'
+    </sql>
+
+    <select id="selectById" parameterType="Long" resultMap="ShopMerchantResult">
+        <include refid="selectMerchant" />
+        where m.merchant_id = #{merchantId} and m.del_flag = '0'
+    </select>
+
+    <select id="selectByApplicationNo" parameterType="String" resultMap="ShopMerchantResult">
+        <include refid="selectMerchant" />
+        where m.application_no = #{applicationNo} and m.del_flag = '0' limit 1
+    </select>
+
+    <select id="selectByAccountUsername" parameterType="String" resultMap="ShopMerchantResult">
+        <include refid="selectMerchant" />
+        where m.account_username = #{accountUsername} and m.del_flag = '0' limit 1
+    </select>
+
+    <select id="selectByAdminUserId" parameterType="Long" resultMap="ShopMerchantResult">
+        <include refid="selectMerchant" />
+        where m.admin_user_id = #{adminUserId} and m.del_flag = '0' limit 1
+    </select>
+
+    <select id="selectAdminList" parameterType="ShopMerchant" resultMap="ShopMerchantResult">
+        <include refid="selectMerchant" />
+        <where>
+            m.del_flag = '0'
+            <if test="companyName != null and companyName != ''">
+                and (m.company_name like concat('%', #{companyName}, '%')
+                     or m.contact_name like concat('%', #{companyName}, '%')
+                     or m.contact_phone like concat('%', #{companyName}, '%')
+                     or m.account_username like concat('%', #{companyName}, '%'))
+            </if>
+            <if test="auditStatus != null and auditStatus != ''">and m.audit_status = #{auditStatus}</if>
+            <if test="status != null and status != ''">and m.status = #{status}</if>
+        </where>
+        order by case when m.audit_status = 'PENDING' then 0 else 1 end, m.merchant_id desc
+    </select>
+
+    <select id="selectAuditLogs" parameterType="Long" resultMap="ShopMerchantAuditLogResult">
+        select log_id, merchant_id, action, from_status, to_status, audit_remark,
+               operator_type, operator_id, operator_name, create_time
+        from shop_merchant_audit_log
+        where merchant_id = #{merchantId}
+        order by log_id desc
+    </select>
+
+    <select id="selectRoleIdByKey" parameterType="String" resultType="Long">
+        select role_id from sys_role where role_key = #{roleKey} and status = '0' and del_flag = '0' limit 1
+    </select>
+
+    <insert id="insert" parameterType="ShopMerchant" useGeneratedKeys="true" keyProperty="merchantId">
+        insert into shop_merchant
+        (application_no, account_username, account_password, query_token_hash,
+         company_name, company_address, contact_name, contact_phone,
+         business_license, product_intro, origin_traceability, accepts_verification_recruitment,
+         accepts_public_welfare, protocol_agreed, audit_status, status, del_flag,
+         create_by, create_time, update_by, update_time)
+        values
+        (#{applicationNo}, #{accountUsername}, #{accountPassword}, #{queryTokenHash},
+         #{companyName}, #{companyAddress}, #{contactName}, #{contactPhone},
+         #{businessLicense}, #{productIntro}, #{originTraceability}, #{acceptsVerificationRecruitment},
+         #{acceptsPublicWelfare}, #{protocolAgreed}, #{auditStatus}, #{status}, #{delFlag},
+         #{createBy}, sysdate(), #{updateBy}, sysdate())
+    </insert>
+
+    <update id="resubmit" parameterType="ShopMerchant">
+        update shop_merchant
+        set account_username = #{accountUsername}, account_password = #{accountPassword},
+            company_name = #{companyName}, company_address = #{companyAddress},
+            contact_name = #{contactName}, contact_phone = #{contactPhone},
+            business_license = #{businessLicense}, product_intro = #{productIntro},
+            origin_traceability = #{originTraceability},
+            accepts_verification_recruitment = #{acceptsVerificationRecruitment},
+            accepts_public_welfare = #{acceptsPublicWelfare}, protocol_agreed = #{protocolAgreed},
+            audit_status = 'PENDING', audit_remark = null, audit_by = null, audit_time = null,
+            update_by = #{updateBy}, update_time = sysdate()
+        where merchant_id = #{merchantId} and audit_status = 'REJECTED' and del_flag = '0'
+    </update>
+
+    <update id="updateAudit">
+        update shop_merchant
+        set audit_status = #{auditStatus}, audit_remark = #{auditRemark},
+            admin_user_id = #{adminUserId},
+            account_password = case when #{auditStatus} = 'APPROVED' then null else account_password end,
+            audit_by = #{auditBy}, audit_time = sysdate(),
+            update_by = #{auditBy}, update_time = sysdate()
+        where merchant_id = #{merchantId} and audit_status = 'PENDING' and del_flag = '0'
+    </update>
+
+    <update id="updateStatus">
+        update shop_merchant
+        set status = #{status}, update_by = #{updateBy}, update_time = sysdate()
+        where merchant_id = #{merchantId} and audit_status = 'APPROVED' and del_flag = '0'
+    </update>
+
+    <insert id="insertAuditLog" parameterType="ShopMerchantAuditLog" useGeneratedKeys="true" keyProperty="logId">
+        insert into shop_merchant_audit_log
+        (merchant_id, action, from_status, to_status, audit_remark,
+         operator_type, operator_id, operator_name, create_time)
+        values
+        (#{merchantId}, #{action}, #{fromStatus}, #{toStatus}, #{auditRemark},
+         #{operatorType}, #{operatorId}, #{operatorName}, sysdate())
+    </insert>
+</mapper>

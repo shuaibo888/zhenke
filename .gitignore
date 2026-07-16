@@ -1,6 +1,10 @@
 # Deployment-only files
 /zhenke/
+/.deploy/
 **/*.docx
+
+# Local database snapshots with account or business data
+/delivery-backend/sql/delivery_platform.sql
 
 # IDE metadata
 /.idea/

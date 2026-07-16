@@ -1,6 +1,8 @@
+import type { Merchant } from '@/types';
 import type { AuthUser } from '@/utils/authRules';
 
 const tokenStorageKey = 'zhenke_access_token';
+const merchantApplicationStorageKey = 'zhenke_merchant_application';
 
 interface ApiResponse<T = unknown> {
   code: number;
@@ -62,6 +64,9 @@ export async function registerShopUser(username: string, password: string) {
 
 export async function fetchShopCaptcha(): Promise<CaptchaState> {
   const result = await requestApi<CaptchaResponse>('/captchaImage');
+  if (result.captchaEnabled && (!result.img || !result.uuid)) {
+    throw new Error('验证码加载不完整，请重新获取');
+  }
   return {
     enabled: result.captchaEnabled,
     image: result.img ? `data:image/gif;base64,${result.img}` : '',
@@ -113,4 +118,63 @@ export async function changeShopPassword(oldPassword: string, newPassword: strin
     { method: 'PUT', body: JSON.stringify({ oldPassword, newPassword }) },
     true,
   );
+}
+
+export interface MerchantApplicationBody {
+  accountUsername: string;
+  password: string;
+  code?: string;
+  uuid?: string;
+  companyName: string;
+  companyAddress: string;
+  contactName: string;
+  contactPhone: string;
+  businessLicense: string;
+  productIntro: string;
+  originTraceability: string;
+  acceptsVerificationRecruitment: boolean;
+  acceptsPublicWelfare: boolean;
+  agreeProtocol: boolean;
+}
+
+export async function fetchMyMerchantApplication() {
+  if (typeof window === 'undefined') return null;
+  const saved = window.localStorage.getItem(merchantApplicationStorageKey);
+  if (!saved) return null;
+  let credentials: { applicationNo: string; queryToken: string };
+  try {
+    credentials = JSON.parse(saved);
+  } catch {
+    window.localStorage.removeItem(merchantApplicationStorageKey);
+    return null;
+  }
+  const result = await requestApi<ApiResponse<Merchant>>(
+    '/shop/merchants/status',
+    { method: 'POST', body: JSON.stringify(credentials) },
+  );
+  return result.data ?? null;
+}
+
+export async function submitMerchantApplication(body: MerchantApplicationBody) {
+  const { agreeProtocol, ...application } = body;
+  let previous: { applicationNo: string; queryToken: string } | undefined;
+  if (typeof window !== 'undefined') {
+    try {
+      previous = JSON.parse(window.localStorage.getItem(merchantApplicationStorageKey) || 'null') || undefined;
+    } catch {
+      previous = undefined;
+    }
+  }
+  const result = await requestApi<ApiResponse<{ merchant: Merchant; queryToken: string }>>(
+    '/shop/merchants/apply',
+    { method: 'POST', body: JSON.stringify({ ...application, ...previous, protocolAgreed: agreeProtocol }) },
+  );
+  if (!result.data?.merchant || !result.data.queryToken) throw new Error('商家入驻申请提交失败');
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(merchantApplicationStorageKey, JSON.stringify({
+      applicationNo: result.data.merchant.applicationNo,
+      queryToken: result.data.queryToken,
+    }));
+  }
+  return result.data.merchant;
 }

@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.shop.mapper.ShopProductMapper">
+    <resultMap id="ShopProductCategoryResult" type="ShopProductCategory">
+        <id property="categoryId" column="category_id" />
+        <result property="categoryCode" column="category_code" />
+        <result property="categoryName" column="category_name" />
+        <result property="categorySort" column="category_sort" />
+        <result property="status" column="category_status" />
+        <result property="createTime" column="category_create_time" />
+        <result property="updateTime" column="category_update_time" />
+    </resultMap>
+
+    <resultMap id="ShopProductImageResult" type="ShopProductImage">
+        <id property="imageId" column="image_id" />
+        <result property="productId" column="product_id" />
+        <result property="imageUrl" column="image_url" />
+        <result property="imageSort" column="image_sort" />
+    </resultMap>
+
+    <resultMap id="ShopProductResult" type="ShopProduct">
+        <id property="productId" column="product_id" />
+        <result property="merchantId" column="merchant_id" />
+        <result property="merchantName" column="merchant_name" />
+        <result property="categoryId" column="category_id" />
+        <result property="categoryCode" column="category_code" />
+        <result property="categoryName" column="category_name" />
+        <result property="productName" column="product_name" />
+        <result property="subtitle" column="subtitle" />
+        <result property="detail" column="detail" />
+        <result property="coverUrl" column="cover_url" />
+        <result property="price" column="price" />
+        <result property="stock" column="stock" />
+        <result property="salesCount" column="sales_count" />
+        <result property="status" column="product_status" />
+        <result property="delFlag" column="del_flag" />
+        <result property="createTime" column="product_create_time" />
+        <result property="updateTime" column="product_update_time" />
+        <result property="remark" column="remark" />
+    </resultMap>
+
+    <sql id="selectProduct">
+        select p.product_id, p.merchant_id, m.company_name as merchant_name,
+               p.category_id, c.category_code, c.category_name,
+               p.product_name, p.subtitle, p.detail, p.cover_url, p.price,
+               p.stock, p.sales_count, p.status as product_status, p.del_flag,
+               p.create_time as product_create_time, p.update_time as product_update_time, p.remark
+        from shop_product p
+        inner join shop_merchant m on m.merchant_id = p.merchant_id and m.del_flag = '0'
+        inner join shop_product_category c on c.category_id = p.category_id
+    </sql>
+
+    <select id="selectCategories" resultMap="ShopProductCategoryResult">
+        select category_id, category_code, category_name, category_sort,
+               status as category_status, create_time as category_create_time,
+               update_time as category_update_time
+        from shop_product_category
+        <if test="enabledOnly">where status = '0'</if>
+        order by category_sort, category_id
+    </select>
+
+    <select id="selectCategoryById" parameterType="Long" resultMap="ShopProductCategoryResult">
+        select category_id, category_code, category_name, category_sort,
+               status as category_status, create_time as category_create_time,
+               update_time as category_update_time
+        from shop_product_category where category_id = #{categoryId}
+    </select>
+
+    <update id="updateCategory" parameterType="ShopProductCategory">
+        update shop_product_category
+        set category_name = #{categoryName}, category_sort = #{categorySort}, status = #{status},
+            update_by = #{updateBy}, update_time = sysdate()
+        where category_id = #{categoryId}
+          and category_code in ('CATEGORY_1', 'CATEGORY_2', 'CATEGORY_3', 'CATEGORY_4')
+    </update>
+
+    <select id="selectMerchantProducts" resultMap="ShopProductResult">
+        <include refid="selectProduct" />
+        <where>
+            p.merchant_id = #{merchantId} and p.del_flag = '0'
+            <if test="query.productName != null and query.productName != ''">
+                and (p.product_name like concat('%', #{query.productName}, '%')
+                     or p.subtitle like concat('%', #{query.productName}, '%'))
+            </if>
+            <if test="query.categoryId != null">and p.category_id = #{query.categoryId}</if>
+            <if test="query.status != null and query.status != ''">and p.status = #{query.status}</if>
+        </where>
+        order by p.product_id desc
+    </select>
+
+    <select id="selectMerchantProduct" resultMap="ShopProductResult">
+        <include refid="selectProduct" />
+        where p.product_id = #{productId} and p.merchant_id = #{merchantId} and p.del_flag = '0'
+    </select>
+
+    <select id="selectAdminProducts" parameterType="ShopProduct" resultMap="ShopProductResult">
+        <include refid="selectProduct" />
+        <where>
+            p.del_flag = '0'
+            <if test="merchantId != null">and p.merchant_id = #{merchantId}</if>
+            <if test="productName != null and productName != ''">
+                and (p.product_name like concat('%', #{productName}, '%')
+                     or p.subtitle like concat('%', #{productName}, '%')
+                     or m.company_name like concat('%', #{productName}, '%'))
+            </if>
+            <if test="categoryId != null">and p.category_id = #{categoryId}</if>
+            <if test="status != null and status != ''">and p.status = #{status}</if>
+        </where>
+        order by p.product_id desc
+    </select>
+
+    <select id="selectAdminProduct" parameterType="Long" resultMap="ShopProductResult">
+        <include refid="selectProduct" />
+        where p.product_id = #{productId} and p.del_flag = '0'
+    </select>
+
+    <select id="selectPublicProduct" parameterType="Long" resultMap="ShopProductResult">
+        <include refid="selectProduct" />
+        where p.product_id = #{productId} and p.status = 'ON_SALE' and p.del_flag = '0'
+          and m.audit_status = 'APPROVED' and m.status = '0' and c.status = '0'
+    </select>
+
+    <select id="selectImages" parameterType="Long" resultMap="ShopProductImageResult">
+        select image_id, product_id, image_url, image_sort
+        from shop_product_image where product_id = #{productId}
+        order by image_sort, image_id
+    </select>
+
+    <insert id="insertProduct" parameterType="ShopProduct" useGeneratedKeys="true" keyProperty="productId">
+        insert into shop_product
+        (merchant_id, category_id, product_name, subtitle, detail, cover_url,
+         price, stock, sales_count, status, del_flag, create_by, create_time, update_by, update_time)
+        values
+        (#{merchantId}, #{categoryId}, #{productName}, #{subtitle}, #{detail}, #{coverUrl},
+         #{price}, #{stock}, 0, 'DRAFT', '0', #{createBy}, sysdate(), #{updateBy}, sysdate())
+    </insert>
+
+    <update id="updateMerchantProduct" parameterType="ShopProduct">
+        update shop_product
+        set category_id = #{categoryId}, product_name = #{productName}, subtitle = #{subtitle},
+            detail = #{detail}, cover_url = #{coverUrl}, price = #{price}, stock = #{stock},
+            update_by = #{updateBy}, update_time = sysdate()
+        where product_id = #{productId} and merchant_id = #{merchantId} and del_flag = '0'
+    </update>
+
+    <update id="updateMerchantProductStatus">
+        update shop_product
+        set status = #{status}, update_by = #{updateBy}, update_time = sysdate()
+        where product_id = #{productId} and merchant_id = #{merchantId} and del_flag = '0'
+    </update>
+
+    <delete id="deleteImages" parameterType="Long">
+        delete from shop_product_image where product_id = #{productId}
+    </delete>
+
+    <insert id="insertImage" parameterType="ShopProductImage" useGeneratedKeys="true" keyProperty="imageId">
+        insert into shop_product_image (product_id, image_url, image_sort, create_time)
+        values (#{productId}, #{imageUrl}, #{imageSort}, sysdate())
+    </insert>
+</mapper>
