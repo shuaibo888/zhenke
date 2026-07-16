@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.shop.mapper.ShopUserAddressMapper">
+    <resultMap id="ShopUserAddressResult" type="ShopUserAddress">
+        <id property="addressId" column="address_id" />
+        <result property="userId" column="user_id" />
+        <result property="recipient" column="recipient" />
+        <result property="phone" column="phone" />
+        <result property="provinceCode" column="province_code" />
+        <result property="cityCode" column="city_code" />
+        <result property="districtCode" column="district_code" />
+        <result property="detail" column="detail_address" />
+        <result property="isDefault" column="is_default" />
+        <result property="delFlag" column="del_flag" />
+        <result property="createTime" column="create_time" />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="selectAddressColumns">
+        select address_id, user_id, recipient, phone, province_code, city_code,
+               district_code, detail_address, is_default, del_flag, create_time, update_time
+        from shop_user_address
+    </sql>
+
+    <select id="lockEnabledUser" parameterType="Long" resultType="Long">
+        select user_id from shop_user
+        where user_id = #{userId} and status = '0' and del_flag = '0'
+        for update
+    </select>
+
+    <select id="selectUserAddresses" parameterType="Long" resultMap="ShopUserAddressResult">
+        <include refid="selectAddressColumns" />
+        where user_id = #{userId} and del_flag = '0'
+        order by is_default desc, address_id desc
+    </select>
+
+    <select id="selectUserAddress" resultMap="ShopUserAddressResult">
+        <include refid="selectAddressColumns" />
+        where user_id = #{userId} and address_id = #{addressId} and del_flag = '0'
+        limit 1
+    </select>
+
+    <select id="countUserAddresses" parameterType="Long" resultType="int">
+        select count(1) from shop_user_address where user_id = #{userId} and del_flag = '0'
+    </select>
+
+    <insert id="insert" parameterType="ShopUserAddress" useGeneratedKeys="true" keyProperty="addressId">
+        insert into shop_user_address
+        (user_id, recipient, phone, province_code, city_code, district_code,
+         detail_address, is_default, del_flag, create_time, update_time)
+        values
+        (#{userId}, #{recipient}, #{phone}, #{provinceCode}, #{cityCode}, #{districtCode},
+         #{detail}, #{isDefault}, '0', sysdate(), sysdate())
+    </insert>
+
+    <update id="update" parameterType="ShopUserAddress">
+        update shop_user_address
+        set recipient = #{recipient}, phone = #{phone}, province_code = #{provinceCode},
+            city_code = #{cityCode}, district_code = #{districtCode}, detail_address = #{detail},
+            update_time = sysdate()
+        where user_id = #{userId} and address_id = #{addressId} and del_flag = '0'
+    </update>
+
+    <update id="clearDefault" parameterType="Long">
+        update shop_user_address
+        set is_default = 0, update_time = sysdate()
+        where user_id = #{userId} and is_default = 1 and del_flag = '0'
+    </update>
+
+    <update id="setDefault">
+        update shop_user_address
+        set is_default = 1, update_time = sysdate()
+        where user_id = #{userId} and address_id = #{addressId} and del_flag = '0'
+    </update>
+
+    <update id="softDelete">
+        update shop_user_address
+        set is_default = 0, del_flag = '2', update_time = sysdate()
+        where user_id = #{userId} and address_id = #{addressId} and del_flag = '0'
+    </update>
+
+    <select id="selectFirstAddressId" parameterType="Long" resultType="Long">
+        select address_id from shop_user_address
+        where user_id = #{userId} and del_flag = '0'
+        order by address_id desc
+        limit 1
+    </select>
+</mapper>

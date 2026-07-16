@@ -150,7 +150,12 @@ test('masthead exposes a shipping address action beside account info', () => {
 
 test('shipping addresses support multiple entries and a default radio action', () => {
   assert.match(pageSource, /type ShippingAddress/);
-  assert.match(pageSource, /seedShippingAddresses/);
+  assert.match(pageSource, /fetchShopShippingAddresses/);
+  assert.match(pageSource, /createShopShippingAddress/);
+  assert.match(pageSource, /updateShopShippingAddress/);
+  assert.match(pageSource, /deleteShopShippingAddress/);
+  assert.match(pageSource, /setDefaultShopShippingAddress/);
+  assert.doesNotMatch(pageSource, /seedShippingAddresses/);
   assert.match(pageSource, /shippingAddresses/);
   assert.match(pageSource, /defaultShippingAddress/);
   assert.match(pageSource, /Radio/);

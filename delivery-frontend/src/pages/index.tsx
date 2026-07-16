@@ -37,15 +37,21 @@ import type { EarningRecord, Merchant, Order, Product, ReportAttribution, TrialR
 import type { AuthUser } from '@/utils/authRules';
 import {
   changeShopPassword,
+  createShopShippingAddress,
+  deleteShopShippingAddress,
   fetchMyMerchantApplication,
   fetchShopCaptcha,
+  fetchShopShippingAddresses,
   loginShopUser,
   logoutShopUser,
   registerShopUser,
   restoreShopSession,
+  setDefaultShopShippingAddress,
   submitMerchantApplication,
   updateShopProfile,
+  updateShopShippingAddress,
   type CaptchaState,
+  type ShopShippingAddress,
 } from '@/services/shopAuth';
 import {
   applyForTrial,
@@ -145,31 +151,13 @@ type MerchantFormValues = {
 };
 type AddressFormValues = { recipient: string; phone: string; region: string[]; detail: string };
 type TrialApplyFormValues = { applyReason: string };
-type ShippingAddress = AddressFormValues & { id: number; isDefault: boolean };
+type ShippingAddress = ShopShippingAddress;
 type RegionNode = { code: string; name: string; children?: RegionNode[] };
 type RegionOption = { value: string; label: string; children?: RegionOption[] };
 
 const orderConfirmModalZIndex = 1000;
 const addressModalOverOrderZIndex = 1300;
 const emptyAddressFormValues: AddressFormValues = { recipient: '', phone: '', region: [], detail: '' };
-const seedShippingAddresses: ShippingAddress[] = [
-  {
-    id: 1,
-    recipient: '小白',
-    phone: '13800000000',
-    region: ['61', '6101', '610113'],
-    detail: '验证路 18 号',
-    isDefault: true,
-  },
-  {
-    id: 2,
-    recipient: '小白妈妈',
-    phone: '13900000000',
-    region: ['61', '6101', '610112'],
-    detail: '未央路 66 号',
-    isDefault: false,
-  },
-];
 
 const regionOptions: RegionOption[] = (pcaCode as RegionNode[]).map((province) => ({
   value: province.code,
@@ -333,8 +321,11 @@ export default function HomePage() {
   const [addressOpen, setAddressOpen] = useState(false);
   const [addressEditorOpen, setAddressEditorOpen] = useState(false);
   const [addressPickerOpen, setAddressPickerOpen] = useState(false);
-  const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>(seedShippingAddresses);
-  const [editingAddressId, setEditingAddressId] = useState<number | null>(seedShippingAddresses[0]?.id ?? null);
+  const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>([]);
+  const [addressesLoading, setAddressesLoading] = useState(false);
+  const [addressSubmitting, setAddressSubmitting] = useState(false);
+  const [addressMutatingId, setAddressMutatingId] = useState<number | null>(null);
+  const [editingAddressId, setEditingAddressId] = useState<number | null>(null);
   const [pendingBuyProduct, setPendingBuyProduct] = useState<Product | null>(null);
   const [pendingBuyAttribution, setPendingBuyAttribution] = useState<ReportAttribution | undefined>(undefined);
   const [payOrder, setPayOrder] = useState<Order | null>(null);
@@ -464,6 +455,32 @@ export default function HomePage() {
     fetchMyTrialApplications()
       .then((items) => setTrials(items.map(mapTrialApplication)))
       .catch((error) => message.error(error instanceof Error ? error.message : '我的试用加载失败'));
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!currentUser) {
+      setShippingAddresses([]);
+      setAddressesLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    setAddressesLoading(true);
+    fetchShopShippingAddresses()
+      .then((items) => {
+        if (mounted) setShippingAddresses(items);
+      })
+      .catch((error) => {
+        if (mounted) message.error(error instanceof Error ? error.message : '收货地址加载失败');
+      })
+      .finally(() => {
+        if (mounted) setAddressesLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
   }, [currentUser?.id]);
 
   useEffect(() => {
@@ -862,33 +879,26 @@ export default function HomePage() {
 
   const openAddressDialog = () => {
     if (!activeUser) return;
-
-    setEditingAddressId(defaultShippingAddress?.id ?? null);
-    addressForm.setFieldsValue(defaultShippingAddress ?? emptyAddressFormValues);
     setAddressOpen(true);
   };
 
-  const handleAddressSubmit = (values: AddressFormValues) => {
-    const nextAddressId = editingAddressId ?? Date.now();
+  const handleAddressSubmit = async (values: AddressFormValues) => {
+    if (!activeUser) return;
     const editingLabel = editingAddressId ? '收货地址已更新' : '收货地址已新增';
-
-    setShippingAddresses((items) => {
-      const existingAddress = items.find((address) => address.id === nextAddressId);
-      const shouldBecomeDefault = items.length === 0 || existingAddress?.isDefault || !items.some((address) => address.isDefault);
-      const nextItems = existingAddress
-        ? items.map((address) =>
-            address.id === nextAddressId ? { ...values, id: nextAddressId, isDefault: shouldBecomeDefault } : address,
-          )
-        : [...items, { ...values, id: nextAddressId, isDefault: shouldBecomeDefault }];
-
-      if (nextItems.some((address) => address.isDefault)) return nextItems;
-      return nextItems.map((address, index) => ({ ...address, isDefault: index === 0 }));
-    });
-
-    setEditingAddressId(null);
-    addressForm.setFieldsValue(emptyAddressFormValues);
-    setAddressEditorOpen(false);
-    message.success(editingLabel);
+    setAddressSubmitting(true);
+    try {
+      if (editingAddressId) await updateShopShippingAddress(editingAddressId, values);
+      else await createShopShippingAddress(values);
+      setShippingAddresses(await fetchShopShippingAddresses());
+      setEditingAddressId(null);
+      addressForm.setFieldsValue(emptyAddressFormValues);
+      setAddressEditorOpen(false);
+      message.success(editingLabel);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '收货地址保存失败');
+    } finally {
+      setAddressSubmitting(false);
+    }
   };
 
   const handleStartNewAddress = () => {
@@ -903,13 +913,50 @@ export default function HomePage() {
     setAddressEditorOpen(true);
   };
 
-  const handleSetDefaultAddress = (addressId: number) => {
-    setShippingAddresses((items) => items.map((address) => ({ ...address, isDefault: address.id === addressId })));
+  const handleSetDefaultAddress = async (addressId: number) => {
+    if (shippingAddresses.some((address) => address.id === addressId && address.isDefault)) return true;
+    setAddressMutatingId(addressId);
+    try {
+      const defaultAddress = await setDefaultShopShippingAddress(addressId);
+      setShippingAddresses((items) => items.map((address) => ({
+        ...address,
+        isDefault: address.id === defaultAddress.id,
+      })));
+      message.success('默认地址已更新');
+      return true;
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '默认地址设置失败');
+      return false;
+    } finally {
+      setAddressMutatingId(null);
+    }
   };
 
-  const handleSelectAddress = (addressId: number) => {
-    handleSetDefaultAddress(addressId);
-    setAddressPickerOpen(false);
+  const handleSelectAddress = async (addressId: number) => {
+    if (await handleSetDefaultAddress(addressId)) setAddressPickerOpen(false);
+  };
+
+  const handleDeleteAddress = (address: ShippingAddress) => {
+    Modal.confirm({
+      title: '删除收货地址？',
+      content: `确认删除 ${address.recipient} 的收货地址吗？`,
+      okText: '删除',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      onOk: async () => {
+        setAddressMutatingId(address.id);
+        try {
+          await deleteShopShippingAddress(address.id);
+          setShippingAddresses(await fetchShopShippingAddresses());
+          message.success('收货地址已删除');
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : '收货地址删除失败');
+          throw error;
+        } finally {
+          setAddressMutatingId(null);
+        }
+      },
+    });
   };
 
   const handleNameSubmit = async (values: { name: string }) => {
@@ -2631,6 +2678,7 @@ export default function HomePage() {
         width={520}
         zIndex={pendingBuyProduct ? addressModalOverOrderZIndex + 100 : undefined}
       >
+        <Spin spinning={addressesLoading}>
         <div className={styles.addressPickerList}>
           {shippingAddresses.length === 0 ? (
             <p className={styles.empty}>暂无保存的地址</p>
@@ -2639,7 +2687,7 @@ export default function HomePage() {
               <div
                 key={address.id}
                 className={`${styles.addressPickerItem} ${address.isDefault ? styles.selectedAddress : ''}`}
-                onClick={() => handleSelectAddress(address.id)}
+                onClick={() => void handleSelectAddress(address.id)}
               >
                 <div className={styles.addressPickerContent}>
                   <div className={styles.addressPickerTop}>
@@ -2654,6 +2702,7 @@ export default function HomePage() {
             ))
           )}
         </div>
+        </Spin>
       </Modal>
       <Modal
         title="我的地址"
@@ -2665,17 +2714,22 @@ export default function HomePage() {
       >
         <div className={styles.addressManager}>
           <div className={styles.addressManagerHeader}>
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleStartNewAddress}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleStartNewAddress} disabled={addressesLoading}>
               新增地址
             </Button>
           </div>
+          <Spin spinning={addressesLoading}>
           <div className={styles.addressList}>
             {shippingAddresses.length === 0 ? (
               <p className={styles.empty}>暂无保存的地址</p>
             ) : (
               shippingAddresses.map((address) => (
                 <div className={styles.addressItem} key={address.id}>
-                  <Radio checked={address.isDefault} onChange={() => handleSetDefaultAddress(address.id)}>
+                  <Radio
+                    checked={address.isDefault}
+                    disabled={addressMutatingId !== null}
+                    onChange={() => void handleSetDefaultAddress(address.id)}
+                  >
                     设为默认
                   </Radio>
                   <div className={styles.addressContent}>
@@ -2686,13 +2740,24 @@ export default function HomePage() {
                     </span>
                     <p>{formatShippingAddress(address)}</p>
                   </div>
-                  <Button size="small" onClick={() => handleEditAddress(address)}>
+                  <Button size="small" disabled={addressMutatingId !== null} onClick={() => handleEditAddress(address)}>
                     编辑
+                  </Button>
+                  <Button
+                    size="small"
+                    danger
+                    icon={<DeleteOutlined />}
+                    loading={addressMutatingId === address.id}
+                    disabled={addressMutatingId !== null && addressMutatingId !== address.id}
+                    onClick={() => handleDeleteAddress(address)}
+                  >
+                    删除
                   </Button>
                 </div>
               ))
             )}
           </div>
+          </Spin>
         </div>
       </Modal>
       <Modal
@@ -2732,7 +2797,7 @@ export default function HomePage() {
           <Form.Item name="detail" label="详细地址" rules={[{ required: true, message: '请输入详细地址' }]}>
             <Input.TextArea rows={3} placeholder="街道、门牌号" />
           </Form.Item>
-          <Button block type="primary" htmlType="submit" size="large">
+          <Button block type="primary" htmlType="submit" size="large" loading={addressSubmitting}>
             {editingAddressId ? '保存地址' : '添加地址'}
           </Button>
         </Form>

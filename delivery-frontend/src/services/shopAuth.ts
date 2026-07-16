@@ -120,6 +120,66 @@ export async function changeShopPassword(oldPassword: string, newPassword: strin
   );
 }
 
+export interface ShopShippingAddress {
+  id: number;
+  recipient: string;
+  phone: string;
+  region: string[];
+  detail: string;
+  isDefault: boolean;
+}
+
+export interface ShopShippingAddressBody {
+  recipient: string;
+  phone: string;
+  region: string[];
+  detail: string;
+  isDefault?: boolean;
+}
+
+export async function fetchShopShippingAddresses() {
+  const result = await requestApi<ApiResponse<ShopShippingAddress[]>>('/shop/users/me/addresses', {}, true);
+  return Array.isArray(result.data) ? result.data : [];
+}
+
+export async function createShopShippingAddress(body: ShopShippingAddressBody) {
+  const result = await requestApi<ApiResponse<ShopShippingAddress>>(
+    '/shop/users/me/addresses',
+    { method: 'POST', body: JSON.stringify(body) },
+    true,
+  );
+  if (!result.data) throw new Error('收货地址新增失败');
+  return result.data;
+}
+
+export async function updateShopShippingAddress(addressId: number, body: ShopShippingAddressBody) {
+  const result = await requestApi<ApiResponse<ShopShippingAddress>>(
+    `/shop/users/me/addresses/${addressId}`,
+    { method: 'PUT', body: JSON.stringify(body) },
+    true,
+  );
+  if (!result.data) throw new Error('收货地址更新失败');
+  return result.data;
+}
+
+export async function setDefaultShopShippingAddress(addressId: number) {
+  const result = await requestApi<ApiResponse<ShopShippingAddress>>(
+    `/shop/users/me/addresses/${addressId}/default`,
+    { method: 'PUT' },
+    true,
+  );
+  if (!result.data) throw new Error('默认地址设置失败');
+  return result.data;
+}
+
+export async function deleteShopShippingAddress(addressId: number) {
+  return requestApi<ApiResponse>(
+    `/shop/users/me/addresses/${addressId}`,
+    { method: 'DELETE' },
+    true,
+  );
+}
+
 export interface MerchantApplicationBody {
   accountUsername: string;
   password: string;
