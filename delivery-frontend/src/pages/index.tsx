@@ -1410,7 +1410,7 @@ export default function HomePage() {
             <Form.Item name="code" label="验证码" rules={[{ required: true, message: '请输入验证码结果' }]}>
               <div className={styles.captchaRow}>
                 <Input size="large" autoComplete="off" />
-                <button type="button" className={styles.captchaButton} onClick={loadCaptcha} title="刷新验证码">
+                <button type="button" className={styles.captchaButton} onClick={() => void loadCaptcha()} title="刷新验证码">
                   <img src={captcha.image} alt="验证码" />
                 </button>
               </div>
@@ -1559,7 +1559,7 @@ export default function HomePage() {
           <Form.Item name="code" label="验证码" rules={[{ required: true, message: '请输入验证码' }]}>
             <div className={styles.captchaRow}>
               <Input placeholder="请输入验证码" />
-              <button type="button" className={styles.captchaButton} onClick={loadCaptcha} title="刷新验证码">
+              <button type="button" className={styles.captchaButton} onClick={() => void loadCaptcha()} title="刷新验证码">
                 <img src={captcha.image} alt="验证码" />
               </button>
             </div>

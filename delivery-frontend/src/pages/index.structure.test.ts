@@ -35,6 +35,8 @@ test('login waits for a confirmed captcha state and exposes retry on load failur
   assert.match(pageSource, /重新获取/);
   assert.match(pageSource, /验证码尚未准备好，请重新获取后再提交/);
   assert.doesNotMatch(pageSource, /\.catch\(\(\) => undefined\)/);
+  assert.doesNotMatch(pageSource, /onClick=\{loadCaptcha\}/);
+  assert.match(pageSource, /onClick=\{\(\) => void loadCaptcha\(\)\}/);
 });
 
 test('merchant commitment switches are direct Form.Item controls', () => {
