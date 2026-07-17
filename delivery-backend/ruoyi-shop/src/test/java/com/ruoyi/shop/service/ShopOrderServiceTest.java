@@ -186,6 +186,7 @@ class ShopOrderServiceTest
         when(orderMapper.selectUserOrderForUpdate(USER_ID, 21L)).thenReturn(order(21L, ShopOrderService.SHIPPED));
         when(orderMapper.updateStatus(USER_ID, 21L, ShopOrderService.SHIPPED, ShopOrderService.RECEIVED)).thenReturn(1);
         when(orderMapper.insertStatusLog(any())).thenReturn(1);
+        when(orderMapper.insertLogisticsEvent(any())).thenReturn(1);
         when(orderMapper.selectUserOrder(USER_ID, 21L)).thenReturn(order(21L, ShopOrderService.RECEIVED));
         when(orderMapper.selectOrderItems(21L)).thenReturn(List.of());
         when(orderMapper.selectStatusLogs(21L)).thenReturn(List.of());

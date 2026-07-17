@@ -111,6 +111,22 @@ export interface VerificationReportDto {
   }>;
 }
 
+export interface ReportCommentDto {
+  commentId: number;
+  reportId: number;
+  parentCommentId?: number;
+  replyToCommentId?: number;
+  shopUserId: number;
+  userName: string;
+  nickName?: string;
+  avatar?: string;
+  replyToUserName?: string;
+  replyToNickName?: string;
+  content: string;
+  createTime: string;
+  replies?: ReportCommentDto[];
+}
+
 export interface TrialApplicationDto {
   applicationId: number;
   campaignId: number;
@@ -191,6 +207,15 @@ export interface ShopOrderDto {
     remark: string;
     createTime: string;
   }>;
+  logisticsEvents?: Array<{
+    eventId: number;
+    eventCode: string;
+    description: string;
+    location?: string;
+    eventTime: string;
+    source: 'SYSTEM' | 'PROVIDER';
+    sourceEventId?: string;
+  }>;
 }
 
 export async function fetchHomeFeed(categoryCode?: string, contentType: 'ALL' | 'TRIAL' | 'REPORT' = 'ALL') {
@@ -219,6 +244,29 @@ export async function fetchPublishedReport(reportId: number) {
   const result = await requestApi<ApiResponse<VerificationReportDto>>(`/shop/reports/${reportId}`);
   if (!result.data) throw new Error('验证报告加载失败');
   return result.data;
+}
+
+export async function fetchReportComments(reportId: number) {
+  const result = await requestApi<ApiResponse<ReportCommentDto[]>>(`/shop/reports/${reportId}/comments`);
+  return Array.isArray(result.data) ? result.data : [];
+}
+
+export async function createReportComment(reportId: number, content: string, replyToCommentId?: number) {
+  const result = await requestApi<ApiResponse<ReportCommentDto>>(
+    `/shop/reports/${reportId}/comments`,
+    { method: 'POST', body: JSON.stringify({ content, replyToCommentId }) },
+    true,
+  );
+  if (!result.data) throw new Error('评论发布失败');
+  return result.data;
+}
+
+export async function deleteReportComment(reportId: number, commentId: number) {
+  await requestApi<ApiResponse>(
+    `/shop/reports/${reportId}/comments/${commentId}`,
+    { method: 'DELETE' },
+    true,
+  );
 }
 
 export async function applyForTrial(campaignId: number, body: {

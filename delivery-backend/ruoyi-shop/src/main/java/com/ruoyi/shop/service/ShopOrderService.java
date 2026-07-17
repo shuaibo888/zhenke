@@ -16,6 +16,7 @@ import com.ruoyi.shop.domain.ShopCartItem;
 import com.ruoyi.shop.domain.ShopOrder;
 import com.ruoyi.shop.domain.ShopOrderAddress;
 import com.ruoyi.shop.domain.ShopOrderItem;
+import com.ruoyi.shop.domain.ShopOrderLogisticsEvent;
 import com.ruoyi.shop.domain.ShopOrderStatusLog;
 import com.ruoyi.shop.domain.ShopProduct;
 import com.ruoyi.shop.domain.ShopUserAddress;
@@ -142,6 +143,7 @@ public class ShopOrderService
             throw new ServiceException("订单状态已变化，请刷新后重试");
         }
         insertStatusLog(orderId, SHIPPED, RECEIVED, userId, "用户确认收货");
+        insertLogisticsEvent(orderId, "USER_RECEIVED", "用户已确认收货", "USER_RECEIVED");
         return hydrate(requireUserOrder(userId, orderId, false));
     }
 
@@ -277,6 +279,20 @@ public class ShopOrderService
         }
     }
 
+    private void insertLogisticsEvent(long orderId, String eventCode, String description, String sourceEventId)
+    {
+        ShopOrderLogisticsEvent event = new ShopOrderLogisticsEvent();
+        event.setOrderId(orderId);
+        event.setEventCode(eventCode);
+        event.setDescription(description);
+        event.setSource("SYSTEM");
+        event.setSourceEventId(sourceEventId);
+        if (orderMapper.insertLogisticsEvent(event) == 0)
+        {
+            throw new ServiceException("订单物流事件创建失败");
+        }
+    }
+
     private ShopOrder requireUserOrder(long userId, long orderId, boolean forUpdate)
     {
         ShopOrder order = forUpdate
@@ -294,6 +310,7 @@ public class ShopOrderService
         order.setItems(orderMapper.selectOrderItems(order.getOrderId()));
         order.setAddress(orderMapper.selectOrderAddress(order.getOrderId()));
         order.setStatusLogs(orderMapper.selectStatusLogs(order.getOrderId()));
+        order.setLogisticsEvents(orderMapper.selectLogisticsEvents(order.getOrderId()));
         return order;
     }
 

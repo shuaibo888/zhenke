@@ -50,6 +50,8 @@ import {
   createMerchantProduct,
   createMerchantTrial,
   fetchAdminCaptcha,
+  fetchAdminOrder,
+  fetchAdminOrders,
   auditMerchant,
   fetchAllProductCategories,
   fetchManagedProducts,
@@ -372,13 +374,12 @@ function AdminWorkspace() {
   };
 
   const loadOrders = async (currentSession = session) => {
-    if (currentSession?.loginType !== 'merchant') {
-      setOrders([]);
-      return;
-    }
+    if (!currentSession) return;
     setOrdersLoading(true);
     try {
-      const result = await fetchMerchantOrders();
+      const result = currentSession.loginType === 'admin'
+        ? await fetchAdminOrders()
+        : await fetchMerchantOrders();
       setOrders(result.rows);
     } catch (error) {
       message.error(error instanceof Error ? error.message : '订单列表加载失败');
@@ -427,9 +428,7 @@ function AdminWorkspace() {
       void loadTrials(session);
       if (session.loginType === 'merchant') void loadTrialApplications(session);
     }
-    if (session.loginType === 'merchant') {
-      void loadOrders(session);
-    }
+    void loadOrders(session);
   }, [session?.id]);
 
   useEffect(() => {
@@ -715,9 +714,11 @@ function AdminWorkspace() {
   };
 
   const openOrderDetail = async (order: ManagedOrder) => {
-    if (session?.loginType !== 'merchant') return;
+    if (!session) return;
     try {
-      setDetailOrder(await fetchMerchantOrder(order.id));
+      setDetailOrder(session.loginType === 'admin'
+        ? await fetchAdminOrder(order.id)
+        : await fetchMerchantOrder(order.id));
     } catch (error) {
       message.error(error instanceof Error ? error.message : '订单详情加载失败');
     }
@@ -1002,9 +1003,11 @@ function AdminWorkspace() {
       key: 'actions',
       render: (_, order) => (
         <Space>
-          <Button size="small" icon={<TruckOutlined />} disabled={order.status !== 'paid'} onClick={() => openOrderShipment(order)}>
-            发货
-          </Button>
+          {!isAdmin && (
+            <Button size="small" icon={<TruckOutlined />} disabled={order.status !== 'paid'} onClick={() => openOrderShipment(order)}>
+              发货
+            </Button>
+          )}
           <Button size="small" icon={<FileSearchOutlined />} onClick={() => void openOrderDetail(order)}>
             订单详情
           </Button>
@@ -1467,10 +1470,10 @@ function AdminWorkspace() {
               <section className={styles.tableSurface}>
                 <div className={styles.tableHeader}>
                   <div>
-                    <p className={styles.eyebrow}>{isAdmin ? '本阶段仅接入商家自己的履约订单' : '真实订单、发货与收货地址'}</p>
+                    <p className={styles.eyebrow}>{isAdmin ? '平台全部真实订单，仅提供查询视角' : '真实订单、发货与收货地址'}</p>
                     <h3>订单管理</h3>
                   </div>
-                  {!isAdmin && <Button icon={<ReloadOutlined />} onClick={() => void loadOrders()}>刷新订单</Button>}
+                  <Button icon={<ReloadOutlined />} onClick={() => void loadOrders()}>刷新订单</Button>
                 </div>
                 <div className={styles.productToolbar}>
                   <Input
@@ -1865,6 +1868,21 @@ function AdminWorkspace() {
               <section>
                 <h4>物流信息</h4>
                 <p className={styles.addressText}>{detailOrder.carrier} · {detailOrder.trackingNo}</p>
+                <div className={styles.logisticsTimeline}>
+                  {(detailOrder.logisticsEvents ?? []).length === 0 && (
+                    <p className={styles.logisticsEmpty}>承运信息已登记，暂未收到物流轨迹。</p>
+                  )}
+                  {(detailOrder.logisticsEvents ?? []).map((event) => (
+                    <div className={styles.logisticsEvent} key={event.eventId}>
+                      <i />
+                      <div>
+                        <strong>{event.description}</strong>
+                        {event.location && <span>{event.location}</span>}
+                        <span>{event.eventTime}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </section>
             )}
 

@@ -27,6 +27,7 @@ public class ShopOrder
     private List<ShopOrderItem> items;
     private ShopOrderAddress address;
     private List<ShopOrderStatusLog> statusLogs;
+    private List<ShopOrderLogisticsEvent> logisticsEvents;
 
     public Long getOrderId() { return orderId; }
     public void setOrderId(Long orderId) { this.orderId = orderId; }
@@ -70,4 +71,6 @@ public class ShopOrder
     public void setAddress(ShopOrderAddress address) { this.address = address; }
     public List<ShopOrderStatusLog> getStatusLogs() { return statusLogs; }
     public void setStatusLogs(List<ShopOrderStatusLog> statusLogs) { this.statusLogs = statusLogs; }
+    public List<ShopOrderLogisticsEvent> getLogisticsEvents() { return logisticsEvents; }
+    public void setLogisticsEvents(List<ShopOrderLogisticsEvent> logisticsEvents) { this.logisticsEvents = logisticsEvents; }
 }

@@ -90,6 +90,7 @@ export interface Order {
   trackingNo?: string;
   shippedAt?: string;
   receivedAt?: string;
+  logistics?: LogisticsInfo;
   items?: Array<{
     productId: number;
     productTitle: string;
@@ -125,6 +126,9 @@ export interface NotificationItem {
 export interface LogisticsEvent {
   time: string;
   description: string;
+  eventCode?: string;
+  location?: string;
+  source?: 'SYSTEM' | 'PROVIDER';
 }
 
 export interface LogisticsInfo {

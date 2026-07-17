@@ -42,6 +42,7 @@ class ShopMerchantOrderServiceTest
         when(orderMapper.selectMerchantOrderForUpdate(MERCHANT_ID, 21L)).thenReturn(order(ShopOrderService.PAID));
         when(orderMapper.shipOrder(MERCHANT_ID, 21L, "顺丰速运", "SF123456")).thenReturn(1);
         when(orderMapper.insertStatusLog(any())).thenReturn(1);
+        when(orderMapper.insertLogisticsEvent(any())).thenReturn(1);
         when(orderMapper.selectMerchantOrder(MERCHANT_ID, 21L)).thenReturn(order(ShopOrderService.SHIPPED));
         when(orderMapper.selectOrderItems(21L)).thenReturn(List.of());
         when(orderMapper.selectStatusLogs(21L)).thenReturn(List.of());

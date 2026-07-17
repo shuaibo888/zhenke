@@ -536,6 +536,38 @@
   line-height: 1.7;
 }
 
+.logisticsTimeline {
+  display: grid;
+  gap: 0;
+  margin-top: 16px;
+}
+
+.logisticsEvent {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 10px;
+  padding-bottom: 18px;
+}
+
+.logisticsEvent i {
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border: 2px solid #1f6f5b;
+  border-radius: 50%;
+}
+
+.logisticsEvent > div {
+  display: grid;
+  gap: 4px;
+}
+
+.logisticsEvent span,
+.logisticsEmpty {
+  color: #7a8780;
+  font-size: 12px;
+}
+
 .refundNotice {
   display: flex;
   justify-content: space-between;

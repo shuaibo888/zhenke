@@ -135,6 +135,14 @@ interface ShopOrderDto {
     districtCode?: string;
     detail: string;
   };
+  logisticsEvents?: Array<{
+    eventId: number;
+    eventCode: string;
+    description: string;
+    location?: string;
+    eventTime: string;
+    source: 'SYSTEM' | 'PROVIDER';
+  }>;
 }
 
 interface ShopOrderListResponse extends ApiResponse {
@@ -267,6 +275,14 @@ function toManagedOrder(dto: ShopOrderDto): ManagedOrder {
     trackingNo: dto.trackingNo,
     shippedAt: dto.shipTime,
     receivedAt: dto.receiveTime,
+    logisticsEvents: (Array.isArray(dto.logisticsEvents) ? dto.logisticsEvents : []).map((event) => ({
+      eventId: event.eventId,
+      eventCode: event.eventCode,
+      description: event.description,
+      location: event.location,
+      eventTime: event.eventTime,
+      source: event.source,
+    })),
   };
 }
 
@@ -472,8 +488,24 @@ export async function fetchMerchantOrders() {
   return { rows: rows.map(toManagedOrder), total: typeof result.total === 'number' ? result.total : 0 };
 }
 
+export async function fetchAdminOrders() {
+  const result = await requestApi<ShopOrderListResponse>(
+    '/shop/admin/orders?pageNum=1&pageSize=100',
+    {},
+    true,
+  );
+  const rows = Array.isArray(result.rows) ? result.rows : [];
+  return { rows: rows.map(toManagedOrder), total: typeof result.total === 'number' ? result.total : 0 };
+}
+
 export async function fetchMerchantOrder(orderId: number) {
   const result = await requestApi<ApiResponse<ShopOrderDto>>(`/shop/merchant/orders/${orderId}`, {}, true);
+  if (!result.data) throw new Error('订单详情加载失败');
+  return toManagedOrder(result.data);
+}
+
+export async function fetchAdminOrder(orderId: number) {
+  const result = await requestApi<ApiResponse<ShopOrderDto>>(`/shop/admin/orders/${orderId}`, {}, true);
   if (!result.data) throw new Error('订单详情加载失败');
   return toManagedOrder(result.data);
 }

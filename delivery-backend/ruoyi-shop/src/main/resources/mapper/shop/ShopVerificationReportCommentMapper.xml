@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.shop.mapper.ShopVerificationReportCommentMapper">
+    <resultMap id="ShopVerificationReportCommentResult" type="ShopVerificationReportComment">
+        <id property="commentId" column="comment_id" />
+        <result property="reportId" column="report_id" />
+        <result property="parentCommentId" column="parent_comment_id" />
+        <result property="replyToCommentId" column="reply_to_comment_id" />
+        <result property="shopUserId" column="shop_user_id" />
+        <result property="userName" column="user_name" />
+        <result property="nickName" column="nick_name" />
+        <result property="avatar" column="avatar" />
+        <result property="replyToUserName" column="reply_to_user_name" />
+        <result property="replyToNickName" column="reply_to_nick_name" />
+        <result property="content" column="content" />
+        <result property="delFlag" column="del_flag" />
+        <result property="createTime" column="create_time" />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="selectComment">
+        select c.comment_id, c.report_id, c.parent_comment_id, c.reply_to_comment_id,
+               c.shop_user_id, u.user_name, u.nick_name, u.avatar,
+               ru.user_name as reply_to_user_name, ru.nick_name as reply_to_nick_name,
+               c.content, c.del_flag, c.create_time, c.update_time
+        from shop_verification_report_comment c
+        inner join shop_user u on u.user_id = c.shop_user_id and u.del_flag = '0'
+        left join shop_verification_report_comment rc on rc.comment_id = c.reply_to_comment_id
+        left join shop_user ru on ru.user_id = rc.shop_user_id and ru.del_flag = '0'
+    </sql>
+
+    <select id="selectActiveComments" parameterType="Long" resultMap="ShopVerificationReportCommentResult">
+        <include refid="selectComment" />
+        where c.report_id = #{reportId} and c.del_flag = '0'
+        order by coalesce(c.parent_comment_id, c.comment_id),
+                 case when c.parent_comment_id is null then 0 else 1 end,
+                 c.create_time, c.comment_id
+    </select>
+
+    <select id="selectActiveComment" resultMap="ShopVerificationReportCommentResult">
+        <include refid="selectComment" />
+        where c.report_id = #{reportId} and c.comment_id = #{commentId} and c.del_flag = '0'
+    </select>
+
+    <select id="selectActiveRootForUpdate" resultMap="ShopVerificationReportCommentResult">
+        <include refid="selectComment" />
+        where c.report_id = #{reportId} and c.comment_id = #{commentId}
+          and c.parent_comment_id is null and c.del_flag = '0'
+        for update
+    </select>
+
+    <insert id="insertComment" parameterType="ShopVerificationReportComment" useGeneratedKeys="true" keyProperty="commentId">
+        insert into shop_verification_report_comment
+        (report_id, parent_comment_id, reply_to_comment_id, shop_user_id, content,
+         del_flag, create_time, update_time)
+        values
+        (#{reportId}, #{parentCommentId}, #{replyToCommentId}, #{shopUserId}, #{content},
+         '0', sysdate(), sysdate())
+    </insert>
+
+    <update id="softDeleteComment">
+        update shop_verification_report_comment
+        set del_flag = '2', delete_time = sysdate(), update_time = sysdate()
+        where report_id = #{reportId} and comment_id = #{commentId}
+          and shop_user_id = #{shopUserId} and del_flag = '0'
+    </update>
+
+    <update id="softDeleteCommentTree">
+        update shop_verification_report_comment
+        set del_flag = '2', delete_time = sysdate(), update_time = sysdate()
+        where report_id = #{reportId} and del_flag = '0'
+          and (comment_id = #{rootCommentId} or parent_comment_id = #{rootCommentId})
+          and exists (
+              select 1 from (
+                  select comment_id
+                  from shop_verification_report_comment
+                  where report_id = #{reportId} and comment_id = #{rootCommentId}
+                    and shop_user_id = #{shopUserId} and del_flag = '0'
+              ) owned_root
+          )
+    </update>
+</mapper>

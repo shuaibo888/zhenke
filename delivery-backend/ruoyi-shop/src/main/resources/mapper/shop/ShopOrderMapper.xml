@@ -81,6 +81,18 @@
         <result property="createTime" column="create_time" />
     </resultMap>
 
+    <resultMap id="ShopOrderLogisticsEventResult" type="ShopOrderLogisticsEvent">
+        <id property="eventId" column="event_id" />
+        <result property="orderId" column="order_id" />
+        <result property="eventCode" column="event_code" />
+        <result property="description" column="description" />
+        <result property="location" column="location" />
+        <result property="eventTime" column="event_time" />
+        <result property="source" column="source" />
+        <result property="sourceEventId" column="source_event_id" />
+        <result property="createTime" column="create_time" />
+    </resultMap>
+
     <sql id="selectOrderColumns">
         select o.order_id, o.order_no, o.user_id,
                coalesce(u.nick_name, u.user_name) as buyer_name, o.merchant_id,
@@ -157,6 +169,14 @@
         (#{orderId}, #{fromStatus}, #{toStatus}, #{operatorType}, #{operatorId}, #{remark}, sysdate())
     </insert>
 
+    <insert id="insertLogisticsEvent" parameterType="ShopOrderLogisticsEvent"
+            useGeneratedKeys="true" keyProperty="eventId">
+        insert into shop_order_logistics_event
+        (order_id, event_code, description, location, event_time, source, source_event_id, create_time)
+        values
+        (#{orderId}, #{eventCode}, #{description}, #{location}, sysdate(), #{source}, #{sourceEventId}, sysdate())
+    </insert>
+
     <select id="selectUserOrders" parameterType="Long" resultMap="ShopOrderResult">
         <include refid="selectOrderColumns" />
         where o.user_id = #{userId} and o.del_flag = '0'
@@ -195,6 +215,14 @@
         order by log_id
     </select>
 
+    <select id="selectLogisticsEvents" parameterType="Long" resultMap="ShopOrderLogisticsEventResult">
+        select event_id, order_id, event_code, description, location, event_time,
+               source, source_event_id, create_time
+        from shop_order_logistics_event
+        where order_id = #{orderId}
+        order by event_time desc, event_id desc
+    </select>
+
     <update id="updateStatus">
         update shop_order
         set status = #{toStatus},
@@ -221,6 +249,18 @@
         <include refid="selectOrderColumns" />
         where o.merchant_id = #{merchantId} and o.order_id = #{orderId} and o.del_flag = '0'
         limit 1 for update
+    </select>
+
+    <select id="selectAdminOrders" resultMap="ShopOrderResult">
+        <include refid="selectOrderColumns" />
+        where o.del_flag = '0'
+        order by o.order_id desc
+    </select>
+
+    <select id="selectAdminOrder" parameterType="Long" resultMap="ShopOrderResult">
+        <include refid="selectOrderColumns" />
+        where o.order_id = #{orderId} and o.del_flag = '0'
+        limit 1
     </select>
 
     <update id="shipOrder">

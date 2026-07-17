@@ -138,6 +138,14 @@ export interface ManagedOrder {
   trackingNo?: string;
   shippedAt?: string;
   receivedAt?: string;
+  logisticsEvents?: Array<{
+    eventId: number;
+    eventCode: string;
+    description: string;
+    location?: string;
+    eventTime: string;
+    source: 'SYSTEM' | 'PROVIDER';
+  }>;
 }
 
 export interface ManagedReport {

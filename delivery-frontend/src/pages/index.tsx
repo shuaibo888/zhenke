@@ -58,7 +58,9 @@ import {
   checkoutShopCart,
   confirmShopOrderReceived,
   confirmTrialReceived,
+  createReportComment,
   createShopOrders,
+  deleteReportComment,
   deleteShopCartItem,
   fetchHomeFeed,
   fetchShopCart,
@@ -67,6 +69,7 @@ import {
   fetchProductCategories,
   fetchPublicProduct,
   fetchPublishedReport,
+  fetchReportComments,
   payShopOrder,
   publishVerificationReport,
   updateShopCartItem,
@@ -74,6 +77,7 @@ import {
   type HomeFeedItemDto,
   type ProductCategoryDto,
   type PublicProductDto,
+  type ReportCommentDto,
   type ShopCartItemDto,
   type ShopOrderDto,
   type TrialApplicationDto,
@@ -337,6 +341,18 @@ function mapShopOrder(dto: ShopOrderDto, role: MemberRole): Order {
     trackingNo: dto.trackingNo,
     shippedAt: dto.shipTime,
     receivedAt: dto.receiveTime,
+    logistics: dto.carrier && dto.trackingNo ? {
+      orderId: dto.orderId,
+      carrier: dto.carrier,
+      trackingNo: dto.trackingNo,
+      events: (Array.isArray(dto.logisticsEvents) ? dto.logisticsEvents : []).map((event) => ({
+        time: event.eventTime,
+        description: event.description,
+        eventCode: event.eventCode,
+        location: event.location,
+        source: event.source,
+      })),
+    } : undefined,
     items: dto.items.map((item) => ({
       productId: item.productId,
       productTitle: item.productName,
@@ -378,6 +394,12 @@ export default function HomePage() {
   const [trialApplying, setTrialApplying] = useState(false);
   const [journeyView, setJourneyView] = useState<JourneyView>('feed');
   const [journeyReport, setJourneyReport] = useState<VerifyReport | null>(null);
+  const [reportComments, setReportComments] = useState<ReportCommentDto[]>([]);
+  const [reportCommentsLoading, setReportCommentsLoading] = useState(false);
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [commentDeletingId, setCommentDeletingId] = useState<number | null>(null);
+  const [commentText, setCommentText] = useState('');
+  const [replyingTo, setReplyingTo] = useState<ReportCommentDto | null>(null);
   const [selectedLogisticsOrder, setSelectedLogisticsOrder] = useState<Order | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [cartLoading, setCartLoading] = useState(false);
@@ -516,6 +538,31 @@ export default function HomePage() {
   useEffect(() => {
     void loadHomeContent();
   }, [category, homeContentType]);
+
+  useEffect(() => {
+    let mounted = true;
+    if (journeyView !== 'report' || !journeyReport) {
+      setReportComments([]);
+      setReportCommentsLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+    setReportCommentsLoading(true);
+    fetchReportComments(journeyReport.id)
+      .then((items) => {
+        if (mounted) setReportComments(items);
+      })
+      .catch((error) => {
+        if (mounted) message.error(error instanceof Error ? error.message : '评论加载失败');
+      })
+      .finally(() => {
+        if (mounted) setReportCommentsLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [journeyReport?.id, journeyView]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -676,7 +723,7 @@ export default function HomePage() {
   const cartTotal = getCartTotal(cartItems);
   const earningsSummary = summarizeEarnings(earnings);
   const selectedLogisticsView = selectedLogisticsOrder
-    ? getLogisticsView(selectedLogisticsOrder)
+    ? getLogisticsView(selectedLogisticsOrder, selectedLogisticsOrder.logistics)
     : null;
 
   const usefulProgress = Math.min(100, Math.round(((activeUser?.usefulCount ?? 0) / 50) * 100));
@@ -1222,8 +1269,78 @@ export default function HomePage() {
 
     setSelectedProduct(product);
     setJourneyReport(report);
+    setCommentText('');
+    setReplyingTo(null);
     setJourneyView('report');
     setActiveTab('reviews');
+  };
+
+  const reloadReportComments = async (reportId: number) => {
+    const items = await fetchReportComments(reportId);
+    setReportComments(items);
+  };
+
+  const submitReportComment = async () => {
+    if (!journeyReport) return;
+    if (!activeUser) {
+      message.info('请先登录后再评论');
+      return;
+    }
+    const content = commentText.trim();
+    if (!content) {
+      message.warning('请输入评论内容');
+      return;
+    }
+    setCommentSubmitting(true);
+    try {
+      await createReportComment(journeyReport.id, content, replyingTo?.commentId);
+      await reloadReportComments(journeyReport.id);
+      setCommentText('');
+      setReplyingTo(null);
+      message.success(replyingTo ? '回复发布成功' : '评论发布成功');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '评论发布失败');
+    } finally {
+      setCommentSubmitting(false);
+    }
+  };
+
+  const startReply = (comment: ReportCommentDto) => {
+    if (!activeUser) {
+      message.info('请先登录后再回复');
+      return;
+    }
+    setReplyingTo(comment);
+    setCommentText('');
+  };
+
+  const confirmDeleteComment = (comment: ReportCommentDto) => {
+    if (!journeyReport || !activeUser || comment.shopUserId !== activeUser.id) return;
+    const deletesReplies = !comment.parentCommentId && (comment.replies?.length ?? 0) > 0;
+    Modal.confirm({
+      title: deletesReplies ? '删除评论及其全部回复？' : '删除这条评论？',
+      content: deletesReplies ? '删除后页面不再展示这条评论及其全部回复，但数据会保留在数据库中。' : '删除后页面不再展示，但数据会保留在数据库中。',
+      okText: '确认删除',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      onOk: async () => {
+        setCommentDeletingId(comment.commentId);
+        try {
+          await deleteReportComment(journeyReport.id, comment.commentId);
+          await reloadReportComments(journeyReport.id);
+          if (replyingTo?.commentId === comment.commentId || replyingTo?.parentCommentId === comment.commentId) {
+            setReplyingTo(null);
+            setCommentText('');
+          }
+          message.success('评论已删除');
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : '评论删除失败');
+          throw error;
+        } finally {
+          setCommentDeletingId(null);
+        }
+      },
+    });
   };
 
   const openProductJourney = (product: Product) => {
@@ -1902,6 +2019,44 @@ export default function HomePage() {
     const product = findProductForReport(products, journeyReport);
     if (!product) return renderReviews();
 
+    const commentCount = reportComments.reduce((count, item) => count + 1 + (item.replies?.length ?? 0), 0);
+    const renderComment = (comment: ReportCommentDto, reply = false) => {
+      const displayName = comment.nickName || comment.userName;
+      const replyToName = comment.replyToNickName || comment.replyToUserName;
+      const isOwner = activeUser?.id === comment.shopUserId;
+      return (
+        <article key={comment.commentId} className={`${styles.commentItem} ${reply ? styles.commentReply : ''}`}>
+          <div className={styles.commentAvatar}>
+            {comment.avatar ? <img src={comment.avatar} alt={displayName} /> : displayName.slice(0, 1)}
+          </div>
+          <div className={styles.commentBody}>
+            <div className={styles.commentMeta}>
+              <strong>{displayName}</strong>
+              <span>{comment.createTime}</span>
+            </div>
+            <p>
+              {reply && replyToName && <em>回复 {replyToName}：</em>}
+              {comment.content}
+            </p>
+            <div className={styles.commentActions}>
+              <Button type="link" size="small" onClick={() => startReply(comment)}>回复</Button>
+              {isOwner && (
+                <Button
+                  type="link"
+                  danger
+                  size="small"
+                  loading={commentDeletingId === comment.commentId}
+                  onClick={() => confirmDeleteComment(comment)}
+                >
+                  删除
+                </Button>
+              )}
+            </div>
+          </div>
+        </article>
+      );
+    };
+
     return (
       <main className={styles.journeyPage}>
         <Button onClick={() => setJourneyView('feed')}>返回甄客验</Button>
@@ -1926,6 +2081,46 @@ export default function HomePage() {
               查看 / 购买该商品
             </Button>
           </div>
+        </section>
+        <section className={styles.reportComments}>
+          <div className={styles.sectionHeader}>
+            <div>
+              <span className={styles.eyebrow}>Discussion</span>
+              <h2>评论区</h2>
+            </div>
+            <span>{commentCount} 条评论</span>
+          </div>
+          <div className={styles.commentComposer}>
+            {replyingTo && (
+              <div className={styles.replyingHint}>
+                <span>回复 {replyingTo.nickName || replyingTo.userName}</span>
+                <Button type="link" size="small" onClick={() => setReplyingTo(null)}>取消回复</Button>
+              </div>
+            )}
+            <Input.TextArea
+              value={commentText}
+              maxLength={500}
+              showCount
+              autoSize={{ minRows: 3, maxRows: 6 }}
+              placeholder={activeUser ? (replyingTo ? '写下你的回复' : '说说你对这份甄客验的看法') : '登录后可以评论和回复'}
+              disabled={!activeUser}
+              onChange={(event) => setCommentText(event.target.value)}
+            />
+            <Button type="primary" loading={commentSubmitting} disabled={!activeUser} onClick={() => void submitReportComment()}>
+              {replyingTo ? '发布回复' : '发布评论'}
+            </Button>
+          </div>
+          <Spin spinning={reportCommentsLoading}>
+            <div className={styles.commentList}>
+              {reportComments.map((comment) => (
+                <div key={comment.commentId} className={styles.commentThread}>
+                  {renderComment(comment)}
+                  {(comment.replies ?? []).map((reply) => renderComment(reply, true))}
+                </div>
+              ))}
+              {!reportCommentsLoading && reportComments.length === 0 && <p className={styles.empty}>还没有评论，来发表第一条真实看法吧。</p>}
+            </div>
+          </Spin>
         </section>
       </main>
     );
@@ -2082,6 +2277,11 @@ export default function HomePage() {
                   <p>
                     {order.orderNo} · x{order.quantity} · {order.returnDays} 天退换
                   </p>
+                  {(order.status === 'shipped' || order.status === 'completed') && order.carrier && order.trackingNo && (
+                    <p className={styles.orderLogisticsSummary}>
+                      物流：{order.carrier} · {order.trackingNo}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Tag color={orderStatusMeta[order.status].color}>{orderStatusMeta[order.status].label}</Tag>
@@ -2373,11 +2573,15 @@ export default function HomePage() {
                   <span>运单号：{selectedLogisticsView.logistics.trackingNo}</span>
                 </div>
                 <div className={styles.logisticsTimeline}>
+                  {selectedLogisticsView.logistics.events.length === 0 && (
+                    <span>承运信息已登记，暂未收到物流轨迹。</span>
+                  )}
                   {selectedLogisticsView.logistics.events.map((event) => (
                     <div className={styles.logisticsEvent} key={`${event.time}-${event.description}`}>
                       <i />
                       <div>
                         <strong>{event.description}</strong>
+                        {event.location && <span>{event.location}</span>}
                         <span>{event.time}</span>
                       </div>
                     </div>

@@ -7,6 +7,7 @@ import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.shop.domain.ShopMerchant;
 import com.ruoyi.shop.domain.ShopOrder;
+import com.ruoyi.shop.domain.ShopOrderLogisticsEvent;
 import com.ruoyi.shop.domain.ShopOrderStatusLog;
 import com.ruoyi.shop.domain.dto.ShopOrderShipBody;
 import com.ruoyi.shop.mapper.ShopOrderMapper;
@@ -60,6 +61,7 @@ public class ShopMerchantOrderService
             throw new ServiceException("订单状态已变化，请刷新后重试");
         }
         insertStatusLog(orderId, merchantId);
+        insertLogisticsEvent(orderId);
         return hydrate(requireMerchantOrder(merchantId, orderId, false));
     }
 
@@ -80,7 +82,22 @@ public class ShopMerchantOrderService
         order.setItems(orderMapper.selectOrderItems(order.getOrderId()));
         order.setAddress(orderMapper.selectOrderAddress(order.getOrderId()));
         order.setStatusLogs(orderMapper.selectStatusLogs(order.getOrderId()));
+        order.setLogisticsEvents(orderMapper.selectLogisticsEvents(order.getOrderId()));
         return order;
+    }
+
+    private void insertLogisticsEvent(long orderId)
+    {
+        ShopOrderLogisticsEvent event = new ShopOrderLogisticsEvent();
+        event.setOrderId(orderId);
+        event.setEventCode("MERCHANT_SHIPPED");
+        event.setDescription("商家已发货，等待承运商揽收");
+        event.setSource("SYSTEM");
+        event.setSourceEventId("MERCHANT_SHIPPED");
+        if (orderMapper.insertLogisticsEvent(event) == 0)
+        {
+            throw new ServiceException("订单物流事件创建失败");
+        }
     }
 
     private void insertStatusLog(long orderId, long merchantId)

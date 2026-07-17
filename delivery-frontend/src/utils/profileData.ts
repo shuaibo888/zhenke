@@ -9,24 +9,14 @@ export function getLogisticsView(order: Order, logistics?: LogisticsInfo) {
     return { kind: 'preparing' as const, title: '商家备货中', logistics: undefined };
   }
 
-  const realLogistics = order.carrier && order.trackingNo ? {
-    orderId: order.id,
-    carrier: order.carrier,
-    trackingNo: order.trackingNo,
-    events: [{
-      time: order.receivedAt ?? order.shippedAt ?? '',
-      description: order.status === 'completed' ? '用户已确认收货' : '商家已发货',
-    }],
-  } : logistics;
-
-  if (!realLogistics) {
+  if (!logistics) {
     return { kind: 'none' as const, title: '暂无物流信息', logistics: undefined };
   }
 
   return {
     kind: order.status === 'completed' ? ('delivered' as const) : ('in_transit' as const),
     title: order.status === 'completed' ? '已签收' : '运输中',
-    logistics: realLogistics,
+    logistics,
   };
 }
 
