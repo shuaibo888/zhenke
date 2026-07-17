@@ -27,4 +27,9 @@ public interface ShopOrderMapper
     List<ShopOrderStatusLog> selectStatusLogs(Long orderId);
     int updateStatus(@Param("userId") Long userId, @Param("orderId") Long orderId,
             @Param("fromStatus") String fromStatus, @Param("toStatus") String toStatus);
+    List<ShopOrder> selectMerchantOrders(Long merchantId);
+    ShopOrder selectMerchantOrder(@Param("merchantId") Long merchantId, @Param("orderId") Long orderId);
+    ShopOrder selectMerchantOrderForUpdate(@Param("merchantId") Long merchantId, @Param("orderId") Long orderId);
+    int shipOrder(@Param("merchantId") Long merchantId, @Param("orderId") Long orderId,
+            @Param("carrier") String carrier, @Param("trackingNo") String trackingNo);
 }

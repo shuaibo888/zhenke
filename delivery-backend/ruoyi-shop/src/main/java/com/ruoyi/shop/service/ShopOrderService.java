@@ -111,6 +111,40 @@ public class ShopOrderService
         return hydrate(requireUserOrder(userId, orderId, false));
     }
 
+    @Transactional
+    public ShopOrder pay(long orderId)
+    {
+        long userId = ShopAccountIdentity.requireShopUserId();
+        ShopOrder order = requireUserOrder(userId, orderId, true);
+        if (!PENDING_PAYMENT.equals(order.getStatus()))
+        {
+            throw new ServiceException(PAID.equals(order.getStatus()) ? "订单已支付，请勿重复操作" : "只有待付款订单可以支付");
+        }
+        if (orderMapper.updateStatus(userId, orderId, PENDING_PAYMENT, PAID) == 0)
+        {
+            throw new ServiceException("订单状态已变化，请刷新后重试");
+        }
+        insertStatusLog(orderId, PENDING_PAYMENT, PAID, userId, "用户模拟支付订单");
+        return hydrate(requireUserOrder(userId, orderId, false));
+    }
+
+    @Transactional
+    public ShopOrder confirmReceived(long orderId)
+    {
+        long userId = ShopAccountIdentity.requireShopUserId();
+        ShopOrder order = requireUserOrder(userId, orderId, true);
+        if (!SHIPPED.equals(order.getStatus()))
+        {
+            throw new ServiceException(RECEIVED.equals(order.getStatus()) ? "订单已确认收货，请勿重复操作" : "只有已发货订单可以确认收货");
+        }
+        if (orderMapper.updateStatus(userId, orderId, SHIPPED, RECEIVED) == 0)
+        {
+            throw new ServiceException("订单状态已变化，请刷新后重试");
+        }
+        insertStatusLog(orderId, SHIPPED, RECEIVED, userId, "用户确认收货");
+        return hydrate(requireUserOrder(userId, orderId, false));
+    }
+
     private List<ShopOrder> createForUser(long userId, long addressId, List<ShopOrderItemBody> requestedItems)
     {
         ShopUserAddress address = orderMapper.selectUserAddress(userId, addressId);

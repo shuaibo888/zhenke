@@ -159,6 +159,11 @@ export interface ShopOrderDto {
   status: 'PENDING_PAYMENT' | 'PAID' | 'SHIPPED' | 'RECEIVED' | 'CANCELLED';
   totalAmount: number;
   itemCount: number;
+  payTime?: string;
+  carrier?: string;
+  trackingNo?: string;
+  shipTime?: string;
+  receiveTime?: string;
   cancelTime?: string;
   createTime: string;
   updateTime: string;
@@ -298,6 +303,26 @@ export async function cancelShopOrder(orderId: number) {
     true,
   );
   if (!result.data) throw new Error('订单取消失败');
+  return result.data;
+}
+
+export async function payShopOrder(orderId: number) {
+  const result = await requestApi<ApiResponse<ShopOrderDto>>(
+    `/shop/orders/${orderId}/pay`,
+    { method: 'PUT' },
+    true,
+  );
+  if (!result.data) throw new Error('订单支付失败');
+  return result.data;
+}
+
+export async function confirmShopOrderReceived(orderId: number) {
+  const result = await requestApi<ApiResponse<ShopOrderDto>>(
+    `/shop/orders/${orderId}/received`,
+    { method: 'PUT' },
+    true,
+  );
+  if (!result.data) throw new Error('确认收货失败');
   return result.data;
 }
 

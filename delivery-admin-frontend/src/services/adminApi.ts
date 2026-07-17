@@ -1,4 +1,4 @@
-import type { AdminSession, ManagedProduct, ManagedTrialApplication, MerchantAccount, MerchantAuditLog, ProductCategoryOption, ShopMemberLevel, ShopUserAccount } from '@/types';
+import type { AdminSession, ManagedOrder, ManagedProduct, ManagedTrialApplication, MerchantAccount, MerchantAuditLog, ProductCategoryOption, ShopMemberLevel, ShopUserAccount } from '@/types';
 
 const tokenStorageKey = 'zhenke_admin_access_token';
 
@@ -105,6 +105,43 @@ interface TrialCampaignListResponse extends ApiResponse {
   total: number;
 }
 
+interface ShopOrderDto {
+  orderId: number;
+  orderNo: string;
+  userId: number;
+  buyerName?: string;
+  merchantId: number;
+  merchantName?: string;
+  status: 'PENDING_PAYMENT' | 'PAID' | 'SHIPPED' | 'RECEIVED' | 'CANCELLED';
+  totalAmount: number;
+  itemCount: number;
+  payTime?: string;
+  carrier?: string;
+  trackingNo?: string;
+  shipTime?: string;
+  receiveTime?: string;
+  createTime: string;
+  items?: Array<{
+    productId: number;
+    productName: string;
+    unitPrice: number;
+    quantity: number;
+  }>;
+  address?: {
+    recipient: string;
+    phone: string;
+    provinceCode?: string;
+    cityCode?: string;
+    districtCode?: string;
+    detail: string;
+  };
+}
+
+interface ShopOrderListResponse extends ApiResponse {
+  rows?: ShopOrderDto[];
+  total: number;
+}
+
 export interface CaptchaState {
   enabled: boolean;
   image: string;
@@ -193,6 +230,43 @@ function toManagedProduct(dto: ProductDto): ManagedProduct {
     stock: dto.stock,
     sales: dto.salesCount,
     verifyCount: 0,
+  };
+}
+
+function toManagedOrder(dto: ShopOrderDto): ManagedOrder {
+  const items = Array.isArray(dto.items) ? dto.items : [];
+  const address = dto.address;
+  return {
+    id: dto.orderId,
+    merchantId: dto.merchantId,
+    merchantName: dto.merchantName,
+    orderNo: dto.orderNo,
+    buyerName: dto.buyerName || `用户${dto.userId}`,
+    status: ({
+      PENDING_PAYMENT: 'unpaid',
+      PAID: 'paid',
+      SHIPPED: 'shipped',
+      RECEIVED: 'completed',
+      CANCELLED: 'canceled',
+    } as const)[dto.status],
+    amount: Number(dto.totalAmount),
+    itemCount: dto.itemCount,
+    productTitles: items.map((item) => item.productName),
+    items: items.map((item) => ({
+      productTitle: item.productName,
+      quantity: item.quantity,
+      unitPrice: Number(item.unitPrice),
+    })),
+    address: address ? [address.recipient, address.phone, address.provinceCode, address.cityCode,
+      address.districtCode, address.detail].filter(Boolean).join(' ') : '-',
+    returnDays: 0,
+    refundRequested: false,
+    createdAt: dto.createTime,
+    paidAt: dto.payTime,
+    carrier: dto.carrier,
+    trackingNo: dto.trackingNo,
+    shippedAt: dto.shipTime,
+    receivedAt: dto.receiveTime,
   };
 }
 
@@ -386,6 +460,32 @@ export async function updateMerchantProductSaleStatus(productId: number, status:
   );
   if (!result.data) throw new Error('商品状态更新失败');
   return toManagedProduct(result.data);
+}
+
+export async function fetchMerchantOrders() {
+  const result = await requestApi<ShopOrderListResponse>(
+    '/shop/merchant/orders?pageNum=1&pageSize=100',
+    {},
+    true,
+  );
+  const rows = Array.isArray(result.rows) ? result.rows : [];
+  return { rows: rows.map(toManagedOrder), total: typeof result.total === 'number' ? result.total : 0 };
+}
+
+export async function fetchMerchantOrder(orderId: number) {
+  const result = await requestApi<ApiResponse<ShopOrderDto>>(`/shop/merchant/orders/${orderId}`, {}, true);
+  if (!result.data) throw new Error('订单详情加载失败');
+  return toManagedOrder(result.data);
+}
+
+export async function shipMerchantOrder(orderId: number, carrier: string, trackingNo: string) {
+  const result = await requestApi<ApiResponse<ShopOrderDto>>(
+    `/shop/merchant/orders/${orderId}/ship`,
+    { method: 'PUT', body: JSON.stringify({ carrier, trackingNo }) },
+    true,
+  );
+  if (!result.data) throw new Error('订单发货失败');
+  return toManagedOrder(result.data);
 }
 
 function toManagedTrial(dto: TrialCampaignDto) {

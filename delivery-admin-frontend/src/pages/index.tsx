@@ -43,7 +43,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { seedOrders, seedReports } from '@/mocks/admin';
+import { seedReports } from '@/mocks/admin';
 import type { AdminSession, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, NavKey, ProductCategory, ProductCategoryOption, ProductStatus, ShopMemberLevel, ShopUserAccount } from '@/types';
 import {
   auditMerchantTrialApplication,
@@ -55,6 +55,8 @@ import {
   fetchManagedProducts,
   fetchManagedTrials,
   fetchMerchantDetail,
+  fetchMerchantOrder,
+  fetchMerchantOrders,
   fetchMerchantTrialApplications,
   fetchMerchants,
   fetchProductCategories,
@@ -71,6 +73,7 @@ import {
   updateMerchantTrialStatus,
   updateProductCategory,
   shipMerchantTrialApplication,
+  shipMerchantOrder,
   uploadAdminFile,
   type CaptchaState,
 } from '@/services/adminApi';
@@ -82,7 +85,7 @@ import {
   getDashboardStats,
   toggleReportStatus,
 } from '@/utils/adminDashboard';
-import { filterOrders, refundOrderById, shipOrderById, type OrderStatusFilter } from '@/utils/orderManagement';
+import { filterOrders, type OrderStatusFilter } from '@/utils/orderManagement';
 import { filterProducts, type ProductCategoryFilter, type ProductStatusFilter } from '@/utils/productFilters';
 import styles from './index.less';
 
@@ -140,6 +143,11 @@ type TrialApplicationActionFormValues = {
   auditRemark?: string;
   carrier?: string;
   trackingNo?: string;
+};
+
+type OrderShipFormValues = {
+  carrier: string;
+  trackingNo: string;
 };
 
 const adminTheme = {
@@ -200,7 +208,10 @@ function AdminWorkspace() {
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [categoryDrafts, setCategoryDrafts] = useState<ProductCategoryOption[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
-  const [orders, setOrders] = useState<ManagedOrder[]>(seedOrders);
+  const [orders, setOrders] = useState<ManagedOrder[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [shippingOrder, setShippingOrder] = useState<ManagedOrder | null>(null);
+  const [orderShipping, setOrderShipping] = useState(false);
   const [reports, setReports] = useState<ManagedReport[]>(seedReports);
   const [trialRecruitments, setTrialRecruitments] = useState<ManagedTrialRecruitment[]>([]);
   const [trialsLoading, setTrialsLoading] = useState(false);
@@ -235,6 +246,7 @@ function AdminWorkspace() {
   const [productForm] = Form.useForm<ProductFormValues>();
   const [trialForm] = Form.useForm<TrialFormValues>();
   const [trialApplicationActionForm] = Form.useForm<TrialApplicationActionFormValues>();
+  const [orderShipForm] = Form.useForm<OrderShipFormValues>();
   const [loginForm] = Form.useForm<LoginFormValues>();
   const { message, modal } = AntApp.useApp();
   const productImageUrl = Form.useWatch('imageUrl', productForm);
@@ -359,6 +371,22 @@ function AdminWorkspace() {
     }
   };
 
+  const loadOrders = async (currentSession = session) => {
+    if (currentSession?.loginType !== 'merchant') {
+      setOrders([]);
+      return;
+    }
+    setOrdersLoading(true);
+    try {
+      const result = await fetchMerchantOrders();
+      setOrders(result.rows);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '订单列表加载失败');
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
   const loadTrialApplications = async (currentSession = session) => {
     if (currentSession?.loginType !== 'merchant') return;
     setTrialApplicationsLoading(true);
@@ -398,6 +426,9 @@ function AdminWorkspace() {
     if (permissions.includes('*:*:*') || permissions.includes('shop:trial:list')) {
       void loadTrials(session);
       if (session.loginType === 'merchant') void loadTrialApplications(session);
+    }
+    if (session.loginType === 'merchant') {
+      void loadOrders(session);
     }
   }, [session?.id]);
 
@@ -444,6 +475,7 @@ function AdminWorkspace() {
     setProductDrawerOpen(false);
     setEditingProductId(null);
     setDetailOrder(null);
+    setShippingOrder(null);
     resetProductFilters();
     resetOrderFilters();
     setShopUsers([]);
@@ -451,6 +483,7 @@ function AdminWorkspace() {
     setProductCategories([]);
     setTrialRecruitments([]);
     setTrialApplications([]);
+    setOrders([]);
     setShopUserTotal(0);
     loginForm.resetFields();
     await loadCaptcha();
@@ -681,34 +714,49 @@ function AdminWorkspace() {
     }
   };
 
-  const shipOrder = (order: ManagedOrder) => {
+  const openOrderDetail = async (order: ManagedOrder) => {
+    if (session?.loginType !== 'merchant') return;
+    try {
+      setDetailOrder(await fetchMerchantOrder(order.id));
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '订单详情加载失败');
+    }
+  };
+
+  const openOrderShipment = (order: ManagedOrder) => {
     if (order.status !== 'paid') {
       message.warning('只有待发货订单可以发货');
       return;
     }
-
-    setOrders((items) => shipOrderById(items, order.id));
-    setDetailOrder((current) => (current?.id === order.id ? { ...current, status: 'shipped' } : current));
-    message.success('订单已发货');
+    setShippingOrder(order);
+    orderShipForm.resetFields();
   };
 
-  const refundOrder = (order: ManagedOrder) => {
-    if (!order.refundRequested) {
-      message.warning('用户未发起退换申请');
-      return;
-    }
+  const closeOrderShipment = () => {
+    if (orderShipping) return;
+    setShippingOrder(null);
+    orderShipForm.resetFields();
+  };
 
-    modal.confirm({
-      title: '确认同意退款？',
-      content: `${order.orderNo} 将置为已退款。`,
-      okText: '同意退款',
-      cancelText: '再看看',
-      onOk: () => {
-        setOrders((items) => refundOrderById(items, order.id));
-        setDetailOrder((current) => (current?.id === order.id ? { ...current, status: 'refunded', refundRequested: false } : current));
-        message.success('退款已处理');
-      },
-    });
+  const submitOrderShipment = async (values: OrderShipFormValues) => {
+    if (!shippingOrder || orderShipping) return;
+    setOrderShipping(true);
+    try {
+      const shipped = await shipMerchantOrder(
+        shippingOrder.id,
+        values.carrier.trim(),
+        values.trackingNo.trim(),
+      );
+      setOrders((items) => items.map((item) => item.id === shipped.id ? shipped : item));
+      setDetailOrder((current) => current?.id === shipped.id ? shipped : current);
+      setShippingOrder(null);
+      orderShipForm.resetFields();
+      message.success('订单已发货');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '订单发货失败');
+    } finally {
+      setOrderShipping(false);
+    }
   };
 
   const handleToggleReportStatus = (report: ManagedReport) => {
@@ -919,7 +967,7 @@ function AdminWorkspace() {
   const orderColumns: ColumnsType<ManagedOrder> = [
     { title: '订单号', dataIndex: 'orderNo', render: (orderNo) => <span className={styles.monoText}>{orderNo}</span> },
     { title: '买家', dataIndex: 'buyerName' },
-    { title: '商家', dataIndex: 'merchantId', render: (merchantId) => getMerchantName(merchantId) },
+    { title: '商家', key: 'merchant', render: (_, order) => order.merchantName || getMerchantName(order.merchantId) },
     { title: '商品', dataIndex: 'productTitles', render: (titles: string[]) => titles.join('、') },
     { title: '金额', dataIndex: 'amount', render: (amount: number) => formatMoney(amount) },
     {
@@ -954,14 +1002,14 @@ function AdminWorkspace() {
       key: 'actions',
       render: (_, order) => (
         <Space>
-          <Button size="small" icon={<TruckOutlined />} disabled={order.status !== 'paid'} onClick={() => shipOrder(order)}>
+          <Button size="small" icon={<TruckOutlined />} disabled={order.status !== 'paid'} onClick={() => openOrderShipment(order)}>
             发货
           </Button>
-          <Button size="small" icon={<FileSearchOutlined />} onClick={() => setDetailOrder(order)}>
+          <Button size="small" icon={<FileSearchOutlined />} onClick={() => void openOrderDetail(order)}>
             订单详情
           </Button>
-          <Button size="small" disabled={!order.refundRequested} onClick={() => refundOrder(order)}>
-            同意退款
+          <Button size="small" disabled>
+            退款未接入
           </Button>
         </Space>
       ),
@@ -1419,9 +1467,10 @@ function AdminWorkspace() {
               <section className={styles.tableSurface}>
                 <div className={styles.tableHeader}>
                   <div>
-                    <p className={styles.eyebrow}>待发货、退款、收货地址</p>
+                    <p className={styles.eyebrow}>{isAdmin ? '本阶段仅接入商家自己的履约订单' : '真实订单、发货与收货地址'}</p>
                     <h3>订单管理</h3>
                   </div>
+                  {!isAdmin && <Button icon={<ReloadOutlined />} onClick={() => void loadOrders()}>刷新订单</Button>}
                 </div>
                 <div className={styles.productToolbar}>
                   <Input
@@ -1453,7 +1502,7 @@ function AdminWorkspace() {
                     共 {filteredOrders.length} / {visibleOrders.length} 个订单
                   </span>
                 </div>
-                <Table rowKey="id" columns={orderColumns} dataSource={filteredOrders} pagination={{ pageSize: 6 }} />
+                <Table loading={ordersLoading} rowKey="id" columns={orderColumns} dataSource={filteredOrders} pagination={{ pageSize: 6 }} />
               </section>
             )}
 
@@ -1737,15 +1786,15 @@ function AdminWorkspace() {
               </div>
               <div>
                 <span>商家</span>
-                <strong>{getMerchantName(detailOrder.merchantId)}</strong>
+                <strong>{detailOrder.merchantName || getMerchantName(detailOrder.merchantId)}</strong>
               </div>
               <div>
                 <span>订单金额</span>
                 <strong>{formatMoney(detailOrder.amount)}</strong>
               </div>
               <div>
-                <span>退换天数</span>
-                <strong>{detailOrder.returnDays} 天</strong>
+                <span>售后</span>
+                <strong>暂未接入</strong>
               </div>
               {detailOrder.fromVerifierName && (
                 <div>
@@ -1812,17 +1861,39 @@ function AdminWorkspace() {
               <p className={styles.addressText}>{detailOrder.address}</p>
             </section>
 
-            {detailOrder.refundRequested && (
-              <div className={styles.refundNotice}>
-                <strong>用户已发起退换申请</strong>
-                <Button type="primary" danger onClick={() => refundOrder(detailOrder)}>
-                  同意退款
-                </Button>
-              </div>
+            {detailOrder.trackingNo && (
+              <section>
+                <h4>物流信息</h4>
+                <p className={styles.addressText}>{detailOrder.carrier} · {detailOrder.trackingNo}</p>
+              </section>
             )}
+
+            <div className={styles.refundNotice}>
+              <strong>退款与售后尚未接入，本阶段不会修改订单状态</strong>
+            </div>
           </div>
         )}
       </Drawer>
+      <Modal
+        title={`订单发货${shippingOrder ? ` · ${shippingOrder.orderNo}` : ''}`}
+        open={Boolean(shippingOrder)}
+        onCancel={closeOrderShipment}
+        footer={null}
+        destroyOnHidden
+      >
+        <Form form={orderShipForm} layout="vertical" onFinish={submitOrderShipment}>
+          <Form.Item name="carrier" label="物流公司" rules={[{ required: true, message: '请输入物流公司' }, { max: 50 }]}>
+            <Input placeholder="例如：顺丰速运" />
+          </Form.Item>
+          <Form.Item name="trackingNo" label="物流单号" rules={[{ required: true, message: '请输入物流单号' }, { max: 100 }]}>
+            <Input placeholder="请输入物流单号" />
+          </Form.Item>
+          <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+            <Button disabled={orderShipping} onClick={closeOrderShipment}>取消</Button>
+            <Button type="primary" htmlType="submit" loading={orderShipping}>确认发货</Button>
+          </Space>
+        </Form>
+      </Modal>
       <Modal
         title="商家入驻审核"
         open={merchantModalOpen}

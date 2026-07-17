@@ -115,6 +115,7 @@ export interface ProductCategoryOption {
 export interface ManagedOrder {
   id: number;
   merchantId: number;
+  merchantName?: string;
   orderNo: string;
   buyerName: string;
   status: OrderStatus;
@@ -132,6 +133,11 @@ export interface ManagedOrder {
   returnDays: number;
   refundRequested: boolean;
   createdAt: string;
+  paidAt?: string;
+  carrier?: string;
+  trackingNo?: string;
+  shippedAt?: string;
+  receivedAt?: string;
 }
 
 export interface ManagedReport {

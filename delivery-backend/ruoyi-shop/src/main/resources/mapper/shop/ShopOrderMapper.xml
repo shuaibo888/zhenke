@@ -30,12 +30,18 @@
         <id property="orderId" column="order_id" />
         <result property="orderNo" column="order_no" />
         <result property="userId" column="user_id" />
+        <result property="buyerName" column="buyer_name" />
         <result property="merchantId" column="merchant_id" />
         <result property="merchantName" column="merchant_name" />
         <result property="status" column="order_status" />
         <result property="totalAmount" column="total_amount" />
         <result property="itemCount" column="item_count" />
         <result property="delFlag" column="del_flag" />
+        <result property="payTime" column="pay_time" />
+        <result property="carrier" column="carrier" />
+        <result property="trackingNo" column="tracking_no" />
+        <result property="shipTime" column="ship_time" />
+        <result property="receiveTime" column="receive_time" />
         <result property="cancelTime" column="cancel_time" />
         <result property="createTime" column="create_time" />
         <result property="updateTime" column="update_time" />
@@ -76,12 +82,15 @@
     </resultMap>
 
     <sql id="selectOrderColumns">
-        select o.order_id, o.order_no, o.user_id, o.merchant_id,
+        select o.order_id, o.order_no, o.user_id,
+               coalesce(u.nick_name, u.user_name) as buyer_name, o.merchant_id,
                m.company_name as merchant_name, o.status as order_status,
-               o.total_amount, o.item_count, o.del_flag, o.cancel_time,
+               o.total_amount, o.item_count, o.del_flag, o.pay_time,
+               o.carrier, o.tracking_no, o.ship_time, o.receive_time, o.cancel_time,
                o.create_time, o.update_time
         from shop_order o
         inner join shop_merchant m on m.merchant_id = o.merchant_id
+        inner join shop_user u on u.user_id = o.user_id
     </sql>
 
     <select id="selectUserAddress" resultMap="ShopUserAddressResult">
@@ -189,8 +198,36 @@
     <update id="updateStatus">
         update shop_order
         set status = #{toStatus},
+            pay_time = case when #{toStatus} = 'PAID' then sysdate() else pay_time end,
+            receive_time = case when #{toStatus} = 'RECEIVED' then sysdate() else receive_time end,
             cancel_time = case when #{toStatus} = 'CANCELLED' then sysdate() else cancel_time end,
             update_time = sysdate()
         where user_id = #{userId} and order_id = #{orderId} and status = #{fromStatus} and del_flag = '0'
+    </update>
+
+    <select id="selectMerchantOrders" parameterType="Long" resultMap="ShopOrderResult">
+        <include refid="selectOrderColumns" />
+        where o.merchant_id = #{merchantId} and o.del_flag = '0'
+        order by o.order_id desc
+    </select>
+
+    <select id="selectMerchantOrder" resultMap="ShopOrderResult">
+        <include refid="selectOrderColumns" />
+        where o.merchant_id = #{merchantId} and o.order_id = #{orderId} and o.del_flag = '0'
+        limit 1
+    </select>
+
+    <select id="selectMerchantOrderForUpdate" resultMap="ShopOrderResult">
+        <include refid="selectOrderColumns" />
+        where o.merchant_id = #{merchantId} and o.order_id = #{orderId} and o.del_flag = '0'
+        limit 1 for update
+    </select>
+
+    <update id="shipOrder">
+        update shop_order
+        set status = 'SHIPPED', carrier = #{carrier}, tracking_no = #{trackingNo},
+            ship_time = sysdate(), update_time = sysdate()
+        where merchant_id = #{merchantId} and order_id = #{orderId}
+          and status = 'PAID' and del_flag = '0'
     </update>
 </mapper>

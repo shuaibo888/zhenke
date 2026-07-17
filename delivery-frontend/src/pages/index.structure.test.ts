@@ -17,6 +17,15 @@ test('cart and first-stage orders use authenticated server APIs', () => {
   assert.doesNotMatch(pageSource, /createOrdersFromCart\(/);
 });
 
+test('second-stage orders use backend payment, logistics, and receipt APIs', () => {
+  assert.match(contentServiceSource, /\/shop\/orders\/\$\{orderId\}\/pay/);
+  assert.match(contentServiceSource, /\/shop\/orders\/\$\{orderId\}\/received/);
+  assert.match(pageSource, /payShopOrder\(payOrder\.id\)/);
+  assert.match(pageSource, /confirmShopOrderReceived\(order\.id\)/);
+  assert.match(pageSource, /模拟支付成功/);
+  assert.doesNotMatch(pageSource, /advanceOrderStatus/);
+});
+
 test('merchant application is available on the public home page without a shop-user session', () => {
   assert.match(pageSource, /onClick=\{openMerchantApplication\}/);
   assert.match(pageSource, /商家后台账号/);

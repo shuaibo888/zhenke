@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,6 +23,7 @@ import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.shop.domain.ShopOrder;
 import com.ruoyi.shop.domain.ShopOrderAddress;
+import com.ruoyi.shop.domain.ShopOrderStatusLog;
 import com.ruoyi.shop.domain.ShopProduct;
 import com.ruoyi.shop.domain.ShopUserAddress;
 import com.ruoyi.shop.domain.dto.ShopOrderCreateBody;
@@ -130,6 +132,98 @@ class ShopOrderServiceTest
         verify(orderMapper, never()).restoreStock(anyLong(), any());
     }
 
+    @Test
+    void payUpdatesCurrentUsersPendingOrderAndWritesOneLog()
+    {
+        ShopOrderMapper orderMapper = mock(ShopOrderMapper.class);
+        ShopOrderService service = new ShopOrderService(orderMapper, mock(ShopCartMapper.class));
+        when(orderMapper.selectUserOrderForUpdate(USER_ID, 21L)).thenReturn(order(21L, ShopOrderService.PENDING_PAYMENT));
+        when(orderMapper.updateStatus(USER_ID, 21L, ShopOrderService.PENDING_PAYMENT, ShopOrderService.PAID)).thenReturn(1);
+        when(orderMapper.insertStatusLog(any())).thenReturn(1);
+        when(orderMapper.selectUserOrder(USER_ID, 21L)).thenReturn(order(21L, ShopOrderService.PAID));
+        when(orderMapper.selectOrderItems(21L)).thenReturn(List.of());
+        when(orderMapper.selectStatusLogs(21L)).thenReturn(List.of());
+
+        try (MockedStatic<SecurityUtils> security = shopUserLogin())
+        {
+            assertEquals(ShopOrderService.PAID, service.pay(21L).getStatus());
+        }
+
+        ArgumentCaptor<ShopOrderStatusLog> logCaptor = ArgumentCaptor.forClass(ShopOrderStatusLog.class);
+        verify(orderMapper, times(1)).insertStatusLog(logCaptor.capture());
+        assertEquals(ShopOrderService.PENDING_PAYMENT, logCaptor.getValue().getFromStatus());
+        assertEquals(ShopOrderService.PAID, logCaptor.getValue().getToStatus());
+    }
+
+    @Test
+    void payRejectsAnotherUsersOrderAndRepeatedOperation()
+    {
+        ShopOrderMapper otherUserMapper = mock(ShopOrderMapper.class);
+        ShopOrderService otherUserService = new ShopOrderService(otherUserMapper, mock(ShopCartMapper.class));
+        when(otherUserMapper.selectUserOrderForUpdate(USER_ID, 99L)).thenReturn(null);
+        try (MockedStatic<SecurityUtils> security = shopUserLogin())
+        {
+            assertThrows(ServiceException.class, () -> otherUserService.pay(99L));
+        }
+        verify(otherUserMapper, never()).updateStatus(anyLong(), anyLong(), any(), any());
+
+        ShopOrderMapper repeatedMapper = mock(ShopOrderMapper.class);
+        ShopOrderService repeatedService = new ShopOrderService(repeatedMapper, mock(ShopCartMapper.class));
+        when(repeatedMapper.selectUserOrderForUpdate(USER_ID, 21L)).thenReturn(order(21L, ShopOrderService.PAID));
+        try (MockedStatic<SecurityUtils> security = shopUserLogin())
+        {
+            assertThrows(ServiceException.class, () -> repeatedService.pay(21L));
+        }
+        verify(repeatedMapper, never()).updateStatus(anyLong(), anyLong(), any(), any());
+        verify(repeatedMapper, never()).insertStatusLog(any());
+    }
+
+    @Test
+    void confirmReceivedUpdatesShippedOrderAndWritesOneLog()
+    {
+        ShopOrderMapper orderMapper = mock(ShopOrderMapper.class);
+        ShopOrderService service = new ShopOrderService(orderMapper, mock(ShopCartMapper.class));
+        when(orderMapper.selectUserOrderForUpdate(USER_ID, 21L)).thenReturn(order(21L, ShopOrderService.SHIPPED));
+        when(orderMapper.updateStatus(USER_ID, 21L, ShopOrderService.SHIPPED, ShopOrderService.RECEIVED)).thenReturn(1);
+        when(orderMapper.insertStatusLog(any())).thenReturn(1);
+        when(orderMapper.selectUserOrder(USER_ID, 21L)).thenReturn(order(21L, ShopOrderService.RECEIVED));
+        when(orderMapper.selectOrderItems(21L)).thenReturn(List.of());
+        when(orderMapper.selectStatusLogs(21L)).thenReturn(List.of());
+
+        try (MockedStatic<SecurityUtils> security = shopUserLogin())
+        {
+            assertEquals(ShopOrderService.RECEIVED, service.confirmReceived(21L).getStatus());
+        }
+
+        ArgumentCaptor<ShopOrderStatusLog> logCaptor = ArgumentCaptor.forClass(ShopOrderStatusLog.class);
+        verify(orderMapper, times(1)).insertStatusLog(logCaptor.capture());
+        assertEquals(ShopOrderService.SHIPPED, logCaptor.getValue().getFromStatus());
+        assertEquals(ShopOrderService.RECEIVED, logCaptor.getValue().getToStatus());
+    }
+
+    @Test
+    void confirmReceivedRejectsAnotherUserAndInvalidStatus()
+    {
+        ShopOrderMapper otherUserMapper = mock(ShopOrderMapper.class);
+        ShopOrderService otherUserService = new ShopOrderService(otherUserMapper, mock(ShopCartMapper.class));
+        when(otherUserMapper.selectUserOrderForUpdate(USER_ID, 99L)).thenReturn(null);
+        try (MockedStatic<SecurityUtils> security = shopUserLogin())
+        {
+            assertThrows(ServiceException.class, () -> otherUserService.confirmReceived(99L));
+        }
+        verify(otherUserMapper, never()).updateStatus(anyLong(), anyLong(), any(), any());
+
+        ShopOrderMapper paidMapper = mock(ShopOrderMapper.class);
+        ShopOrderService paidService = new ShopOrderService(paidMapper, mock(ShopCartMapper.class));
+        when(paidMapper.selectUserOrderForUpdate(USER_ID, 21L)).thenReturn(order(21L, ShopOrderService.RECEIVED));
+        try (MockedStatic<SecurityUtils> security = shopUserLogin())
+        {
+            assertThrows(ServiceException.class, () -> paidService.confirmReceived(21L));
+        }
+        verify(paidMapper, never()).updateStatus(anyLong(), anyLong(), any(), any());
+        verify(paidMapper, never()).insertStatusLog(any());
+    }
+
     private static ShopOrderCreateBody orderBody(long productId, int quantity)
     {
         ShopOrderItemBody item = new ShopOrderItemBody();
@@ -166,6 +260,15 @@ class ShopOrderServiceTest
         address.setDistrictCode("610113");
         address.setDetail("测试路18号");
         return address;
+    }
+
+    private static ShopOrder order(long orderId, String status)
+    {
+        ShopOrder order = new ShopOrder();
+        order.setOrderId(orderId);
+        order.setUserId(USER_ID);
+        order.setStatus(status);
+        return order;
     }
 
     private static MockedStatic<SecurityUtils> shopUserLogin()

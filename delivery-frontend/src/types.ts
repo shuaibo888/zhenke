@@ -85,6 +85,11 @@ export interface Order {
   returnDays: number;
   merchantName?: string;
   createdAt?: string;
+  paidAt?: string;
+  carrier?: string;
+  trackingNo?: string;
+  shippedAt?: string;
+  receivedAt?: string;
   items?: Array<{
     productId: number;
     productTitle: string;

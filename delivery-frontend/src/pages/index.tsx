@@ -28,7 +28,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import pcaCode from 'china-division/dist/pca-code.json';
 import {
   earningRecords,
-  logisticsRecords,
   notifications,
   productEvidence,
 } from '@/mocks/commerce';
@@ -57,6 +56,7 @@ import {
   applyForTrial,
   cancelShopOrder,
   checkoutShopCart,
+  confirmShopOrderReceived,
   confirmTrialReceived,
   createShopOrders,
   deleteShopCartItem,
@@ -67,6 +67,7 @@ import {
   fetchProductCategories,
   fetchPublicProduct,
   fetchPublishedReport,
+  payShopOrder,
   publishVerificationReport,
   updateShopCartItem,
   uploadShopContentFile,
@@ -80,11 +81,7 @@ import {
 } from '@/services/shopContent';
 import { uploadAvatarFile } from '@/utils/avatarUpload';
 import { getCartCount, getCartTotal, type CartItem } from '@/utils/cart';
-import {
-  advanceOrderStatus,
-  canCancelOrder,
-  orderStatusMeta,
-} from '@/utils/orders';
+import { canCancelOrder, orderStatusMeta } from '@/utils/orders';
 import { findProductForReport, getCatalogProducts, type ProductCategoryFilter, type ProductSortKey } from '@/utils/productCatalog';
 import { getProductJourneyState } from '@/utils/productJourney';
 import {
@@ -335,6 +332,11 @@ function mapShopOrder(dto: ShopOrderDto, role: MemberRole): Order {
     returnDays: roleMeta[role].returnDays,
     merchantName: dto.merchantName,
     createdAt: dto.createTime,
+    paidAt: dto.payTime,
+    carrier: dto.carrier,
+    trackingNo: dto.trackingNo,
+    shippedAt: dto.shipTime,
+    receivedAt: dto.receiveTime,
     items: dto.items.map((item) => ({
       productId: item.productId,
       productTitle: item.productName,
@@ -397,8 +399,8 @@ export default function HomePage() {
   const [pendingBuyProduct, setPendingBuyProduct] = useState<Product | null>(null);
   const [pendingBuyAttribution, setPendingBuyAttribution] = useState<ReportAttribution | undefined>(undefined);
   const [payOrder, setPayOrder] = useState<Order | null>(null);
-  const [payMethod, setPayMethod] = useState<'wechat' | 'alipay'>('wechat');
   const [paying, setPaying] = useState(false);
+  const [orderMutatingId, setOrderMutatingId] = useState<number | null>(null);
   const [reviewOrder, setReviewOrder] = useState<Order | null>(null);
   const [reviewStars, setReviewStars] = useState({ productQuality: 5, logisticsService: 5, serviceAttitude: 5 });
   const [reviewContent, setReviewContent] = useState('');
@@ -674,10 +676,7 @@ export default function HomePage() {
   const cartTotal = getCartTotal(cartItems);
   const earningsSummary = summarizeEarnings(earnings);
   const selectedLogisticsView = selectedLogisticsOrder
-    ? getLogisticsView(
-        selectedLogisticsOrder,
-        logisticsRecords.find((item) => item.orderId === selectedLogisticsOrder.id),
-      )
+    ? getLogisticsView(selectedLogisticsOrder)
     : null;
 
   const usefulProgress = Math.min(100, Math.round(((activeUser?.usefulCount ?? 0) / 50) * 100));
@@ -900,47 +899,29 @@ export default function HomePage() {
     if (order.status === 'shipped') {
       Modal.confirm({
         title: '确认收货？',
-        content: '确认收货后，款项将打款给商家。请确认您已收到商品。',
+        content: '请确认您已经收到商品。确认后订单将完成。',
         okText: '确认收货',
         cancelText: '再想想',
-        onOk: () => {
-          handleConfirmReceive(order);
-        },
+        onOk: () => handleConfirmReceive(order),
       });
       return;
     }
-
-    setUserOrders((items) => items.map((item) => (item.id === orderId ? advanceOrderStatus(item) : item)));
   };
 
-  const handleConfirmReceive = (order: Order) => {
-    setUserOrders((items) => items.map((item) => {
-      if (item.id === order.id) {
-        const newOrder = advanceOrderStatus(item);
-        if (newOrder.status === 'completed' && item.fromReviewId && item.fromVerifierId) {
-          const commissionAmount = Math.round(item.amount * 0.05 * 100) / 100;
-          const publicWelfareAmount = Math.round(item.amount * 0.05 * 100) / 100;
-          const report = reports.find((r) => r.id === item.fromReviewId);
-          const earning: EarningRecord = {
-            id: Date.now(),
-            reportId: item.fromReviewId,
-            reportTitle: report?.productTitle ?? '',
-            orderNo: item.orderNo,
-            orderAmount: item.amount,
-            commissionRate: 0.05,
-            commissionAmount,
-            publicWelfareRate: 0.05,
-            publicWelfareAmount,
-            status: 'pending',
-            createdAt: '刚刚',
-          };
-          setEarnings((prev) => [...prev, earning]);
-        }
-        return newOrder;
-      }
-      return item;
-    }));
-    message.success('确认收货成功，款项已打给商家');
+  const handleConfirmReceive = async (order: Order) => {
+    if (!activeUser || orderMutatingId === order.id) return;
+    setOrderMutatingId(order.id);
+    try {
+      const received = mapShopOrder(await confirmShopOrderReceived(order.id), activeUser.role);
+      setUserOrders((items) => items.map((item) => (item.id === order.id ? received : item)));
+      setSelectedLogisticsOrder((current) => current?.id === order.id ? received : current);
+      message.success('确认收货成功');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '确认收货失败');
+      throw error;
+    } finally {
+      setOrderMutatingId(null);
+    }
   };
 
   const handleSubmitReview = () => {
@@ -988,10 +969,19 @@ export default function HomePage() {
     setReviewImages(order.review?.images ?? []);
   };
 
-  const handlePay = () => {
-    if (!payOrder) return;
-    setPayOrder(null);
-    message.info('订单已经创建，真实支付将在下一阶段接入');
+  const handlePay = async () => {
+    if (!payOrder || !activeUser || paying) return;
+    setPaying(true);
+    try {
+      const paid = mapShopOrder(await payShopOrder(payOrder.id), activeUser.role);
+      setUserOrders((items) => items.map((item) => (item.id === paid.id ? paid : item)));
+      setPayOrder(null);
+      message.success('模拟支付成功，等待商家发货');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '模拟支付失败');
+    } finally {
+      setPaying(false);
+    }
   };
 
   const handleConfirmBuyNow = async () => {
@@ -2103,7 +2093,7 @@ export default function HomePage() {
                       </Button>
                     )}
                     {orderStatusMeta[order.status].actionLabel && (
-                      <Button size="small" type="primary" onClick={() => handleAdvanceOrder(order.id)}>
+                      <Button size="small" type="primary" loading={orderMutatingId === order.id} onClick={() => handleAdvanceOrder(order.id)}>
                         {orderStatusMeta[order.status].actionLabel}
                       </Button>
                     )}
@@ -2576,36 +2566,18 @@ export default function HomePage() {
               <span>{payOrder.productTitle}</span>
             </div>
             <div className={styles.payMethods}>
-              <p className={styles.payMethodsTitle}>选择支付方式</p>
-              <div
-                className={`${styles.payMethodItem} ${payMethod === 'wechat' ? styles.selectedPayMethod : ''}`}
-                onClick={() => setPayMethod('wechat')}
-              >
+              <p className={styles.payMethodsTitle}>当前支付方式</p>
+              <div className={`${styles.payMethodItem} ${styles.selectedPayMethod}`}>
                 <div className={styles.payMethodLeft}>
                   <div className={`${styles.payIcon} ${styles.wechatIcon}`}>
-                    <span>微</span>
+                    <span>模</span>
                   </div>
                   <div>
-                    <strong>微信支付</strong>
-                    <p>推荐使用微信扫码支付</p>
+                    <strong>模拟支付</strong>
+                    <p>仅用于当前订单履约联调，不会发起真实扣款</p>
                   </div>
                 </div>
-                <Radio checked={payMethod === 'wechat'} onChange={() => setPayMethod('wechat')} />
-              </div>
-              <div
-                className={`${styles.payMethodItem} ${payMethod === 'alipay' ? styles.selectedPayMethod : ''}`}
-                onClick={() => setPayMethod('alipay')}
-              >
-                <div className={styles.payMethodLeft}>
-                  <div className={`${styles.payIcon} ${styles.alipayIcon}`}>
-                    <span>支</span>
-                  </div>
-                  <div>
-                    <strong>支付宝支付</strong>
-                    <p>支付宝安全、快捷支付</p>
-                  </div>
-                </div>
-                <Radio checked={payMethod === 'alipay'} onChange={() => setPayMethod('alipay')} />
+                <Tag color="processing">联调模式</Tag>
               </div>
             </div>
             <Button
@@ -2619,7 +2591,7 @@ export default function HomePage() {
               {paying ? '支付处理中...' : `确认支付 ${formatPrice(payOrder.amount)}`}
             </Button>
             <p className={styles.payHint}>
-              提示：当前为模拟支付，后期对接后端后将接入真实支付接口。
+              提示：微信商户申请完成后，此处将切换为真实微信支付。
             </p>
           </div>
         )}

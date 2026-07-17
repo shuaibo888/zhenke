@@ -10,7 +10,7 @@ export const orderStatusMeta: Record<
   }
 > = {
   unpaid: { label: '待付款', color: 'warning', actionLabel: '去付款' },
-  paid: { label: '待发货', color: 'processing', actionLabel: '模拟发货' },
+  paid: { label: '待发货', color: 'processing' },
   shipped: { label: '待收货', color: 'processing', actionLabel: '确认收货' },
   completed: { label: '已完成', color: 'success' },
   canceled: { label: '已取消', color: 'default' },

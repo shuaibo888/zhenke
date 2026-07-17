@@ -53,4 +53,16 @@ public class ShopOrderController
     {
         return AjaxResult.success(orderService.cancel(orderId));
     }
+
+    @PutMapping("/{orderId}/pay")
+    public AjaxResult pay(@PathVariable long orderId)
+    {
+        return AjaxResult.success(orderService.pay(orderId));
+    }
+
+    @PutMapping("/{orderId}/received")
+    public AjaxResult received(@PathVariable long orderId)
+    {
+        return AjaxResult.success(orderService.confirmReceived(orderId));
+    }
 }
