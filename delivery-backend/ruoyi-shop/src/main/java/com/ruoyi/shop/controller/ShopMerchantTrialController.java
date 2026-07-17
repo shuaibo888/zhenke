@@ -59,7 +59,7 @@ public class ShopMerchantTrialController extends BaseController
     @PostMapping
     public AjaxResult create(@Valid @RequestBody ShopTrialCampaignBody body)
     {
-        return AjaxResult.success("试用招募已保存为草稿", trialService.createCampaign(body, getUsername()));
+        return AjaxResult.success("试用招募已发布", trialService.createCampaigns(body, getUsername()));
     }
 
     @Log(title = "试用招募状态", businessType = BusinessType.UPDATE)

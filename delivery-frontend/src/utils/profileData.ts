@@ -25,6 +25,9 @@ function dateAtShanghaiMidnight(value: string) {
 }
 
 export function getTrialDeadlineMeta(trial: TrialRecord, today: string) {
+  if (trial.trialType === 'OFFLINE' && trial.status === 'pending_report') {
+    return { tone: 'processing' as const, label: '线下试用审核已通过，可自愿发布甄客验' };
+  }
   const workflowLabels = {
     applied: '申请待审核',
     approved: '申请已通过，等待商家发货',

@@ -100,6 +100,7 @@ type TabKey = 'reviews' | 'profile';
 type JourneyView = 'feed' | 'product' | 'report' | 'purchase';
 type ProfileView = 'menu' | 'orders' | 'trials' | 'reports' | 'earnings' | 'messages';
 type ProfileSection = Exclude<ProfileView, 'menu'>;
+type HomeFeedFilter = 'ALL' | 'ONLINE' | 'OFFLINE' | 'REPORT';
 type AuthFormValues = {
   username: string;
   password: string;
@@ -136,7 +137,7 @@ const commerceTheme = {
 
 type ProfileDialog = 'name' | 'password' | 'avatar' | null;
 type ReportFormValues = {
-  productId: number;
+  trialApplicationId: number;
   experience: string;
   shortcoming: string;
   fitCrowd: string;
@@ -251,6 +252,7 @@ function mapVerificationReport(dto: VerificationReportDto): VerifyReport {
     id: dto.reportId,
     productId: dto.productId,
     productTitle: dto.productName,
+    trialType: dto.trialType,
     userId: dto.shopUserId,
     userName: dto.nickName || dto.userName,
     userRole: 'zhenke',
@@ -279,9 +281,11 @@ function mapTrialApplication(dto: TrialApplicationDto): TrialRecord {
   return {
     id: dto.applicationId,
     applicationId: dto.applicationId,
+    campaignId: dto.campaignId,
+    trialType: dto.trialType,
     productId: dto.productId,
     productTitle: dto.productName,
-    status: statusMap[dto.status],
+    status: dto.trialType === 'OFFLINE' && dto.status === 'APPROVED' ? 'pending_report' : statusMap[dto.status],
     claimedAt: dto.createTime?.slice(0, 10) ?? '',
     deadline: dto.applicationDeadline?.slice(0, 10) ?? dto.createTime?.slice(0, 10) ?? '',
     completedAt: dto.completedAt?.slice(0, 10),
@@ -376,7 +380,7 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<TabKey>('reviews');
   const [profileView, setProfileView] = useState<ProfileView>('menu');
   const [category, setCategory] = useState<ProductCategoryFilter>('all');
-  const [homeContentType, setHomeContentType] = useState<'ALL' | 'TRIAL' | 'REPORT'>('ALL');
+  const [homeFeedFilter, setHomeFeedFilter] = useState<HomeFeedFilter>('ALL');
   const [sortMode, setSortMode] = useState<ProductSortKey>('latestVerified');
   const [products, setProducts] = useState<Product[]>([]);
   const [homeFeed, setHomeFeed] = useState<HomeFeedItemDto[]>([]);
@@ -467,8 +471,14 @@ export default function HomePage() {
     setContentLoading(true);
     try {
       const categoryCode = category === 'all' ? undefined : category;
+      const contentType: 'ALL' | 'TRIAL' | 'REPORT' = homeFeedFilter === 'REPORT'
+        ? 'REPORT'
+        : homeFeedFilter === 'ALL' ? 'ALL' : 'TRIAL';
+      const trialType: 'ALL' | 'ONLINE' | 'OFFLINE' = homeFeedFilter === 'ONLINE' || homeFeedFilter === 'OFFLINE'
+        ? homeFeedFilter
+        : 'ALL';
       const [feedResult, categories] = await Promise.all([
-        fetchHomeFeed(categoryCode, homeContentType),
+        fetchHomeFeed(categoryCode, contentType, trialType),
         fetchProductCategories(),
       ]);
       const rows = Array.isArray(feedResult.rows) ? feedResult.rows : [];
@@ -489,6 +499,7 @@ export default function HomePage() {
       setRecruitments(rows.flatMap((item) => item.contentType === 'TRIAL' && item.trial ? [{
         id: item.contentId,
         productId: item.productId,
+        trialType: item.trial.trialType,
         targetCount: item.trial.targetCount,
         claimedCount: item.trial.approvedCount,
         deadline: item.trial.applicationDeadline.slice(0, 10),
@@ -537,7 +548,7 @@ export default function HomePage() {
 
   useEffect(() => {
     void loadHomeContent();
-  }, [category, homeContentType]);
+  }, [category, homeFeedFilter]);
 
   useEffect(() => {
     let mounted = true;
@@ -708,8 +719,9 @@ export default function HomePage() {
 
   const userMeta = activeUser ? roleMeta[activeUser.role] : roleMeta.zhenke;
   const selectedReports = reports.filter((item) => item.productId === selectedProduct?.id);
+  const reviewableTrials = trials.filter((trial) => trial.status === 'pending_report' && trial.applicationId);
   const trialReviewableProducts = products.filter((product) =>
-    trials.some((trial) => trial.productId === product.id && trial.status === 'pending_report'),
+    reviewableTrials.some((trial) => trial.productId === product.id),
   );
   const reviewableProducts = trialReviewableProducts;
   const canReview = Boolean(
@@ -767,13 +779,14 @@ export default function HomePage() {
     });
   }, [catalogProducts]);
 
-  const openReportModal = (product?: Product) => {
+  const openReportModal = (product?: Product, selectedTrial?: TrialRecord) => {
     form.resetFields();
     setReportImageUrls([]);
     setReportVideoUrl(undefined);
 
-    if (product && reviewableProducts.some((item) => item.id === product.id)) {
-      form.setFieldsValue({ productId: product.id });
+    const trial = selectedTrial ?? (product ? reviewableTrials.find((item) => item.productId === product.id) : undefined);
+    if (trial?.applicationId) {
+      form.setFieldsValue({ trialApplicationId: trial.applicationId });
     }
 
     setReportOpen(true);
@@ -781,10 +794,11 @@ export default function HomePage() {
 
   const handlePublish = async (values: ReportFormValues) => {
     if (!activeUser) return;
-    const reportProduct = reviewableProducts.find((product) => product.id === values.productId);
+    const trial = reviewableTrials.find((item) => item.applicationId === values.trialApplicationId);
+    const reportProduct = products.find((product) => product.id === trial?.productId);
 
-    if (!reportProduct) {
-      message.warning('请选择已确认收货且尚未发布报告的试用商品');
+    if (!trial?.applicationId || !reportProduct) {
+      message.warning('请选择当前可以发布甄客验的试用记录');
       return;
     }
 
@@ -810,11 +824,6 @@ export default function HomePage() {
       return;
     }
 
-    const trial = trials.find((item) => item.productId === reportProduct.id && item.status === 'pending_report');
-    if (!trial?.applicationId) {
-      message.warning('没有找到已确认收货且尚未发布报告的试用');
-      return;
-    }
     try {
       const resources = [
         ...reportImageUrls.filter((url) => !url.startsWith('blob:')).map((resourceUrl) => ({ resourceType: 'IMAGE' as const, resourceUrl })),
@@ -1355,7 +1364,7 @@ export default function HomePage() {
       message.info('请先登录');
       return;
     }
-    if (!isShippingAddressReady || !defaultShippingAddress) {
+    if (recruitment.trialType === 'ONLINE' && (!isShippingAddressReady || !defaultShippingAddress)) {
       message.info('请先完善默认收货地址');
       openAddressDialog();
       return;
@@ -1365,20 +1374,25 @@ export default function HomePage() {
   };
 
   const submitTrialApplication = async (values: TrialApplyFormValues) => {
-    if (!applyingRecruitment || !defaultShippingAddress) return;
+    if (!applyingRecruitment) return;
+    if (applyingRecruitment.trialType === 'ONLINE' && !defaultShippingAddress) return;
     setTrialApplying(true);
     try {
       await applyForTrial(applyingRecruitment.id, {
         applyReason: values.applyReason.trim(),
-        recipientName: defaultShippingAddress.recipient,
-        recipientPhone: defaultShippingAddress.phone,
-        shippingAddress: formatShippingAddress(defaultShippingAddress),
+        recipientName: applyingRecruitment.trialType === 'ONLINE' ? defaultShippingAddress?.recipient : undefined,
+        recipientPhone: applyingRecruitment.trialType === 'ONLINE' ? defaultShippingAddress?.phone : undefined,
+        shippingAddress: applyingRecruitment.trialType === 'ONLINE' && defaultShippingAddress
+          ? formatShippingAddress(defaultShippingAddress)
+          : undefined,
       });
       const applications = await fetchMyTrialApplications();
       setTrials(applications.map(mapTrialApplication));
       setApplyingRecruitment(null);
       trialApplyForm.resetFields();
-      message.success('申请已提交，可在“我的试用”查看审核和寄送进度');
+      message.success(applyingRecruitment.trialType === 'ONLINE'
+        ? '申请已提交，可在“我的试用”查看审核和寄送进度'
+        : '申请已提交，审核通过后即可发布甄客验');
     } catch (error) {
       message.error(error instanceof Error ? error.message : '试用申请提交失败');
     } finally {
@@ -1850,6 +1864,13 @@ export default function HomePage() {
       }
       return items;
     }, []);
+    const emptyFeedText = homeFeedFilter === 'ONLINE'
+      ? '当前分类还没有正在招募的线上试用。'
+      : homeFeedFilter === 'OFFLINE'
+        ? '当前分类还没有正在招募的线下试用。'
+        : homeFeedFilter === 'REPORT'
+          ? '当前分类还没有已发布的验证报告。'
+          : '当前分类还没有正在招募的试用或已发布的验证报告。';
     return (
       <main className={styles.singleColumn}>
         <div className={styles.sectionHeader}>
@@ -1871,11 +1892,12 @@ export default function HomePage() {
             ]}
           />
           <Segmented
-            value={homeContentType}
-            onChange={(value) => setHomeContentType(value as 'ALL' | 'TRIAL' | 'REPORT')}
+            value={homeFeedFilter}
+            onChange={(value) => setHomeFeedFilter(value as HomeFeedFilter)}
             options={[
               { label: '全部', value: 'ALL' },
-              { label: '试用招募', value: 'TRIAL' },
+              { label: '线上试用', value: 'ONLINE' },
+              { label: '线下试用', value: 'OFFLINE' },
               { label: '验证报告', value: 'REPORT' },
             ]}
           />
@@ -1896,6 +1918,7 @@ export default function HomePage() {
             }
             const { product, ...recruitment } = item.data;
             const remaining = recruitment.targetCount - recruitment.claimedCount;
+            const alreadyApplied = trials.some((trial) => trial.campaignId === recruitment.id);
             const aspectRatios = ['80%', '100%', '120%'];
             const imageHeightRatio = aspectRatios[index % aspectRatios.length];
             return (
@@ -1906,12 +1929,14 @@ export default function HomePage() {
               >
                 <div className={styles.reportGridImage} style={{ paddingTop: imageHeightRatio }}>
                   <img src={product.imageUrl} alt={product.title} />
-                  <div className={styles.recruitBadge}>招募中</div>
+                  <div className={styles.recruitBadge}>{recruitment.trialType === 'ONLINE' ? '线上试用' : '线下试用'}</div>
                 </div>
                 <div className={styles.reportGridContent}>
                   <p className={styles.reportGridTitle}>{product.title}</p>
                   <p className={styles.recruitGridDesc}>
-                    {recruitment.campaignSummary || '申请通过后由商家寄送，确认收货后可自愿发布真实甄客验。'}
+                    {recruitment.campaignSummary || (recruitment.trialType === 'ONLINE'
+                      ? '审核通过后由商家寄送，确认收货后可发布真实甄客验。'
+                      : '申请审核通过后即可发布真实甄客验。')}
                   </p>
                   <div className={styles.recruitGridInfo}>
                     <span>寻找 {recruitment.targetCount} 人</span>
@@ -1919,11 +1944,16 @@ export default function HomePage() {
                   </div>
                   <div className={styles.reportGridFooter}>
                     <div className={styles.reportGridUser}>
-                      <span className={`${styles.recruitTag}`}>招募</span>
+                      <span className={`${styles.recruitTag}`}>{recruitment.trialType === 'ONLINE' ? '线上' : '线下'}</span>
                       <span className={styles.reportGridName}>截止 {recruitment.deadline}</span>
                     </div>
-                    <Button size="small" type="primary" onClick={(e) => { e.stopPropagation(); handleApplyForVerification(recruitment); }}>
-                      申请
+                    <Button
+                      size="small"
+                      type="primary"
+                      disabled={alreadyApplied || remaining <= 0}
+                      onClick={(e) => { e.stopPropagation(); handleApplyForVerification(recruitment); }}
+                    >
+                      {alreadyApplied ? '已申请' : remaining <= 0 ? '名额已满' : '申请'}
                     </Button>
                   </div>
                 </div>
@@ -1931,7 +1961,7 @@ export default function HomePage() {
             );
           })}
         </div>
-        {!contentLoading && mixedItems.length === 0 && <p className={styles.empty}>当前分类还没有正在招募的试用或已发布的验证报告。</p>}
+        {!contentLoading && mixedItems.length === 0 && <p className={styles.empty}>{emptyFeedText}</p>}
       </main>
     );
   };
@@ -1940,10 +1970,8 @@ export default function HomePage() {
     if (!selectedProduct) return renderReviews();
     const state = getProductJourneyState(selectedProduct.id, reports);
     const productReports = reports.filter((report) => report.productId === selectedProduct.id);
-    const recruitment = recruitments.find((item) => item.productId === selectedProduct.id);
+    const productRecruitments = recruitments.filter((item) => item.productId === selectedProduct.id);
     const evidence = productEvidence.find((item) => item.productId === selectedProduct.id);
-    const alreadyApplied = Boolean(activeUser && recruitment?.applicantUserIds.includes(activeUser.id));
-    const isFull = Boolean(recruitment && recruitment.claimedCount >= recruitment.targetCount);
 
     return (
       <main className={styles.journeyPage}>
@@ -1960,28 +1988,37 @@ export default function HomePage() {
           </div>
         </section>
 
-        {state === 'recruiting' && recruitment ? (
-          <section className={styles.recruitmentHero}>
-            <span className={styles.eyebrow}>Cold start</span>
-            <h2>正在寻找甄客</h2>
-            <p>
-              寻找 {recruitment.targetCount} 位甄客，已有 {recruitment.claimedCount} 人报名，剩余{' '}
-              {recruitment.targetCount - recruitment.claimedCount} 个名额。
-            </p>
-            <div className={styles.recruitmentProgress}>
-              <i style={{ width: `${Math.min(100, (recruitment.claimedCount / recruitment.targetCount) * 100)}%` }} />
-            </div>
-            <span>报名截止 {recruitment.deadline}</span>
-            <Button
-              type="primary"
-              size="large"
-              disabled={alreadyApplied || isFull}
-              onClick={() => handleApplyForVerification(recruitment)}
-            >
-              {alreadyApplied ? '已申请' : isFull ? '名额已满' : '申请验证'}
-            </Button>
-          </section>
-        ) : (
+        {productRecruitments.map((recruitment) => {
+          const alreadyApplied = trials.some((trial) => trial.campaignId === recruitment.id);
+          const isFull = recruitment.claimedCount >= recruitment.targetCount;
+          return (
+            <section className={styles.recruitmentHero} key={recruitment.id}>
+              <span className={styles.eyebrow}>{recruitment.trialType === 'ONLINE' ? 'Online trial' : 'Offline trial'}</span>
+              <h2>{recruitment.trialType === 'ONLINE' ? '线上试用正在招募' : '线下试用正在招募'}</h2>
+              <p>
+                寻找 {recruitment.targetCount} 位甄客，已有 {recruitment.claimedCount} 人通过，剩余{' '}
+                {recruitment.targetCount - recruitment.claimedCount} 个名额。
+              </p>
+              <p>{recruitment.trialType === 'ONLINE'
+                ? '审核通过后由商家发货，确认收货后可发布甄客验。'
+                : '审核通过后即可发布本次线下试用的甄客验。'}</p>
+              <div className={styles.recruitmentProgress}>
+                <i style={{ width: `${Math.min(100, (recruitment.claimedCount / recruitment.targetCount) * 100)}%` }} />
+              </div>
+              <span>报名截止 {recruitment.deadline}</span>
+              <Button
+                type="primary"
+                size="large"
+                disabled={alreadyApplied || isFull}
+                onClick={() => handleApplyForVerification(recruitment)}
+              >
+                {alreadyApplied ? '已申请' : isFull ? '名额已满' : '申请验证'}
+              </Button>
+            </section>
+          );
+        })}
+
+        {productReports.length > 0 && (
           <section className={styles.productReportFlow}>
             <div className={styles.sectionHeader}>
               <div>
@@ -2067,6 +2104,11 @@ export default function HomePage() {
           <div className={styles.reportDetailContent}>
             <div className={styles.reportAuthor}>
               <span className={roleClass(journeyReport.userRole)}>{roleMeta[journeyReport.userRole].label}</span>
+              {journeyReport.trialType && (
+                <Tag color={journeyReport.trialType === 'ONLINE' ? 'blue' : 'purple'}>
+                  {journeyReport.trialType === 'ONLINE' ? '线上试用报告' : '线下试用报告'}
+                </Tag>
+              )}
               <strong>{journeyReport.userName}</strong>
               <em>{journeyReport.createdAt}</em>
             </div>
@@ -2330,7 +2372,10 @@ export default function HomePage() {
                   <div>
                     <strong>{trial.productTitle}</strong>
                     <p>
-                      领取：{trial.claimedAt} · 截止：{trial.deadline}
+                      <Tag color={trial.trialType === 'ONLINE' ? 'blue' : 'purple'}>
+                        {trial.trialType === 'ONLINE' ? '线上试用' : '线下试用'}
+                      </Tag>
+                      申请：{trial.claimedAt} · 截止：{trial.deadline}
                     </p>
                   </div>
                   <div>
@@ -2341,7 +2386,7 @@ export default function HomePage() {
                       </Button>
                     )}
                     {trial.status === 'pending_report' && trialProduct && (
-                      <Button size="small" type="primary" onClick={() => openReportModal(trialProduct)}>
+                      <Button size="small" type="primary" onClick={() => openReportModal(trialProduct, trial)}>
                         自愿发布甄客验
                       </Button>
                     )}
@@ -2594,35 +2639,45 @@ export default function HomePage() {
       </Modal>
 
       <Modal
-        title="申请线上试用"
+        title={applyingRecruitment?.trialType === 'OFFLINE' ? '申请线下试用' : '申请线上试用'}
         open={Boolean(applyingRecruitment)}
         onCancel={() => setApplyingRecruitment(null)}
         footer={null}
         destroyOnHidden
       >
         <Form form={trialApplyForm} layout="vertical" onFinish={submitTrialApplication}>
-          <p>{applyingRecruitment?.campaignTitle}</p>
+          <p>
+            <Tag color={applyingRecruitment?.trialType === 'ONLINE' ? 'blue' : 'purple'}>
+              {applyingRecruitment?.trialType === 'ONLINE' ? '线上试用' : '线下试用'}
+            </Tag>
+            {applyingRecruitment?.campaignTitle}
+          </p>
           <Form.Item name="applyReason" label="申请理由" rules={[{ required: true, message: '请填写申请理由' }, { max: 1000 }]}>
             <Input.TextArea rows={5} showCount maxLength={1000} placeholder="请说明你的使用场景，以及愿意如何客观体验产品" />
           </Form.Item>
-          {defaultShippingAddress && <p className={styles.hint}>寄送至：{formatShippingAddress(defaultShippingAddress)}</p>}
+          {applyingRecruitment?.trialType === 'ONLINE' && defaultShippingAddress && (
+            <p className={styles.hint}>寄送至：{formatShippingAddress(defaultShippingAddress)}</p>
+          )}
+          {applyingRecruitment?.trialType === 'OFFLINE' && (
+            <p className={styles.hint}>线下试用无需填写收货地址，申请审核通过后即可发布甄客验。</p>
+          )}
           <Button block type="primary" htmlType="submit" loading={trialApplying}>提交申请</Button>
         </Form>
       </Modal>
 
       <Modal title="写验证报告" open={reportOpen} onCancel={() => setReportOpen(false)} footer={null}>
         <Form layout="vertical" form={form} onFinish={handlePublish}>
-          <Form.Item name="productId" label="选择可发布商品" rules={[{ required: true, message: '请选择可发布商品' }]}>
+          <Form.Item name="trialApplicationId" label="选择可发布试用" rules={[{ required: true, message: '请选择可发布试用' }]}>
             <Select
               size="large"
-              placeholder="选择已购买或已领取试用的商品"
-              options={reviewableProducts.map((product) => ({
-                label: product.title,
-                value: product.id,
+              placeholder="选择已达到报告发布条件的试用"
+              options={reviewableTrials.map((trial) => ({
+                label: `${trial.productTitle} · ${trial.trialType === 'ONLINE' ? '线上试用' : '线下试用'}`,
+                value: trial.applicationId,
               }))}
             />
           </Form.Item>
-          {reviewableProducts.length === 0 && <p className={styles.hint}>暂无可发布甄客验的商品：线上试用确认收货后才可发布。</p>}
+          {reviewableTrials.length === 0 && <p className={styles.hint}>暂无可发布甄客验的试用：线上需确认收货，线下需审核通过。</p>}
           <Form.Item label="实拍图（必填，至少1张）" required>
             <Upload
               listType="picture-card"
@@ -2685,7 +2740,7 @@ export default function HomePage() {
           <Form.Item name="recommend" valuePropName="checked" label="是否推荐">
             <Switch checkedChildren="推荐" unCheckedChildren="不推荐" defaultChecked />
           </Form.Item>
-          <Button block type="primary" htmlType="submit" size="large" disabled={reviewableProducts.length === 0}>
+          <Button block type="primary" htmlType="submit" size="large" disabled={reviewableTrials.length === 0}>
             发布
           </Button>
         </Form>

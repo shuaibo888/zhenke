@@ -26,6 +26,15 @@ test('second-stage orders use backend payment, logistics, and receipt APIs', () 
   assert.doesNotMatch(pageSource, /advanceOrderStatus/);
 });
 
+test('home feed separates online and offline trial recruitment through the backend query', () => {
+  assert.match(pageSource, /type HomeFeedFilter = 'ALL' \| 'ONLINE' \| 'OFFLINE' \| 'REPORT';/);
+  assert.match(pageSource, /\{ label: '线上试用', value: 'ONLINE' \}/);
+  assert.match(pageSource, /\{ label: '线下试用', value: 'OFFLINE' \}/);
+  assert.match(pageSource, /fetchHomeFeed\(categoryCode, contentType, trialType\)/);
+  assert.match(contentServiceSource, /if \(trialType !== 'ALL'\) params\.set\('trialType', trialType\)/);
+  assert.doesNotMatch(pageSource, /\{ label: '试用招募', value: 'TRIAL' \}/);
+});
+
 test('merchant application is available on the public home page without a shop-user session', () => {
   assert.match(pageSource, /onClick=\{openMerchantApplication\}/);
   assert.match(pageSource, /商家后台账号/);
@@ -121,7 +130,8 @@ test('profile renders trials, zhenke reports, and earnings', () => {
 
 test('product journey covers recruitment, evidence, report detail, and attribution', () => {
   assert.match(pageSource, /招募中/);
-  assert.match(pageSource, /正在寻找甄客/);
+  assert.match(pageSource, /线上试用正在招募/);
+  assert.match(pageSource, /线下试用正在招募/);
   assert.match(pageSource, /申请验证/);
   assert.match(pageSource, /商家自证与溯源/);
   assert.match(pageSource, /查看 \/ 购买该商品/);
@@ -194,12 +204,12 @@ test('address region data uses a static china-division json import for browser b
   assert.doesNotMatch(pageSource, /from 'china-division'/);
 });
 
-test('verification publishing requires a received trial application', () => {
+test('verification publishing binds the eligible online or offline trial application', () => {
   assert.match(pageSource, /publishVerificationReport/);
   assert.match(pageSource, /trial\.status === 'pending_report'/);
-  assert.match(pageSource, /name="productId"/);
-  assert.match(pageSource, /选择可发布商品/);
-  assert.match(pageSource, /trialReviewableProducts/);
+  assert.match(pageSource, /name="trialApplicationId"/);
+  assert.match(pageSource, /选择可发布试用/);
+  assert.match(pageSource, /reviewableTrials/);
   assert.doesNotMatch(pageSource, /getReviewableProductsFromOrders/);
 });
 

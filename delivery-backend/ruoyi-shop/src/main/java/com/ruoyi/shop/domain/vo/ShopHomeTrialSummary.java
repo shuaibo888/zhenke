@@ -5,9 +5,12 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
 public class ShopHomeTrialSummary
 {
+    private String trialType;
     private Integer targetCount;
     private Integer approvedCount;
     private Date applicationDeadline;
+    public String getTrialType() { return trialType; }
+    public void setTrialType(String trialType) { this.trialType = trialType; }
     public Integer getTargetCount() { return targetCount; }
     public void setTargetCount(Integer targetCount) { this.targetCount = targetCount; }
     public Integer getApprovedCount() { return approvedCount; }

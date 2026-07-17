@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Size;
 
 public class ShopVerificationReportBody
 {
-    @NotNull(message = "请选择已确认收货的试用")
+    @NotNull(message = "请选择当前可发布报告的试用")
     private Long trialApplicationId;
     @NotBlank(message = "请输入真实体验")
     @Size(max = 10000, message = "真实体验不能超过10000个字符")

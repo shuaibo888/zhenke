@@ -12,6 +12,7 @@ test('recruitment rejects duplicate and full applications', () => {
   const open: TrialRecruitment = {
     id: 1,
     productId: 4,
+    trialType: 'ONLINE',
     targetCount: 3,
     claimedCount: 1,
     deadline: '2026-07-12',

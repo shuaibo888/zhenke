@@ -164,6 +164,7 @@ export interface ManagedTrialRecruitment {
   merchantId: number;
   productId: number;
   productTitle: string;
+  trialType: 'ONLINE' | 'OFFLINE';
   targetCount: number;
   claimedCount: number;
   deadline: string;
@@ -178,14 +179,15 @@ export interface ManagedTrialApplication {
   merchantId: number;
   productId: number;
   productName: string;
+  trialType: 'ONLINE' | 'OFFLINE';
   campaignTitle: string;
   shopUserId: number;
   userName: string;
   nickName?: string;
   applyReason: string;
-  recipientName: string;
-  recipientPhone: string;
-  shippingAddress: string;
+  recipientName?: string;
+  recipientPhone?: string;
+  shippingAddress?: string;
   status: 'APPLIED' | 'APPROVED' | 'REJECTED' | 'SHIPPED' | 'RECEIVED' | 'COMPLETED' | 'EXPIRED';
   auditRemark?: string;
   carrier?: string;

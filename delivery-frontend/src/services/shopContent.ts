@@ -72,6 +72,7 @@ export interface HomeFeedItemDto {
   publishedAt: string;
   purchasable: boolean;
   trial?: {
+    trialType: 'ONLINE' | 'OFFLINE';
     targetCount: number;
     approvedCount: number;
     applicationDeadline: string;
@@ -94,6 +95,7 @@ export interface VerificationReportDto {
   categoryCode: ProductCategoryDto['categoryCode'];
   categoryName: string;
   trialApplicationId: number;
+  trialType: 'ONLINE' | 'OFFLINE';
   shopUserId: number;
   userName: string;
   nickName?: string;
@@ -133,12 +135,13 @@ export interface TrialApplicationDto {
   merchantId: number;
   productId: number;
   productName: string;
+  trialType: 'ONLINE' | 'OFFLINE';
   campaignTitle: string;
   shopUserId: number;
   applyReason: string;
-  recipientName: string;
-  recipientPhone: string;
-  shippingAddress: string;
+  recipientName?: string;
+  recipientPhone?: string;
+  shippingAddress?: string;
   status: 'APPLIED' | 'APPROVED' | 'REJECTED' | 'SHIPPED' | 'RECEIVED' | 'COMPLETED' | 'EXPIRED';
   auditRemark?: string;
   carrier?: string;
@@ -218,9 +221,14 @@ export interface ShopOrderDto {
   }>;
 }
 
-export async function fetchHomeFeed(categoryCode?: string, contentType: 'ALL' | 'TRIAL' | 'REPORT' = 'ALL') {
+export async function fetchHomeFeed(
+  categoryCode?: string,
+  contentType: 'ALL' | 'TRIAL' | 'REPORT' = 'ALL',
+  trialType: 'ALL' | 'ONLINE' | 'OFFLINE' = 'ALL',
+) {
   const params = new URLSearchParams({ pageNum: '1', pageSize: '100', contentType });
   if (categoryCode) params.set('categoryCode', categoryCode);
+  if (trialType !== 'ALL') params.set('trialType', trialType);
   const result = await requestApi<TableResponse<HomeFeedItemDto>>(`/shop/home/feed?${params.toString()}`);
   return {
     ...result,
@@ -271,9 +279,9 @@ export async function deleteReportComment(reportId: number, commentId: number) {
 
 export async function applyForTrial(campaignId: number, body: {
   applyReason: string;
-  recipientName: string;
-  recipientPhone: string;
-  shippingAddress: string;
+  recipientName?: string;
+  recipientPhone?: string;
+  shippingAddress?: string;
 }) {
   const result = await requestApi<ApiResponse<TrialApplicationDto>>(
     `/shop/trials/${campaignId}/apply`,

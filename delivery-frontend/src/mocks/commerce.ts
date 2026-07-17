@@ -296,6 +296,8 @@ export const logisticsRecords: LogisticsInfo[] = [
 export const trialRecords: TrialRecord[] = [
   {
     id: 401,
+    campaignId: 601,
+    trialType: 'ONLINE',
     productId: 4,
     productTitle: '湖州桑蚕丝眼罩',
     status: 'pending_report',
@@ -304,6 +306,8 @@ export const trialRecords: TrialRecord[] = [
   },
   {
     id: 402,
+    campaignId: 602,
+    trialType: 'OFFLINE',
     productId: 2,
     productTitle: '景德镇手作影青杯',
     status: 'completed',
@@ -313,6 +317,8 @@ export const trialRecords: TrialRecord[] = [
   },
   {
     id: 403,
+    campaignId: 603,
+    trialType: 'ONLINE',
     productId: 3,
     productTitle: '秦岭土蜂蜜礼盒',
     status: 'overdue',
@@ -351,9 +357,9 @@ export const earningRecords: EarningRecord[] = [
 ];
 
 export const trialRecruitments: TrialRecruitment[] = [
-  { id: 601, productId: 4, targetCount: 10, claimedCount: 6, deadline: '2026-07-12', applicantUserIds: [] },
-  { id: 602, productId: 6, targetCount: 8, claimedCount: 3, deadline: '2026-07-15', applicantUserIds: [] },
-  { id: 603, productId: 8, targetCount: 12, claimedCount: 9, deadline: '2026-07-18', applicantUserIds: [] },
+  { id: 601, productId: 4, trialType: 'ONLINE', targetCount: 10, claimedCount: 6, deadline: '2026-07-12', applicantUserIds: [] },
+  { id: 602, productId: 6, trialType: 'OFFLINE', targetCount: 8, claimedCount: 3, deadline: '2026-07-15', applicantUserIds: [] },
+  { id: 603, productId: 8, trialType: 'ONLINE', targetCount: 12, claimedCount: 9, deadline: '2026-07-18', applicantUserIds: [] },
 ];
 
 export const productEvidence: ProductEvidence[] = [

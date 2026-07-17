@@ -21,10 +21,11 @@ public class ShopHomeController extends BaseController
 
     @GetMapping("/feed")
     public TableDataInfo feed(@RequestParam(required = false) String categoryCode,
-            @RequestParam(defaultValue = "ALL") String contentType)
+            @RequestParam(defaultValue = "ALL") String contentType,
+            @RequestParam(defaultValue = "ALL") String trialType)
     {
         startPage();
-        List<ShopHomeFeedItem> rows = trialService.homeFeed(categoryCode, contentType);
+        List<ShopHomeFeedItem> rows = trialService.homeFeed(categoryCode, contentType, trialType);
         return getDataTable(rows);
     }
 }

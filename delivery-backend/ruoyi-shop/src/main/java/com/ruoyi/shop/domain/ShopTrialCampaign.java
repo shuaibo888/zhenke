@@ -10,6 +10,7 @@ public class ShopTrialCampaign extends BaseEntity
     private Long campaignId;
     private Long merchantId;
     private Long productId;
+    private String trialType;
     private String productName;
     private String productCoverUrl;
     private String categoryCode;
@@ -29,6 +30,8 @@ public class ShopTrialCampaign extends BaseEntity
     public void setMerchantId(Long merchantId) { this.merchantId = merchantId; }
     public Long getProductId() { return productId; }
     public void setProductId(Long productId) { this.productId = productId; }
+    public String getTrialType() { return trialType; }
+    public void setTrialType(String trialType) { this.trialType = trialType; }
     public String getProductName() { return productName; }
     public void setProductName(String productName) { this.productName = productName; }
     public String getProductCoverUrl() { return productCoverUrl; }

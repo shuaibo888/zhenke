@@ -89,6 +89,7 @@ interface TrialCampaignDto {
   merchantId: number;
   productId: number;
   productName: string;
+  trialType: 'ONLINE' | 'OFFLINE';
   campaignTitle: string;
   campaignSummary: string;
   targetCount: number;
@@ -526,6 +527,7 @@ function toManagedTrial(dto: TrialCampaignDto) {
     merchantId: dto.merchantId,
     productId: dto.productId,
     productTitle: dto.productName,
+    trialType: dto.trialType,
     targetCount: dto.targetCount,
     claimedCount: dto.approvedCount,
     deadline: dto.applicationDeadline,
@@ -543,17 +545,18 @@ export async function fetchManagedTrials(session: AdminSession) {
 
 export async function createMerchantTrial(body: {
   productId: number;
+  trialTypes: Array<'ONLINE' | 'OFFLINE'>;
   campaignTitle: string;
   campaignSummary: string;
   targetCount: number;
   applicationDeadline: string;
 }) {
-  const result = await requestApi<ApiResponse<TrialCampaignDto>>(
+  const result = await requestApi<ApiResponse<TrialCampaignDto[]>>(
     '/shop/merchant/trials',
     { method: 'POST', body: JSON.stringify(body) },
     true,
   );
-  if (!result.data) throw new Error('试用招募保存失败');
+  if (!Array.isArray(result.data) || result.data.length === 0) throw new Error('试用招募保存失败');
   return result.data;
 }
 

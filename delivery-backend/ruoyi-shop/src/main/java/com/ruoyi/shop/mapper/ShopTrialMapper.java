@@ -16,12 +16,14 @@ public interface ShopTrialMapper
     ShopTrialCampaign selectMerchantCampaign(@Param("merchantId") Long merchantId,
             @Param("campaignId") Long campaignId);
     ShopTrialCampaign selectPublicCampaign(Long campaignId);
-    int countRecruitingCampaigns(Long productId);
+    int countBlockingRecruitingCampaigns(@Param("productId") Long productId,
+            @Param("trialType") String trialType);
     int insertCampaign(ShopTrialCampaign campaign);
     int updateCampaignStatus(@Param("merchantId") Long merchantId, @Param("campaignId") Long campaignId,
             @Param("fromStatus") String fromStatus, @Param("toStatus") String toStatus,
             @Param("updateBy") String updateBy);
     Long lockProductForCampaign(@Param("merchantId") Long merchantId, @Param("campaignId") Long campaignId);
+    Long lockMerchantProductForTrial(@Param("merchantId") Long merchantId, @Param("productId") Long productId);
 
     List<ShopTrialApplication> selectMerchantApplications(@Param("merchantId") Long merchantId,
             @Param("campaignId") Long campaignId, @Param("status") String status);
@@ -39,7 +41,8 @@ public interface ShopTrialMapper
     int shipApplication(@Param("merchantId") Long merchantId, @Param("applicationId") Long applicationId,
             @Param("carrier") String carrier, @Param("trackingNo") String trackingNo);
     int confirmReceived(@Param("shopUserId") Long shopUserId, @Param("applicationId") Long applicationId);
-    int completeApplication(@Param("shopUserId") Long shopUserId, @Param("applicationId") Long applicationId);
+    int completeApplication(@Param("shopUserId") Long shopUserId, @Param("applicationId") Long applicationId,
+            @Param("expectedStatus") String expectedStatus);
 
     int countReportByApplication(Long trialApplicationId);
     int insertReport(ShopVerificationReport report);
@@ -49,5 +52,5 @@ public interface ShopTrialMapper
     List<ShopVerificationReport> selectUserReports(Long shopUserId);
     List<ShopVerificationReport> selectMerchantReports(Long merchantId);
     List<ShopHomeFeedItem> selectHomeFeed(@Param("categoryCode") String categoryCode,
-            @Param("contentType") String contentType);
+            @Param("contentType") String contentType, @Param("trialType") String trialType);
 }

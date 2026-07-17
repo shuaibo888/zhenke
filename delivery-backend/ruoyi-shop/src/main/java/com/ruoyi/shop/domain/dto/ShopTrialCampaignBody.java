@@ -1,18 +1,24 @@
 package com.ruoyi.shop.domain.dto;
 
 import java.util.Date;
+import java.util.List;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 
 public class ShopTrialCampaignBody
 {
     @NotNull(message = "请选择试用商品")
     private Long productId;
+    @NotEmpty(message = "请至少选择一种试用方式")
+    @Size(max = 2, message = "试用方式最多选择两种")
+    private List<@Pattern(regexp = "ONLINE|OFFLINE", message = "试用方式无效") String> trialTypes;
     @NotBlank(message = "请输入招募标题")
     @Size(max = 120, message = "招募标题不能超过120个字符")
     private String campaignTitle;
@@ -30,6 +36,8 @@ public class ShopTrialCampaignBody
 
     public Long getProductId() { return productId; }
     public void setProductId(Long productId) { this.productId = productId; }
+    public List<String> getTrialTypes() { return trialTypes; }
+    public void setTrialTypes(List<String> trialTypes) { this.trialTypes = trialTypes; }
     public String getCampaignTitle() { return campaignTitle; }
     public void setCampaignTitle(String campaignTitle) { this.campaignTitle = campaignTitle; }
     public String getCampaignSummary() { return campaignSummary; }

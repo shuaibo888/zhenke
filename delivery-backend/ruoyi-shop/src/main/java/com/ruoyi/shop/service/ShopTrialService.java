@@ -1,6 +1,8 @@
 package com.ruoyi.shop.service;
 
 import java.util.Date;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,8 @@ public class ShopTrialService
     public static final String RECRUITING = "RECRUITING";
     public static final String CLOSED = "CLOSED";
     public static final String FINISHED = "FINISHED";
+    public static final String ONLINE = "ONLINE";
+    public static final String OFFLINE = "OFFLINE";
 
     private final ShopTrialMapper trialMapper;
     private final ShopUserMapper userMapper;
@@ -68,7 +72,7 @@ public class ShopTrialService
     }
 
     @Transactional
-    public ShopTrialCampaign createCampaign(ShopTrialCampaignBody body, String operator)
+    public List<ShopTrialCampaign> createCampaigns(ShopTrialCampaignBody body, String operator)
     {
         ShopMerchant merchant = merchantService.currentMerchantAccount();
         ShopProduct product = productService.merchantProduct(body.getProductId());
@@ -76,18 +80,33 @@ public class ShopTrialService
         {
             throw new ServiceException("只能为已上架商品创建试用招募");
         }
-        ShopTrialCampaign campaign = new ShopTrialCampaign();
-        campaign.setMerchantId(merchant.getMerchantId());
-        campaign.setProductId(product.getProductId());
-        campaign.setCampaignTitle(StringUtils.trim(body.getCampaignTitle()));
-        campaign.setCampaignSummary(StringUtils.trim(body.getCampaignSummary()));
-        campaign.setTargetCount(body.getTargetCount());
-        campaign.setApplicationDeadline(body.getApplicationDeadline());
-        campaign.setStatus(DRAFT);
-        campaign.setCreateBy(operator);
-        campaign.setUpdateBy(operator);
-        trialMapper.insertCampaign(campaign);
-        return merchantCampaign(campaign.getCampaignId());
+        if (trialMapper.lockMerchantProductForTrial(merchant.getMerchantId(), product.getProductId()) == null)
+        {
+            throw new ServiceException("试用商品不存在");
+        }
+        LinkedHashSet<String> trialTypes = new LinkedHashSet<>(body.getTrialTypes());
+        for (String trialType : trialTypes)
+        {
+            requireTrialTypeAvailable(product.getProductId(), trialType);
+        }
+        List<ShopTrialCampaign> campaigns = new ArrayList<>();
+        for (String trialType : trialTypes)
+        {
+            ShopTrialCampaign campaign = new ShopTrialCampaign();
+            campaign.setMerchantId(merchant.getMerchantId());
+            campaign.setProductId(product.getProductId());
+            campaign.setTrialType(trialType);
+            campaign.setCampaignTitle(StringUtils.trim(body.getCampaignTitle()));
+            campaign.setCampaignSummary(StringUtils.trim(body.getCampaignSummary()));
+            campaign.setTargetCount(body.getTargetCount());
+            campaign.setApplicationDeadline(body.getApplicationDeadline());
+            campaign.setStatus(RECRUITING);
+            campaign.setCreateBy(operator);
+            campaign.setUpdateBy(operator);
+            trialMapper.insertCampaign(campaign);
+            campaigns.add(merchantCampaign(campaign.getCampaignId()));
+        }
+        return campaigns;
     }
 
     @Transactional
@@ -113,10 +132,7 @@ public class ShopTrialService
             {
                 throw new ServiceException("商品已上架时才能发布试用招募");
             }
-            if (trialMapper.countRecruitingCampaigns(campaign.getProductId()) > 0)
-            {
-                throw new ServiceException("该商品已有正在招募的试用活动");
-            }
+            requireTrialTypeAvailable(campaign.getProductId(), campaign.getTrialType());
         }
         else if (CLOSED.equals(toStatus))
         {
@@ -165,13 +181,20 @@ public class ShopTrialService
         {
             throw new ServiceException("你已经申请过本次试用");
         }
+        if (ONLINE.equals(campaign.getTrialType())
+                && (StringUtils.isEmpty(StringUtils.trim(body.getRecipientName()))
+                || StringUtils.isEmpty(StringUtils.trim(body.getRecipientPhone()))
+                || StringUtils.isEmpty(StringUtils.trim(body.getShippingAddress()))))
+        {
+            throw new ServiceException("线上试用必须提供完整收货信息");
+        }
         ShopTrialApplication application = new ShopTrialApplication();
         application.setCampaignId(campaignId);
         application.setShopUserId(shopUserId);
         application.setApplyReason(StringUtils.trim(body.getApplyReason()));
-        application.setRecipientName(StringUtils.trim(body.getRecipientName()));
-        application.setRecipientPhone(StringUtils.trim(body.getRecipientPhone()));
-        application.setShippingAddress(StringUtils.trim(body.getShippingAddress()));
+        application.setRecipientName(ONLINE.equals(campaign.getTrialType()) ? StringUtils.trim(body.getRecipientName()) : null);
+        application.setRecipientPhone(ONLINE.equals(campaign.getTrialType()) ? StringUtils.trim(body.getRecipientPhone()) : null);
+        application.setShippingAddress(ONLINE.equals(campaign.getTrialType()) ? StringUtils.trim(body.getShippingAddress()) : null);
         application.setStatus("APPLIED");
         trialMapper.insertApplication(application);
         return requireApplication(trialMapper.selectUserApplication(shopUserId, application.getApplicationId()));
@@ -207,7 +230,12 @@ public class ShopTrialService
     public ShopTrialApplication shipApplication(long applicationId, ShopTrialShipBody body)
     {
         ShopMerchant merchant = merchantService.currentMerchantAccount();
-        requireApplication(trialMapper.selectMerchantApplication(merchant.getMerchantId(), applicationId));
+        ShopTrialApplication application = requireApplication(
+                trialMapper.selectMerchantApplication(merchant.getMerchantId(), applicationId));
+        if (!ONLINE.equals(application.getTrialType()))
+        {
+            throw new ServiceException("线下试用审核通过后即可发布报告，不需要发货");
+        }
         if (trialMapper.shipApplication(merchant.getMerchantId(), applicationId,
                 StringUtils.trim(body.getCarrier()), StringUtils.trim(body.getTrackingNo())) == 0)
         {
@@ -220,7 +248,12 @@ public class ShopTrialService
     public ShopTrialApplication confirmReceived(long applicationId)
     {
         long shopUserId = ShopAccountIdentity.requireShopUserId();
-        requireApplication(trialMapper.selectUserApplication(shopUserId, applicationId));
+        ShopTrialApplication application = requireApplication(
+                trialMapper.selectUserApplication(shopUserId, applicationId));
+        if (!ONLINE.equals(application.getTrialType()))
+        {
+            throw new ServiceException("线下试用不需要确认收货");
+        }
         if (trialMapper.confirmReceived(shopUserId, applicationId) == 0)
         {
             throw new ServiceException("只有已发货的试用可以确认收货");
@@ -234,9 +267,12 @@ public class ShopTrialService
         long shopUserId = ShopAccountIdentity.requireShopUserId();
         ShopTrialApplication application = requireApplication(
                 trialMapper.selectUserApplication(shopUserId, body.getTrialApplicationId()));
-        if (!"RECEIVED".equals(application.getStatus()))
+        String reportReadyStatus = OFFLINE.equals(application.getTrialType()) ? "APPROVED" : "RECEIVED";
+        if (!reportReadyStatus.equals(application.getStatus()))
         {
-            throw new ServiceException("确认收到试用商品后才能发布验证报告");
+            throw new ServiceException(OFFLINE.equals(application.getTrialType())
+                    ? "线下试用审核通过后才能发布验证报告"
+                    : "确认收到线上试用商品后才能发布验证报告");
         }
         if (trialMapper.countReportByApplication(application.getApplicationId()) > 0)
         {
@@ -265,7 +301,7 @@ public class ShopTrialService
                 trialMapper.insertReportResource(resource);
             }
         }
-        if (trialMapper.completeApplication(shopUserId, application.getApplicationId()) == 0)
+        if (trialMapper.completeApplication(shopUserId, application.getApplicationId(), reportReadyStatus) == 0)
         {
             throw new ServiceException("试用状态已变化，请刷新后重试");
         }
@@ -293,19 +329,28 @@ public class ShopTrialService
         return report;
     }
 
-    public List<ShopHomeFeedItem> homeFeed(String categoryCode, String contentType)
+    public List<ShopHomeFeedItem> homeFeed(String categoryCode, String contentType, String trialType)
     {
         String type = StringUtils.isEmpty(contentType) ? "ALL" : contentType.trim().toUpperCase();
         if (!type.matches("ALL|TRIAL|REPORT"))
         {
             throw new ServiceException("首页内容类型无效");
         }
+        String normalizedTrialType = StringUtils.isEmpty(trialType) ? "ALL" : trialType.trim().toUpperCase();
+        if (!normalizedTrialType.matches("ALL|ONLINE|OFFLINE"))
+        {
+            throw new ServiceException("试用方式无效");
+        }
+        if (!"ALL".equals(normalizedTrialType) && !"TRIAL".equals(type))
+        {
+            throw new ServiceException("试用方式筛选仅适用于试用招募");
+        }
         String category = StringUtils.trim(categoryCode);
         if (StringUtils.isNotEmpty(category) && !category.matches("CATEGORY_[1-4]"))
         {
             throw new ServiceException("商品分类编码无效");
         }
-        return trialMapper.selectHomeFeed(category, type);
+        return trialMapper.selectHomeFeed(category, type, normalizedTrialType);
     }
 
     private ShopVerificationReport reportWithResources(long reportId)
@@ -335,6 +380,19 @@ public class ShopTrialService
             throw new ServiceException("试用招募不存在");
         }
         return campaign;
+    }
+
+    private void requireTrialTypeAvailable(long productId, String trialType)
+    {
+        if (!ONLINE.equals(trialType) && !OFFLINE.equals(trialType))
+        {
+            throw new ServiceException("试用方式无效");
+        }
+        if (trialMapper.countBlockingRecruitingCampaigns(productId, trialType) > 0)
+        {
+            throw new ServiceException((ONLINE.equals(trialType) ? "线上" : "线下")
+                    + "试用已有正在招募且名额未满的活动，可提前终止或招满后再发布新一轮");
+        }
     }
 
     private ShopTrialApplication requireApplication(ShopTrialApplication application)

@@ -5,6 +5,7 @@
         <id property="campaignId" column="campaign_id" />
         <result property="merchantId" column="merchant_id" />
         <result property="productId" column="product_id" />
+        <result property="trialType" column="trial_type" />
         <result property="productName" column="product_name" />
         <result property="productCoverUrl" column="product_cover_url" />
         <result property="categoryCode" column="category_code" />
@@ -26,6 +27,7 @@
         <result property="campaignId" column="campaign_id" />
         <result property="merchantId" column="merchant_id" />
         <result property="productId" column="product_id" />
+        <result property="trialType" column="trial_type" />
         <result property="productName" column="product_name" />
         <result property="campaignTitle" column="campaign_title" />
         <result property="shopUserId" column="shop_user_id" />
@@ -65,6 +67,7 @@
         <result property="categoryCode" column="category_code" />
         <result property="categoryName" column="category_name" />
         <result property="trialApplicationId" column="trial_application_id" />
+        <result property="trialType" column="trial_type" />
         <result property="shopUserId" column="shop_user_id" />
         <result property="userName" column="user_name" />
         <result property="nickName" column="nick_name" />
@@ -90,6 +93,7 @@
         <result property="publishedAt" column="published_at" />
         <result property="purchasable" column="purchasable" />
         <association property="trial" javaType="ShopHomeTrialSummary" notNullColumn="target_count">
+            <result property="trialType" column="trial_type" />
             <result property="targetCount" column="target_count" />
             <result property="approvedCount" column="approved_count" />
             <result property="applicationDeadline" column="application_deadline" />
@@ -103,7 +107,7 @@
     </resultMap>
 
     <sql id="selectCampaign">
-        select c.campaign_id, c.merchant_id, c.product_id, p.product_name,
+        select c.campaign_id, c.merchant_id, c.product_id, c.trial_type, p.product_name,
                p.cover_url as product_cover_url, pc.category_code, pc.category_name,
                c.campaign_title, c.campaign_summary, c.target_count,
                (select count(1) from shop_trial_application a where a.campaign_id = c.campaign_id) as applicant_count,
@@ -122,6 +126,7 @@
         <where>
             c.merchant_id = #{merchantId}
             <if test="query.productId != null">and c.product_id = #{query.productId}</if>
+            <if test="query.trialType != null and query.trialType != ''">and c.trial_type = #{query.trialType}</if>
             <if test="query.status != null and query.status != ''">and c.status = #{query.status}</if>
         </where>
         order by c.campaign_id desc
@@ -132,6 +137,7 @@
         <where>
             <if test="merchantId != null">c.merchant_id = #{merchantId}</if>
             <if test="productId != null">and c.product_id = #{productId}</if>
+            <if test="trialType != null and trialType != ''">and c.trial_type = #{trialType}</if>
             <if test="status != null and status != ''">and c.status = #{status}</if>
         </where>
         order by c.campaign_id desc
@@ -150,18 +156,25 @@
           and p.status = 'ON_SALE' and pc.status = '0'
     </select>
 
-    <select id="countRecruitingCampaigns" parameterType="Long" resultType="int">
-        select count(1) from shop_trial_campaign
-        where product_id = #{productId} and status = 'RECRUITING' and application_deadline &gt; sysdate()
+    <select id="countBlockingRecruitingCampaigns" resultType="int">
+        select count(1)
+        from shop_trial_campaign c
+        where c.product_id = #{productId} and c.trial_type = #{trialType}
+          and c.status = 'RECRUITING' and c.application_deadline &gt; sysdate()
+          and (select count(1) from shop_trial_application a
+               where a.campaign_id = c.campaign_id
+                 and a.status in ('APPROVED', 'SHIPPED', 'RECEIVED', 'COMPLETED')) &lt; c.target_count
     </select>
 
     <insert id="insertCampaign" parameterType="ShopTrialCampaign" useGeneratedKeys="true" keyProperty="campaignId">
         insert into shop_trial_campaign
-        (merchant_id, product_id, campaign_title, campaign_summary, target_count,
-         application_deadline, status, create_by, create_time, update_by, update_time)
+        (merchant_id, product_id, trial_type, campaign_title, campaign_summary, target_count,
+         application_deadline, status, published_at, create_by, create_time, update_by, update_time)
         values
-        (#{merchantId}, #{productId}, #{campaignTitle}, #{campaignSummary}, #{targetCount},
-         #{applicationDeadline}, 'DRAFT', #{createBy}, sysdate(), #{updateBy}, sysdate())
+        (#{merchantId}, #{productId}, #{trialType}, #{campaignTitle}, #{campaignSummary}, #{targetCount},
+         #{applicationDeadline}, #{status},
+         case when #{status} = 'RECRUITING' then sysdate() else null end,
+         #{createBy}, sysdate(), #{updateBy}, sysdate())
     </insert>
 
     <update id="updateCampaignStatus">
@@ -180,8 +193,15 @@
         for update
     </select>
 
+    <select id="lockMerchantProductForTrial" resultType="Long">
+        select product_id
+        from shop_product
+        where product_id = #{productId} and merchant_id = #{merchantId} and del_flag = '0'
+        for update
+    </select>
+
     <sql id="selectApplication">
-        select a.application_id, a.campaign_id, c.merchant_id, c.product_id,
+        select a.application_id, a.campaign_id, c.merchant_id, c.product_id, c.trial_type,
                p.product_name, c.campaign_title, a.shop_user_id, u.user_name, u.nick_name,
                a.apply_reason, a.recipient_name, a.recipient_phone, a.shipping_address,
                a.status as application_status, a.audit_remark, a.carrier, a.tracking_no,
@@ -263,19 +283,22 @@
         set a.status = 'SHIPPED', a.carrier = #{carrier}, a.tracking_no = #{trackingNo},
             a.shipped_at = sysdate(), a.update_time = sysdate()
         where a.application_id = #{applicationId} and c.merchant_id = #{merchantId}
-          and a.status = 'APPROVED'
+          and c.trial_type = 'ONLINE' and a.status = 'APPROVED'
     </update>
 
     <update id="confirmReceived">
-        update shop_trial_application
-        set status = 'RECEIVED', received_at = sysdate(), update_time = sysdate()
-        where application_id = #{applicationId} and shop_user_id = #{shopUserId} and status = 'SHIPPED'
+        update shop_trial_application a
+        inner join shop_trial_campaign c on c.campaign_id = a.campaign_id
+        set a.status = 'RECEIVED', a.received_at = sysdate(), a.update_time = sysdate()
+        where a.application_id = #{applicationId} and a.shop_user_id = #{shopUserId}
+          and c.trial_type = 'ONLINE' and a.status = 'SHIPPED'
     </update>
 
     <update id="completeApplication">
         update shop_trial_application
         set status = 'COMPLETED', completed_at = sysdate(), update_time = sysdate()
-        where application_id = #{applicationId} and shop_user_id = #{shopUserId} and status = 'RECEIVED'
+        where application_id = #{applicationId} and shop_user_id = #{shopUserId}
+          and status = #{expectedStatus}
     </update>
 
     <select id="countReportByApplication" parameterType="Long" resultType="int">
@@ -306,7 +329,7 @@
     <sql id="selectReport">
         select r.report_id, r.product_id, p.product_name, p.cover_url as product_cover_url,
                p.merchant_id, m.company_name as merchant_name, pc.category_code, pc.category_name,
-               r.trial_application_id, r.shop_user_id, u.user_name, u.nick_name,
+               r.trial_application_id, c.trial_type, r.shop_user_id, u.user_name, u.nick_name,
                r.experience, r.shortcoming, r.fit_crowd, r.recommend,
                r.status as report_status, r.published_at
         from shop_verification_report r
@@ -314,6 +337,8 @@
         inner join shop_merchant m on m.merchant_id = p.merchant_id
         inner join shop_product_category pc on pc.category_id = p.category_id
         inner join shop_user u on u.user_id = r.shop_user_id
+        inner join shop_trial_application a on a.application_id = r.trial_application_id
+        inner join shop_trial_campaign c on c.campaign_id = a.campaign_id
     </sql>
 
     <select id="selectReportById" parameterType="Long" resultMap="ShopVerificationReportResult">
@@ -337,7 +362,7 @@
                  pc.category_code, pc.category_name, c.campaign_title as title,
                  c.campaign_summary as summary, p.cover_url,
                  c.published_at, (p.stock &gt; 0) as purchasable,
-                 c.target_count,
+                 c.target_count, c.trial_type,
                  (select count(1) from shop_trial_application a
                    where a.campaign_id = c.campaign_id
                      and a.status in ('APPROVED', 'SHIPPED', 'RECEIVED', 'COMPLETED')) as approved_count,
@@ -349,6 +374,9 @@
           inner join shop_merchant m on m.merchant_id = p.merchant_id and m.del_flag = '0'
           inner join shop_product_category pc on pc.category_id = p.category_id
           where c.status = 'RECRUITING' and c.application_deadline &gt; sysdate()
+            and (select count(1) from shop_trial_application active_application
+                 where active_application.campaign_id = c.campaign_id
+                   and active_application.status in ('APPROVED', 'SHIPPED', 'RECEIVED', 'COMPLETED')) &lt; c.target_count
             and m.audit_status = 'APPROVED' and m.status = '0'
             and p.status = 'ON_SALE' and pc.status = '0'
           union all
@@ -359,7 +387,7 @@
                  coalesce((select rr.resource_url from shop_verification_report_resource rr
                            where rr.report_id = r.report_id order by rr.resource_sort, rr.resource_id limit 1), p.cover_url) as cover_url,
                  r.published_at, (p.stock &gt; 0) as purchasable,
-                 null as target_count, null as approved_count, null as application_deadline,
+                 null as target_count, null as trial_type, null as approved_count, null as application_deadline,
                  r.shop_user_id as report_user_id, coalesce(u.nick_name, u.user_name) as report_user_name,
                  r.shortcoming as report_shortcoming, r.recommend as report_recommend
           from shop_verification_report r
@@ -375,6 +403,9 @@
           <if test="categoryCode != null and categoryCode != ''">feed.category_code = #{categoryCode}</if>
           <if test="contentType != null and contentType != '' and contentType != 'ALL'">
             and feed.content_type = #{contentType}
+          </if>
+          <if test="trialType != null and trialType != '' and trialType != 'ALL'">
+            and feed.content_type = 'TRIAL' and feed.trial_type = #{trialType}
           </if>
         </where>
         order by feed.published_at desc, feed.content_id desc

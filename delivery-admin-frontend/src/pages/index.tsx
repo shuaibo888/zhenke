@@ -21,6 +21,7 @@ import {
 import { Column, Line, Pie } from '@ant-design/charts';
 import {
   Button,
+  Checkbox,
   ConfigProvider,
   Drawer,
   Dropdown,
@@ -135,6 +136,7 @@ type MerchantFormValues = {
 
 type TrialFormValues = {
   productId: number;
+  trialTypes: Array<'ONLINE' | 'OFFLINE'>;
   campaignTitle: string;
   campaignSummary: string;
   targetCount: number;
@@ -247,6 +249,7 @@ function AdminWorkspace() {
   const [trialModalOpen, setTrialModalOpen] = useState(false);
   const [productForm] = Form.useForm<ProductFormValues>();
   const [trialForm] = Form.useForm<TrialFormValues>();
+  const selectedTrialProductId = Form.useWatch('productId', trialForm);
   const [trialApplicationActionForm] = Form.useForm<TrialApplicationActionFormValues>();
   const [orderShipForm] = Form.useForm<OrderShipFormValues>();
   const [loginForm] = Form.useForm<LoginFormValues>();
@@ -604,10 +607,16 @@ function AdminWorkspace() {
   const openPublishTrial = (product?: ManagedProduct) => {
     trialForm.resetFields();
     if (product) {
+      const availableTypes = getAvailableTrialTypes(product.id);
+      if (availableTypes.length === 0) {
+        message.warning('该商品的线上、线下试用都已有正在招募且未满的活动，暂时不能发布新一轮');
+        return;
+      }
       trialForm.setFieldsValue({
         productId: product.id,
-        campaignTitle: `${product.title}线上试用招募`,
-        campaignSummary: '申请通过后由商家寄送，确认收货后可自愿发布真实验证报告。',
+        trialTypes: [availableTypes[0]],
+        campaignTitle: `${product.title}试用招募`,
+        campaignSummary: '线上试用确认收货后可发布甄客验；线下试用审核通过后即可发布甄客验。',
         targetCount: 5,
       });
     }
@@ -619,6 +628,25 @@ function AdminWorkspace() {
     trialForm.resetFields();
   };
 
+  const isBlockingTrial = (trial: ManagedTrialRecruitment) => {
+    const deadline = Date.parse(trial.deadline.replace(' ', 'T'));
+    return trial.status === 'recruiting'
+      && trial.claimedCount < trial.targetCount
+      && (Number.isNaN(deadline) || deadline > Date.now());
+  };
+
+  const getAvailableTrialTypes = (productId?: number): Array<'ONLINE' | 'OFFLINE'> => {
+    if (!productId) return ['ONLINE', 'OFFLINE'];
+    const blocked = new Set(
+      trialRecruitments
+        .filter((trial) => trial.productId === productId && isBlockingTrial(trial))
+        .map((trial) => trial.trialType),
+    );
+    return (['ONLINE', 'OFFLINE'] as const).filter((trialType) => !blocked.has(trialType));
+  };
+
+  const selectedTrialAvailableTypes = getAvailableTrialTypes(selectedTrialProductId);
+
   const handlePublishTrial = async (values: TrialFormValues) => {
     const product = visibleProducts.find((p) => p.id === values.productId);
     if (!product) {
@@ -627,19 +655,24 @@ function AdminWorkspace() {
     }
 
     if (!session || session.loginType !== 'merchant') return;
+    const availableTypes = getAvailableTrialTypes(values.productId);
+    if (values.trialTypes.some((trialType) => !availableTypes.includes(trialType))) {
+      message.warning('所选试用方式已有正在招募且未满的活动，请刷新后重新选择');
+      return;
+    }
     setTrialSaving(true);
     try {
-      const campaign = await createMerchantTrial({
+      await createMerchantTrial({
         productId: values.productId,
+        trialTypes: values.trialTypes,
         campaignTitle: values.campaignTitle.trim(),
         campaignSummary: values.campaignSummary.trim(),
         targetCount: values.targetCount,
         applicationDeadline: `${values.deadline} 23:59:59`,
       });
-      await updateMerchantTrialStatus(campaign.campaignId, 'RECRUITING');
       await loadTrials(session);
       closeTrialModal();
-      message.success('试用招募已发布');
+      message.success(values.trialTypes.length === 2 ? '线上、线下试用招募已分别发布' : '试用招募已发布');
     } catch (error) {
       message.error(error instanceof Error ? error.message : '试用招募发布失败');
     } finally {
@@ -665,7 +698,9 @@ function AdminWorkspace() {
   const approveTrialApplication = (application: ManagedTrialApplication) => {
     modal.confirm({
       title: '确认通过试用申请？',
-      content: `通过后可为 ${application.recipientName} 安排寄送。`,
+      content: application.trialType === 'ONLINE'
+        ? `通过后可为 ${application.recipientName} 安排寄送。`
+        : `通过后 ${application.nickName || application.userName} 即可发布本次线下试用的甄客验。`,
       okText: '通过申请',
       cancelText: '取消',
       onOk: async () => {
@@ -1045,6 +1080,13 @@ function AdminWorkspace() {
 
   const trialColumns: ColumnsType<ManagedTrialRecruitment> = [
     { title: '商品', dataIndex: 'productTitle' },
+    {
+      title: '试用方式',
+      dataIndex: 'trialType',
+      render: (trialType: ManagedTrialRecruitment['trialType']) => (
+        <Tag color={trialType === 'ONLINE' ? 'blue' : 'purple'}>{trialType === 'ONLINE' ? '线上试用' : '线下试用'}</Tag>
+      ),
+    },
     { title: '商家', dataIndex: 'merchantId', render: (merchantId) => getMerchantName(merchantId) },
     {
       title: '招募进度',
@@ -1060,9 +1102,13 @@ function AdminWorkspace() {
     {
       title: '状态',
       dataIndex: 'status',
-      render: (status: ManagedTrialRecruitment['status']) => (
-        <Tag color={status === 'recruiting' ? 'green' : status === 'draft' ? 'gold' : 'default'}>
-          {({ draft: '草稿', recruiting: '招募中', closed: '已关闭', finished: '已完成', ended: '已结束' } as const)[status]}
+      render: (status: ManagedTrialRecruitment['status'], trial) => (
+        <Tag color={status === 'recruiting' && trial.claimedCount >= trial.targetCount ? 'purple' : isBlockingTrial(trial) ? 'green' : status === 'draft' ? 'gold' : 'default'}>
+          {status === 'recruiting' && trial.claimedCount >= trial.targetCount
+            ? '名额已满'
+            : status === 'recruiting' && !isBlockingTrial(trial)
+              ? '已截止'
+            : ({ draft: '草稿', recruiting: '招募中', closed: '已提前终止', finished: '已完成', ended: '已结束' } as const)[status]}
         </Tag>
       ),
     },
@@ -1071,11 +1117,14 @@ function AdminWorkspace() {
       title: '操作',
       key: 'actions',
       render: (_, trial) => (
-        isAdmin ? <span className={styles.subText}>仅查看</span> : (
-          <Button size="small" disabled={trial.status !== 'recruiting'} onClick={() => handleEndTrial(trial)}>
-            结束招募
-          </Button>
-        )
+        isAdmin ? <span className={styles.subText}>仅查看</span>
+          : isBlockingTrial(trial) ? (
+            <Button size="small" danger onClick={() => handleEndTrial(trial)}>提前终止</Button>
+          ) : trial.status === 'recruiting' && trial.claimedCount >= trial.targetCount ? (
+            <span className={styles.subText}>已满，可发布新一轮</span>
+          ) : trial.status === 'recruiting' ? (
+            <span className={styles.subText}>已截止，可发布新一轮</span>
+          ) : <span className={styles.subText}>历史活动</span>
       ),
     },
   ];
@@ -1092,29 +1141,40 @@ function AdminWorkspace() {
 
   const trialApplicationColumns: ColumnsType<ManagedTrialApplication> = [
     { title: '商品', dataIndex: 'productName' },
+    {
+      title: '试用方式',
+      dataIndex: 'trialType',
+      render: (trialType: ManagedTrialApplication['trialType']) => (
+        <Tag color={trialType === 'ONLINE' ? 'blue' : 'purple'}>{trialType === 'ONLINE' ? '线上' : '线下'}</Tag>
+      ),
+    },
     { title: '申请用户', key: 'user', render: (_, item) => item.nickName || item.userName },
     { title: '申请理由', dataIndex: 'applyReason', ellipsis: true },
     {
       title: '收货信息',
       key: 'shipping',
       render: (_, item) => (
-        <div>
-          <div>{item.recipientName} · {item.recipientPhone}</div>
-          <div className={styles.subText}>{item.shippingAddress}</div>
-        </div>
+        item.trialType === 'ONLINE' ? (
+          <div>
+            <div>{item.recipientName} · {item.recipientPhone}</div>
+            <div className={styles.subText}>{item.shippingAddress}</div>
+          </div>
+        ) : <span className={styles.subText}>线下试用无需寄送</span>
       ),
     },
     {
       title: '状态',
       dataIndex: 'status',
-      render: (status: ManagedTrialApplication['status']) => (
-        <Tag color={trialApplicationStatusMeta[status].color}>{trialApplicationStatusMeta[status].label}</Tag>
+      render: (status: ManagedTrialApplication['status'], item) => (
+        <Tag color={trialApplicationStatusMeta[status].color}>
+          {status === 'APPROVED' && item.trialType === 'OFFLINE' ? '可发布报告' : trialApplicationStatusMeta[status].label}
+        </Tag>
       ),
     },
     {
       title: '物流',
       key: 'logistics',
-      render: (_, item) => item.trackingNo ? `${item.carrier} ${item.trackingNo}` : '-',
+      render: (_, item) => item.trialType === 'OFFLINE' ? '无需物流' : item.trackingNo ? `${item.carrier} ${item.trackingNo}` : '-',
     },
     {
       title: '操作',
@@ -1127,11 +1187,12 @@ function AdminWorkspace() {
               <Button size="small" danger onClick={() => openTrialApplicationAction(item, 'reject')}>驳回</Button>
             </>
           )}
-          {item.status === 'APPROVED' && (
+          {item.status === 'APPROVED' && item.trialType === 'ONLINE' && (
             <Button size="small" type="primary" icon={<TruckOutlined />} onClick={() => openTrialApplicationAction(item, 'ship')}>
               发货
             </Button>
           )}
+          {(item.status === 'APPROVED' && item.trialType === 'OFFLINE') && <span className={styles.subText}>等待用户发布报告</span>}
           {!['APPLIED', 'APPROVED'].includes(item.status) && <span className={styles.subText}>等待用户流程</span>}
         </Space>
       ),
@@ -1527,7 +1588,7 @@ function AdminWorkspace() {
                   <div style={{ marginTop: 28 }}>
                     <div className={styles.tableHeader}>
                       <div>
-                        <p className={styles.eyebrow}>申请审核、线上寄送与确认收货</p>
+                        <p className={styles.eyebrow}>线上审核后寄送，线下审核后直接获得报告资格</p>
                         <h3>试用申请</h3>
                       </div>
                       <Button icon={<ReloadOutlined />} onClick={() => void loadTrialApplications()}>刷新申请</Button>
@@ -1948,19 +2009,52 @@ function AdminWorkspace() {
       >
         <Form form={trialForm} layout="vertical" onFinish={handlePublishTrial}>
           <Form.Item name="productId" label="选择商品" rules={[{ required: true, message: '请选择商品' }]}>
-            <Select placeholder="请选择要发布试用的商品" size="large">
+            <Select
+              placeholder="请选择要发布试用的商品"
+              size="large"
+              onChange={(productId) => {
+                const availableTypes = getAvailableTrialTypes(productId);
+                trialForm.setFieldValue('trialTypes', availableTypes.length > 0 ? [availableTypes[0]] : []);
+              }}
+            >
               {visibleProducts.filter((product) => product.status === 'onSale').map((product) => (
-                <Select.Option key={product.id} value={product.id}>
-                  {product.title}
+                <Select.Option key={product.id} value={product.id} disabled={getAvailableTrialTypes(product.id).length === 0}>
+                  {product.title}{getAvailableTrialTypes(product.id).length === 0 ? '（线上、线下均在招募）' : ''}
                 </Select.Option>
               ))}
             </Select>
           </Form.Item>
+          <Form.Item
+            name="trialTypes"
+            label="试用方式"
+            initialValue={['ONLINE']}
+            rules={[{ required: true, message: '请至少选择一种试用方式' }]}
+          >
+            <Checkbox.Group
+              options={[
+                {
+                  label: '线上试用（审核通过 → 发货 → 收货 → 发布甄客验）',
+                  value: 'ONLINE',
+                  disabled: !selectedTrialAvailableTypes.includes('ONLINE'),
+                },
+                {
+                  label: '线下试用（审核通过 → 发布甄客验）',
+                  value: 'OFFLINE',
+                  disabled: !selectedTrialAvailableTypes.includes('OFFLINE'),
+                },
+              ]}
+            />
+          </Form.Item>
+          {selectedTrialProductId && selectedTrialAvailableTypes.length < 2 && (
+            <p className={styles.subText}>
+              已有正在招募且未满的类型已被禁用；提前终止或名额招满后即可发布下一轮。
+            </p>
+          )}
           <Form.Item name="campaignTitle" label="招募标题" rules={[{ required: true, message: '请输入招募标题' }, { max: 120 }]}>
             <Input size="large" placeholder="请输入招募标题" />
           </Form.Item>
           <Form.Item name="campaignSummary" label="招募说明" rules={[{ required: true, message: '请输入招募说明' }, { max: 500 }]}>
-            <Input.TextArea rows={4} showCount maxLength={500} placeholder="说明申请、寄送、确认收货和报告发布规则" />
+            <Input.TextArea rows={4} showCount maxLength={500} placeholder="说明申请方式和报告发布规则" />
           </Form.Item>
           <Form.Item name="targetCount" label="招募人数" rules={[{ required: true, message: '请输入招募人数' }]}>
             <InputNumber min={1} max={100} size="large" style={{ width: '100%' }} placeholder="请输入招募人数" />

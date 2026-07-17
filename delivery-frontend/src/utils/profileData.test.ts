@@ -39,6 +39,8 @@ test('getLogisticsView maps order states to preparing, transit, delivered, and e
 test('getTrialDeadlineMeta describes received, shipped, and overdue trial states', () => {
   const pending: TrialRecord = {
     id: 1,
+    campaignId: 1,
+    trialType: 'ONLINE',
     productId: 2,
     productTitle: '试用商品',
     status: 'pending_report',

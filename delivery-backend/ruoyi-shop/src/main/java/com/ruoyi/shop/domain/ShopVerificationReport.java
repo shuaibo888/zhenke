@@ -15,6 +15,7 @@ public class ShopVerificationReport
     private String categoryCode;
     private String categoryName;
     private Long trialApplicationId;
+    private String trialType;
     private Long shopUserId;
     private String userName;
     private String nickName;
@@ -44,6 +45,8 @@ public class ShopVerificationReport
     public void setCategoryName(String categoryName) { this.categoryName = categoryName; }
     public Long getTrialApplicationId() { return trialApplicationId; }
     public void setTrialApplicationId(Long trialApplicationId) { this.trialApplicationId = trialApplicationId; }
+    public String getTrialType() { return trialType; }
+    public void setTrialType(String trialType) { this.trialType = trialType; }
     public Long getShopUserId() { return shopUserId; }
     public void setShopUserId(Long shopUserId) { this.shopUserId = shopUserId; }
     public String getUserName() { return userName; }

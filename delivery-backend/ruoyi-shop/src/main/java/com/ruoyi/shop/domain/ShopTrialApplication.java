@@ -9,6 +9,7 @@ public class ShopTrialApplication
     private Long campaignId;
     private Long merchantId;
     private Long productId;
+    private String trialType;
     private String productName;
     private String campaignTitle;
     private Long shopUserId;
@@ -37,6 +38,8 @@ public class ShopTrialApplication
     public void setMerchantId(Long merchantId) { this.merchantId = merchantId; }
     public Long getProductId() { return productId; }
     public void setProductId(Long productId) { this.productId = productId; }
+    public String getTrialType() { return trialType; }
+    public void setTrialType(String trialType) { this.trialType = trialType; }
     public String getProductName() { return productName; }
     public void setProductName(String productName) { this.productName = productName; }
     public String getCampaignTitle() { return campaignTitle; }

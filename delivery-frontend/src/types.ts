@@ -60,6 +60,7 @@ export interface VerifyReport {
   id: number;
   productId: number;
   productTitle: string;
+  trialType?: 'ONLINE' | 'OFFLINE';
   userId: number;
   userName: string;
   userRole: MemberRole;
@@ -143,6 +144,8 @@ export type TrialStatus = 'applied' | 'approved' | 'rejected' | 'shipped' | 'pen
 export interface TrialRecord {
   id: number;
   applicationId?: number;
+  campaignId: number;
+  trialType: 'ONLINE' | 'OFFLINE';
   productId: number;
   productTitle: string;
   status: TrialStatus;
@@ -172,6 +175,7 @@ export interface EarningRecord {
 export interface TrialRecruitment {
   id: number;
   productId: number;
+  trialType: 'ONLINE' | 'OFFLINE';
   targetCount: number;
   claimedCount: number;
   deadline: string;
