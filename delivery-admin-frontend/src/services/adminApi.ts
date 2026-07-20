@@ -1,4 +1,4 @@
-import type { AdminSession, ManagedOrder, ManagedProduct, ManagedTrialApplication, MerchantAccount, MerchantAuditLog, ProductCategoryOption, ShopMemberLevel, ShopUserAccount } from '@/types';
+import type { AdminSession, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, MerchantAuditLog, ProductCategoryOption, ShopMemberLevel, ShopUserAccount } from '@/types';
 
 const tokenStorageKey = 'zhenke_admin_access_token';
 
@@ -87,6 +87,7 @@ interface ProductListResponse extends ApiResponse {
 interface TrialCampaignDto {
   campaignId: number;
   merchantId: number;
+  merchantName?: string;
   productId: number;
   productName: string;
   trialType: 'ONLINE' | 'OFFLINE';
@@ -151,6 +152,19 @@ interface ShopOrderListResponse extends ApiResponse {
   total: number;
 }
 
+interface VerificationReportDto {
+  reportId: number;
+  merchantId: number;
+  merchantName?: string;
+  productName: string;
+  userName: string;
+  nickName?: string;
+  status: 'PUBLISHED' | 'DELETED';
+  shortcoming: string;
+  usefulCount: number;
+  publishedAt: string;
+}
+
 export interface CaptchaState {
   enabled: boolean;
   image: string;
@@ -192,6 +206,12 @@ async function requestApi<T extends ApiResponse>(path: string, init: RequestInit
     throw new Error(payload?.msg || '请求失败，请稍后重试');
   }
   return payload;
+}
+
+function formatApiDateTime(value?: string) {
+  if (!value) return undefined;
+  const match = value.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})/);
+  return match ? `${match[1]} ${match[2]}` : value;
 }
 
 function toMerchantAccount(dto: MerchantDto): MerchantAccount {
@@ -270,18 +290,18 @@ function toManagedOrder(dto: ShopOrderDto): ManagedOrder {
       address.districtCode, address.detail].filter(Boolean).join(' ') : '-',
     returnDays: 0,
     refundRequested: false,
-    createdAt: dto.createTime,
-    paidAt: dto.payTime,
+    createdAt: formatApiDateTime(dto.createTime) ?? '',
+    paidAt: formatApiDateTime(dto.payTime),
     carrier: dto.carrier,
     trackingNo: dto.trackingNo,
-    shippedAt: dto.shipTime,
-    receivedAt: dto.receiveTime,
+    shippedAt: formatApiDateTime(dto.shipTime),
+    receivedAt: formatApiDateTime(dto.receiveTime),
     logisticsEvents: (Array.isArray(dto.logisticsEvents) ? dto.logisticsEvents : []).map((event) => ({
       eventId: event.eventId,
       eventCode: event.eventCode,
       description: event.description,
       location: event.location,
-      eventTime: event.eventTime,
+      eventTime: formatApiDateTime(event.eventTime) ?? event.eventTime,
       source: event.source,
     })),
   };
@@ -521,19 +541,34 @@ export async function shipMerchantOrder(orderId: number, carrier: string, tracki
   return toManagedOrder(result.data);
 }
 
-function toManagedTrial(dto: TrialCampaignDto) {
+function toManagedTrial(dto: TrialCampaignDto): ManagedTrialRecruitment {
   return {
     id: dto.campaignId,
     merchantId: dto.merchantId,
+    merchantName: dto.merchantName,
     productId: dto.productId,
     productTitle: dto.productName,
     trialType: dto.trialType,
     targetCount: dto.targetCount,
     claimedCount: dto.approvedCount,
-    deadline: dto.applicationDeadline,
+    deadline: formatApiDateTime(dto.applicationDeadline) ?? dto.applicationDeadline,
     applicantCount: dto.applicantCount,
     status: ({ DRAFT: 'draft', RECRUITING: 'recruiting', CLOSED: 'closed', FINISHED: 'finished' } as const)[dto.status],
-    createdAt: dto.publishedAt ?? dto.createTime ?? '',
+    createdAt: formatApiDateTime(dto.publishedAt ?? dto.createTime) ?? '',
+  };
+}
+
+function toManagedReport(dto: VerificationReportDto): ManagedReport {
+  return {
+    id: dto.reportId,
+    merchantId: dto.merchantId,
+    merchantName: dto.merchantName,
+    productTitle: dto.productName,
+    userName: dto.nickName || dto.userName,
+    status: dto.status === 'PUBLISHED' ? 'published' : 'deleted',
+    shortcoming: dto.shortcoming,
+    usefulCount: Number(dto.usefulCount ?? 0),
+    createdAt: formatApiDateTime(dto.publishedAt) ?? '',
   };
 }
 
@@ -541,6 +576,12 @@ export async function fetchManagedTrials(session: AdminSession) {
   const path = session.loginType === 'merchant' ? '/shop/merchant/trials' : '/shop/admin/trials';
   const result = await requestApi<TrialCampaignListResponse>(`${path}?pageNum=1&pageSize=100`, {}, true);
   return { rows: result.rows.map(toManagedTrial), total: result.total };
+}
+
+export async function fetchMerchantReports() {
+  const result = await requestApi<ApiResponse<VerificationReportDto[]>>('/shop/merchant/reports', {}, true);
+  const rows = Array.isArray(result.data) ? result.data : [];
+  return rows.map(toManagedReport);
 }
 
 export async function createMerchantTrial(body: {

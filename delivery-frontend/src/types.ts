@@ -61,6 +61,8 @@ export interface VerifyReport {
   productId: number;
   productTitle: string;
   trialType?: 'ONLINE' | 'OFFLINE';
+  reportSource?: 'TRIAL' | 'PURCHASE';
+  sourceReportId?: number;
   userId: number;
   userName: string;
   userRole: MemberRole;
@@ -70,6 +72,9 @@ export interface VerifyReport {
   shortcoming: string;
   fitCrowd: string;
   recommend: boolean;
+  productQuality?: number;
+  logisticsService?: number;
+  serviceAttitude?: number;
   usefulCount: number;
   usefulByMe?: boolean;
   createdAt: string;
@@ -93,26 +98,17 @@ export interface Order {
   receivedAt?: string;
   logistics?: LogisticsInfo;
   items?: Array<{
+    orderItemId: number;
     productId: number;
+    sourceReportId?: number;
+    verificationReportId?: number;
     productTitle: string;
     coverUrl: string;
     unitPrice: number;
     quantity: number;
     amount: number;
   }>;
-  fromReviewId?: number;
-  fromVerifierId?: number;
-  review?: OrderReview;
-}
-
-export interface OrderReview {
-  id: number;
-  productQuality: number;
-  logisticsService: number;
-  serviceAttitude: number;
-  content: string;
-  images: string[];
-  createdAt: string;
+  sourceReportId?: number;
 }
 
 export interface NotificationItem {
@@ -193,6 +189,5 @@ export interface ProductEvidence {
 }
 
 export interface ReportAttribution {
-  fromReviewId: number;
-  fromVerifierId: number;
+  sourceReportId: number;
 }

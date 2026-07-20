@@ -67,8 +67,8 @@ test('getCartCount and getCartTotal summarize cart items', () => {
 });
 
 test('latest report attribution replaces prior attribution while quantity increments', () => {
-  const first = { fromReviewId: 101, fromVerifierId: 2 };
-  const latest = { fromReviewId: 105, fromVerifierId: 1 };
+  const first = { sourceReportId: 101 };
+  const latest = { sourceReportId: 105 };
   const cart = addProductToCart(addProductToCart([], coffee, first), coffee, latest);
 
   assert.equal(cart[0].quantity, 2);

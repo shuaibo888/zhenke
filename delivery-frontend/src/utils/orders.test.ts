@@ -44,18 +44,17 @@ test('createOrdersFromCart creates unpaid orders with role return days', () => {
   assert.equal(orders[0].amount, 256);
 });
 
-test('createOrdersFromCart preserves report and verifier attribution', () => {
+test('createOrdersFromCart preserves report attribution', () => {
   const attributedItems: CartItem[] = [
     {
       product,
       quantity: 1,
-      attribution: { fromReviewId: 105, fromVerifierId: 1 },
+      attribution: { sourceReportId: 105 },
     },
   ];
   const [order] = createOrdersFromCart(attributedItems, 'zhenke', 2000);
 
-  assert.equal(order.fromReviewId, 105);
-  assert.equal(order.fromVerifierId, 1);
+  assert.equal(order.sourceReportId, 105);
 });
 
 test('advanceOrderStatus follows unpaid paid shipped completed flow', () => {

@@ -80,6 +80,7 @@ public class ShopOrderService
             ShopOrderItemBody body = new ShopOrderItemBody();
             body.setProductId(item.getProductId());
             body.setQuantity(item.getQuantity());
+            body.setSourceReportId(item.getSourceReportId());
             return body;
         }).toList();
         List<ShopOrder> orders = createForUser(userId, addressId, items);
@@ -155,23 +156,29 @@ public class ShopOrderService
             throw new ServiceException("收货地址不存在");
         }
 
-        Map<Long, Integer> normalized = normalizeItems(requestedItems);
+        Map<Long, RequestedLine> normalized = normalizeItems(requestedItems);
         Map<Long, List<OrderLine>> linesByMerchant = new LinkedHashMap<>();
-        for (Map.Entry<Long, Integer> requested : normalized.entrySet())
+        for (Map.Entry<Long, RequestedLine> requested : normalized.entrySet())
         {
             ShopProduct product = orderMapper.selectOrderableProductForUpdate(requested.getKey());
             if (product == null)
             {
                 throw new ServiceException("商品不存在或已下架");
             }
-            int quantity = requested.getValue();
+            int quantity = requested.getValue().quantity();
+            Long sourceReportId = requested.getValue().sourceReportId();
+            if (sourceReportId != null
+                    && orderMapper.countPublishedReportForProduct(sourceReportId, product.getProductId()) == 0)
+            {
+                throw new ServiceException("甄客验购买来源无效");
+            }
             if (product.getStock() == null || product.getStock() < quantity
                     || orderMapper.deductStock(product.getProductId(), quantity) == 0)
             {
                 throw new ServiceException(product.getProductName() + "库存不足");
             }
             linesByMerchant.computeIfAbsent(product.getMerchantId(), ignored -> new ArrayList<>())
-                    .add(new OrderLine(product, quantity));
+                    .add(new OrderLine(product, quantity, sourceReportId));
         }
 
         List<ShopOrder> created = new ArrayList<>();
@@ -196,6 +203,7 @@ public class ShopOrderService
                 ShopOrderItem item = new ShopOrderItem();
                 item.setOrderId(order.getOrderId());
                 item.setProductId(line.product().getProductId());
+                item.setSourceReportId(line.sourceReportId());
                 item.setProductName(line.product().getProductName());
                 item.setCoverUrl(line.product().getCoverUrl());
                 item.setUnitPrice(line.product().getPrice());
@@ -213,13 +221,13 @@ public class ShopOrderService
         return created;
     }
 
-    private Map<Long, Integer> normalizeItems(List<ShopOrderItemBody> items)
+    private Map<Long, RequestedLine> normalizeItems(List<ShopOrderItemBody> items)
     {
         if (items == null || items.isEmpty())
         {
             throw new ServiceException("订单商品不能为空");
         }
-        Map<Long, Integer> normalized = new TreeMap<>();
+        Map<Long, RequestedLine> normalized = new TreeMap<>();
         for (ShopOrderItemBody item : items)
         {
             if (item == null || item.getProductId() == null || item.getQuantity() == null
@@ -227,11 +235,16 @@ public class ShopOrderService
             {
                 throw new ServiceException("订单商品参数无效");
             }
-            int quantity = normalized.merge(item.getProductId(), item.getQuantity(), Integer::sum);
+            RequestedLine existing = normalized.get(item.getProductId());
+            int quantity = item.getQuantity() + (existing == null ? 0 : existing.quantity());
             if (quantity > 99)
             {
                 throw new ServiceException("单个商品最多购买99件");
             }
+            Long sourceReportId = item.getSourceReportId() != null
+                    ? item.getSourceReportId()
+                    : existing == null ? null : existing.sourceReportId();
+            normalized.put(item.getProductId(), new RequestedLine(quantity, sourceReportId));
         }
         if (normalized.size() > 50)
         {
@@ -320,5 +333,6 @@ public class ShopOrderService
                 + UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
     }
 
-    private record OrderLine(ShopProduct product, int quantity) { }
+    private record RequestedLine(int quantity, Long sourceReportId) { }
+    private record OrderLine(ShopProduct product, int quantity, Long sourceReportId) { }
 }

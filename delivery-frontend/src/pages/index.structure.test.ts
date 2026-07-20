@@ -76,15 +76,16 @@ test('primary navigation only exposes reviews and profile', () => {
   assert.match(pageSource, /activeTab === 'reviews' && journeyView === 'feed' && renderReviews\(\)/);
 });
 
-test('profile contains the existing message list', () => {
+test('profile hides simulated earnings and message modules', () => {
   const profileStart = pageSource.indexOf('const renderProfile = () =>');
   const profileEnd = pageSource.indexOf('if (!activeUser)', profileStart);
   const profileBlock = pageSource.slice(profileStart, profileEnd);
 
   assert.notEqual(profileStart, -1);
-  assert.match(profileBlock, /<h3>消息<\/h3>/);
-  assert.match(profileBlock, /notifications\.map/);
-  assert.doesNotMatch(pageSource, /const renderNotifications = \(\) =>/);
+  assert.doesNotMatch(profileBlock, /profileView === 'earnings'/);
+  assert.doesNotMatch(profileBlock, /profileView === 'messages'/);
+  assert.doesNotMatch(profileBlock, /<h3>我的收益<\/h3>/);
+  assert.doesNotMatch(profileBlock, /<h3>消息<\/h3>/);
 });
 
 test('profile uses a menu layer before rendering each detail section', () => {
@@ -92,7 +93,7 @@ test('profile uses a menu layer before rendering each detail section', () => {
   const profileEnd = pageSource.indexOf('if (!activeUser)', profileStart);
   const profileBlock = pageSource.slice(profileStart, profileEnd);
 
-  assert.match(pageSource, /type ProfileView = 'menu' \| 'orders' \| 'trials' \| 'reports' \| 'earnings' \| 'messages';/);
+  assert.match(pageSource, /type ProfileView = 'menu' \| 'orders' \| 'trials' \| 'reports';/);
   assert.match(pageSource, /useState<ProfileView>\('menu'\)/);
   assert.match(profileBlock, /profileView === 'menu'/);
   assert.match(profileBlock, /className=\{styles\.profileMenuGrid\}/);
@@ -101,8 +102,6 @@ test('profile uses a menu layer before rendering each detail section', () => {
   assert.match(profileBlock, /profileView === 'orders'/);
   assert.match(profileBlock, /profileView === 'trials'/);
   assert.match(profileBlock, /profileView === 'reports'/);
-  assert.match(profileBlock, /profileView === 'earnings'/);
-  assert.match(profileBlock, /profileView === 'messages'/);
 });
 
 test('profile orders expose logistics and render a logistics modal', () => {
@@ -112,7 +111,7 @@ test('profile orders expose logistics and render a logistics modal', () => {
   assert.match(pageSource, /getLogisticsView/);
 });
 
-test('profile renders trials, zhenke reports, and earnings', () => {
+test('profile renders real trial and zhenke report sections', () => {
   const profileStart = pageSource.indexOf('const renderProfile = () =>');
   const profileEnd = pageSource.indexOf('if (!activeUser)', profileStart);
   const profileBlock = pageSource.slice(profileStart, profileEnd);
@@ -122,10 +121,27 @@ test('profile renders trials, zhenke reports, and earnings', () => {
   assert.match(profileBlock, /自愿发布甄客验/);
   assert.match(profileBlock, /<h3>我的甄客验<\/h3>/);
   assert.doesNotMatch(profileBlock, /<h3>我的验证<\/h3>/);
-  assert.match(profileBlock, /<h3>我的收益<\/h3>/);
-  assert.match(profileBlock, /累计收益/);
-  assert.match(profileBlock, /待结算/);
-  assert.match(profileBlock, /已结算/);
+});
+
+test('report comments show a backend-provided author badge for comments and replies', () => {
+  assert.match(pageSource, /comment\.reportAuthor && <span className=\{styles\.commentAuthorBadge\}>作者<\/span>/);
+  assert.match(pageSource, /\(comment\.replies \?\? \[\]\)\.map\(\(reply\) => renderComment\(reply, true\)\)/);
+});
+
+test('report useful action uses the backend count instead of local-only increments', () => {
+  assert.match(pageSource, /await toggleReportUseful\(reportId\)/);
+  assert.match(pageSource, /usefulCount: result\.usefulCount/);
+  assert.match(pageSource, /usefulByMe: result\.usefulByMe/);
+  assert.doesNotMatch(pageSource, /report\.usefulByMe \? report\.usefulCount - 1/);
+});
+
+test('received order items publish purchase verification reports into the shared feed', () => {
+  assert.match(pageSource, /publishPurchaseVerificationReport/);
+  assert.match(pageSource, /orderItemId: reviewOrderItem\.orderItemId/);
+  assert.match(pageSource, /购买甄客验已发布，已进入甄客验内容流/);
+  assert.match(pageSource, /item\.verificationReportId \? '查看甄客验' : '发布甄客验'/);
+  assert.match(pageSource, /report\.reportSource === 'PURCHASE'/);
+  assert.match(pageSource, /购买评价/);
 });
 
 test('product journey covers recruitment, evidence, report detail, and attribution', () => {
@@ -135,9 +151,9 @@ test('product journey covers recruitment, evidence, report detail, and attributi
   assert.match(pageSource, /申请验证/);
   assert.match(pageSource, /商家自证与溯源/);
   assert.match(pageSource, /查看 \/ 购买该商品/);
-  assert.match(pageSource, /本次成交产生的服务费归/);
-  assert.match(pageSource, /fromReviewId/);
-  assert.match(pageSource, /fromVerifierId/);
+  assert.match(pageSource, /本次购买会记录来源甄客验/);
+  assert.match(pageSource, /sourceReportId: journeyReport\.id/);
+  assert.match(pageSource, /pendingBuyAttribution\?\.sourceReportId/);
   assert.match(pageSource, /getProductJourneyState/);
   assert.match(pageSource, /applyForTrial/);
   assert.match(pageSource, /fetchMyTrialApplications/);
@@ -228,9 +244,19 @@ test('cart checkout footer shows a clear item-count checkout action', () => {
 
 test('avatar editing uses local file upload instead of URL input', () => {
   assert.match(pageSource, /type="file"/);
-  assert.match(pageSource, /accept="image\/\*"/);
-  assert.match(pageSource, /uploadAvatarFile/);
+  assert.match(pageSource, /accept="image\/jpeg,image\/png,image\/gif"/);
+  assert.match(pageSource, /uploadShopAvatar\(file\)/);
+  assert.match(pageSource, /file\.size > 5 \* 1024 \* 1024/);
+  assert.doesNotMatch(pageSource, /uploadAvatarFile/);
   assert.doesNotMatch(pageSource, /label="图片 URL"/);
+});
+
+test('profile and order views do not advertise return-day benefits', () => {
+  assert.doesNotMatch(pageSource, /天退换/);
+  assert.doesNotMatch(pageSource, /当前退换天数/);
+  assert.doesNotMatch(pageSource, /升级演示/);
+  assert.doesNotMatch(pageSource, /styles\.progressTrack/);
+  assert.match(pageSource, /这里汇总你的试用、甄客验与订单进度/);
 });
 
 test('goods image preview opens only from product image button', () => {

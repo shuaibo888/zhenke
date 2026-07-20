@@ -2,10 +2,13 @@ package com.ruoyi.shop.controller;
 
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.shop.domain.dto.ShopPasswordBody;
 import com.ruoyi.shop.domain.dto.ShopProfileBody;
@@ -32,6 +35,12 @@ public class ShopUserController
     public AjaxResult updateProfile(@Valid @RequestBody ShopProfileBody body)
     {
         return AjaxResult.success(accountService.updateProfile(body));
+    }
+
+    @PostMapping("/avatar")
+    public AjaxResult updateAvatar(@RequestParam("file") MultipartFile file)
+    {
+        return AjaxResult.success(accountService.updateAvatar(file));
     }
 
     @PutMapping("/password")

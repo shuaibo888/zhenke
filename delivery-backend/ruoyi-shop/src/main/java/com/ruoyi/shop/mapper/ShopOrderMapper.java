@@ -14,6 +14,7 @@ public interface ShopOrderMapper
 {
     ShopUserAddress selectUserAddress(@Param("userId") Long userId, @Param("addressId") Long addressId);
     ShopProduct selectOrderableProductForUpdate(Long productId);
+    int countPublishedReportForProduct(@Param("reportId") Long reportId, @Param("productId") Long productId);
     int deductStock(@Param("productId") Long productId, @Param("quantity") Integer quantity);
     int restoreStock(@Param("productId") Long productId, @Param("quantity") Integer quantity);
     int insertOrder(ShopOrder order);
@@ -25,6 +26,8 @@ public interface ShopOrderMapper
     ShopOrder selectUserOrder(@Param("userId") Long userId, @Param("orderId") Long orderId);
     ShopOrder selectUserOrderForUpdate(@Param("userId") Long userId, @Param("orderId") Long orderId);
     List<ShopOrderItem> selectOrderItems(Long orderId);
+    ShopOrderItem selectUserReceivedOrderItemForUpdate(@Param("userId") Long userId,
+            @Param("orderItemId") Long orderItemId);
     ShopOrderAddress selectOrderAddress(Long orderId);
     List<ShopOrderStatusLog> selectStatusLogs(Long orderId);
     List<ShopOrderLogisticsEvent> selectLogisticsEvents(Long orderId);

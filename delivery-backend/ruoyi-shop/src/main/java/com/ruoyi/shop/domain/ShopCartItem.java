@@ -7,6 +7,7 @@ public class ShopCartItem
     private Long cartItemId;
     private Long userId;
     private Long productId;
+    private Long sourceReportId;
     private Integer quantity;
     private Long merchantId;
     private String merchantName;
@@ -24,6 +25,8 @@ public class ShopCartItem
     public void setUserId(Long userId) { this.userId = userId; }
     public Long getProductId() { return productId; }
     public void setProductId(Long productId) { this.productId = productId; }
+    public Long getSourceReportId() { return sourceReportId; }
+    public void setSourceReportId(Long sourceReportId) { this.sourceReportId = sourceReportId; }
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
     public Long getMerchantId() { return merchantId; }

@@ -151,6 +151,7 @@ export interface ManagedOrder {
 export interface ManagedReport {
   id: number;
   merchantId: number;
+  merchantName?: string;
   productTitle: string;
   userName: string;
   status: ReportStatus;
@@ -162,6 +163,7 @@ export interface ManagedReport {
 export interface ManagedTrialRecruitment {
   id: number;
   merchantId: number;
+  merchantName?: string;
   productId: number;
   productTitle: string;
   trialType: 'ONLINE' | 'OFFLINE';

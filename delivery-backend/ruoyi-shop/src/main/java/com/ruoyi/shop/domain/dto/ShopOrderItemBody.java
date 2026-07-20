@@ -13,9 +13,12 @@ public class ShopOrderItemBody
     @Min(value = 1, message = "商品数量至少为1")
     @Max(value = 99, message = "单个商品最多购买99件")
     private Integer quantity;
+    private Long sourceReportId;
 
     public Long getProductId() { return productId; }
     public void setProductId(Long productId) { this.productId = productId; }
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
+    public Long getSourceReportId() { return sourceReportId; }
+    public void setSourceReportId(Long sourceReportId) { this.sourceReportId = sourceReportId; }
 }

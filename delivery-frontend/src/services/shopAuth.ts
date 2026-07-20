@@ -102,13 +102,25 @@ export async function logoutShopUser() {
   }
 }
 
-export async function updateShopProfile(changes: { nickname?: string; avatar?: string }) {
+export async function updateShopProfile(changes: { nickname?: string }) {
   const result = await requestApi<ApiResponse<AuthUser>>(
     '/shop/users/me',
     { method: 'PUT', body: JSON.stringify(changes) },
     true,
   );
   if (!result.data) throw new Error('用户资料更新失败');
+  return result.data;
+}
+
+export async function uploadShopAvatar(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const result = await requestApi<ApiResponse<AuthUser>>(
+    '/shop/users/me/avatar',
+    { method: 'POST', body: formData },
+    true,
+  );
+  if (!result.data) throw new Error('头像上传失败');
   return result.data;
 }
 

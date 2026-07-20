@@ -38,8 +38,7 @@ export function createOrdersFromCart(items: CartItem[], role: MemberRole, seed =
     quantity: item.quantity,
     amount: item.product.price * item.quantity,
     returnDays: getReturnDaysByRole(role),
-    fromReviewId: item.attribution?.fromReviewId,
-    fromVerifierId: item.attribution?.fromVerifierId,
+    sourceReportId: item.attribution?.sourceReportId,
   }));
 }
 

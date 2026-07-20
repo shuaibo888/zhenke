@@ -40,7 +40,9 @@ public class ShopUserProfile
     public String getRole() { return role; }
     public String getRoleName() { return roleName; }
     public int getReportCount() { return reportCount; }
+    public void setReportCount(int reportCount) { this.reportCount = reportCount; }
     public int getUsefulCount() { return usefulCount; }
+    public void setUsefulCount(int usefulCount) { this.usefulCount = usefulCount; }
     public boolean isReviewEligible() { return reviewEligible; }
     public boolean isTrialEligible() { return trialEligible; }
 }

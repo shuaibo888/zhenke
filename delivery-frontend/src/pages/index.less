@@ -1005,6 +1005,21 @@
   line-height: 1.6;
 }
 
+.purchaseReportRatings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.purchaseReportRatings span {
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: #edf6ef;
+  color: #315d50;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .reportFooter {
   justify-content: space-between;
   margin-top: 12px;
@@ -1093,23 +1108,9 @@
   font-weight: 700;
 }
 
-.progressTrack {
-  height: 10px;
-  overflow: hidden;
-  margin: 22px 0 12px;
-  background: #dfe9df;
-  border-radius: 999px;
-}
-
-.progressTrack i {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, #1f6f5b, #d7a737);
-  border-radius: inherit;
-}
-
 .statRow {
   flex-wrap: wrap;
+  margin-top: 18px;
 }
 
 .statRow span {
@@ -1300,6 +1301,18 @@
 .orderItem .orderLogisticsSummary {
   color: #1f6f5b;
   font-weight: 600;
+}
+
+.orderReviewLine {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f4f8f5;
+  font-size: 13px;
 }
 
 .orderItem > div:last-child {
@@ -1743,6 +1756,16 @@
   font-size: 12px;
 }
 
+.commentMeta .commentAuthorBadge {
+  padding: 1px 5px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  background: #1f6f5b;
+  border-radius: 4px;
+}
+
 .commentBody p {
   margin: 7px 0 2px;
   color: #35433c;
@@ -2163,7 +2186,20 @@
 }
 
 .reviewTextarea {
+  display: grid;
+  gap: 12px;
   width: 100%;
+}
+
+.reviewRecommendField {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border: 1px solid #e4ebe7;
+  border-radius: 8px;
+  color: #17241f;
+  font-weight: 700;
 }
 
 .reviewUpload {

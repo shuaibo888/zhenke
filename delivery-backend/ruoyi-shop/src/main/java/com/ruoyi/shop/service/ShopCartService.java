@@ -33,6 +33,7 @@ public class ShopCartService
         long userId = ShopAccountIdentity.requireShopUserId();
         lockUser(userId);
         ShopProduct product = requireOrderableProduct(body.getProductId());
+        validateSourceReport(body.getSourceReportId(), body.getProductId());
         ShopCartItem existing = cartMapper.selectUserProduct(userId, body.getProductId());
         int quantity = body.getQuantity() + (existing == null ? 0 : existing.getQuantity());
         requireAvailableStock(product, quantity);
@@ -45,6 +46,7 @@ public class ShopCartService
             ShopCartItem item = new ShopCartItem();
             item.setUserId(userId);
             item.setProductId(body.getProductId());
+            item.setSourceReportId(body.getSourceReportId());
             item.setQuantity(quantity);
             if (cartMapper.insert(item) == 0)
             {
@@ -52,7 +54,8 @@ public class ShopCartService
             }
             return requireItem(userId, item.getCartItemId());
         }
-        requireUpdated(cartMapper.updateQuantity(userId, existing.getCartItemId(), quantity));
+        requireUpdated(cartMapper.updateQuantity(
+                userId, existing.getCartItemId(), quantity, body.getSourceReportId()));
         return requireItem(userId, existing.getCartItemId());
     }
 
@@ -64,7 +67,7 @@ public class ShopCartService
         ShopCartItem item = requireItem(userId, cartItemId);
         ShopProduct product = requireOrderableProduct(item.getProductId());
         requireAvailableStock(product, quantity);
-        requireUpdated(cartMapper.updateQuantity(userId, cartItemId, quantity));
+        requireUpdated(cartMapper.updateQuantity(userId, cartItemId, quantity, null));
         return requireItem(userId, cartItemId);
     }
 
@@ -102,6 +105,15 @@ public class ShopCartService
         if (product.getStock() == null || product.getStock() < quantity)
         {
             throw new ServiceException("商品库存不足");
+        }
+    }
+
+    private void validateSourceReport(Long sourceReportId, long productId)
+    {
+        if (sourceReportId != null
+                && cartMapper.countPublishedReportForProduct(sourceReportId, productId) == 0)
+        {
+            throw new ServiceException("甄客验购买来源无效");
         }
     }
 

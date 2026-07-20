@@ -8,6 +8,8 @@ public class ShopOrderItem
     private Long orderItemId;
     private Long orderId;
     private Long productId;
+    private Long sourceReportId;
+    private Long verificationReportId;
     private String productName;
     private String coverUrl;
     private BigDecimal unitPrice;
@@ -21,6 +23,10 @@ public class ShopOrderItem
     public void setOrderId(Long orderId) { this.orderId = orderId; }
     public Long getProductId() { return productId; }
     public void setProductId(Long productId) { this.productId = productId; }
+    public Long getSourceReportId() { return sourceReportId; }
+    public void setSourceReportId(Long sourceReportId) { this.sourceReportId = sourceReportId; }
+    public Long getVerificationReportId() { return verificationReportId; }
+    public void setVerificationReportId(Long verificationReportId) { this.verificationReportId = verificationReportId; }
     public String getProductName() { return productName; }
     public void setProductName(String productName) { this.productName = productName; }
     public String getCoverUrl() { return coverUrl; }

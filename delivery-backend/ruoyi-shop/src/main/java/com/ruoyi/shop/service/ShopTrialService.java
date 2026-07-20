@@ -22,6 +22,7 @@ import com.ruoyi.shop.domain.dto.ShopTrialShipBody;
 import com.ruoyi.shop.domain.dto.ShopVerificationReportBody;
 import com.ruoyi.shop.domain.dto.ShopVerificationResourceBody;
 import com.ruoyi.shop.domain.vo.ShopHomeFeedItem;
+import com.ruoyi.shop.domain.vo.ShopReportUsefulResult;
 import com.ruoyi.shop.mapper.ShopTrialMapper;
 import com.ruoyi.shop.mapper.ShopUserMapper;
 import com.ruoyi.shop.security.ShopAccountIdentity;
@@ -281,6 +282,7 @@ public class ShopTrialService
         ShopVerificationReport report = new ShopVerificationReport();
         report.setProductId(application.getProductId());
         report.setTrialApplicationId(application.getApplicationId());
+        report.setReportSource("TRIAL");
         report.setShopUserId(shopUserId);
         report.setExperience(StringUtils.trim(body.getExperience()));
         report.setShortcoming(StringUtils.trim(body.getShortcoming()));
@@ -305,28 +307,51 @@ public class ShopTrialService
         {
             throw new ServiceException("试用状态已变化，请刷新后重试");
         }
-        return reportWithResources(report.getReportId());
+        return reportWithResources(report.getReportId(), shopUserId);
     }
 
     public List<ShopVerificationReport> myReports()
     {
-        return withResources(trialMapper.selectUserReports(ShopAccountIdentity.requireShopUserId()));
+        long shopUserId = ShopAccountIdentity.requireShopUserId();
+        return withResources(trialMapper.selectUserReports(shopUserId), shopUserId);
     }
 
     public List<ShopVerificationReport> merchantReports()
     {
         ShopMerchant merchant = merchantService.currentMerchantAccount();
-        return withResources(trialMapper.selectMerchantReports(merchant.getMerchantId()));
+        return withResources(trialMapper.selectMerchantReports(merchant.getMerchantId()), null);
     }
 
     public ShopVerificationReport publishedReport(long reportId)
     {
-        ShopVerificationReport report = reportWithResources(reportId);
+        ShopVerificationReport report = reportWithResources(reportId, ShopAccountIdentity.currentShopUserIdOrNull());
         if (!"PUBLISHED".equals(report.getStatus()))
         {
             throw new ServiceException("验证报告不存在");
         }
         return report;
+    }
+
+    @Transactional
+    public ShopReportUsefulResult toggleUseful(long reportId)
+    {
+        long shopUserId = ShopAccountIdentity.requireShopUserId();
+        ShopVerificationReport report = reportWithResources(reportId, shopUserId);
+        if (!"PUBLISHED".equals(report.getStatus()))
+        {
+            throw new ServiceException("验证报告不存在");
+        }
+        if (Long.valueOf(shopUserId).equals(report.getShopUserId()))
+        {
+            throw new ServiceException("不能给自己的甄客验点有用");
+        }
+
+        if (trialMapper.deleteReportUseful(reportId, shopUserId) == 0)
+        {
+            trialMapper.insertReportUseful(reportId, shopUserId);
+        }
+        boolean usefulByMe = trialMapper.countReportUsefulByUser(reportId, shopUserId) > 0;
+        return new ShopReportUsefulResult(reportId, trialMapper.countReportUseful(reportId), usefulByMe);
     }
 
     public List<ShopHomeFeedItem> homeFeed(String categoryCode, String contentType, String trialType)
@@ -353,7 +378,7 @@ public class ShopTrialService
         return trialMapper.selectHomeFeed(category, type, normalizedTrialType);
     }
 
-    private ShopVerificationReport reportWithResources(long reportId)
+    private ShopVerificationReport reportWithResources(long reportId, Long viewerShopUserId)
     {
         ShopVerificationReport report = trialMapper.selectReportById(reportId);
         if (report == null)
@@ -361,16 +386,25 @@ public class ShopTrialService
             throw new ServiceException("验证报告不存在");
         }
         report.setResources(trialMapper.selectReportResources(reportId));
+        enrichUseful(report, viewerShopUserId);
         return report;
     }
 
-    private List<ShopVerificationReport> withResources(List<ShopVerificationReport> reports)
+    private List<ShopVerificationReport> withResources(List<ShopVerificationReport> reports, Long viewerShopUserId)
     {
         for (ShopVerificationReport report : reports)
         {
             report.setResources(trialMapper.selectReportResources(report.getReportId()));
+            enrichUseful(report, viewerShopUserId);
         }
         return reports;
+    }
+
+    private void enrichUseful(ShopVerificationReport report, Long viewerShopUserId)
+    {
+        report.setUsefulCount(trialMapper.countReportUseful(report.getReportId()));
+        report.setUsefulByMe(viewerShopUserId != null
+                && trialMapper.countReportUsefulByUser(report.getReportId(), viewerShopUserId) > 0);
     }
 
     private ShopTrialCampaign requireCampaign(ShopTrialCampaign campaign)

@@ -1,7 +1,5 @@
 import {
-  AccountBookOutlined,
   ArrowLeftOutlined,
-  BellOutlined,
   CameraOutlined,
   CheckCircleFilled,
   DeleteOutlined,
@@ -11,7 +9,6 @@ import {
   HomeOutlined,
   LockOutlined,
   LoginOutlined,
-  MessageOutlined,
   MinusOutlined,
   PlusOutlined,
   ProfileOutlined,
@@ -26,12 +23,8 @@ import { Badge, Button, Cascader, ConfigProvider, Drawer, Form, Input, message, 
 import type { KeyboardEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import pcaCode from 'china-division/dist/pca-code.json';
-import {
-  earningRecords,
-  notifications,
-  productEvidence,
-} from '@/mocks/commerce';
-import type { EarningRecord, MemberRole, Merchant, Order, Product, ReportAttribution, TrialRecord, TrialRecruitment, VerifyReport } from '@/types';
+import { productEvidence } from '@/mocks/commerce';
+import type { MemberRole, Merchant, Order, Product, ReportAttribution, TrialRecord, TrialRecruitment, VerifyReport } from '@/types';
 import type { AuthUser } from '@/utils/authRules';
 import {
   changeShopPassword,
@@ -46,6 +39,7 @@ import {
   restoreShopSession,
   setDefaultShopShippingAddress,
   submitMerchantApplication,
+  uploadShopAvatar,
   updateShopProfile,
   updateShopShippingAddress,
   type CaptchaState,
@@ -71,7 +65,9 @@ import {
   fetchPublishedReport,
   fetchReportComments,
   payShopOrder,
+  publishPurchaseVerificationReport,
   publishVerificationReport,
+  toggleReportUseful,
   updateShopCartItem,
   uploadShopContentFile,
   type HomeFeedItemDto,
@@ -83,22 +79,16 @@ import {
   type TrialApplicationDto,
   type VerificationReportDto,
 } from '@/services/shopContent';
-import { uploadAvatarFile } from '@/utils/avatarUpload';
 import { getCartCount, getCartTotal, type CartItem } from '@/utils/cart';
 import { canCancelOrder, orderStatusMeta } from '@/utils/orders';
 import { findProductForReport, getCatalogProducts, type ProductCategoryFilter, type ProductSortKey } from '@/utils/productCatalog';
 import { getProductJourneyState } from '@/utils/productJourney';
-import {
-  calculateEarningAmount,
-  getLogisticsView,
-  getTrialDeadlineMeta,
-  summarizeEarnings,
-} from '@/utils/profileData';
+import { getLogisticsView, getTrialDeadlineMeta } from '@/utils/profileData';
 import styles from './index.less';
 
 type TabKey = 'reviews' | 'profile';
 type JourneyView = 'feed' | 'product' | 'report' | 'purchase';
-type ProfileView = 'menu' | 'orders' | 'trials' | 'reports' | 'earnings' | 'messages';
+type ProfileView = 'menu' | 'orders' | 'trials' | 'reports';
 type ProfileSection = Exclude<ProfileView, 'menu'>;
 type HomeFeedFilter = 'ALL' | 'ONLINE' | 'OFFLINE' | 'REPORT';
 type AuthFormValues = {
@@ -108,9 +98,9 @@ type AuthFormValues = {
 };
 
 const roleMeta = {
-  zhenke: { label: '甄客', tone: 'silver', next: '验甄客', returnDays: 7 },
-  yanzhenke: { label: '验甄客', tone: 'gold', next: '信甄客', returnDays: 15 },
-  xinzhenke: { label: '信甄客', tone: 'diamond', next: '已满级', returnDays: 30 },
+  zhenke: { label: '甄客', tone: 'silver', returnDays: 7 },
+  yanzhenke: { label: '验甄客', tone: 'gold', returnDays: 15 },
+  xinzhenke: { label: '信甄客', tone: 'diamond', returnDays: 30 },
 };
 
 const tabItems = [
@@ -119,11 +109,9 @@ const tabItems = [
 ] as const;
 
 const profileSectionMeta: Record<ProfileSection, { title: string; description: string }> = {
-  orders: { title: '我的订单', description: '查看付款、物流、收货与评价' },
+  orders: { title: '我的订单', description: '查看付款、物流、收货与购买甄客验' },
   trials: { title: '我的试用', description: '跟进试用任务与甄客验发布进度' },
   reports: { title: '我的甄客验', description: '查看我发布的真实体验' },
-  earnings: { title: '我的收益', description: '查看佣金返点与公益捐赠明细' },
-  messages: { title: '消息', description: '查看平台通知与账户提醒' },
 };
 
 const commerceTheme = {
@@ -253,6 +241,8 @@ function mapVerificationReport(dto: VerificationReportDto): VerifyReport {
     productId: dto.productId,
     productTitle: dto.productName,
     trialType: dto.trialType,
+    reportSource: dto.reportSource,
+    sourceReportId: dto.sourceReportId,
     userId: dto.shopUserId,
     userName: dto.nickName || dto.userName,
     userRole: 'zhenke',
@@ -262,10 +252,20 @@ function mapVerificationReport(dto: VerificationReportDto): VerifyReport {
     shortcoming: dto.shortcoming,
     fitCrowd: dto.fitCrowd,
     recommend: dto.recommend === '0',
-    usefulCount: 0,
-    usefulByMe: false,
+    productQuality: dto.productQuality,
+    logisticsService: dto.logisticsService,
+    serviceAttitude: dto.serviceAttitude,
+    usefulCount: dto.usefulCount,
+    usefulByMe: dto.usefulByMe,
     createdAt: dto.publishedAt,
   };
+}
+
+function getReportTypeMeta(report: VerifyReport) {
+  if (report.reportSource === 'PURCHASE') return { label: '购买评价', color: 'green' };
+  return report.trialType === 'OFFLINE'
+    ? { label: '线下试用报告', color: 'purple' }
+    : { label: '线上试用报告', color: 'blue' };
 }
 
 function mapTrialApplication(dto: TrialApplicationDto): TrialRecord {
@@ -298,6 +298,7 @@ function mapShopCartItem(dto: ShopCartItemDto): CartItem {
   return {
     cartItemId: dto.cartItemId,
     quantity: dto.quantity,
+    attribution: dto.sourceReportId ? { sourceReportId: dto.sourceReportId } : undefined,
     product: {
       id: dto.productId,
       title: dto.productName,
@@ -358,7 +359,10 @@ function mapShopOrder(dto: ShopOrderDto, role: MemberRole): Order {
       })),
     } : undefined,
     items: dto.items.map((item) => ({
+      orderItemId: item.orderItemId,
       productId: item.productId,
+      sourceReportId: item.sourceReportId,
+      verificationReportId: item.verificationReportId,
       productTitle: item.productName,
       coverUrl: item.coverUrl,
       unitPrice: Number(item.unitPrice),
@@ -392,7 +396,6 @@ export default function HomePage() {
   const [userOrders, setUserOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [trials, setTrials] = useState<TrialRecord[]>([]);
-  const [earnings, setEarnings] = useState<EarningRecord[]>(earningRecords);
   const [recruitments, setRecruitments] = useState<TrialRecruitment[]>([]);
   const [applyingRecruitment, setApplyingRecruitment] = useState<TrialRecruitment | null>(null);
   const [trialApplying, setTrialApplying] = useState(false);
@@ -401,6 +404,7 @@ export default function HomePage() {
   const [reportComments, setReportComments] = useState<ReportCommentDto[]>([]);
   const [reportCommentsLoading, setReportCommentsLoading] = useState(false);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [usefulMutatingId, setUsefulMutatingId] = useState<number | null>(null);
   const [commentDeletingId, setCommentDeletingId] = useState<number | null>(null);
   const [commentText, setCommentText] = useState('');
   const [replyingTo, setReplyingTo] = useState<ReportCommentDto | null>(null);
@@ -428,9 +432,15 @@ export default function HomePage() {
   const [paying, setPaying] = useState(false);
   const [orderMutatingId, setOrderMutatingId] = useState<number | null>(null);
   const [reviewOrder, setReviewOrder] = useState<Order | null>(null);
+  const [reviewOrderItem, setReviewOrderItem] = useState<NonNullable<Order['items']>[number] | null>(null);
   const [reviewStars, setReviewStars] = useState({ productQuality: 5, logisticsService: 5, serviceAttitude: 5 });
   const [reviewContent, setReviewContent] = useState('');
+  const [reviewShortcoming, setReviewShortcoming] = useState('');
+  const [reviewFitCrowd, setReviewFitCrowd] = useState('');
+  const [reviewRecommend, setReviewRecommend] = useState(true);
   const [reviewImages, setReviewImages] = useState<string[]>([]);
+  const [reviewImageUploading, setReviewImageUploading] = useState(false);
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [profileDialog, setProfileDialog] = useState<ProfileDialog>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [merchantOpen, setMerchantOpen] = useState(false);
@@ -733,42 +743,38 @@ export default function HomePage() {
   const catalogProducts = useMemo(() => getCatalogProducts(products, reports, category, sortMode), [category, products, reports, sortMode]);
   const cartCount = getCartCount(cartItems);
   const cartTotal = getCartTotal(cartItems);
-  const earningsSummary = summarizeEarnings(earnings);
   const selectedLogisticsView = selectedLogisticsOrder
     ? getLogisticsView(selectedLogisticsOrder, selectedLogisticsOrder.logistics)
     : null;
 
-  const usefulProgress = Math.min(100, Math.round(((activeUser?.usefulCount ?? 0) / 50) * 100));
   const defaultShippingAddress = shippingAddresses.find((address) => address.isDefault) ?? shippingAddresses[0] ?? null;
   const isShippingAddressReady = isAddressComplete(defaultShippingAddress);
 
-  const handleUseful = (reportId: number) => {
+  const handleUseful = async (reportId: number) => {
     if (!activeUser) {
       message.info('请先登录');
       return;
     }
-    setReports((prev) => {
-      const updatedReports = prev.map((report) => {
-        if (report.id !== reportId) return report;
-        if (report.userId === activeUser.id) {
-          message.warning('不能给自己的报告点有用');
-          return report;
-        }
+    const target = reports.find((report) => report.id === reportId) ?? journeyReport;
+    if (target?.userId === activeUser.id) {
+      message.warning('不能给自己的甄客验点有用');
+      return;
+    }
+    if (usefulMutatingId !== null) return;
 
-        return {
-          ...report,
-          usefulByMe: !report.usefulByMe,
-          usefulCount: report.usefulByMe ? report.usefulCount - 1 : report.usefulCount + 1,
-        };
-      });
-
-      const updatedReport = updatedReports.find((r) => r.id === reportId);
-      if (updatedReport && journeyReport && journeyReport.id === reportId) {
-        setJourneyReport(updatedReport);
-      }
-
-      return updatedReports;
-    });
+    setUsefulMutatingId(reportId);
+    try {
+      const result = await toggleReportUseful(reportId);
+      const applyResult = (report: VerifyReport) => report.id === reportId
+        ? { ...report, usefulCount: result.usefulCount, usefulByMe: result.usefulByMe }
+        : report;
+      setReports((items) => items.map(applyResult));
+      setJourneyReport((current) => current ? applyResult(current) : current);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '操作失败，请重试');
+    } finally {
+      setUsefulMutatingId(null);
+    }
   };
 
   useEffect(() => {
@@ -840,6 +846,8 @@ export default function HomePage() {
       const applications = await fetchMyTrialApplications();
       setTrials(applications.map(mapTrialApplication));
       await loadHomeContent();
+      const refreshedUser = await restoreShopSession();
+      if (refreshedUser) setCurrentUser(refreshedUser);
       setSelectedProduct(reportProduct);
       setReportOpen(false);
       form.resetFields();
@@ -851,7 +859,7 @@ export default function HomePage() {
     }
   };
 
-  const handleAddToCart = async (product: Product, _attribution?: ReportAttribution) => {
+  const handleAddToCart = async (product: Product, attribution?: ReportAttribution) => {
     if (product.purchasable === false || product.stock === 0) {
       message.warning('该商品当前无库存，暂不能购买');
       return;
@@ -862,7 +870,7 @@ export default function HomePage() {
     }
     setCartMutatingId(product.id);
     try {
-      const saved = mapShopCartItem(await addShopCartItem(product.id));
+      const saved = mapShopCartItem(await addShopCartItem(product.id, 1, attribution?.sourceReportId));
       setCartItems((items) => {
         const exists = items.some((item) => item.product.id === product.id);
         return exists
@@ -980,49 +988,91 @@ export default function HomePage() {
     }
   };
 
-  const handleSubmitReview = () => {
-    if (!reviewOrder) return;
-
-    const review = {
-      id: Date.now(),
-      ...reviewStars,
-      content: reviewContent,
-      images: reviewImages,
-      createdAt: '刚刚',
-    };
-
-    setUserOrders((items) =>
-      items.map((item) => (item.id === reviewOrder.id ? { ...item, review } : item)),
-    );
-
-    setReviewOrder(null);
-    message.success('评价发布成功');
-  };
-
-  const handleReviewImageUpload = (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      message.warning('请上传图片文件');
-      return false;
+  const handleSubmitReview = async () => {
+    if (!activeUser || !reviewOrder || !reviewOrderItem || reviewSubmitting) return;
+    if (reviewContent.trim().length < 20) {
+      message.warning('真实体验至少需要20字');
+      return;
+    }
+    if (!reviewShortcoming.trim() || !reviewFitCrowd.trim()) {
+      message.warning('请完整填写产品不足和适合人群');
+      return;
+    }
+    if (['无', '暂无', '没有', '都挺好', '暂时没有', '没什么', '还行', '还可以'].includes(reviewShortcoming.trim())) {
+      message.warning('请客观描述产品不足，不能填写无效内容');
+      return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setReviewImages((prev) => [...prev, String(reader.result)]);
-    };
-    reader.readAsDataURL(file);
+    setReviewSubmitting(true);
+    try {
+      await publishPurchaseVerificationReport({
+        orderItemId: reviewOrderItem.orderItemId,
+        experience: reviewContent.trim(),
+        shortcoming: reviewShortcoming.trim(),
+        fitCrowd: reviewFitCrowd.trim(),
+        recommend: reviewRecommend,
+        ...reviewStars,
+        resources: reviewImages.map((resourceUrl) => ({ resourceType: 'IMAGE' as const, resourceUrl })),
+      });
+      const refreshedOrders = await fetchShopOrders();
+      setUserOrders(refreshedOrders.map((order) => mapShopOrder(order, activeUser.role)));
+      await loadHomeContent();
+      const refreshedUser = await restoreShopSession();
+      if (refreshedUser) setCurrentUser(refreshedUser);
+      setReviewOrder(null);
+      setReviewOrderItem(null);
+      message.success('购买甄客验已发布，已进入甄客验内容流');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '购买甄客验发布失败');
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
 
-    return false;
+  const handleReviewImageUpload = async (files: File[]) => {
+    const available = Math.max(0, 9 - reviewImages.length);
+    const selected = files.slice(0, available);
+    if (selected.some((file) => !file.type.startsWith('image/'))) {
+      message.warning('请上传图片文件');
+      return;
+    }
+    setReviewImageUploading(true);
+    try {
+      const uploaded = [] as string[];
+      for (const file of selected) {
+        uploaded.push(await uploadShopContentFile(file));
+      }
+      setReviewImages((items) => [...items, ...uploaded].slice(0, 9));
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '评价图片上传失败');
+    } finally {
+      setReviewImageUploading(false);
+    }
   };
 
   const handleRemoveReviewImage = (index: number) => {
     setReviewImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const openReviewModal = (order: Order) => {
+  const openReviewModal = async (order: Order, orderItem: NonNullable<Order['items']>[number]) => {
+    if (orderItem.verificationReportId) {
+      try {
+        const report = mapVerificationReport(await fetchPublishedReport(orderItem.verificationReportId));
+        setActiveTab('reviews');
+        handleOpenReportProduct(report);
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : '甄客验加载失败');
+      }
+      return;
+    }
     setReviewOrder(order);
+    setReviewOrderItem(orderItem);
     setReviewStars({ productQuality: 5, logisticsService: 5, serviceAttitude: 5 });
-    setReviewContent(order.review?.content ?? '');
-    setReviewImages(order.review?.images ?? []);
+    setReviewContent('');
+    setReviewShortcoming('');
+    setReviewFitCrowd('');
+    setReviewRecommend(true);
+    setReviewImages([]);
   };
 
   const handlePay = async () => {
@@ -1046,7 +1096,11 @@ export default function HomePage() {
     try {
       const created = await createShopOrders({
         addressId: defaultShippingAddress.id,
-        items: [{ productId: pendingBuyProduct.id, quantity: 1 }],
+        items: [{
+          productId: pendingBuyProduct.id,
+          quantity: 1,
+          sourceReportId: pendingBuyAttribution?.sourceReportId,
+        }],
       });
       setSelectedProduct(pendingBuyProduct);
       setUserOrders((items) => [...created.map((order) => mapShopOrder(order, activeUser.role)), ...items]);
@@ -1068,7 +1122,7 @@ export default function HomePage() {
 
     Modal.confirm({
       title: '确认取消订单？',
-      content: `当前身份为${roleMeta[activeUser.role].label}，支持 ${roleMeta[activeUser.role].returnDays} 天退换。取消后订单会变为已取消。`,
+      content: '待付款订单取消后会恢复库存，是否继续？',
       okText: '确认取消',
       cancelText: '再想想',
       onOk: async () => {
@@ -1206,16 +1260,20 @@ export default function HomePage() {
     event.target.value = '';
 
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      message.warning('请选择图片文件');
+    const allowedAvatarTypes = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/gif']);
+    if (!allowedAvatarTypes.has(file.type)) {
+      message.warning('头像仅支持 JPG、PNG、GIF 格式');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      message.warning('头像图片不能超过 5MB');
       return;
     }
 
     setAvatarUploading(true);
 
     try {
-      const avatarUrl = await uploadAvatarFile(file, activeUser.id);
-      const user = await updateShopProfile({ avatar: avatarUrl });
+      const user = await uploadShopAvatar(file);
       setCurrentUser(user);
       setProfileDialog(null);
       message.success('头像已更新');
@@ -2057,6 +2115,7 @@ export default function HomePage() {
     if (!product) return renderReviews();
 
     const commentCount = reportComments.reduce((count, item) => count + 1 + (item.replies?.length ?? 0), 0);
+    const reportTypeMeta = getReportTypeMeta(journeyReport);
     const renderComment = (comment: ReportCommentDto, reply = false) => {
       const displayName = comment.nickName || comment.userName;
       const replyToName = comment.replyToNickName || comment.replyToUserName;
@@ -2069,6 +2128,7 @@ export default function HomePage() {
           <div className={styles.commentBody}>
             <div className={styles.commentMeta}>
               <strong>{displayName}</strong>
+              {comment.reportAuthor && <span className={styles.commentAuthorBadge}>作者</span>}
               <span>{comment.createTime}</span>
             </div>
             <p>
@@ -2104,20 +2164,31 @@ export default function HomePage() {
           <div className={styles.reportDetailContent}>
             <div className={styles.reportAuthor}>
               <span className={roleClass(journeyReport.userRole)}>{roleMeta[journeyReport.userRole].label}</span>
-              {journeyReport.trialType && (
-                <Tag color={journeyReport.trialType === 'ONLINE' ? 'blue' : 'purple'}>
-                  {journeyReport.trialType === 'ONLINE' ? '线上试用报告' : '线下试用报告'}
-                </Tag>
-              )}
+              <Tag color={reportTypeMeta.color}>{reportTypeMeta.label}</Tag>
               <strong>{journeyReport.userName}</strong>
               <em>{journeyReport.createdAt}</em>
             </div>
             <h1>{journeyReport.productTitle}</h1>
             <p>{journeyReport.experience}</p>
+            {journeyReport.reportSource === 'PURCHASE' && (
+              <div className={styles.purchaseReportRatings}>
+                <span>商品质量 {journeyReport.productQuality}/5</span>
+                <span>物流服务 {journeyReport.logisticsService}/5</span>
+                <span>服务态度 {journeyReport.serviceAttitude}/5</span>
+              </div>
+            )}
             <div className={styles.shortcoming}>不足：{journeyReport.shortcoming}</div>
             <p>适合人群：{journeyReport.fitCrowd}</p>
             <div className={styles.reportDetailActions}>
-              <Button onClick={() => handleUseful(journeyReport.id)}>{journeyReport.usefulCount} 人认为有用</Button>
+              <Button
+                icon={<HeartOutlined />}
+                type={journeyReport.usefulByMe ? 'primary' : 'default'}
+                loading={usefulMutatingId === journeyReport.id}
+                aria-pressed={Boolean(journeyReport.usefulByMe)}
+                onClick={() => void handleUseful(journeyReport.id)}
+              >
+                {journeyReport.usefulCount} 人认为有用
+              </Button>
             </div>
             <Button type="primary" size="large" onClick={() => setJourneyView('purchase')}>
               查看 / 购买该商品
@@ -2171,8 +2242,7 @@ export default function HomePage() {
   const renderPurchasePage = () => {
     if (!selectedProduct || !journeyReport) return renderReviews();
     const attribution: ReportAttribution = {
-      fromReviewId: journeyReport.id,
-      fromVerifierId: journeyReport.userId,
+      sourceReportId: journeyReport.id,
     };
     const evidence = productEvidence.find((item) => item.productId === selectedProduct.id);
 
@@ -2195,7 +2265,7 @@ export default function HomePage() {
                 立即购买
               </Button>
             </div>
-            <small>本次成交产生的服务费归「{journeyReport.userName}」所有</small>
+            <small>本次购买会记录来源甄客验，用于后续真实归因。</small>
           </div>
         </section>
       </main>
@@ -2204,7 +2274,7 @@ export default function HomePage() {
 
   const renderProfile = () => {
     const profileReports = reports.filter((report) => report.userId === activeUser?.id);
-    const unreadNotificationCount = notifications.filter((item) => !item.isRead).length;
+    // 收益和消息仍是模拟数据，真实服务接入前不向测试用户展示。
     const profileMenuItems = [
       {
         key: 'orders' as const,
@@ -2220,16 +2290,6 @@ export default function HomePage() {
         key: 'reports' as const,
         icon: <ProfileOutlined />,
         summary: `${profileReports.length} 篇甄客验`,
-      },
-      {
-        key: 'earnings' as const,
-        icon: <AccountBookOutlined />,
-        summary: `累计 ${formatPrice(earningsSummary.total)}`,
-      },
-      {
-        key: 'messages' as const,
-        icon: <BellOutlined />,
-        summary: unreadNotificationCount > 0 ? `${unreadNotificationCount} 条未读` : '暂无未读',
       },
     ];
 
@@ -2247,14 +2307,10 @@ export default function HomePage() {
                 </div>
               </div>
             )}
-            <p>当前退换天数 {userMeta.returnDays} 天。再获得 1 个有用，就能触发验甄客升级演示。</p>
-            <div className={styles.progressTrack}>
-              <i style={{ width: `${usefulProgress}%` }} />
-            </div>
+            <p>这里汇总你的试用、甄客验与订单进度。</p>
             <div className={styles.statRow}>
               <span>报告 {activeUser?.reportCount ?? 0}</span>
               <span>有用 {activeUser?.usefulCount ?? 0}</span>
-              <span>下一阶 {userMeta.next}</span>
             </div>
             <div className={styles.profileActions}>
               <Button icon={<EditOutlined />} onClick={() => openProfileDialog('name')}>
@@ -2317,8 +2373,16 @@ export default function HomePage() {
                 <div>
                   <strong>{order.productTitle}</strong>
                   <p>
-                    {order.orderNo} · x{order.quantity} · {order.returnDays} 天退换
+                    {order.orderNo} · x{order.quantity}
                   </p>
+                  {order.status === 'completed' && (order.items ?? []).map((item) => (
+                    <div className={styles.orderReviewLine} key={item.orderItemId}>
+                      <span>{item.productTitle}</span>
+                      <Button size="small" onClick={() => void openReviewModal(order, item)}>
+                        {item.verificationReportId ? '查看甄客验' : '发布甄客验'}
+                      </Button>
+                    </div>
+                  ))}
                   {(order.status === 'shipped' || order.status === 'completed') && order.carrier && order.trackingNo && (
                     <p className={styles.orderLogisticsSummary}>
                       物流：{order.carrier} · {order.trackingNo}
@@ -2337,11 +2401,6 @@ export default function HomePage() {
                     {orderStatusMeta[order.status].actionLabel && (
                       <Button size="small" type="primary" loading={orderMutatingId === order.id} onClick={() => handleAdvanceOrder(order.id)}>
                         {orderStatusMeta[order.status].actionLabel}
-                      </Button>
-                    )}
-                    {order.status === 'completed' && (
-                      <Button size="small" onClick={() => openReviewModal(order)}>
-                        {order.review ? '查看评价' : '去评价'}
                       </Button>
                     )}
                     {canCancelOrder(order) && (
@@ -2407,67 +2466,13 @@ export default function HomePage() {
                   <strong>{report.productTitle}</strong>
                   <p>{report.shortcoming}</p>
                 </div>
-                <Tag>{report.usefulCount} 有用</Tag>
+                <div>
+                  <Tag color={getReportTypeMeta(report).color}>{getReportTypeMeta(report).label}</Tag>
+                  <Tag>{report.usefulCount} 有用</Tag>
+                </div>
               </div>
             ))}
             {profileReports.length === 0 && <p className={styles.empty}>还没有发布过甄客验。</p>}
-          </section>
-        )}
-
-        {profileView === 'earnings' && (
-          <section className={styles.orderPanel}>
-            <h3>我的收益</h3>
-            <div className={styles.profileSummaryGrid}>
-              <div className={styles.profileSummaryItem}>
-                <span>累计收益</span>
-                <strong>{formatPrice(earningsSummary.total)}</strong>
-              </div>
-              <div className={styles.profileSummaryItem}>
-                <span>待结算</span>
-                <strong>{formatPrice(earningsSummary.pending)}</strong>
-              </div>
-              <div className={styles.profileSummaryItem}>
-                <span>已结算</span>
-                <strong>{formatPrice(earningsSummary.settled)}</strong>
-              </div>
-            </div>
-            {earnings.map((earning) => (
-              <div className={styles.earningItem} key={earning.id}>
-                <div>
-                  <strong>{earning.reportTitle}</strong>
-                  <p>{earning.orderNo} · 订单 {formatPrice(earning.orderAmount)}</p>
-                  <p className={styles.earningBreakdown}>
-                    <span>佣金返点 {formatPrice(earning.commissionAmount)}</span>
-                    <span className={styles.publicWelfare}>公益捐赠 {formatPrice(earning.publicWelfareAmount)}</span>
-                  </p>
-                </div>
-                <div>
-                  <Tag color={earning.status === 'settled' ? 'success' : 'processing'}>
-                    {earning.status === 'settled' ? '已结算' : '待结算'}
-                  </Tag>
-                  <strong>{formatPrice(earning.commissionAmount)}</strong>
-                </div>
-              </div>
-            ))}
-            {earnings.length === 0 && <p className={styles.empty}>还没有产生甄客验收益。</p>}
-          </section>
-        )}
-
-        {profileView === 'messages' && (
-          <section className={styles.orderPanel}>
-            <h3>消息</h3>
-            <div className={styles.noticeList}>
-              {notifications.map((item) => (
-                <div className={`${styles.noticeItem} ${!item.isRead ? styles.unreadNotice : ''}`} key={item.id}>
-                  <MessageOutlined />
-                  <div>
-                    <strong>{item.title}</strong>
-                    <p>{item.content}</p>
-                    <span>{item.createdAt}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
           </section>
         )}
 
@@ -2856,74 +2861,23 @@ export default function HomePage() {
         )}
       </Modal>
       <Modal
-        title={reviewOrder?.review ? '查看评价' : '订单评价'}
+        title="发布购买甄客验"
         open={Boolean(reviewOrder)}
-        onCancel={() => setReviewOrder(null)}
+        onCancel={() => {
+          setReviewOrder(null);
+          setReviewOrderItem(null);
+        }}
         footer={null}
         width={560}
       >
         {reviewOrder && (
           <div className={styles.reviewModal}>
             <div className={styles.reviewOrderInfo}>
-              <strong>{reviewOrder.productTitle}</strong>
-              <Tag color="success">交易成功</Tag>
+              <strong>{reviewOrderItem?.productTitle ?? reviewOrder.productTitle}</strong>
+              <Tag color="success">购买评价</Tag>
             </div>
 
-            {reviewOrder.review ? (
-              <div className={styles.reviewDetail}>
-                <div className={styles.reviewStarsRow}>
-                  <div className={styles.reviewStarItem}>
-                    <span>物品质量</span>
-                    <div className={styles.starsDisplay}>
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <StarFilled
-                          key={star}
-                          className={star <= reviewOrder.review!.productQuality ? styles.starActive : styles.starInactive}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <div className={styles.reviewStarItem}>
-                    <span>物流服务</span>
-                    <div className={styles.starsDisplay}>
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <StarFilled
-                          key={star}
-                          className={star <= reviewOrder.review!.logisticsService ? styles.starActive : styles.starInactive}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <div className={styles.reviewStarItem}>
-                    <span>服务态度</span>
-                    <div className={styles.starsDisplay}>
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <StarFilled
-                          key={star}
-                          className={star <= reviewOrder.review!.serviceAttitude ? styles.starActive : styles.starInactive}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                {reviewOrder.review.content && (
-                  <div className={styles.reviewContent}>
-                    <p>{reviewOrder.review.content}</p>
-                  </div>
-                )}
-                {reviewOrder.review.images.length > 0 && (
-                  <div className={styles.reviewImages}>
-                    {reviewOrder.review.images.map((img, idx) => (
-                      <div key={idx} className={styles.reviewImageItem}>
-                        <img src={img} alt={`评价图片${idx + 1}`} />
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <p className={styles.reviewTime}>发布于 {reviewOrder.review.createdAt}</p>
-              </div>
-            ) : (
-              <>
+            <>
                 <div className={styles.reviewStarsRow}>
                   <div className={styles.reviewStarItem}>
                     <span>物品质量</span>
@@ -2966,12 +2920,34 @@ export default function HomePage() {
                 <div className={styles.reviewTextarea}>
                   <Input.TextArea
                     rows={5}
-                    placeholder="写下您的真实评价，帮助其他买家做出更好的选择~"
+                    placeholder="写下不少于20字的真实使用体验，发布后会作为甄客验展示"
                     value={reviewContent}
                     onChange={(e) => setReviewContent(e.target.value)}
                     showCount
                     maxLength={500}
                   />
+                  <Input.TextArea
+                    rows={3}
+                    placeholder="客观填写产品不足"
+                    value={reviewShortcoming}
+                    onChange={(e) => setReviewShortcoming(e.target.value)}
+                    showCount
+                    maxLength={500}
+                  />
+                  <Input
+                    placeholder="适合人群"
+                    value={reviewFitCrowd}
+                    onChange={(e) => setReviewFitCrowd(e.target.value)}
+                    maxLength={200}
+                  />
+                  <div className={styles.reviewRecommendField}>
+                    <span>是否推荐</span>
+                    <Radio.Group
+                      value={reviewRecommend}
+                      onChange={(event) => setReviewRecommend(event.target.value)}
+                      options={[{ label: '推荐', value: true }, { label: '不推荐', value: false }]}
+                    />
+                  </div>
                 </div>
 
                 <div className={styles.reviewUpload}>
@@ -2999,7 +2975,7 @@ export default function HomePage() {
                           onChange={(e) => {
                             const files = e.target.files;
                             if (files) {
-                              Array.from(files).forEach((file) => handleReviewImageUpload(file));
+                              void handleReviewImageUpload(Array.from(files));
                             }
                             e.target.value = '';
                           }}
@@ -3008,19 +2984,29 @@ export default function HomePage() {
                       </label>
                     )}
                   </div>
-                  <p className={styles.uploadHint}>{reviewImages.length}/9 张</p>
+                  <p className={styles.uploadHint}>
+                    {reviewImageUploading ? '图片上传中…' : `${reviewImages.length}/9 张`}
+                  </p>
                 </div>
 
                 <div className={styles.reviewActions}>
-                  <Button onClick={() => setReviewOrder(null)}>
+                  <Button onClick={() => {
+                    setReviewOrder(null);
+                    setReviewOrderItem(null);
+                  }}>
                     取消
                   </Button>
-                  <Button type="primary" size="large" onClick={handleSubmitReview}>
-                    发布评价
+                  <Button
+                    type="primary"
+                    size="large"
+                    loading={reviewSubmitting}
+                    disabled={reviewImageUploading}
+                    onClick={() => void handleSubmitReview()}
+                  >
+                    发布购买甄客验
                   </Button>
                 </div>
-              </>
-            )}
+            </>
           </div>
         )}
       </Modal>
@@ -3063,7 +3049,12 @@ export default function HomePage() {
         {activeUser && (
           <div className={styles.avatarPicker}>
             <div className={styles.avatarPreview}>{renderUserAvatar(activeUser, styles.profileAvatar)}</div>
-            <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarFileChange} />
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif"
+              onChange={handleAvatarFileChange}
+            />
             <Button
               block
               type="primary"
@@ -3074,7 +3065,7 @@ export default function HomePage() {
             >
               选择图片
             </Button>
-            <p>图片会保存到项目根目录的 img 文件夹，用于本地演示。</p>
+            <p>支持 JPG、PNG、GIF，文件不超过 5MB，建议使用正方形图片。</p>
           </div>
         )}
       </Modal>
@@ -3243,6 +3234,7 @@ function ReportCard({
   compact?: boolean;
   gridMode?: boolean;
 }) {
+  const reportTypeMeta = getReportTypeMeta(report);
   if (gridMode) {
     const aspectRatios = ['75%', '100%', '125%', '140%', '60%'];
     const imageHeightRatio = aspectRatios[report.id % aspectRatios.length];
@@ -3252,6 +3244,7 @@ function ReportCard({
           <img src={report.images[0]} alt={`${report.productTitle}实拍`} />
         </div>
         <div className={styles.reportGridContent}>
+          <Tag color={reportTypeMeta.color}>{reportTypeMeta.label}</Tag>
           <p className={styles.reportGridTitle}>{report.productTitle}</p>
           <p className={styles.reportGridDesc}>{report.experience}</p>
           <div className={styles.reportGridShortcoming}>不足：{report.shortcoming}</div>
@@ -3288,6 +3281,7 @@ function ReportCard({
       )}
       <div className={styles.reportMeta}>
         <span className={roleClass(report.userRole)}>{roleMeta[report.userRole].label}</span>
+        <Tag color={reportTypeMeta.color}>{reportTypeMeta.label}</Tag>
         <strong>{report.userName}</strong>
         <em>{report.createdAt}</em>
       </div>

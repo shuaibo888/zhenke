@@ -10,6 +10,7 @@
         <result property="userName" column="user_name" />
         <result property="nickName" column="nick_name" />
         <result property="avatar" column="avatar" />
+        <result property="reportAuthor" column="report_author" />
         <result property="replyToUserName" column="reply_to_user_name" />
         <result property="replyToNickName" column="reply_to_nick_name" />
         <result property="content" column="content" />
@@ -21,9 +22,11 @@
     <sql id="selectComment">
         select c.comment_id, c.report_id, c.parent_comment_id, c.reply_to_comment_id,
                c.shop_user_id, u.user_name, u.nick_name, u.avatar,
+               case when c.shop_user_id = r.shop_user_id then 1 else 0 end as report_author,
                ru.user_name as reply_to_user_name, ru.nick_name as reply_to_nick_name,
                c.content, c.del_flag, c.create_time, c.update_time
         from shop_verification_report_comment c
+        inner join shop_verification_report r on r.report_id = c.report_id
         inner join shop_user u on u.user_id = c.shop_user_id and u.del_flag = '0'
         left join shop_verification_report_comment rc on rc.comment_id = c.reply_to_comment_id
         left join shop_user ru on ru.user_id = rc.shop_user_id and ru.del_flag = '0'

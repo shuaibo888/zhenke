@@ -44,7 +44,6 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { seedReports } from '@/mocks/admin';
 import type { AdminSession, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, NavKey, ProductCategory, ProductCategoryOption, ProductStatus, ShopMemberLevel, ShopUserAccount } from '@/types';
 import {
   auditMerchantTrialApplication,
@@ -60,6 +59,7 @@ import {
   fetchMerchantDetail,
   fetchMerchantOrder,
   fetchMerchantOrders,
+  fetchMerchantReports,
   fetchMerchantTrialApplications,
   fetchMerchants,
   fetchProductCategories,
@@ -86,7 +86,6 @@ import {
   buildOrderTrendChart,
   buildProductStatusPie,
   getDashboardStats,
-  toggleReportStatus,
 } from '@/utils/adminDashboard';
 import { filterOrders, type OrderStatusFilter } from '@/utils/orderManagement';
 import { filterProducts, type ProductCategoryFilter, type ProductStatusFilter } from '@/utils/productFilters';
@@ -216,7 +215,8 @@ function AdminWorkspace() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [shippingOrder, setShippingOrder] = useState<ManagedOrder | null>(null);
   const [orderShipping, setOrderShipping] = useState(false);
-  const [reports, setReports] = useState<ManagedReport[]>(seedReports);
+  const [reports, setReports] = useState<ManagedReport[]>([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
   const [trialRecruitments, setTrialRecruitments] = useState<ManagedTrialRecruitment[]>([]);
   const [trialsLoading, setTrialsLoading] = useState(false);
   const [trialSaving, setTrialSaving] = useState(false);
@@ -391,6 +391,21 @@ function AdminWorkspace() {
     }
   };
 
+  const loadReports = async (currentSession = session) => {
+    if (currentSession?.loginType !== 'merchant') {
+      setReports([]);
+      return;
+    }
+    setReportsLoading(true);
+    try {
+      setReports(await fetchMerchantReports());
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '验证报告加载失败');
+    } finally {
+      setReportsLoading(false);
+    }
+  };
+
   const loadTrialApplications = async (currentSession = session) => {
     if (currentSession?.loginType !== 'merchant') return;
     setTrialApplicationsLoading(true);
@@ -430,6 +445,9 @@ function AdminWorkspace() {
     if (permissions.includes('*:*:*') || permissions.includes('shop:trial:list')) {
       void loadTrials(session);
       if (session.loginType === 'merchant') void loadTrialApplications(session);
+    }
+    if (session.loginType === 'merchant') {
+      void loadReports(session);
     }
     void loadOrders(session);
   }, [session?.id]);
@@ -795,11 +813,6 @@ function AdminWorkspace() {
     }
   };
 
-  const handleToggleReportStatus = (report: ManagedReport) => {
-    setReports((items) => toggleReportStatus(items, report.id));
-    message.success(report.status === 'published' ? '验证报告已下架' : '验证报告已上架');
-  };
-
   const handleToggleMerchantStatus = async (merchant: MerchantAccount) => {
     try {
       await updateMerchantStatus(merchant.id, merchant.status === 'active' ? '1' : '0');
@@ -952,7 +965,7 @@ function AdminWorkspace() {
     {
       title: '商家',
       dataIndex: 'merchantId',
-      render: (merchantId) => getMerchantName(merchantId),
+      render: (merchantId, product) => product.artisanName || getMerchantName(merchantId),
     },
     {
       title: '分类',
@@ -1057,7 +1070,7 @@ function AdminWorkspace() {
   const reportColumns: ColumnsType<ManagedReport> = [
     { title: '商品', dataIndex: 'productTitle' },
     { title: '验证者', dataIndex: 'userName' },
-    { title: '商家', dataIndex: 'merchantId', render: (merchantId) => getMerchantName(merchantId) },
+    { title: '商家', dataIndex: 'merchantId', render: (merchantId, report) => report.merchantName || getMerchantName(merchantId) },
     { title: '不足', dataIndex: 'shortcoming', render: (text) => <span className={styles.shortcoming}>{text}</span> },
     { title: '有用数', dataIndex: 'usefulCount' },
     {
@@ -1070,11 +1083,7 @@ function AdminWorkspace() {
     {
       title: '操作',
       key: 'actions',
-      render: (_, report) => (
-        <Button size="small" onClick={() => handleToggleReportStatus(report)}>
-          {report.status === 'published' ? '下架' : '上架'}
-        </Button>
-      ),
+      render: () => <span className={styles.subText}>仅查看</span>,
     },
   ];
 
@@ -1087,7 +1096,7 @@ function AdminWorkspace() {
         <Tag color={trialType === 'ONLINE' ? 'blue' : 'purple'}>{trialType === 'ONLINE' ? '线上试用' : '线下试用'}</Tag>
       ),
     },
-    { title: '商家', dataIndex: 'merchantId', render: (merchantId) => getMerchantName(merchantId) },
+    { title: '商家', dataIndex: 'merchantId', render: (merchantId, trial) => trial.merchantName || getMerchantName(merchantId) },
     {
       title: '招募进度',
       key: 'progress',
@@ -1613,8 +1622,11 @@ function AdminWorkspace() {
                     <p className={styles.eyebrow}>真实体验和必须展示的不足</p>
                     <h3>验证报告</h3>
                   </div>
+                  {!isAdmin && (
+                    <Button icon={<ReloadOutlined />} onClick={() => void loadReports()}>刷新报告</Button>
+                  )}
                 </div>
-                <Table rowKey="id" columns={reportColumns} dataSource={visibleReports} pagination={{ pageSize: 6 }} />
+                <Table loading={reportsLoading} rowKey="id" columns={reportColumns} dataSource={visibleReports} pagination={{ pageSize: 6 }} />
               </section>
             )}
 

@@ -10,8 +10,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.annotation.Anonymous;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.shop.domain.dto.ShopPurchaseReportBody;
 import com.ruoyi.shop.domain.dto.ShopVerificationReportBody;
 import com.ruoyi.shop.domain.dto.ShopReportCommentBody;
+import com.ruoyi.shop.service.ShopPurchaseReportService;
 import com.ruoyi.shop.service.ShopTrialService;
 import com.ruoyi.shop.service.ShopVerificationReportCommentService;
 
@@ -20,11 +22,14 @@ import com.ruoyi.shop.service.ShopVerificationReportCommentService;
 public class ShopVerificationReportController
 {
     private final ShopTrialService trialService;
+    private final ShopPurchaseReportService purchaseReportService;
     private final ShopVerificationReportCommentService commentService;
     public ShopVerificationReportController(ShopTrialService trialService,
+            ShopPurchaseReportService purchaseReportService,
             ShopVerificationReportCommentService commentService)
     {
         this.trialService = trialService;
+        this.purchaseReportService = purchaseReportService;
         this.commentService = commentService;
     }
 
@@ -39,6 +44,18 @@ public class ShopVerificationReportController
     public AjaxResult publish(@Valid @RequestBody ShopVerificationReportBody body)
     {
         return AjaxResult.success("验证报告已发布", trialService.publishReport(body));
+    }
+
+    @PostMapping("/purchase")
+    public AjaxResult publishPurchaseReport(@Valid @RequestBody ShopPurchaseReportBody body)
+    {
+        return AjaxResult.success("购买甄客验已发布", purchaseReportService.publish(body));
+    }
+
+    @PostMapping("/{reportId}/useful")
+    public AjaxResult toggleUseful(@PathVariable long reportId)
+    {
+        return AjaxResult.success(trialService.toggleUseful(reportId));
     }
 
     @GetMapping("/me/list")

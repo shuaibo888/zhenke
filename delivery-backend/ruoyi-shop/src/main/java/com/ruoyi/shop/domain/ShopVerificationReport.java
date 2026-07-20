@@ -16,6 +16,9 @@ public class ShopVerificationReport
     private String categoryName;
     private Long trialApplicationId;
     private String trialType;
+    private String reportSource;
+    private Long orderItemId;
+    private Long sourceReportId;
     private Long shopUserId;
     private String userName;
     private String nickName;
@@ -23,6 +26,11 @@ public class ShopVerificationReport
     private String shortcoming;
     private String fitCrowd;
     private String recommend;
+    private Integer productQuality;
+    private Integer logisticsService;
+    private Integer serviceAttitude;
+    private long usefulCount;
+    private boolean usefulByMe;
     private String status;
     private Date publishedAt;
     private List<ShopVerificationReportResource> resources;
@@ -47,6 +55,12 @@ public class ShopVerificationReport
     public void setTrialApplicationId(Long trialApplicationId) { this.trialApplicationId = trialApplicationId; }
     public String getTrialType() { return trialType; }
     public void setTrialType(String trialType) { this.trialType = trialType; }
+    public String getReportSource() { return reportSource; }
+    public void setReportSource(String reportSource) { this.reportSource = reportSource; }
+    public Long getOrderItemId() { return orderItemId; }
+    public void setOrderItemId(Long orderItemId) { this.orderItemId = orderItemId; }
+    public Long getSourceReportId() { return sourceReportId; }
+    public void setSourceReportId(Long sourceReportId) { this.sourceReportId = sourceReportId; }
     public Long getShopUserId() { return shopUserId; }
     public void setShopUserId(Long shopUserId) { this.shopUserId = shopUserId; }
     public String getUserName() { return userName; }
@@ -61,6 +75,16 @@ public class ShopVerificationReport
     public void setFitCrowd(String fitCrowd) { this.fitCrowd = fitCrowd; }
     public String getRecommend() { return recommend; }
     public void setRecommend(String recommend) { this.recommend = recommend; }
+    public Integer getProductQuality() { return productQuality; }
+    public void setProductQuality(Integer productQuality) { this.productQuality = productQuality; }
+    public Integer getLogisticsService() { return logisticsService; }
+    public void setLogisticsService(Integer logisticsService) { this.logisticsService = logisticsService; }
+    public Integer getServiceAttitude() { return serviceAttitude; }
+    public void setServiceAttitude(Integer serviceAttitude) { this.serviceAttitude = serviceAttitude; }
+    public long getUsefulCount() { return usefulCount; }
+    public void setUsefulCount(long usefulCount) { this.usefulCount = usefulCount; }
+    public boolean isUsefulByMe() { return usefulByMe; }
+    public void setUsefulByMe(boolean usefulByMe) { this.usefulByMe = usefulByMe; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") public Date getPublishedAt() { return publishedAt; }

@@ -45,12 +45,19 @@ public interface ShopTrialMapper
             @Param("expectedStatus") String expectedStatus);
 
     int countReportByApplication(Long trialApplicationId);
+    int countReportByOrderItem(Long orderItemId);
     int insertReport(ShopVerificationReport report);
     int insertReportResource(ShopVerificationReportResource resource);
     List<ShopVerificationReportResource> selectReportResources(Long reportId);
     ShopVerificationReport selectReportById(Long reportId);
     List<ShopVerificationReport> selectUserReports(Long shopUserId);
     List<ShopVerificationReport> selectMerchantReports(Long merchantId);
+    int countReportUseful(Long reportId);
+    int countReportUsefulByUser(@Param("reportId") Long reportId, @Param("shopUserId") Long shopUserId);
+    int insertReportUseful(@Param("reportId") Long reportId, @Param("shopUserId") Long shopUserId);
+    int deleteReportUseful(@Param("reportId") Long reportId, @Param("shopUserId") Long shopUserId);
+    int countPublishedReportsByUser(Long shopUserId);
+    int countUsefulReceivedByUser(Long shopUserId);
     List<ShopHomeFeedItem> selectHomeFeed(@Param("categoryCode") String categoryCode,
             @Param("contentType") String contentType, @Param("trialType") String trialType);
 }

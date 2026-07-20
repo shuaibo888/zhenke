@@ -94,8 +94,11 @@ export interface VerificationReportDto {
   merchantName: string;
   categoryCode: ProductCategoryDto['categoryCode'];
   categoryName: string;
-  trialApplicationId: number;
-  trialType: 'ONLINE' | 'OFFLINE';
+  trialApplicationId?: number;
+  trialType?: 'ONLINE' | 'OFFLINE';
+  reportSource?: 'TRIAL' | 'PURCHASE';
+  orderItemId?: number;
+  sourceReportId?: number;
   shopUserId: number;
   userName: string;
   nickName?: string;
@@ -103,6 +106,11 @@ export interface VerificationReportDto {
   shortcoming: string;
   fitCrowd: string;
   recommend: '0' | '1';
+  productQuality?: number;
+  logisticsService?: number;
+  serviceAttitude?: number;
+  usefulCount: number;
+  usefulByMe: boolean;
   status: 'PUBLISHED' | 'HIDDEN';
   publishedAt: string;
   resources?: Array<{
@@ -122,6 +130,7 @@ export interface ReportCommentDto {
   userName: string;
   nickName?: string;
   avatar?: string;
+  reportAuthor: boolean;
   replyToUserName?: string;
   replyToNickName?: string;
   content: string;
@@ -157,6 +166,7 @@ export interface ShopCartItemDto {
   cartItemId: number;
   userId: number;
   productId: number;
+  sourceReportId?: number;
   quantity: number;
   merchantId: number;
   merchantName: string;
@@ -189,6 +199,8 @@ export interface ShopOrderDto {
   items: Array<{
     orderItemId: number;
     productId: number;
+    sourceReportId?: number;
+    verificationReportId?: number;
     productName: string;
     coverUrl: string;
     unitPrice: number;
@@ -249,8 +261,22 @@ export async function fetchPublicProduct(productId: number) {
 }
 
 export async function fetchPublishedReport(reportId: number) {
-  const result = await requestApi<ApiResponse<VerificationReportDto>>(`/shop/reports/${reportId}`);
+  const token = getToken();
+  const result = await requestApi<ApiResponse<VerificationReportDto>>(
+    `/shop/reports/${reportId}`,
+    token ? { headers: { Authorization: `Bearer ${token}` } } : {},
+  );
   if (!result.data) throw new Error('验证报告加载失败');
+  return result.data;
+}
+
+export async function toggleReportUseful(reportId: number) {
+  const result = await requestApi<ApiResponse<{ reportId: number; usefulCount: number; usefulByMe: boolean }>>(
+    `/shop/reports/${reportId}/useful`,
+    { method: 'POST' },
+    true,
+  );
+  if (!result.data) throw new Error('操作失败');
   return result.data;
 }
 
@@ -302,10 +328,10 @@ export async function fetchShopCart() {
   return Array.isArray(result.data) ? result.data : [];
 }
 
-export async function addShopCartItem(productId: number, quantity = 1) {
+export async function addShopCartItem(productId: number, quantity = 1, sourceReportId?: number) {
   const result = await requestApi<ApiResponse<ShopCartItemDto>>(
     '/shop/users/me/cart',
-    { method: 'POST', body: JSON.stringify({ productId, quantity }) },
+    { method: 'POST', body: JSON.stringify({ productId, quantity, sourceReportId }) },
     true,
   );
   if (!result.data) throw new Error('加入购物车失败');
@@ -333,7 +359,7 @@ export async function fetchShopOrders() {
 
 export async function createShopOrders(body: {
   addressId: number;
-  items: Array<{ productId: number; quantity: number }>;
+  items: Array<{ productId: number; quantity: number; sourceReportId?: number }>;
 }) {
   const result = await requestApi<ApiResponse<ShopOrderDto[]>>(
     '/shop/orders',
@@ -406,6 +432,26 @@ export async function publishVerificationReport(body: {
     true,
   );
   if (!result.data) throw new Error('验证报告发布失败');
+  return result.data;
+}
+
+export async function publishPurchaseVerificationReport(body: {
+  orderItemId: number;
+  experience: string;
+  shortcoming: string;
+  fitCrowd: string;
+  recommend: boolean;
+  productQuality: number;
+  logisticsService: number;
+  serviceAttitude: number;
+  resources?: Array<{ resourceType: 'IMAGE'; resourceUrl: string }>;
+}) {
+  const result = await requestApi<ApiResponse<VerificationReportDto>>(
+    '/shop/reports/purchase',
+    { method: 'POST', body: JSON.stringify(body) },
+    true,
+  );
+  if (!result.data) throw new Error('购买甄客验发布失败');
   return result.data;
 }
 

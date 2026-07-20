@@ -14,6 +14,7 @@ public class ShopVerificationReportComment
     private String userName;
     private String nickName;
     private String avatar;
+    private boolean reportAuthor;
     private String replyToUserName;
     private String replyToNickName;
     private String content;
@@ -38,6 +39,8 @@ public class ShopVerificationReportComment
     public void setNickName(String nickName) { this.nickName = nickName; }
     public String getAvatar() { return avatar; }
     public void setAvatar(String avatar) { this.avatar = avatar; }
+    public boolean isReportAuthor() { return reportAuthor; }
+    public void setReportAuthor(boolean reportAuthor) { this.reportAuthor = reportAuthor; }
     public String getReplyToUserName() { return replyToUserName; }
     public void setReplyToUserName(String replyToUserName) { this.replyToUserName = replyToUserName; }
     public String getReplyToNickName() { return replyToNickName; }

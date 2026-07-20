@@ -51,6 +51,8 @@
         <id property="orderItemId" column="order_item_id" />
         <result property="orderId" column="order_id" />
         <result property="productId" column="product_id" />
+        <result property="sourceReportId" column="source_report_id" />
+        <result property="verificationReportId" column="verification_report_id" />
         <result property="productName" column="product_name" />
         <result property="coverUrl" column="cover_url" />
         <result property="unitPrice" column="unit_price" />
@@ -126,6 +128,12 @@
         for update
     </select>
 
+    <select id="countPublishedReportForProduct" resultType="int">
+        select count(1)
+        from shop_verification_report
+        where report_id = #{reportId} and product_id = #{productId} and status = 'PUBLISHED'
+    </select>
+
     <update id="deductStock">
         update shop_product
         set stock = stock - #{quantity}, update_time = sysdate()
@@ -150,9 +158,9 @@
 
     <insert id="insertOrderItem" parameterType="ShopOrderItem" useGeneratedKeys="true" keyProperty="orderItemId">
         insert into shop_order_item
-        (order_id, product_id, product_name, cover_url, unit_price, quantity, line_amount, create_time)
+        (order_id, product_id, source_report_id, product_name, cover_url, unit_price, quantity, line_amount, create_time)
         values
-        (#{orderId}, #{productId}, #{productName}, #{coverUrl}, #{unitPrice}, #{quantity}, #{lineAmount}, sysdate())
+        (#{orderId}, #{productId}, #{sourceReportId}, #{productName}, #{coverUrl}, #{unitPrice}, #{quantity}, #{lineAmount}, sysdate())
     </insert>
 
     <insert id="insertOrderAddress" parameterType="ShopOrderAddress" useGeneratedKeys="true" keyProperty="orderAddressId">
@@ -196,10 +204,27 @@
     </select>
 
     <select id="selectOrderItems" parameterType="Long" resultMap="ShopOrderItemResult">
-        select order_item_id, order_id, product_id, product_name, cover_url,
-               unit_price, quantity, line_amount, create_time
-        from shop_order_item where order_id = #{orderId}
-        order by order_item_id
+        select oi.order_item_id, oi.order_id, oi.product_id, oi.source_report_id,
+               published.report_id as verification_report_id, oi.product_name, oi.cover_url,
+               oi.unit_price, oi.quantity, oi.line_amount, oi.create_time
+        from shop_order_item oi
+        left join shop_verification_report published
+          on published.order_item_id = oi.order_item_id and published.status = 'PUBLISHED'
+        where oi.order_id = #{orderId}
+        order by oi.order_item_id
+    </select>
+
+    <select id="selectUserReceivedOrderItemForUpdate" resultMap="ShopOrderItemResult">
+        select oi.order_item_id, oi.order_id, oi.product_id, oi.source_report_id,
+               published.report_id as verification_report_id, oi.product_name, oi.cover_url,
+               oi.unit_price, oi.quantity, oi.line_amount, oi.create_time
+        from shop_order_item oi
+        inner join shop_order o on o.order_id = oi.order_id
+        left join shop_verification_report published
+          on published.order_item_id = oi.order_item_id and published.status = 'PUBLISHED'
+        where o.user_id = #{userId} and oi.order_item_id = #{orderItemId}
+          and o.status = 'RECEIVED' and o.del_flag = '0'
+        limit 1 for update
     </select>
 
     <select id="selectOrderAddress" parameterType="Long" resultMap="ShopOrderAddressResult">

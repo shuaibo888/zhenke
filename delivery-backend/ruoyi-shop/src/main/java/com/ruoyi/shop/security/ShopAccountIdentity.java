@@ -1,6 +1,7 @@
 package com.ruoyi.shop.security;
 
 import java.util.Set;
+import org.springframework.security.core.Authentication;
 import com.ruoyi.common.constant.HttpStatus;
 import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.exception.ServiceException;
@@ -27,6 +28,23 @@ public final class ShopAccountIdentity
                 || !permissions.contains(SHOP_USER_PERMISSION))
         {
             throw new ServiceException("当前登录账号不是商城用户", HttpStatus.FORBIDDEN);
+        }
+        return principalId - SHOP_USER_ID_OFFSET;
+    }
+
+    public static Long currentShopUserIdOrNull()
+    {
+        Authentication authentication = SecurityUtils.getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof LoginUser loginUser))
+        {
+            return null;
+        }
+        Set<String> permissions = loginUser.getPermissions();
+        Long principalId = loginUser.getUserId();
+        if (principalId == null || principalId <= SHOP_USER_ID_OFFSET || permissions == null
+                || !permissions.contains(SHOP_USER_PERMISSION))
+        {
+            return null;
         }
         return principalId - SHOP_USER_ID_OFFSET;
     }

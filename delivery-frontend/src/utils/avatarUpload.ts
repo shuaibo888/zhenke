@@ -13,26 +13,3 @@ export function createAvatarFileName(userId: number, originalName: string, seed 
 
   return `avatar-${userId}-${seed}-${baseName || 'avatar'}.${extension}`;
 }
-
-export async function uploadAvatarFile(file: File, userId: number) {
-  const formData = new FormData();
-  formData.append('avatar', file);
-  formData.append('userId', String(userId));
-
-  const response = await fetch('/api/avatar/upload', {
-    method: 'POST',
-    body: formData,
-  });
-
-  if (!response.ok) {
-    throw new Error('头像上传失败');
-  }
-
-  const result = (await response.json()) as { url?: string };
-
-  if (!result.url) {
-    throw new Error('头像上传失败');
-  }
-
-  return result.url;
-}
