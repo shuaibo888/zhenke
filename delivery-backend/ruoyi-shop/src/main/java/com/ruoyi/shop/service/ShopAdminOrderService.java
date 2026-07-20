@@ -37,6 +37,7 @@ public class ShopAdminOrderService
         order.setAddress(orderMapper.selectOrderAddress(order.getOrderId()));
         order.setStatusLogs(orderMapper.selectStatusLogs(order.getOrderId()));
         order.setLogisticsEvents(orderMapper.selectLogisticsEvents(order.getOrderId()));
+        order.setRefundLogs(orderMapper.selectRefundLogs(order.getOrderId()));
         return order;
     }
 }

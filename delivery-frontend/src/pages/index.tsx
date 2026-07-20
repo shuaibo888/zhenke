@@ -53,6 +53,7 @@ import {
 } from '@/services/shopAuth';
 import {
   addShopCartItem,
+  applyShopOrderRefund,
   applyForTrial,
   cancelShopOrder,
   checkoutShopCart,
@@ -85,7 +86,7 @@ import {
 } from '@/services/shopContent';
 import { uploadAvatarFile } from '@/utils/avatarUpload';
 import { getCartCount, getCartTotal, type CartItem } from '@/utils/cart';
-import { canCancelOrder, orderStatusMeta } from '@/utils/orders';
+import { canApplyRefund, canCancelOrder, orderStatusMeta } from '@/utils/orders';
 import { findProductForReport, getCatalogProducts, type ProductCategoryFilter, type ProductSortKey } from '@/utils/productCatalog';
 import { getProductJourneyState } from '@/utils/productJourney';
 import {
@@ -345,6 +346,17 @@ function mapShopOrder(dto: ShopOrderDto, role: MemberRole): Order {
     trackingNo: dto.trackingNo,
     shippedAt: dto.shipTime,
     receivedAt: dto.receiveTime,
+    refundStatus: ({
+      NONE: 'none',
+      APPLIED: 'applied',
+      APPROVED: 'approved',
+      REJECTED: 'rejected',
+      REFUNDED: 'refunded',
+    } as const)[dto.refundStatus ?? 'NONE'],
+    refundAppliedAt: dto.refundApplyTime,
+    refundAuditedAt: dto.refundAuditTime,
+    refundCompletedAt: dto.refundCompleteTime,
+    refundAuditRemark: dto.refundAuditRemark,
     logistics: dto.carrier && dto.trackingNo ? {
       orderId: dto.orderId,
       carrier: dto.carrier,
@@ -549,31 +561,6 @@ export default function HomePage() {
   useEffect(() => {
     void loadHomeContent();
   }, [category, homeFeedFilter]);
-
-  useEffect(() => {
-    let mounted = true;
-    if (journeyView !== 'report' || !journeyReport) {
-      setReportComments([]);
-      setReportCommentsLoading(false);
-      return () => {
-        mounted = false;
-      };
-    }
-    setReportCommentsLoading(true);
-    fetchReportComments(journeyReport.id)
-      .then((items) => {
-        if (mounted) setReportComments(items);
-      })
-      .catch((error) => {
-        if (mounted) message.error(error instanceof Error ? error.message : '评论加载失败');
-      })
-      .finally(() => {
-        if (mounted) setReportCommentsLoading(false);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [journeyReport?.id, journeyView]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -1063,24 +1050,55 @@ export default function HomePage() {
     }
   };
 
-  const handleCancelOrder = (orderId: number) => {
+  const handleCancelOrder = (order: Order) => {
     if (!activeUser) return;
 
     Modal.confirm({
       title: '确认取消订单？',
-      content: `当前身份为${roleMeta[activeUser.role].label}，支持 ${roleMeta[activeUser.role].returnDays} 天退换。取消后订单会变为已取消。`,
+      content: order.status === 'paid'
+        ? '订单尚未发货，取消后将恢复库存并自动完成模拟退款。'
+        : '取消后订单会变为已取消，并恢复库存。',
       okText: '确认取消',
       cancelText: '再想想',
       onOk: async () => {
         try {
-          const cancelled = await cancelShopOrder(orderId);
-          setUserOrders((items) => items.map((order) => order.id === orderId
+          const cancelled = await cancelShopOrder(order.id);
+          setUserOrders((items) => items.map((item) => item.id === order.id
             ? mapShopOrder(cancelled, activeUser.role)
-            : order));
-          message.success('订单已取消，库存已恢复');
+            : item));
+          message.success(order.status === 'paid'
+            ? '订单已取消，模拟退款已完成，库存已恢复'
+            : '订单已取消，库存已恢复');
         } catch (error) {
           message.error(error instanceof Error ? error.message : '订单取消失败');
           throw error;
+        }
+      },
+    });
+  };
+
+  const handleApplyRefund = (order: Order) => {
+    if (!activeUser || !canApplyRefund(order)) return;
+
+    Modal.confirm({
+      title: '确认申请退款？',
+      content: '提交后进入商家审核；审核通过后才会执行模拟退款。',
+      okText: '申请退款',
+      okButtonProps: { danger: true },
+      cancelText: '再想想',
+      onOk: async () => {
+        if (orderMutatingId === order.id) return;
+        setOrderMutatingId(order.id);
+        try {
+          const applied = mapShopOrder(await applyShopOrderRefund(order.id), activeUser.role);
+          setUserOrders((items) => items.map((item) => item.id === order.id ? applied : item));
+          setSelectedLogisticsOrder((current) => current?.id === order.id ? applied : current);
+          message.success('退款申请已提交，等待商家审核');
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : '退款申请失败');
+          throw error;
+        } finally {
+          setOrderMutatingId(null);
         }
       },
     });
@@ -1268,7 +1286,7 @@ export default function HomePage() {
     setMerchantOpen(true);
   };
 
-  const handleOpenReportProduct = (report: VerifyReport) => {
+  const handleOpenReportProduct = async (report: VerifyReport) => {
     const product = findProductForReport(products, report);
 
     if (!product) {
@@ -1278,10 +1296,24 @@ export default function HomePage() {
 
     setSelectedProduct(product);
     setJourneyReport(report);
+    setReportComments([]);
+    setReportCommentsLoading(true);
     setCommentText('');
     setReplyingTo(null);
     setJourneyView('report');
     setActiveTab('reviews');
+    try {
+      const [detail, comments] = await Promise.all([
+        fetchPublishedReport(report.id),
+        fetchReportComments(report.id),
+      ]);
+      setJourneyReport(mapVerificationReport(detail));
+      setReportComments(comments);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '甄客验详情加载失败');
+    } finally {
+      setReportCommentsLoading(false);
+    }
   };
 
   const reloadReportComments = async (reportId: number) => {
@@ -1325,10 +1357,8 @@ export default function HomePage() {
 
   const confirmDeleteComment = (comment: ReportCommentDto) => {
     if (!journeyReport || !activeUser || comment.shopUserId !== activeUser.id) return;
-    const deletesReplies = !comment.parentCommentId && (comment.replies?.length ?? 0) > 0;
     Modal.confirm({
-      title: deletesReplies ? '删除评论及其全部回复？' : '删除这条评论？',
-      content: deletesReplies ? '删除后页面不再展示这条评论及其全部回复，但数据会保留在数据库中。' : '删除后页面不再展示，但数据会保留在数据库中。',
+      title: '是否删除评论？',
       okText: '确认删除',
       okButtonProps: { danger: true },
       cancelText: '取消',
@@ -2327,6 +2357,10 @@ export default function HomePage() {
                 </div>
                 <div>
                   <Tag color={orderStatusMeta[order.status].color}>{orderStatusMeta[order.status].label}</Tag>
+                  {order.refundStatus === 'applied' && <Tag color="purple">待商家审核</Tag>}
+                  {order.refundStatus === 'approved' && <Tag color="blue">退款处理中</Tag>}
+                  {order.refundStatus === 'rejected' && <Tag color="red">退款已拒绝</Tag>}
+                  {order.refundStatus === 'refunded' && <Tag color="green">已退款（模拟）</Tag>}
                   <span>{formatPrice(order.amount)}</span>
                   <div className={styles.orderActions}>
                     {order.status !== 'unpaid' && order.status !== 'canceled' && (
@@ -2334,19 +2368,24 @@ export default function HomePage() {
                         查看物流
                       </Button>
                     )}
-                    {orderStatusMeta[order.status].actionLabel && (
+                    {(order.refundStatus === 'none' || !order.refundStatus) && orderStatusMeta[order.status].actionLabel && (
                       <Button size="small" type="primary" loading={orderMutatingId === order.id} onClick={() => handleAdvanceOrder(order.id)}>
                         {orderStatusMeta[order.status].actionLabel}
                       </Button>
                     )}
-                    {order.status === 'completed' && (
+                    {order.status === 'completed' && (order.refundStatus === 'none' || order.refundStatus === 'rejected' || !order.refundStatus) && (
                       <Button size="small" onClick={() => openReviewModal(order)}>
                         {order.review ? '查看评价' : '去评价'}
                       </Button>
                     )}
                     {canCancelOrder(order) && (
-                      <Button size="small" onClick={() => handleCancelOrder(order.id)}>
-                        取消订单
+                      <Button size="small" onClick={() => handleCancelOrder(order)}>
+                        {order.status === 'paid' ? '取消并退款' : '取消订单'}
+                      </Button>
+                    )}
+                    {canApplyRefund(order) && (
+                      <Button danger size="small" loading={orderMutatingId === order.id} onClick={() => handleApplyRefund(order)}>
+                        申请退款
                       </Button>
                     )}
                   </div>
@@ -2407,7 +2446,12 @@ export default function HomePage() {
                   <strong>{report.productTitle}</strong>
                   <p>{report.shortcoming}</p>
                 </div>
-                <Tag>{report.usefulCount} 有用</Tag>
+                <div>
+                  <Tag>{report.usefulCount} 有用</Tag>
+                  <Button size="small" onClick={() => void handleOpenReportProduct(report)}>
+                    查看详情与评论
+                  </Button>
+                </div>
               </div>
             ))}
             {profileReports.length === 0 && <p className={styles.empty}>还没有发布过甄客验。</p>}

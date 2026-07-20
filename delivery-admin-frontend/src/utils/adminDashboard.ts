@@ -9,6 +9,13 @@ const orderStatusLabel = {
   refunded: '已退款',
 };
 
+function isEffectiveSale(order: ManagedOrder) {
+  return order.status !== 'canceled'
+    && order.status !== 'unpaid'
+    && order.status !== 'refunded'
+    && order.refundStatus !== 'refunded';
+}
+
 export function toggleReportStatus(reports: ManagedReport[], reportId: number) {
   return reports.map((report) =>
     report.id === reportId
@@ -50,7 +57,7 @@ export function getDashboardStats({
     orderTotal: orders.length,
     todayOrders: orders.filter((order) => order.createdAt.startsWith(today)).length,
     salesAmount: orders
-      .filter((order) => order.status !== 'canceled' && order.status !== 'unpaid' && order.status !== 'refunded')
+      .filter(isEffectiveSale)
       .reduce((sum, order) => sum + order.amount, 0),
     userTotal,
     reportTotal: reports.length,
@@ -61,7 +68,7 @@ export function buildOrderStatusChart(orders: ManagedOrder[]) {
   const counts = new Map<string, number>();
 
   orders.forEach((order) => {
-    const label = orderStatusLabel[order.status];
+    const label = order.refundStatus === 'refunded' ? '已退款' : orderStatusLabel[order.status];
     counts.set(label, (counts.get(label) ?? 0) + 1);
   });
 
@@ -78,7 +85,7 @@ export function buildMerchantOverview(products: ManagedProduct[], orders: Manage
       productTotal: merchantProducts.length,
       onSaleCount: merchantProducts.filter((product) => product.status === 'onSale').length,
       salesAmount: merchantOrders
-        .filter((order) => order.status !== 'canceled' && order.status !== 'unpaid' && order.status !== 'refunded')
+        .filter(isEffectiveSale)
         .reduce((sum, order) => sum + order.amount, 0),
     };
   });

@@ -8,7 +8,9 @@ import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.shop.domain.ShopMerchant;
 import com.ruoyi.shop.domain.ShopOrder;
 import com.ruoyi.shop.domain.ShopOrderLogisticsEvent;
+import com.ruoyi.shop.domain.ShopOrderRefundLog;
 import com.ruoyi.shop.domain.ShopOrderStatusLog;
+import com.ruoyi.shop.domain.dto.ShopOrderRefundAuditBody;
 import com.ruoyi.shop.domain.dto.ShopOrderShipBody;
 import com.ruoyi.shop.mapper.ShopOrderMapper;
 
@@ -46,6 +48,10 @@ public class ShopMerchantOrderService
             throw new ServiceException(ShopOrderService.SHIPPED.equals(order.getStatus())
                     ? "订单已发货，请勿重复操作" : "只有已支付订单可以发货");
         }
+        if (ShopOrderService.REFUND_APPLIED.equals(order.getRefundStatus()))
+        {
+            throw new ServiceException("买家已申请退款，不能继续发货");
+        }
         String carrier = StringUtils.trim(body.getCarrier());
         String trackingNo = StringUtils.trim(body.getTrackingNo());
         if (StringUtils.isEmpty(carrier) || StringUtils.isEmpty(trackingNo))
@@ -62,6 +68,48 @@ public class ShopMerchantOrderService
         }
         insertStatusLog(orderId, merchantId);
         insertLogisticsEvent(orderId);
+        return hydrate(requireMerchantOrder(merchantId, orderId, false));
+    }
+
+    @Transactional
+    public ShopOrder auditRefund(long orderId, ShopOrderRefundAuditBody body)
+    {
+        ShopMerchant merchant = merchantService.currentMerchantAccount();
+        long merchantId = merchant.getMerchantId();
+        ShopOrder order = requireMerchantOrder(merchantId, orderId, true);
+        if (!ShopOrderService.RECEIVED.equals(order.getStatus()))
+        {
+            throw new ServiceException("只有已确认收货的订单退款申请需要商家审核");
+        }
+        if (!ShopOrderService.REFUND_APPLIED.equals(order.getRefundStatus()))
+        {
+            throw new ServiceException(ShopOrderService.REFUND_NONE.equals(order.getRefundStatus())
+                    ? "订单没有待审核的退款申请" : "退款申请已处理，请勿重复操作");
+        }
+
+        boolean approved = "APPROVED".equals(body.getDecision());
+        String toStatus = approved ? ShopOrderService.REFUND_APPROVED : ShopOrderService.REFUND_REJECTED;
+        String auditRemark = StringUtils.trim(body.getAuditRemark());
+        if (StringUtils.isEmpty(auditRemark))
+        {
+            auditRemark = approved ? "商家同意退款" : "商家拒绝退款";
+        }
+        if (orderMapper.auditRefund(merchantId, orderId, toStatus, auditRemark) == 0)
+        {
+            throw new ServiceException("退款状态已变化，请刷新后重试");
+        }
+        insertRefundLog(orderId, ShopOrderService.REFUND_APPLIED, toStatus,
+                "MERCHANT", merchantId, auditRemark);
+
+        if (approved)
+        {
+            if (orderMapper.completeMerchantRefund(merchantId, orderId) == 0)
+            {
+                throw new ServiceException("模拟退款处理失败");
+            }
+            insertRefundLog(orderId, ShopOrderService.REFUND_APPROVED, ShopOrderService.REFUND_REFUNDED,
+                    "SYSTEM", null, "商家审核通过，模拟退款完成");
+        }
         return hydrate(requireMerchantOrder(merchantId, orderId, false));
     }
 
@@ -83,7 +131,24 @@ public class ShopMerchantOrderService
         order.setAddress(orderMapper.selectOrderAddress(order.getOrderId()));
         order.setStatusLogs(orderMapper.selectStatusLogs(order.getOrderId()));
         order.setLogisticsEvents(orderMapper.selectLogisticsEvents(order.getOrderId()));
+        order.setRefundLogs(orderMapper.selectRefundLogs(order.getOrderId()));
         return order;
+    }
+
+    private void insertRefundLog(long orderId, String fromStatus, String toStatus,
+            String operatorType, Long operatorId, String remark)
+    {
+        ShopOrderRefundLog log = new ShopOrderRefundLog();
+        log.setOrderId(orderId);
+        log.setFromStatus(fromStatus);
+        log.setToStatus(toStatus);
+        log.setOperatorType(operatorType);
+        log.setOperatorId(operatorId);
+        log.setRemark(remark);
+        if (orderMapper.insertRefundLog(log) == 0)
+        {
+            throw new ServiceException("退款操作日志创建失败");
+        }
     }
 
     private void insertLogisticsEvent(long orderId)

@@ -132,6 +132,11 @@ export interface ManagedOrder {
   address: string;
   returnDays: number;
   refundRequested: boolean;
+  refundStatus: 'none' | 'applied' | 'approved' | 'rejected' | 'refunded';
+  refundAppliedAt?: string;
+  refundAuditedAt?: string;
+  refundCompletedAt?: string;
+  refundAuditRemark?: string;
   createdAt: string;
   paidAt?: string;
   carrier?: string;

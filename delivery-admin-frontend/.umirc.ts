@@ -5,7 +5,6 @@ export default defineConfig({
     { path: "/", component: "index" },
   ],
   npmClient: "npm",
-  utoopack: {},
   base: "/admin/",
   publicPath: "/admin/",
   proxy: {

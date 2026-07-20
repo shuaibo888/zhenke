@@ -23,6 +23,8 @@ import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.shop.domain.ShopOrder;
 import com.ruoyi.shop.domain.ShopOrderAddress;
+import com.ruoyi.shop.domain.ShopOrderItem;
+import com.ruoyi.shop.domain.ShopOrderRefundLog;
 import com.ruoyi.shop.domain.ShopOrderStatusLog;
 import com.ruoyi.shop.domain.ShopProduct;
 import com.ruoyi.shop.domain.ShopUserAddress;
@@ -133,6 +135,68 @@ class ShopOrderServiceTest
     }
 
     @Test
+    void cancelPaidUnshippedOrderRestoresStockAndCompletesSimulatedRefund()
+    {
+        ShopOrderMapper orderMapper = mock(ShopOrderMapper.class);
+        ShopOrderService service = new ShopOrderService(orderMapper, mock(ShopCartMapper.class));
+        ShopOrder paid = order(21L, ShopOrderService.PAID);
+        paid.setRefundStatus(ShopOrderService.REFUND_NONE);
+        ShopOrderItem item = new ShopOrderItem();
+        item.setProductId(10L);
+        item.setQuantity(2);
+        ShopOrder refunded = order(21L, ShopOrderService.CANCELLED);
+        refunded.setRefundStatus(ShopOrderService.REFUND_REFUNDED);
+        when(orderMapper.selectUserOrderForUpdate(USER_ID, 21L)).thenReturn(paid);
+        when(orderMapper.cancelPaidAndApproveRefund(USER_ID, 21L)).thenReturn(1);
+        when(orderMapper.selectOrderItems(21L)).thenReturn(List.of(item));
+        when(orderMapper.restoreStock(10L, 2)).thenReturn(1);
+        when(orderMapper.insertStatusLog(any())).thenReturn(1);
+        when(orderMapper.insertRefundLog(any())).thenReturn(1);
+        when(orderMapper.completeUserRefund(USER_ID, 21L)).thenReturn(1);
+        when(orderMapper.selectUserOrder(USER_ID, 21L)).thenReturn(refunded);
+
+        try (MockedStatic<SecurityUtils> security = shopUserLogin())
+        {
+            ShopOrder result = service.cancel(21L);
+            assertEquals(ShopOrderService.CANCELLED, result.getStatus());
+            assertEquals(ShopOrderService.REFUND_REFUNDED, result.getRefundStatus());
+        }
+
+        verify(orderMapper).restoreStock(10L, 2);
+        verify(orderMapper, times(2)).insertRefundLog(any(ShopOrderRefundLog.class));
+    }
+
+    @Test
+    void applyRefundOnPaidUnshippedOrderIsAutomaticallyApprovedAndCompleted()
+    {
+        ShopOrderMapper orderMapper = mock(ShopOrderMapper.class);
+        ShopOrderService service = new ShopOrderService(orderMapper, mock(ShopCartMapper.class));
+        ShopOrder paid = order(21L, ShopOrderService.PAID);
+        paid.setRefundStatus(ShopOrderService.REFUND_NONE);
+        ShopOrderItem item = new ShopOrderItem();
+        item.setProductId(10L);
+        item.setQuantity(1);
+        ShopOrder refunded = order(21L, ShopOrderService.CANCELLED);
+        refunded.setRefundStatus(ShopOrderService.REFUND_REFUNDED);
+        when(orderMapper.selectUserOrderForUpdate(USER_ID, 21L)).thenReturn(paid);
+        when(orderMapper.cancelPaidAndApproveRefund(USER_ID, 21L)).thenReturn(1);
+        when(orderMapper.selectOrderItems(21L)).thenReturn(List.of(item));
+        when(orderMapper.restoreStock(10L, 1)).thenReturn(1);
+        when(orderMapper.insertStatusLog(any())).thenReturn(1);
+        when(orderMapper.insertRefundLog(any())).thenReturn(1);
+        when(orderMapper.completeUserRefund(USER_ID, 21L)).thenReturn(1);
+        when(orderMapper.selectUserOrder(USER_ID, 21L)).thenReturn(refunded);
+
+        try (MockedStatic<SecurityUtils> security = shopUserLogin())
+        {
+            assertEquals(ShopOrderService.REFUND_REFUNDED, service.applyRefund(21L).getRefundStatus());
+        }
+
+        verify(orderMapper).restoreStock(10L, 1);
+        verify(orderMapper, times(2)).insertRefundLog(any(ShopOrderRefundLog.class));
+    }
+
+    @Test
     void payUpdatesCurrentUsersPendingOrderAndWritesOneLog()
     {
         ShopOrderMapper orderMapper = mock(ShopOrderMapper.class);
@@ -223,6 +287,70 @@ class ShopOrderServiceTest
         }
         verify(paidMapper, never()).updateStatus(anyLong(), anyLong(), any(), any());
         verify(paidMapper, never()).insertStatusLog(any());
+    }
+
+    @Test
+    void applyRefundOnReceivedOrderWaitsForMerchantAuditWithoutChangingMainStatus()
+    {
+        ShopOrderMapper orderMapper = mock(ShopOrderMapper.class);
+        ShopOrderService service = new ShopOrderService(orderMapper, mock(ShopCartMapper.class));
+        ShopOrder received = order(21L, ShopOrderService.RECEIVED);
+        received.setRefundStatus(ShopOrderService.REFUND_NONE);
+        ShopOrder applied = order(21L, ShopOrderService.RECEIVED);
+        applied.setRefundStatus(ShopOrderService.REFUND_APPLIED);
+        when(orderMapper.selectUserOrderForUpdate(USER_ID, 21L)).thenReturn(received);
+        when(orderMapper.applyRefund(USER_ID, 21L)).thenReturn(1);
+        when(orderMapper.insertRefundLog(any())).thenReturn(1);
+        when(orderMapper.selectUserOrder(USER_ID, 21L)).thenReturn(applied);
+        when(orderMapper.selectOrderItems(21L)).thenReturn(List.of());
+        when(orderMapper.selectStatusLogs(21L)).thenReturn(List.of());
+        when(orderMapper.selectLogisticsEvents(21L)).thenReturn(List.of());
+
+        try (MockedStatic<SecurityUtils> security = shopUserLogin())
+        {
+            ShopOrder result = service.applyRefund(21L);
+            assertEquals(ShopOrderService.RECEIVED, result.getStatus());
+            assertEquals(ShopOrderService.REFUND_APPLIED, result.getRefundStatus());
+        }
+
+        verify(orderMapper, never()).updateStatus(anyLong(), anyLong(), any(), any());
+        verify(orderMapper, never()).insertStatusLog(any());
+        verify(orderMapper).insertRefundLog(any(ShopOrderRefundLog.class));
+    }
+
+    @Test
+    void applyRefundRejectsAnotherUserInvalidStatusAndRepeatedRequest()
+    {
+        ShopOrderMapper otherUserMapper = mock(ShopOrderMapper.class);
+        ShopOrderService otherUserService = new ShopOrderService(otherUserMapper, mock(ShopCartMapper.class));
+        when(otherUserMapper.selectUserOrderForUpdate(USER_ID, 99L)).thenReturn(null);
+        try (MockedStatic<SecurityUtils> security = shopUserLogin())
+        {
+            assertThrows(ServiceException.class, () -> otherUserService.applyRefund(99L));
+        }
+        verify(otherUserMapper, never()).applyRefund(anyLong(), anyLong());
+
+        ShopOrderMapper unpaidMapper = mock(ShopOrderMapper.class);
+        ShopOrderService unpaidService = new ShopOrderService(unpaidMapper, mock(ShopCartMapper.class));
+        ShopOrder shipped = order(21L, ShopOrderService.SHIPPED);
+        shipped.setRefundStatus(ShopOrderService.REFUND_NONE);
+        when(unpaidMapper.selectUserOrderForUpdate(USER_ID, 21L)).thenReturn(shipped);
+        try (MockedStatic<SecurityUtils> security = shopUserLogin())
+        {
+            assertThrows(ServiceException.class, () -> unpaidService.applyRefund(21L));
+        }
+        verify(unpaidMapper, never()).applyRefund(anyLong(), anyLong());
+
+        ShopOrderMapper repeatedMapper = mock(ShopOrderMapper.class);
+        ShopOrderService repeatedService = new ShopOrderService(repeatedMapper, mock(ShopCartMapper.class));
+        ShopOrder repeated = order(21L, ShopOrderService.RECEIVED);
+        repeated.setRefundStatus(ShopOrderService.REFUND_APPLIED);
+        when(repeatedMapper.selectUserOrderForUpdate(USER_ID, 21L)).thenReturn(repeated);
+        try (MockedStatic<SecurityUtils> security = shopUserLogin())
+        {
+            assertThrows(ServiceException.class, () -> repeatedService.applyRefund(21L));
+        }
+        verify(repeatedMapper, never()).applyRefund(anyLong(), anyLong());
     }
 
     private static ShopOrderCreateBody orderBody(long productId, int quantity)

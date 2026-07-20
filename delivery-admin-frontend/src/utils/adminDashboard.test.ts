@@ -57,6 +57,7 @@ const orders: ManagedOrder[] = [
     address: '陕西西安',
     returnDays: 7,
     refundRequested: false,
+    refundStatus: 'none',
     createdAt: '2026-06-24 10:00',
   },
   {
@@ -72,7 +73,24 @@ const orders: ManagedOrder[] = [
     address: '江西景德镇',
     returnDays: 15,
     refundRequested: false,
+    refundStatus: 'none',
     createdAt: '2026-06-23 10:00',
+  },
+  {
+    id: 3,
+    merchantId: 101,
+    orderNo: 'ZK3',
+    buyerName: '已退用户',
+    status: 'completed',
+    amount: 88,
+    itemCount: 1,
+    productTitles: ['咖啡豆'],
+    items: [{ productTitle: '咖啡豆', quantity: 1, unitPrice: 88 }],
+    address: '陕西西安',
+    returnDays: 7,
+    refundRequested: false,
+    refundStatus: 'refunded',
+    createdAt: '2026-06-23 11:00',
   },
 ];
 
@@ -95,7 +113,7 @@ const stats = getDashboardStats({ products, orders, reports, userTotal: 12, toda
 assert.deepEqual(stats, {
   productTotal: 2,
   onSaleCount: 1,
-  orderTotal: 2,
+  orderTotal: 3,
   todayOrders: 1,
   salesAmount: 128,
   userTotal: 12,
@@ -104,7 +122,7 @@ assert.deepEqual(stats, {
 
 assert.deepEqual(buildOrderStatusChart(orders), [
   { status: '待发货', count: 1 },
-  { status: '已退款', count: 1 },
+  { status: '已退款', count: 2 },
 ]);
 assert.deepEqual(buildMerchantOverview(products, orders, merchants), [
   { merchant: '老李咖啡', productTotal: 1, onSaleCount: 1, salesAmount: 128 },
@@ -115,7 +133,7 @@ assert.deepEqual(buildProductStatusPie(products), [
   { status: '已下架', count: 1 },
 ]);
 assert.deepEqual(buildOrderTrendChart(orders), [
-  { date: '2026-06-23', count: 1 },
+  { date: '2026-06-23', count: 2 },
   { date: '2026-06-24', count: 1 },
 ]);
 

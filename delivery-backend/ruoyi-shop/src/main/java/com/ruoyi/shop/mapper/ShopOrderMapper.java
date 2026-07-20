@@ -6,6 +6,7 @@ import com.ruoyi.shop.domain.ShopOrder;
 import com.ruoyi.shop.domain.ShopOrderAddress;
 import com.ruoyi.shop.domain.ShopOrderItem;
 import com.ruoyi.shop.domain.ShopOrderLogisticsEvent;
+import com.ruoyi.shop.domain.ShopOrderRefundLog;
 import com.ruoyi.shop.domain.ShopOrderStatusLog;
 import com.ruoyi.shop.domain.ShopProduct;
 import com.ruoyi.shop.domain.ShopUserAddress;
@@ -21,6 +22,7 @@ public interface ShopOrderMapper
     int insertOrderAddress(ShopOrderAddress address);
     int insertStatusLog(ShopOrderStatusLog log);
     int insertLogisticsEvent(ShopOrderLogisticsEvent event);
+    int insertRefundLog(ShopOrderRefundLog log);
     List<ShopOrder> selectUserOrders(Long userId);
     ShopOrder selectUserOrder(@Param("userId") Long userId, @Param("orderId") Long orderId);
     ShopOrder selectUserOrderForUpdate(@Param("userId") Long userId, @Param("orderId") Long orderId);
@@ -28,11 +30,18 @@ public interface ShopOrderMapper
     ShopOrderAddress selectOrderAddress(Long orderId);
     List<ShopOrderStatusLog> selectStatusLogs(Long orderId);
     List<ShopOrderLogisticsEvent> selectLogisticsEvents(Long orderId);
+    List<ShopOrderRefundLog> selectRefundLogs(Long orderId);
     int updateStatus(@Param("userId") Long userId, @Param("orderId") Long orderId,
             @Param("fromStatus") String fromStatus, @Param("toStatus") String toStatus);
+    int applyRefund(@Param("userId") Long userId, @Param("orderId") Long orderId);
+    int cancelPaidAndApproveRefund(@Param("userId") Long userId, @Param("orderId") Long orderId);
+    int completeUserRefund(@Param("userId") Long userId, @Param("orderId") Long orderId);
     List<ShopOrder> selectMerchantOrders(Long merchantId);
     ShopOrder selectMerchantOrder(@Param("merchantId") Long merchantId, @Param("orderId") Long orderId);
     ShopOrder selectMerchantOrderForUpdate(@Param("merchantId") Long merchantId, @Param("orderId") Long orderId);
+    int auditRefund(@Param("merchantId") Long merchantId, @Param("orderId") Long orderId,
+            @Param("toStatus") String toStatus, @Param("auditRemark") String auditRemark);
+    int completeMerchantRefund(@Param("merchantId") Long merchantId, @Param("orderId") Long orderId);
     List<ShopOrder> selectAdminOrders();
     ShopOrder selectAdminOrder(Long orderId);
     int shipOrder(@Param("merchantId") Long merchantId, @Param("orderId") Long orderId,

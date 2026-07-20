@@ -5,6 +5,7 @@ import type { CartItem } from './cart';
 import {
   advanceOrderStatus,
   cancelOrder,
+  canApplyRefund,
   canCancelOrder,
   createOrdersFromCart,
   getReviewableProductsFromOrders,
@@ -70,15 +71,30 @@ test('advanceOrderStatus follows unpaid paid shipped completed flow', () => {
   assert.equal(orderStatusMeta[completed.status].label, '已完成');
 });
 
-test('cancelOrder only cancels unpaid orders', () => {
+test('cancelOrder cancels unshipped orders and marks paid orders refunded', () => {
   const [order] = createOrdersFromCart(cartItems, 'zhenke', 1000);
   const canceled = cancelOrder(order);
   const paid = advanceOrderStatus(order);
 
   assert.equal(canCancelOrder(order), true);
   assert.equal(canceled.status, 'canceled');
-  assert.equal(canCancelOrder(paid), false);
-  assert.equal(cancelOrder(paid).status, 'paid');
+  assert.equal(canCancelOrder(paid), true);
+  assert.equal(cancelOrder(paid).status, 'canceled');
+  assert.equal(cancelOrder(paid).refundStatus, 'refunded');
+});
+
+test('refund application requires receipt and no earlier refund record', () => {
+  const [unpaid] = createOrdersFromCart(cartItems, 'zhenke', 1000);
+  const paid = advanceOrderStatus(unpaid);
+  const shipped = advanceOrderStatus(paid);
+  const completed = advanceOrderStatus(shipped);
+
+  assert.equal(canApplyRefund(unpaid), false);
+  assert.equal(canApplyRefund(paid), false);
+  assert.equal(canApplyRefund(shipped), false);
+  assert.equal(canApplyRefund(completed), true);
+  assert.equal(canApplyRefund({ ...completed, refundStatus: 'applied' }), false);
+  assert.equal(canApplyRefund({ ...completed, refundStatus: 'rejected' }), false);
 });
 
 test('getReviewableProductsFromOrders returns completed purchased products without existing reports', () => {

@@ -16,6 +16,7 @@ import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.shop.domain.ShopOrder;
 import com.ruoyi.shop.domain.dto.ShopOrderShipBody;
+import com.ruoyi.shop.domain.dto.ShopOrderRefundAuditBody;
 import com.ruoyi.shop.service.ShopMerchantOrderService;
 import com.ruoyi.shop.service.ShopMerchantService;
 
@@ -53,5 +54,13 @@ public class ShopMerchantOrderController extends BaseController
     public AjaxResult ship(@PathVariable long orderId, @Valid @RequestBody ShopOrderShipBody body)
     {
         return AjaxResult.success(orderService.ship(orderId, body));
+    }
+
+    @Log(title = "商城订单退款审核", businessType = BusinessType.UPDATE)
+    @PutMapping("/{orderId}/refund/audit")
+    public AjaxResult auditRefund(@PathVariable long orderId,
+            @Valid @RequestBody ShopOrderRefundAuditBody body)
+    {
+        return AjaxResult.success(orderService.auditRefund(orderId, body));
     }
 }

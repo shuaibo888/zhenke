@@ -269,6 +269,7 @@ export const seedOrders: ManagedOrder[] = [
     address: '陕西省西安市雁塔区验证路 18 号',
     returnDays: 7,
     refundRequested: false,
+    refundStatus: 'none',
     createdAt: '2026-06-19 10:22',
   },
   {
@@ -286,6 +287,7 @@ export const seedOrders: ManagedOrder[] = [
     address: '江西省景德镇市珠山区窑火街 8 号',
     returnDays: 15,
     refundRequested: true,
+    refundStatus: 'applied',
     createdAt: '2026-06-18 14:40',
   },
   {
@@ -303,6 +305,7 @@ export const seedOrders: ManagedOrder[] = [
     address: '陕西省商洛市山阳路 9 号',
     returnDays: 30,
     refundRequested: true,
+    refundStatus: 'applied',
     createdAt: '2026-06-17 09:11',
   },
   {
@@ -318,6 +321,7 @@ export const seedOrders: ManagedOrder[] = [
     address: '福建省武夷山市茶山路 3 号',
     returnDays: 15,
     refundRequested: false,
+    refundStatus: 'none',
     createdAt: '2026-06-16 18:25',
   },
 ];

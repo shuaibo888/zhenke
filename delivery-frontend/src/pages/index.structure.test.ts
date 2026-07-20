@@ -26,6 +26,15 @@ test('second-stage orders use backend payment, logistics, and receipt APIs', () 
   assert.doesNotMatch(pageSource, /advanceOrderStatus/);
 });
 
+test('received-order refunds wait for merchant audit while unshipped paid orders cancel directly', () => {
+  assert.match(contentServiceSource, /\/shop\/orders\/\$\{orderId\}\/refund/);
+  assert.match(pageSource, /applyShopOrderRefund\(order\.id\)/);
+  assert.match(pageSource, /退款申请已提交，等待商家审核/);
+  assert.match(pageSource, /审核通过后才会执行模拟退款/);
+  assert.match(pageSource, /取消并退款/);
+  assert.match(pageSource, /待商家审核/);
+});
+
 test('home feed separates online and offline trial recruitment through the backend query', () => {
   assert.match(pageSource, /type HomeFeedFilter = 'ALL' \| 'ONLINE' \| 'OFFLINE' \| 'REPORT';/);
   assert.match(pageSource, /\{ label: '线上试用', value: 'ONLINE' \}/);
@@ -121,11 +130,37 @@ test('profile renders trials, zhenke reports, and earnings', () => {
   assert.match(profileBlock, /确认收货/);
   assert.match(profileBlock, /自愿发布甄客验/);
   assert.match(profileBlock, /<h3>我的甄客验<\/h3>/);
+  assert.match(profileBlock, /handleOpenReportProduct\(report\)/);
+  assert.match(profileBlock, /查看详情与评论/);
   assert.doesNotMatch(profileBlock, /<h3>我的验证<\/h3>/);
   assert.match(profileBlock, /<h3>我的收益<\/h3>/);
   assert.match(profileBlock, /累计收益/);
   assert.match(profileBlock, /待结算/);
   assert.match(profileBlock, /已结算/);
+});
+
+test('report detail always reloads canonical report data and comments for every viewer', () => {
+  const handlerStart = pageSource.indexOf('const handleOpenReportProduct = async');
+  const handlerEnd = pageSource.indexOf('const reloadReportComments', handlerStart);
+  const handlerBlock = pageSource.slice(handlerStart, handlerEnd);
+  const detailStart = pageSource.indexOf('const renderReportDetail');
+  const detailEnd = pageSource.indexOf('const renderPurchasePage', detailStart);
+  const detailBlock = pageSource.slice(detailStart, detailEnd);
+
+  assert.notEqual(handlerStart, -1);
+  assert.match(handlerBlock, /fetchPublishedReport\(report\.id\)/);
+  assert.match(handlerBlock, /fetchReportComments\(report\.id\)/);
+  assert.match(handlerBlock, /setJourneyReport\(mapVerificationReport\(detail\)\)/);
+  assert.doesNotMatch(handlerBlock, /report\.userId\s*[!=]==?\s*activeUser/);
+  assert.notEqual(detailStart, -1);
+  assert.match(detailBlock, /<section className=\{styles\.reportComments\}>/);
+  assert.doesNotMatch(detailBlock, /journeyReport\.userId\s*[!=]==?\s*activeUser/);
+});
+
+test('comment deletion uses a concise user-facing confirmation', () => {
+  assert.match(pageSource, /title: '是否删除评论？'/);
+  assert.doesNotMatch(pageSource, /删除后页面不再展示/);
+  assert.doesNotMatch(pageSource, /数据会保留在数据库中/);
 });
 
 test('product journey covers recruitment, evidence, report detail, and attribution', () => {

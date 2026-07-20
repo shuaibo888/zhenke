@@ -54,12 +54,22 @@ export function advanceOrderStatus(order: Order): Order {
 }
 
 export function canCancelOrder(order: Order) {
-  return order.status === 'unpaid';
+  return (order.status === 'unpaid' || order.status === 'paid')
+    && (!order.refundStatus || order.refundStatus === 'none');
+}
+
+export function canApplyRefund(order: Order) {
+  return order.status === 'completed'
+    && (!order.refundStatus || order.refundStatus === 'none');
 }
 
 export function cancelOrder(order: Order): Order {
   if (!canCancelOrder(order)) return order;
-  return { ...order, status: 'canceled' };
+  return {
+    ...order,
+    status: 'canceled',
+    refundStatus: order.status === 'paid' ? 'refunded' : order.refundStatus,
+  };
 }
 
 export function getReviewableProductsFromOrders(

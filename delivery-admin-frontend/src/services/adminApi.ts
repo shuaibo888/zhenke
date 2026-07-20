@@ -121,6 +121,11 @@ interface ShopOrderDto {
   trackingNo?: string;
   shipTime?: string;
   receiveTime?: string;
+  refundStatus?: 'NONE' | 'APPLIED' | 'APPROVED' | 'REJECTED' | 'REFUNDED';
+  refundApplyTime?: string;
+  refundAuditTime?: string;
+  refundCompleteTime?: string;
+  refundAuditRemark?: string;
   createTime: string;
   items?: Array<{
     productId: number;
@@ -269,7 +274,18 @@ function toManagedOrder(dto: ShopOrderDto): ManagedOrder {
     address: address ? [address.recipient, address.phone, address.provinceCode, address.cityCode,
       address.districtCode, address.detail].filter(Boolean).join(' ') : '-',
     returnDays: 0,
-    refundRequested: false,
+    refundRequested: dto.refundStatus === 'APPLIED',
+    refundStatus: ({
+      NONE: 'none',
+      APPLIED: 'applied',
+      APPROVED: 'approved',
+      REJECTED: 'rejected',
+      REFUNDED: 'refunded',
+    } as const)[dto.refundStatus ?? 'NONE'],
+    refundAppliedAt: dto.refundApplyTime,
+    refundAuditedAt: dto.refundAuditTime,
+    refundCompletedAt: dto.refundCompleteTime,
+    refundAuditRemark: dto.refundAuditRemark,
     createdAt: dto.createTime,
     paidAt: dto.payTime,
     carrier: dto.carrier,
@@ -518,6 +534,20 @@ export async function shipMerchantOrder(orderId: number, carrier: string, tracki
     true,
   );
   if (!result.data) throw new Error('订单发货失败');
+  return toManagedOrder(result.data);
+}
+
+export async function auditMerchantOrderRefund(
+  orderId: number,
+  decision: 'APPROVED' | 'REJECTED',
+  auditRemark?: string,
+) {
+  const result = await requestApi<ApiResponse<ShopOrderDto>>(
+    `/shop/merchant/orders/${orderId}/refund/audit`,
+    { method: 'PUT', body: JSON.stringify({ decision, auditRemark }) },
+    true,
+  );
+  if (!result.data) throw new Error('退款审核失败');
   return toManagedOrder(result.data);
 }
 

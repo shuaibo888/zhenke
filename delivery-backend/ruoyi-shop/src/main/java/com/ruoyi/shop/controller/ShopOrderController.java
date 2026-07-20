@@ -65,4 +65,10 @@ public class ShopOrderController
     {
         return AjaxResult.success(orderService.confirmReceived(orderId));
     }
+
+    @PutMapping("/{orderId}/refund")
+    public AjaxResult applyRefund(@PathVariable long orderId)
+    {
+        return AjaxResult.success(orderService.applyRefund(orderId));
+    }
 }

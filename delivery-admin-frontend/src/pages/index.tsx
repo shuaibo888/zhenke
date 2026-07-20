@@ -48,6 +48,7 @@ import { seedReports } from '@/mocks/admin';
 import type { AdminSession, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, NavKey, ProductCategory, ProductCategoryOption, ProductStatus, ShopMemberLevel, ShopUserAccount } from '@/types';
 import {
   auditMerchantTrialApplication,
+  auditMerchantOrderRefund,
   createMerchantProduct,
   createMerchantTrial,
   fetchAdminCaptcha,
@@ -194,6 +195,14 @@ const orderStatusMeta: Record<ManagedOrder['status'], { label: string; color: st
   refunded: { label: '已退款', color: 'purple' },
 };
 
+const refundStatusMeta: Record<ManagedOrder['refundStatus'], { label: string; color: string }> = {
+  none: { label: '无售后申请', color: 'default' },
+  applied: { label: '待商家审核', color: 'purple' },
+  approved: { label: '退款处理中', color: 'blue' },
+  rejected: { label: '退款已拒绝', color: 'red' },
+  refunded: { label: '已退款（模拟）', color: 'green' },
+};
+
 function formatMoney(value: number) {
   return `¥${value.toFixed(2)}`;
 }
@@ -216,6 +225,7 @@ function AdminWorkspace() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [shippingOrder, setShippingOrder] = useState<ManagedOrder | null>(null);
   const [orderShipping, setOrderShipping] = useState(false);
+  const [refundAuditingId, setRefundAuditingId] = useState<number | null>(null);
   const [reports, setReports] = useState<ManagedReport[]>(seedReports);
   const [trialRecruitments, setTrialRecruitments] = useState<ManagedTrialRecruitment[]>([]);
   const [trialsLoading, setTrialsLoading] = useState(false);
@@ -760,6 +770,10 @@ function AdminWorkspace() {
   };
 
   const openOrderShipment = (order: ManagedOrder) => {
+    if (order.refundRequested) {
+      message.warning('买家已申请退款，不能继续发货');
+      return;
+    }
     if (order.status !== 'paid') {
       message.warning('只有待发货订单可以发货');
       return;
@@ -793,6 +807,35 @@ function AdminWorkspace() {
     } finally {
       setOrderShipping(false);
     }
+  };
+
+  const handleAuditOrderRefund = (order: ManagedOrder, decision: 'APPROVED' | 'REJECTED') => {
+    if (!session || session.loginType === 'admin' || order.refundStatus !== 'applied') return;
+    const approved = decision === 'APPROVED';
+    modal.confirm({
+      title: approved ? '确认同意退款？' : '确认拒绝退款？',
+      content: approved
+        ? '同意后将进入退款流程，并立即完成当前模拟退款。'
+        : '拒绝后本次退款申请将结束。',
+      okText: approved ? '同意退款' : '拒绝退款',
+      okButtonProps: { danger: !approved },
+      cancelText: '取消',
+      onOk: async () => {
+        if (refundAuditingId === order.id) return;
+        setRefundAuditingId(order.id);
+        try {
+          const audited = await auditMerchantOrderRefund(order.id, decision);
+          setOrders((items) => items.map((item) => item.id === audited.id ? audited : item));
+          setDetailOrder((current) => current?.id === audited.id ? audited : current);
+          message.success(approved ? '审核通过，模拟退款已完成' : '退款申请已拒绝');
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : '退款审核失败');
+          throw error;
+        } finally {
+          setRefundAuditingId(null);
+        }
+      },
+    });
   };
 
   const handleToggleReportStatus = (report: ManagedReport) => {
@@ -1030,7 +1073,14 @@ function AdminWorkspace() {
     {
       title: '状态',
       dataIndex: 'status',
-      render: (status: ManagedOrder['status']) => <Tag color={orderStatusMeta[status].color}>{orderStatusMeta[status].label}</Tag>,
+      render: (status: ManagedOrder['status'], order) => (
+        <Space size={4} wrap>
+          <Tag color={orderStatusMeta[status].color}>{orderStatusMeta[status].label}</Tag>
+          {order.refundStatus !== 'none' && (
+            <Tag color={refundStatusMeta[order.refundStatus].color}>{refundStatusMeta[order.refundStatus].label}</Tag>
+          )}
+        </Space>
+      ),
     },
     { title: '下单时间', dataIndex: 'createdAt' },
     {
@@ -1039,16 +1089,23 @@ function AdminWorkspace() {
       render: (_, order) => (
         <Space>
           {!isAdmin && (
-            <Button size="small" icon={<TruckOutlined />} disabled={order.status !== 'paid'} onClick={() => openOrderShipment(order)}>
+            <Button size="small" icon={<TruckOutlined />} disabled={order.status !== 'paid' || order.refundRequested} onClick={() => openOrderShipment(order)}>
               发货
             </Button>
           )}
           <Button size="small" icon={<FileSearchOutlined />} onClick={() => void openOrderDetail(order)}>
             订单详情
           </Button>
-          <Button size="small" disabled>
-            退款未接入
-          </Button>
+          {!isAdmin && order.refundStatus === 'applied' && (
+            <>
+              <Button size="small" type="primary" loading={refundAuditingId === order.id} onClick={() => handleAuditOrderRefund(order, 'APPROVED')}>
+                同意退款
+              </Button>
+              <Button size="small" danger loading={refundAuditingId === order.id} onClick={() => handleAuditOrderRefund(order, 'REJECTED')}>
+                拒绝退款
+              </Button>
+            </>
+          )}
         </Space>
       ),
     },
@@ -1858,7 +1915,9 @@ function AdminWorkspace() {
               </div>
               <div>
                 <span>售后</span>
-                <strong>暂未接入</strong>
+                <strong>{refundStatusMeta[detailOrder.refundStatus].label}</strong>
+                {detailOrder.refundAppliedAt && <small>{detailOrder.refundAppliedAt}</small>}
+                {detailOrder.refundAuditRemark && <small>{detailOrder.refundAuditRemark}</small>}
               </div>
               {detailOrder.fromVerifierName && (
                 <div>
@@ -1947,8 +2006,19 @@ function AdminWorkspace() {
               </section>
             )}
 
+            {!isAdmin && detailOrder.refundStatus === 'applied' && (
+              <Space>
+                <Button type="primary" loading={refundAuditingId === detailOrder.id} onClick={() => handleAuditOrderRefund(detailOrder, 'APPROVED')}>
+                  同意退款
+                </Button>
+                <Button danger loading={refundAuditingId === detailOrder.id} onClick={() => handleAuditOrderRefund(detailOrder, 'REJECTED')}>
+                  拒绝退款
+                </Button>
+              </Space>
+            )}
+
             <div className={styles.refundNotice}>
-              <strong>退款与售后尚未接入，本阶段不会修改订单状态</strong>
+              <strong>未发货订单自动退款；已收货订单须经商家审核后执行模拟退款</strong>
             </div>
           </div>
         )}

@@ -22,12 +22,18 @@ public class ShopOrder
     private Date shipTime;
     private Date receiveTime;
     private Date cancelTime;
+    private String refundStatus;
+    private Date refundApplyTime;
+    private Date refundAuditTime;
+    private Date refundCompleteTime;
+    private String refundAuditRemark;
     private Date createTime;
     private Date updateTime;
     private List<ShopOrderItem> items;
     private ShopOrderAddress address;
     private List<ShopOrderStatusLog> statusLogs;
     private List<ShopOrderLogisticsEvent> logisticsEvents;
+    private List<ShopOrderRefundLog> refundLogs;
 
     public Long getOrderId() { return orderId; }
     public void setOrderId(Long orderId) { this.orderId = orderId; }
@@ -61,6 +67,16 @@ public class ShopOrder
     public void setReceiveTime(Date receiveTime) { this.receiveTime = receiveTime; }
     public Date getCancelTime() { return cancelTime; }
     public void setCancelTime(Date cancelTime) { this.cancelTime = cancelTime; }
+    public String getRefundStatus() { return refundStatus; }
+    public void setRefundStatus(String refundStatus) { this.refundStatus = refundStatus; }
+    public Date getRefundApplyTime() { return refundApplyTime; }
+    public void setRefundApplyTime(Date refundApplyTime) { this.refundApplyTime = refundApplyTime; }
+    public Date getRefundAuditTime() { return refundAuditTime; }
+    public void setRefundAuditTime(Date refundAuditTime) { this.refundAuditTime = refundAuditTime; }
+    public Date getRefundCompleteTime() { return refundCompleteTime; }
+    public void setRefundCompleteTime(Date refundCompleteTime) { this.refundCompleteTime = refundCompleteTime; }
+    public String getRefundAuditRemark() { return refundAuditRemark; }
+    public void setRefundAuditRemark(String refundAuditRemark) { this.refundAuditRemark = refundAuditRemark; }
     public Date getCreateTime() { return createTime; }
     public void setCreateTime(Date createTime) { this.createTime = createTime; }
     public Date getUpdateTime() { return updateTime; }
@@ -73,4 +89,6 @@ public class ShopOrder
     public void setStatusLogs(List<ShopOrderStatusLog> statusLogs) { this.statusLogs = statusLogs; }
     public List<ShopOrderLogisticsEvent> getLogisticsEvents() { return logisticsEvents; }
     public void setLogisticsEvents(List<ShopOrderLogisticsEvent> logisticsEvents) { this.logisticsEvents = logisticsEvents; }
+    public List<ShopOrderRefundLog> getRefundLogs() { return refundLogs; }
+    public void setRefundLogs(List<ShopOrderRefundLog> refundLogs) { this.refundLogs = refundLogs; }
 }

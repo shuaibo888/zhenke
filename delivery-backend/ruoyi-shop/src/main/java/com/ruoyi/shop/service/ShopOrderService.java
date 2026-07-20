@@ -17,6 +17,7 @@ import com.ruoyi.shop.domain.ShopOrder;
 import com.ruoyi.shop.domain.ShopOrderAddress;
 import com.ruoyi.shop.domain.ShopOrderItem;
 import com.ruoyi.shop.domain.ShopOrderLogisticsEvent;
+import com.ruoyi.shop.domain.ShopOrderRefundLog;
 import com.ruoyi.shop.domain.ShopOrderStatusLog;
 import com.ruoyi.shop.domain.ShopProduct;
 import com.ruoyi.shop.domain.ShopUserAddress;
@@ -34,6 +35,11 @@ public class ShopOrderService
     public static final String SHIPPED = "SHIPPED";
     public static final String RECEIVED = "RECEIVED";
     public static final String CANCELLED = "CANCELLED";
+    public static final String REFUND_NONE = "NONE";
+    public static final String REFUND_APPLIED = "APPLIED";
+    public static final String REFUND_APPROVED = "APPROVED";
+    public static final String REFUND_REJECTED = "REJECTED";
+    public static final String REFUND_REFUNDED = "REFUNDED";
 
     private static final DateTimeFormatter ORDER_TIME = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
@@ -93,23 +99,26 @@ public class ShopOrderService
     {
         long userId = ShopAccountIdentity.requireShopUserId();
         ShopOrder order = requireUserOrder(userId, orderId, true);
-        if (!PENDING_PAYMENT.equals(order.getStatus()))
+        if (PENDING_PAYMENT.equals(order.getStatus()))
         {
-            throw new ServiceException(CANCELLED.equals(order.getStatus()) ? "订单已取消，请勿重复操作" : "只有待付款订单可以取消");
-        }
-        if (orderMapper.updateStatus(userId, orderId, PENDING_PAYMENT, CANCELLED) == 0)
-        {
-            throw new ServiceException("订单状态已变化，请刷新后重试");
-        }
-        for (ShopOrderItem item : orderMapper.selectOrderItems(orderId))
-        {
-            if (orderMapper.restoreStock(item.getProductId(), item.getQuantity()) == 0)
+            if (orderMapper.updateStatus(userId, orderId, PENDING_PAYMENT, CANCELLED) == 0)
             {
-                throw new ServiceException("订单库存恢复失败");
+                throw new ServiceException("订单状态已变化，请刷新后重试");
             }
+            restoreOrderStock(orderId);
+            insertStatusLog(orderId, PENDING_PAYMENT, CANCELLED, userId, "用户取消待付款订单");
+            return hydrate(requireUserOrder(userId, orderId, false));
         }
-        insertStatusLog(orderId, PENDING_PAYMENT, CANCELLED, userId, "用户取消待付款订单");
-        return hydrate(requireUserOrder(userId, orderId, false));
+        if (PAID.equals(order.getStatus()))
+        {
+            requireNoRefundRecord(order);
+            return autoRefundUnshipped(userId, orderId, "用户取消已支付未发货订单");
+        }
+        if (CANCELLED.equals(order.getStatus()))
+        {
+            throw new ServiceException("订单已取消，请勿重复操作");
+        }
+        throw new ServiceException("订单已发货，确认收货后可以申请退款");
     }
 
     @Transactional
@@ -134,6 +143,10 @@ public class ShopOrderService
     {
         long userId = ShopAccountIdentity.requireShopUserId();
         ShopOrder order = requireUserOrder(userId, orderId, true);
+        if (order.getRefundStatus() != null && !REFUND_NONE.equals(order.getRefundStatus()))
+        {
+            throw new ServiceException("退款申请正在处理中，不能确认收货");
+        }
         if (!SHIPPED.equals(order.getStatus()))
         {
             throw new ServiceException(RECEIVED.equals(order.getStatus()) ? "订单已确认收货，请勿重复操作" : "只有已发货订单可以确认收货");
@@ -145,6 +158,79 @@ public class ShopOrderService
         insertStatusLog(orderId, SHIPPED, RECEIVED, userId, "用户确认收货");
         insertLogisticsEvent(orderId, "USER_RECEIVED", "用户已确认收货", "USER_RECEIVED");
         return hydrate(requireUserOrder(userId, orderId, false));
+    }
+
+    @Transactional
+    public ShopOrder applyRefund(long orderId)
+    {
+        long userId = ShopAccountIdentity.requireShopUserId();
+        ShopOrder order = requireUserOrder(userId, orderId, true);
+        requireNoRefundRecord(order);
+        if (PAID.equals(order.getStatus()))
+        {
+            return autoRefundUnshipped(userId, orderId, "未发货订单退款自动审核通过");
+        }
+        if (SHIPPED.equals(order.getStatus()))
+        {
+            throw new ServiceException("订单已发货，请先确认收货后再申请退款");
+        }
+        if (!RECEIVED.equals(order.getStatus()))
+        {
+            throw new ServiceException(PENDING_PAYMENT.equals(order.getStatus())
+                    ? "待付款订单请直接取消" : "当前订单状态不能申请退款");
+        }
+        if (orderMapper.applyRefund(userId, orderId) == 0)
+        {
+            throw new ServiceException("订单状态已变化，请刷新后重试");
+        }
+        insertRefundLog(orderId, REFUND_NONE, REFUND_APPLIED, "SHOP_USER", userId, "用户申请退款，等待商家审核");
+        return hydrate(requireUserOrder(userId, orderId, false));
+    }
+
+    private ShopOrder autoRefundUnshipped(long userId, long orderId, String remark)
+    {
+        if (orderMapper.cancelPaidAndApproveRefund(userId, orderId) == 0)
+        {
+            throw new ServiceException("订单状态已变化，请刷新后重试");
+        }
+        restoreOrderStock(orderId);
+        insertStatusLog(orderId, PAID, CANCELLED, userId, "用户取消已支付未发货订单");
+        insertRefundLog(orderId, REFUND_NONE, REFUND_APPROVED, "SYSTEM", null, remark);
+        if (orderMapper.completeUserRefund(userId, orderId) == 0)
+        {
+            throw new ServiceException("模拟退款处理失败");
+        }
+        insertRefundLog(orderId, REFUND_APPROVED, REFUND_REFUNDED, "SYSTEM", null, "模拟退款完成");
+        return hydrate(requireUserOrder(userId, orderId, false));
+    }
+
+    private void requireNoRefundRecord(ShopOrder order)
+    {
+        String refundStatus = order.getRefundStatus();
+        if (refundStatus == null || REFUND_NONE.equals(refundStatus))
+        {
+            return;
+        }
+        if (REFUND_REFUNDED.equals(refundStatus))
+        {
+            throw new ServiceException("订单已退款，请勿重复操作");
+        }
+        if (REFUND_REJECTED.equals(refundStatus))
+        {
+            throw new ServiceException("退款申请已被商家拒绝");
+        }
+        throw new ServiceException("退款申请正在处理中，请勿重复操作");
+    }
+
+    private void restoreOrderStock(long orderId)
+    {
+        for (ShopOrderItem item : orderMapper.selectOrderItems(orderId))
+        {
+            if (orderMapper.restoreStock(item.getProductId(), item.getQuantity()) == 0)
+            {
+                throw new ServiceException("订单库存恢复失败");
+            }
+        }
     }
 
     private List<ShopOrder> createForUser(long userId, long addressId, List<ShopOrderItemBody> requestedItems)
@@ -293,6 +379,22 @@ public class ShopOrderService
         }
     }
 
+    private void insertRefundLog(long orderId, String fromStatus, String toStatus,
+            String operatorType, Long operatorId, String remark)
+    {
+        ShopOrderRefundLog log = new ShopOrderRefundLog();
+        log.setOrderId(orderId);
+        log.setFromStatus(fromStatus);
+        log.setToStatus(toStatus);
+        log.setOperatorType(operatorType);
+        log.setOperatorId(operatorId);
+        log.setRemark(remark);
+        if (orderMapper.insertRefundLog(log) == 0)
+        {
+            throw new ServiceException("退款操作日志创建失败");
+        }
+    }
+
     private ShopOrder requireUserOrder(long userId, long orderId, boolean forUpdate)
     {
         ShopOrder order = forUpdate
@@ -311,6 +413,7 @@ public class ShopOrderService
         order.setAddress(orderMapper.selectOrderAddress(order.getOrderId()));
         order.setStatusLogs(orderMapper.selectStatusLogs(order.getOrderId()));
         order.setLogisticsEvents(orderMapper.selectLogisticsEvents(order.getOrderId()));
+        order.setRefundLogs(orderMapper.selectRefundLogs(order.getOrderId()));
         return order;
     }
 

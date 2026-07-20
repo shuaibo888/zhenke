@@ -43,6 +43,11 @@
         <result property="shipTime" column="ship_time" />
         <result property="receiveTime" column="receive_time" />
         <result property="cancelTime" column="cancel_time" />
+        <result property="refundStatus" column="refund_status" />
+        <result property="refundApplyTime" column="refund_apply_time" />
+        <result property="refundAuditTime" column="refund_audit_time" />
+        <result property="refundCompleteTime" column="refund_complete_time" />
+        <result property="refundAuditRemark" column="refund_audit_remark" />
         <result property="createTime" column="create_time" />
         <result property="updateTime" column="update_time" />
     </resultMap>
@@ -93,12 +98,25 @@
         <result property="createTime" column="create_time" />
     </resultMap>
 
+    <resultMap id="ShopOrderRefundLogResult" type="ShopOrderRefundLog">
+        <id property="logId" column="log_id" />
+        <result property="orderId" column="order_id" />
+        <result property="fromStatus" column="from_status" />
+        <result property="toStatus" column="to_status" />
+        <result property="operatorType" column="operator_type" />
+        <result property="operatorId" column="operator_id" />
+        <result property="remark" column="remark" />
+        <result property="createTime" column="create_time" />
+    </resultMap>
+
     <sql id="selectOrderColumns">
         select o.order_id, o.order_no, o.user_id,
                coalesce(u.nick_name, u.user_name) as buyer_name, o.merchant_id,
                m.company_name as merchant_name, o.status as order_status,
                o.total_amount, o.item_count, o.del_flag, o.pay_time,
                o.carrier, o.tracking_no, o.ship_time, o.receive_time, o.cancel_time,
+               o.refund_status, o.refund_apply_time, o.refund_audit_time,
+               o.refund_complete_time, o.refund_audit_remark,
                o.create_time, o.update_time
         from shop_order o
         inner join shop_merchant m on m.merchant_id = o.merchant_id
@@ -177,6 +195,13 @@
         (#{orderId}, #{eventCode}, #{description}, #{location}, sysdate(), #{source}, #{sourceEventId}, sysdate())
     </insert>
 
+    <insert id="insertRefundLog" parameterType="ShopOrderRefundLog" useGeneratedKeys="true" keyProperty="logId">
+        insert into shop_order_refund_log
+        (order_id, from_status, to_status, operator_type, operator_id, remark, create_time)
+        values
+        (#{orderId}, #{fromStatus}, #{toStatus}, #{operatorType}, #{operatorId}, #{remark}, sysdate())
+    </insert>
+
     <select id="selectUserOrders" parameterType="Long" resultMap="ShopOrderResult">
         <include refid="selectOrderColumns" />
         where o.user_id = #{userId} and o.del_flag = '0'
@@ -223,6 +248,13 @@
         order by event_time desc, event_id desc
     </select>
 
+    <select id="selectRefundLogs" parameterType="Long" resultMap="ShopOrderRefundLogResult">
+        select log_id, order_id, from_status, to_status, operator_type, operator_id, remark, create_time
+        from shop_order_refund_log
+        where order_id = #{orderId}
+        order by log_id
+    </select>
+
     <update id="updateStatus">
         update shop_order
         set status = #{toStatus},
@@ -231,6 +263,30 @@
             cancel_time = case when #{toStatus} = 'CANCELLED' then sysdate() else cancel_time end,
             update_time = sysdate()
         where user_id = #{userId} and order_id = #{orderId} and status = #{fromStatus} and del_flag = '0'
+    </update>
+
+    <update id="applyRefund">
+        update shop_order
+        set refund_status = 'APPLIED', refund_apply_time = sysdate(), update_time = sysdate()
+        where user_id = #{userId} and order_id = #{orderId}
+          and status = 'RECEIVED'
+          and refund_status = 'NONE' and del_flag = '0'
+    </update>
+
+    <update id="cancelPaidAndApproveRefund">
+        update shop_order
+        set status = 'CANCELLED', cancel_time = sysdate(),
+            refund_status = 'APPROVED', refund_apply_time = sysdate(), refund_audit_time = sysdate(),
+            refund_audit_remark = '未发货订单自动审核通过', update_time = sysdate()
+        where user_id = #{userId} and order_id = #{orderId}
+          and status = 'PAID' and refund_status = 'NONE' and del_flag = '0'
+    </update>
+
+    <update id="completeUserRefund">
+        update shop_order
+        set refund_status = 'REFUNDED', refund_complete_time = sysdate(), update_time = sysdate()
+        where user_id = #{userId} and order_id = #{orderId}
+          and status = 'CANCELLED' and refund_status = 'APPROVED' and del_flag = '0'
     </update>
 
     <select id="selectMerchantOrders" parameterType="Long" resultMap="ShopOrderResult">
@@ -251,6 +307,21 @@
         limit 1 for update
     </select>
 
+    <update id="auditRefund">
+        update shop_order
+        set refund_status = #{toStatus}, refund_audit_time = sysdate(),
+            refund_audit_remark = #{auditRemark}, update_time = sysdate()
+        where merchant_id = #{merchantId} and order_id = #{orderId}
+          and status = 'RECEIVED' and refund_status = 'APPLIED' and del_flag = '0'
+    </update>
+
+    <update id="completeMerchantRefund">
+        update shop_order
+        set refund_status = 'REFUNDED', refund_complete_time = sysdate(), update_time = sysdate()
+        where merchant_id = #{merchantId} and order_id = #{orderId}
+          and status = 'RECEIVED' and refund_status = 'APPROVED' and del_flag = '0'
+    </update>
+
     <select id="selectAdminOrders" resultMap="ShopOrderResult">
         <include refid="selectOrderColumns" />
         where o.del_flag = '0'
@@ -268,6 +339,6 @@
         set status = 'SHIPPED', carrier = #{carrier}, tracking_no = #{trackingNo},
             ship_time = sysdate(), update_time = sysdate()
         where merchant_id = #{merchantId} and order_id = #{orderId}
-          and status = 'PAID' and del_flag = '0'
+          and status = 'PAID' and refund_status = 'NONE' and del_flag = '0'
     </update>
 </mapper>

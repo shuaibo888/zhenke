@@ -91,6 +91,11 @@ export interface Order {
   trackingNo?: string;
   shippedAt?: string;
   receivedAt?: string;
+  refundStatus?: 'none' | 'applied' | 'approved' | 'rejected' | 'refunded';
+  refundAppliedAt?: string;
+  refundAuditedAt?: string;
+  refundCompletedAt?: string;
+  refundAuditRemark?: string;
   logistics?: LogisticsInfo;
   items?: Array<{
     productId: number;

@@ -184,6 +184,11 @@ export interface ShopOrderDto {
   shipTime?: string;
   receiveTime?: string;
   cancelTime?: string;
+  refundStatus?: 'NONE' | 'APPLIED' | 'APPROVED' | 'REJECTED' | 'REFUNDED';
+  refundApplyTime?: string;
+  refundAuditTime?: string;
+  refundCompleteTime?: string;
+  refundAuditRemark?: string;
   createTime: string;
   updateTime: string;
   items: Array<{
@@ -379,6 +384,16 @@ export async function confirmShopOrderReceived(orderId: number) {
     true,
   );
   if (!result.data) throw new Error('确认收货失败');
+  return result.data;
+}
+
+export async function applyShopOrderRefund(orderId: number) {
+  const result = await requestApi<ApiResponse<ShopOrderDto>>(
+    `/shop/orders/${orderId}/refund`,
+    { method: 'PUT' },
+    true,
+  );
+  if (!result.data) throw new Error('退款申请失败');
   return result.data;
 }
 
