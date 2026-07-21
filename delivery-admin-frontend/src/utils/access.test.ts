@@ -24,12 +24,12 @@ const products: ManagedProduct[] = [
 
 const orders: ManagedOrder[] = [
   { id: 1, merchantId: 101, orderNo: 'ZK1', buyerName: '小白', status: 'paid', amount: 128, itemCount: 1, productTitles: ['咖啡豆'], items: [{ productTitle: '咖啡豆', quantity: 1, unitPrice: 128 }], address: '陕西西安', returnDays: 7, refundRequested: false, createdAt: '2026-06-20 10:00' },
-  { id: 2, merchantId: 102, orderNo: 'ZK2', buyerName: '阿验', status: 'shipped', amount: 268, itemCount: 1, productTitles: ['影青杯'], items: [{ productTitle: '影青杯', quantity: 1, unitPrice: 268 }], address: '江西景德镇', returnDays: 15, refundRequested: true, createdAt: '2026-06-21 10:00' },
+  { id: 2, merchantId: 102, orderNo: 'ZK2', buyerName: '阿验', status: 'shipped', amount: 268, itemCount: 1, productTitles: ['影青杯'], items: [{ productTitle: '影青杯', quantity: 1, unitPrice: 268 }], address: '江西景德镇', returnDays: 15, refundRequested: false, createdAt: '2026-06-21 10:00' },
 ];
 
 const reports: ManagedReport[] = [
-  { id: 1, merchantId: 101, productTitle: '咖啡豆', userName: '咖啡老王', status: 'published', shortcoming: '偏深', usefulCount: 47, createdAt: '2026-06-20 12:00' },
-  { id: 2, merchantId: 102, productTitle: '影青杯', userName: '阿验', status: 'published', shortcoming: '杯口略不齐', usefulCount: 36, createdAt: '2026-06-21 12:00' },
+  { id: 1, merchantId: 101, reportSource: 'TRIAL', trialType: 'ONLINE', productTitle: '咖啡豆', userName: '咖啡老王', status: 'published', shortcoming: '偏深', usefulCount: 47, createdAt: '2026-06-20 12:00' },
+  { id: 2, merchantId: 102, reportSource: 'PURCHASE', productTitle: '影青杯', userName: '阿验', status: 'published', shortcoming: '杯口略不齐', usefulCount: 36, createdAt: '2026-06-21 12:00' },
 ];
 
 assert.equal(hasGlobalAccess(adminSession), true);

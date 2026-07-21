@@ -185,7 +185,7 @@ export interface ShopOrderDto {
   userId: number;
   merchantId: number;
   merchantName: string;
-  status: 'PENDING_PAYMENT' | 'PAID' | 'SHIPPED' | 'RECEIVED' | 'CANCELLED';
+  status: 'PENDING_PAYMENT' | 'PAID' | 'SHIPPED' | 'RECEIVED' | 'CANCELLED' | 'REFUNDED';
   totalAmount: number;
   itemCount: number;
   payTime?: string;
@@ -194,6 +194,12 @@ export interface ShopOrderDto {
   shipTime?: string;
   receiveTime?: string;
   cancelTime?: string;
+  refundStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  refundReason?: string;
+  refundReviewRequired?: '0' | '1';
+  refundAuditRemark?: string;
+  refundRequestTime?: string;
+  refundAuditTime?: string;
   createTime: string;
   updateTime: string;
   items: Array<{
@@ -432,6 +438,16 @@ export async function publishVerificationReport(body: {
     true,
   );
   if (!result.data) throw new Error('验证报告发布失败');
+  return result.data;
+}
+
+export async function requestShopOrderRefund(orderId: number, reason: string) {
+  const result = await requestApi<ApiResponse<ShopOrderDto>>(
+    `/shop/orders/${orderId}/refund`,
+    { method: 'POST', body: JSON.stringify({ reason }) },
+    true,
+  );
+  if (!result.data) throw new Error('退款申请提交失败');
   return result.data;
 }
 

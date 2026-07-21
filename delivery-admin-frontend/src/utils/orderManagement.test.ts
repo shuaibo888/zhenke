@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import type { ManagedOrder } from '@/types';
-import { filterOrders, refundOrderById, shipOrderById, type OrderFilterState } from './orderManagement';
+import { filterOrders, shipOrderById, type OrderFilterState } from './orderManagement';
 
 const orders: ManagedOrder[] = [
   {
@@ -30,7 +30,7 @@ const orders: ManagedOrder[] = [
     items: [{ productTitle: '景德镇手作影青杯', quantity: 1, unitPrice: 268 }],
     address: '江西省景德镇市珠山区窑火街 8 号',
     returnDays: 15,
-    refundRequested: true,
+    refundRequested: false,
     createdAt: '2026-06-18 14:40',
   },
   {
@@ -69,10 +69,5 @@ assert.deepEqual(ids({ status: 'completed', keyword: '咖啡' }), [3]);
 const shipped = shipOrderById(orders, 1);
 assert.equal(shipped.find((order) => order.id === 1)?.status, 'shipped');
 assert.equal(shipOrderById(orders, 2), orders);
-
-const refunded = refundOrderById(orders, 2);
-assert.equal(refunded.find((order) => order.id === 2)?.status, 'refunded');
-assert.equal(refunded.find((order) => order.id === 2)?.refundRequested, false);
-assert.equal(refundOrderById(orders, 1), orders);
 
 console.log('order management ok');

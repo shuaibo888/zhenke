@@ -46,6 +46,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import type { AdminSession, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, NavKey, ProductCategory, ProductCategoryOption, ProductStatus, ShopMemberLevel, ShopUserAccount } from '@/types';
 import {
+  auditMerchantOrderRefund,
   auditMerchantTrialApplication,
   createMerchantProduct,
   createMerchantTrial,
@@ -153,6 +154,11 @@ type OrderShipFormValues = {
   trackingNo: string;
 };
 
+type RefundAuditFormValues = {
+  decision: 'APPROVED' | 'REJECTED';
+  auditRemark?: string;
+};
+
 const adminTheme = {
   token: {
     colorPrimary: '#1f6f5b',
@@ -197,6 +203,13 @@ function formatMoney(value: number) {
   return `¥${value.toFixed(2)}`;
 }
 
+function getManagedReportTypeMeta(report: ManagedReport) {
+  if (report.reportSource === 'PURCHASE') return { label: '购买评价', color: 'green' };
+  return report.trialType === 'OFFLINE'
+    ? { label: '线下试用报告', color: 'purple' }
+    : { label: '线上试用报告', color: 'blue' };
+}
+
 function AdminWorkspace() {
   const [session, setSession] = useState<AdminSession | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
@@ -215,6 +228,8 @@ function AdminWorkspace() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [shippingOrder, setShippingOrder] = useState<ManagedOrder | null>(null);
   const [orderShipping, setOrderShipping] = useState(false);
+  const [refundAuditOrder, setRefundAuditOrder] = useState<ManagedOrder | null>(null);
+  const [refundAuditing, setRefundAuditing] = useState(false);
   const [reports, setReports] = useState<ManagedReport[]>([]);
   const [reportsLoading, setReportsLoading] = useState(false);
   const [trialRecruitments, setTrialRecruitments] = useState<ManagedTrialRecruitment[]>([]);
@@ -252,10 +267,12 @@ function AdminWorkspace() {
   const selectedTrialProductId = Form.useWatch('productId', trialForm);
   const [trialApplicationActionForm] = Form.useForm<TrialApplicationActionFormValues>();
   const [orderShipForm] = Form.useForm<OrderShipFormValues>();
+  const [refundAuditForm] = Form.useForm<RefundAuditFormValues>();
   const [loginForm] = Form.useForm<LoginFormValues>();
   const { message, modal } = AntApp.useApp();
   const productImageUrl = Form.useWatch('imageUrl', productForm);
   const merchantAuditDecision = Form.useWatch('decision', merchantForm);
+  const refundAuditDecision = Form.useWatch('decision', refundAuditForm);
   const getMerchantName = (merchantId: number) => merchants.find((merchant) => merchant.id === merchantId)?.name ?? '未知商家';
 
   const visibleProducts = useMemo(() => filterRowsForSession(products, session), [products, session]);
@@ -813,6 +830,42 @@ function AdminWorkspace() {
     }
   };
 
+  const openRefundAudit = (order: ManagedOrder) => {
+    if (order.refundStatus !== 'PENDING') {
+      message.warning('当前订单没有待审核的退款申请');
+      return;
+    }
+    setRefundAuditOrder(order);
+    refundAuditForm.setFieldsValue({ decision: 'APPROVED', auditRemark: '' });
+  };
+
+  const closeRefundAudit = () => {
+    if (refundAuditing) return;
+    setRefundAuditOrder(null);
+    refundAuditForm.resetFields();
+  };
+
+  const submitRefundAudit = async (values: RefundAuditFormValues) => {
+    if (!refundAuditOrder || refundAuditing) return;
+    setRefundAuditing(true);
+    try {
+      const updated = await auditMerchantOrderRefund(
+        refundAuditOrder.id,
+        values.decision,
+        values.auditRemark?.trim(),
+      );
+      setOrders((items) => items.map((item) => item.id === updated.id ? updated : item));
+      setDetailOrder((current) => current?.id === updated.id ? updated : current);
+      setRefundAuditOrder(null);
+      refundAuditForm.resetFields();
+      message.success(values.decision === 'APPROVED' ? '退款申请已通过' : '退款申请已驳回');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '退款审核失败');
+    } finally {
+      setRefundAuditing(false);
+    }
+  };
+
   const handleToggleMerchantStatus = async (merchant: MerchantAccount) => {
     try {
       await updateMerchantStatus(merchant.id, merchant.status === 'active' ? '1' : '0');
@@ -1045,6 +1098,16 @@ function AdminWorkspace() {
       dataIndex: 'status',
       render: (status: ManagedOrder['status']) => <Tag color={orderStatusMeta[status].color}>{orderStatusMeta[status].label}</Tag>,
     },
+    {
+      title: '退款状态',
+      key: 'refundStatus',
+      render: (_, order) => {
+        if (order.refundStatus === 'PENDING') return <Tag color="gold">待商家审核</Tag>;
+        if (order.refundStatus === 'APPROVED') return <Tag color="green">已退款</Tag>;
+        if (order.refundStatus === 'REJECTED') return <Tag color="red">已驳回</Tag>;
+        return '-';
+      },
+    },
     { title: '下单时间', dataIndex: 'createdAt' },
     {
       title: '操作',
@@ -1059,9 +1122,11 @@ function AdminWorkspace() {
           <Button size="small" icon={<FileSearchOutlined />} onClick={() => void openOrderDetail(order)}>
             订单详情
           </Button>
-          <Button size="small" disabled>
-            退款未接入
-          </Button>
+          {!isAdmin && order.refundStatus === 'PENDING' && (
+            <Button size="small" danger onClick={() => openRefundAudit(order)}>
+              审核退款
+            </Button>
+          )}
         </Space>
       ),
     },
@@ -1072,6 +1137,14 @@ function AdminWorkspace() {
     { title: '验证者', dataIndex: 'userName' },
     { title: '商家', dataIndex: 'merchantId', render: (merchantId, report) => report.merchantName || getMerchantName(merchantId) },
     { title: '不足', dataIndex: 'shortcoming', render: (text) => <span className={styles.shortcoming}>{text}</span> },
+    {
+      title: '类型',
+      key: 'reportType',
+      render: (_, report) => {
+        const meta = getManagedReportTypeMeta(report);
+        return <Tag color={meta.color}>{meta.label}</Tag>;
+      },
+    },
     { title: '有用数', dataIndex: 'usefulCount' },
     {
       title: '状态',
@@ -1870,7 +1943,13 @@ function AdminWorkspace() {
               </div>
               <div>
                 <span>售后</span>
-                <strong>暂未接入</strong>
+                <strong>{detailOrder.refundStatus === 'PENDING'
+                  ? '退款待审核'
+                  : detailOrder.refundStatus === 'APPROVED'
+                    ? '已退款'
+                    : detailOrder.refundStatus === 'REJECTED'
+                      ? '退款已驳回'
+                      : '无退款申请'}</strong>
               </div>
               {detailOrder.fromVerifierName && (
                 <div>
@@ -1959,12 +2038,57 @@ function AdminWorkspace() {
               </section>
             )}
 
-            <div className={styles.refundNotice}>
-              <strong>退款与售后尚未接入，本阶段不会修改订单状态</strong>
-            </div>
+            {detailOrder.refundStatus && (
+              <div className={styles.refundNotice}>
+                <div>
+                  <strong>退款原因：{detailOrder.refundReason}</strong>
+                  {detailOrder.refundRequestedAt && <p>申请时间：{detailOrder.refundRequestedAt}</p>}
+                  {detailOrder.refundAuditRemark && <p>审核说明：{detailOrder.refundAuditRemark}</p>}
+                </div>
+                {!isAdmin && detailOrder.refundStatus === 'PENDING' && (
+                  <Button type="primary" danger onClick={() => openRefundAudit(detailOrder)}>
+                    审核退款
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </Drawer>
+      <Modal
+        title={`审核退款${refundAuditOrder ? ` · ${refundAuditOrder.orderNo}` : ''}`}
+        open={Boolean(refundAuditOrder)}
+        onCancel={closeRefundAudit}
+        footer={null}
+        destroyOnHidden
+      >
+        {refundAuditOrder && (
+          <>
+            <p>退款原因：{refundAuditOrder.refundReason}</p>
+            <Form form={refundAuditForm} layout="vertical" onFinish={submitRefundAudit}>
+              <Form.Item name="decision" label="审核结果" rules={[{ required: true, message: '请选择审核结果' }]}>
+                <Select options={[
+                  { label: '同意退款', value: 'APPROVED' },
+                  { label: '驳回退款', value: 'REJECTED' },
+                ]} />
+              </Form.Item>
+              <Form.Item
+                name="auditRemark"
+                label="审核说明"
+                rules={refundAuditDecision === 'REJECTED'
+                  ? [{ required: true, message: '驳回退款时必须填写审核说明' }]
+                  : []}
+              >
+                <Input.TextArea rows={4} maxLength={200} showCount placeholder="可填写退款处理说明" />
+              </Form.Item>
+              <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+                <Button disabled={refundAuditing} onClick={closeRefundAudit}>取消</Button>
+                <Button type="primary" danger htmlType="submit" loading={refundAuditing}>确认处理</Button>
+              </Space>
+            </Form>
+          </>
+        )}
+      </Modal>
       <Modal
         title={`订单发货${shippingOrder ? ` · ${shippingOrder.orderNo}` : ''}`}
         open={Boolean(shippingOrder)}

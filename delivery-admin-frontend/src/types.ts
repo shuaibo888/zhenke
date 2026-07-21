@@ -132,6 +132,12 @@ export interface ManagedOrder {
   address: string;
   returnDays: number;
   refundRequested: boolean;
+  refundStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  refundReason?: string;
+  refundReviewRequired?: boolean;
+  refundAuditRemark?: string;
+  refundRequestedAt?: string;
+  refundAuditedAt?: string;
   createdAt: string;
   paidAt?: string;
   carrier?: string;
@@ -152,6 +158,8 @@ export interface ManagedReport {
   id: number;
   merchantId: number;
   merchantName?: string;
+  reportSource: 'TRIAL' | 'PURCHASE';
+  trialType?: 'ONLINE' | 'OFFLINE';
   productTitle: string;
   userName: string;
   status: ReportStatus;

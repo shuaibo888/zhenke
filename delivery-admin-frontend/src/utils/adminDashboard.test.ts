@@ -77,8 +77,8 @@ const orders: ManagedOrder[] = [
 ];
 
 const reports: ManagedReport[] = [
-  { id: 1, merchantId: 101, productTitle: '咖啡豆', userName: '咖啡老王', status: 'published', shortcoming: '偏深', usefulCount: 47, createdAt: '2026-06-20 12:00' },
-  { id: 2, merchantId: 102, productTitle: '影青杯', userName: '阿验', status: 'deleted', shortcoming: '杯口略不齐', usefulCount: 36, createdAt: '2026-06-21 12:00' },
+  { id: 1, merchantId: 101, reportSource: 'TRIAL', trialType: 'ONLINE', productTitle: '咖啡豆', userName: '咖啡老王', status: 'published', shortcoming: '偏深', usefulCount: 47, createdAt: '2026-06-20 12:00' },
+  { id: 2, merchantId: 102, reportSource: 'PURCHASE', productTitle: '影青杯', userName: '阿验', status: 'deleted', shortcoming: '杯口略不齐', usefulCount: 36, createdAt: '2026-06-21 12:00' },
 ];
 
 const merchants: MerchantAccount[] = [

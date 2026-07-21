@@ -67,6 +67,7 @@ import {
   payShopOrder,
   publishPurchaseVerificationReport,
   publishVerificationReport,
+  requestShopOrderRefund,
   toggleReportUseful,
   updateShopCartItem,
   uploadShopContentFile,
@@ -325,6 +326,7 @@ function mapShopOrder(dto: ShopOrderDto, role: MemberRole): Order {
     SHIPPED: 'shipped',
     RECEIVED: 'completed',
     CANCELLED: 'canceled',
+    REFUNDED: 'refunded',
   };
   const firstItem = dto.items?.[0];
   const productTitle = dto.items.length > 1
@@ -346,6 +348,12 @@ function mapShopOrder(dto: ShopOrderDto, role: MemberRole): Order {
     trackingNo: dto.trackingNo,
     shippedAt: dto.shipTime,
     receivedAt: dto.receiveTime,
+    refundStatus: dto.refundStatus,
+    refundReason: dto.refundReason,
+    refundReviewRequired: dto.refundReviewRequired === '1',
+    refundAuditRemark: dto.refundAuditRemark,
+    refundRequestedAt: dto.refundRequestTime,
+    refundAuditedAt: dto.refundAuditTime,
     logistics: dto.carrier && dto.trackingNo ? {
       orderId: dto.orderId,
       carrier: dto.carrier,
@@ -431,6 +439,9 @@ export default function HomePage() {
   const [payOrder, setPayOrder] = useState<Order | null>(null);
   const [paying, setPaying] = useState(false);
   const [orderMutatingId, setOrderMutatingId] = useState<number | null>(null);
+  const [refundOrder, setRefundOrder] = useState<Order | null>(null);
+  const [refundReason, setRefundReason] = useState('');
+  const [refundSubmitting, setRefundSubmitting] = useState(false);
   const [reviewOrder, setReviewOrder] = useState<Order | null>(null);
   const [reviewOrderItem, setReviewOrderItem] = useState<NonNullable<Order['items']>[number] | null>(null);
   const [reviewStars, setReviewStars] = useState({ productQuality: 5, logisticsService: 5, serviceAttitude: 5 });
@@ -1026,6 +1037,44 @@ export default function HomePage() {
       message.error(error instanceof Error ? error.message : '购买甄客验发布失败');
     } finally {
       setReviewSubmitting(false);
+    }
+  };
+
+  const openRefundRequest = (order: Order) => {
+    if (order.status === 'shipped') {
+      message.warning('订单已发货，请先确认收货后再申请退款');
+      return;
+    }
+    if (order.refundStatus === 'PENDING') {
+      message.info('退款申请正在等待商家审核');
+      return;
+    }
+    if (order.status !== 'paid' && order.status !== 'completed') return;
+    setRefundOrder(order);
+    setRefundReason('');
+  };
+
+  const submitRefundRequest = async () => {
+    if (!activeUser || !refundOrder || refundSubmitting) return;
+    const reason = refundReason.trim();
+    if (reason.length < 2) {
+      message.warning('请填写至少2个字的退款原因');
+      return;
+    }
+    setRefundSubmitting(true);
+    try {
+      const updated = mapShopOrder(await requestShopOrderRefund(refundOrder.id, reason), activeUser.role);
+      setUserOrders((items) => items.map((item) => item.id === updated.id ? updated : item));
+      setSelectedLogisticsOrder((current) => current?.id === updated.id ? updated : current);
+      setRefundOrder(null);
+      setRefundReason('');
+      message.success(updated.status === 'refunded'
+        ? '退款成功，订单已退款'
+        : '退款申请已提交，等待商家审核');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '退款申请提交失败');
+    } finally {
+      setRefundSubmitting(false);
     }
   };
 
@@ -2391,6 +2440,8 @@ export default function HomePage() {
                 </div>
                 <div>
                   <Tag color={orderStatusMeta[order.status].color}>{orderStatusMeta[order.status].label}</Tag>
+                  {order.refundStatus === 'PENDING' && <Tag color="gold">退款待审核</Tag>}
+                  {order.refundStatus === 'REJECTED' && <Tag color="red">退款已驳回</Tag>}
                   <span>{formatPrice(order.amount)}</span>
                   <div className={styles.orderActions}>
                     {order.status !== 'unpaid' && order.status !== 'canceled' && (
@@ -2406,6 +2457,16 @@ export default function HomePage() {
                     {canCancelOrder(order) && (
                       <Button size="small" onClick={() => handleCancelOrder(order.id)}>
                         取消订单
+                      </Button>
+                    )}
+                    {(order.status === 'paid' || order.status === 'shipped' || order.status === 'completed') && (
+                      <Button
+                        size="small"
+                        danger
+                        disabled={order.refundStatus === 'PENDING'}
+                        onClick={() => openRefundRequest(order)}
+                      >
+                        {order.refundStatus === 'PENDING' ? '退款审核中' : '申请退款'}
                       </Button>
                     )}
                   </div>
@@ -2749,6 +2810,38 @@ export default function HomePage() {
             发布
           </Button>
         </Form>
+      </Modal>
+      <Modal
+        title={`申请退款${refundOrder ? ` · ${refundOrder.orderNo}` : ''}`}
+        open={Boolean(refundOrder)}
+        onCancel={() => {
+          if (refundSubmitting) return;
+          setRefundOrder(null);
+          setRefundReason('');
+        }}
+        onOk={() => void submitRefundRequest()}
+        okText={refundOrder?.status === 'paid' ? '确认退款' : '提交商家审核'}
+        cancelText="取消"
+        confirmLoading={refundSubmitting}
+        destroyOnHidden
+      >
+        {refundOrder && (
+          <>
+            <p>
+              {refundOrder.status === 'paid'
+                ? '该订单尚未发货，提交后将直接退款并关闭订单。'
+                : '该订单已经收货，提交后需要商家审核。'}
+            </p>
+            <Input.TextArea
+              value={refundReason}
+              onChange={(event) => setRefundReason(event.target.value)}
+              rows={4}
+              maxLength={200}
+              showCount
+              placeholder="请填写退款原因（至少2个字）"
+            />
+          </>
+        )}
       </Modal>
       <Modal
         title="确认订单"

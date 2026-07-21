@@ -15,8 +15,10 @@ import org.mockito.ArgumentCaptor;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.shop.domain.ShopMerchant;
 import com.ruoyi.shop.domain.ShopOrder;
+import com.ruoyi.shop.domain.ShopOrderRefund;
 import com.ruoyi.shop.domain.ShopOrderStatusLog;
 import com.ruoyi.shop.domain.dto.ShopOrderShipBody;
+import com.ruoyi.shop.domain.dto.ShopOrderRefundAuditBody;
 import com.ruoyi.shop.mapper.ShopOrderMapper;
 
 class ShopMerchantOrderServiceTest
@@ -79,6 +81,33 @@ class ShopMerchantOrderServiceTest
         verify(blankMapper, never()).insertStatusLog(any());
     }
 
+    @Test
+    void merchantApprovesReceivedOrderRefund()
+    {
+        ShopOrderMapper orderMapper = mock(ShopOrderMapper.class);
+        ShopMerchantOrderService service = new ShopMerchantOrderService(orderMapper, merchantService());
+        ShopOrder received = order(ShopOrderService.RECEIVED);
+        received.setUserId(7L);
+        when(orderMapper.selectMerchantOrderForUpdate(MERCHANT_ID, 21L)).thenReturn(received);
+        ShopOrderRefund refund = new ShopOrderRefund();
+        refund.setRefundId(31L);
+        refund.setOrderId(21L);
+        refund.setMerchantId(MERCHANT_ID);
+        refund.setRefundStatus(ShopOrderService.REFUND_PENDING);
+        refund.setReviewRequired("1");
+        when(orderMapper.selectLatestRefund(21L)).thenReturn(refund);
+        when(orderMapper.updateRefundAudit(31L, MERCHANT_ID, ShopOrderService.REFUND_PENDING,
+                ShopOrderService.REFUND_APPROVED, null, "同意退款")).thenReturn(1);
+        when(orderMapper.updateStatus(7L, 21L, ShopOrderService.RECEIVED, ShopOrderService.REFUNDED)).thenReturn(1);
+        when(orderMapper.insertStatusLog(any())).thenReturn(1);
+        when(orderMapper.selectMerchantOrder(MERCHANT_ID, 21L)).thenReturn(order(ShopOrderService.REFUNDED));
+        when(orderMapper.selectOrderItems(21L)).thenReturn(List.of());
+
+        assertEquals(ShopOrderService.REFUNDED,
+                service.auditRefund(21L, refundAuditBody("APPROVED", "同意退款")).getStatus());
+        verify(orderMapper).updateStatus(7L, 21L, ShopOrderService.RECEIVED, ShopOrderService.REFUNDED);
+    }
+
     private static ShopMerchantService merchantService()
     {
         ShopMerchantService service = mock(ShopMerchantService.class);
@@ -102,6 +131,14 @@ class ShopMerchantOrderServiceTest
         ShopOrderShipBody body = new ShopOrderShipBody();
         body.setCarrier(carrier);
         body.setTrackingNo(trackingNo);
+        return body;
+    }
+
+    private static ShopOrderRefundAuditBody refundAuditBody(String decision, String auditRemark)
+    {
+        ShopOrderRefundAuditBody body = new ShopOrderRefundAuditBody();
+        body.setDecision(decision);
+        body.setAuditRemark(auditRemark);
         return body;
     }
 }

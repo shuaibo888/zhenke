@@ -114,7 +114,7 @@ interface ShopOrderDto {
   buyerName?: string;
   merchantId: number;
   merchantName?: string;
-  status: 'PENDING_PAYMENT' | 'PAID' | 'SHIPPED' | 'RECEIVED' | 'CANCELLED';
+  status: 'PENDING_PAYMENT' | 'PAID' | 'SHIPPED' | 'RECEIVED' | 'CANCELLED' | 'REFUNDED';
   totalAmount: number;
   itemCount: number;
   payTime?: string;
@@ -122,6 +122,12 @@ interface ShopOrderDto {
   trackingNo?: string;
   shipTime?: string;
   receiveTime?: string;
+  refundStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  refundReason?: string;
+  refundReviewRequired?: '0' | '1';
+  refundAuditRemark?: string;
+  refundRequestTime?: string;
+  refundAuditTime?: string;
   createTime: string;
   items?: Array<{
     productId: number;
@@ -156,6 +162,8 @@ interface VerificationReportDto {
   reportId: number;
   merchantId: number;
   merchantName?: string;
+  reportSource: 'TRIAL' | 'PURCHASE';
+  trialType?: 'ONLINE' | 'OFFLINE';
   productName: string;
   userName: string;
   nickName?: string;
@@ -277,6 +285,7 @@ function toManagedOrder(dto: ShopOrderDto): ManagedOrder {
       SHIPPED: 'shipped',
       RECEIVED: 'completed',
       CANCELLED: 'canceled',
+      REFUNDED: 'refunded',
     } as const)[dto.status],
     amount: Number(dto.totalAmount),
     itemCount: dto.itemCount,
@@ -289,7 +298,13 @@ function toManagedOrder(dto: ShopOrderDto): ManagedOrder {
     address: address ? [address.recipient, address.phone, address.provinceCode, address.cityCode,
       address.districtCode, address.detail].filter(Boolean).join(' ') : '-',
     returnDays: 0,
-    refundRequested: false,
+    refundRequested: dto.refundStatus === 'PENDING',
+    refundStatus: dto.refundStatus,
+    refundReason: dto.refundReason,
+    refundReviewRequired: dto.refundReviewRequired === '1',
+    refundAuditRemark: dto.refundAuditRemark,
+    refundRequestedAt: formatApiDateTime(dto.refundRequestTime),
+    refundAuditedAt: formatApiDateTime(dto.refundAuditTime),
     createdAt: formatApiDateTime(dto.createTime) ?? '',
     paidAt: formatApiDateTime(dto.payTime),
     carrier: dto.carrier,
@@ -558,11 +573,27 @@ function toManagedTrial(dto: TrialCampaignDto): ManagedTrialRecruitment {
   };
 }
 
+export async function auditMerchantOrderRefund(
+  orderId: number,
+  decision: 'APPROVED' | 'REJECTED',
+  auditRemark?: string,
+) {
+  const result = await requestApi<ApiResponse<ShopOrderDto>>(
+    `/shop/merchant/orders/${orderId}/refund/audit`,
+    { method: 'PUT', body: JSON.stringify({ decision, auditRemark }) },
+    true,
+  );
+  if (!result.data) throw new Error('退款审核失败');
+  return toManagedOrder(result.data);
+}
+
 function toManagedReport(dto: VerificationReportDto): ManagedReport {
   return {
     id: dto.reportId,
     merchantId: dto.merchantId,
     merchantName: dto.merchantName,
+    reportSource: dto.reportSource,
+    trialType: dto.trialType,
     productTitle: dto.productName,
     userName: dto.nickName || dto.userName,
     status: dto.status === 'PUBLISHED' ? 'published' : 'deleted',

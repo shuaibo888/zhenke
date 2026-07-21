@@ -8,8 +8,10 @@ import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.shop.domain.ShopMerchant;
 import com.ruoyi.shop.domain.ShopOrder;
 import com.ruoyi.shop.domain.ShopOrderLogisticsEvent;
+import com.ruoyi.shop.domain.ShopOrderRefund;
 import com.ruoyi.shop.domain.ShopOrderStatusLog;
 import com.ruoyi.shop.domain.dto.ShopOrderShipBody;
+import com.ruoyi.shop.domain.dto.ShopOrderRefundAuditBody;
 import com.ruoyi.shop.mapper.ShopOrderMapper;
 
 @Service
@@ -60,8 +62,54 @@ public class ShopMerchantOrderService
         {
             throw new ServiceException("订单状态已变化，请刷新后重试");
         }
-        insertStatusLog(orderId, merchantId);
+        insertStatusLog(orderId, ShopOrderService.PAID, ShopOrderService.SHIPPED, merchantId, "商家发货");
         insertLogisticsEvent(orderId);
+        return hydrate(requireMerchantOrder(merchantId, orderId, false));
+    }
+
+    @Transactional
+    public ShopOrder auditRefund(long orderId, ShopOrderRefundAuditBody body)
+    {
+        ShopMerchant merchant = merchantService.currentMerchantAccount();
+        long merchantId = merchant.getMerchantId();
+        ShopOrder order = requireMerchantOrder(merchantId, orderId, true);
+        ShopOrderRefund refund = orderMapper.selectLatestRefund(orderId);
+        if (refund == null || !ShopOrderService.REFUND_PENDING.equals(refund.getRefundStatus())
+                || !"1".equals(refund.getReviewRequired()))
+        {
+            throw new ServiceException("当前订单没有待审核的退款申请");
+        }
+        if (!ShopOrderService.RECEIVED.equals(order.getStatus()))
+        {
+            throw new ServiceException("只有已收货订单的退款申请可以审核");
+        }
+        String decision = StringUtils.trim(body.getDecision());
+        String auditRemark = StringUtils.trim(body.getAuditRemark());
+        if (!ShopOrderService.REFUND_APPROVED.equals(decision)
+                && !ShopOrderService.REFUND_REJECTED.equals(decision))
+        {
+            throw new ServiceException("退款审核结果无效");
+        }
+        if (ShopOrderService.REFUND_REJECTED.equals(decision) && StringUtils.isEmpty(auditRemark))
+        {
+            throw new ServiceException("驳回退款时必须填写审核说明");
+        }
+        Long auditBy = merchant.getAdminUserId();
+        if (orderMapper.updateRefundAudit(refund.getRefundId(), merchantId,
+                ShopOrderService.REFUND_PENDING, decision, auditBy, auditRemark) == 0)
+        {
+            throw new ServiceException("退款申请状态已变化，请刷新后重试");
+        }
+        if (ShopOrderService.REFUND_APPROVED.equals(decision))
+        {
+            if (orderMapper.updateStatus(order.getUserId(), orderId,
+                    ShopOrderService.RECEIVED, ShopOrderService.REFUNDED) == 0)
+            {
+                throw new ServiceException("订单状态已变化，请刷新后重试");
+            }
+            insertStatusLog(orderId, ShopOrderService.RECEIVED, ShopOrderService.REFUNDED,
+                    merchantId, "商家审核通过退款申请");
+        }
         return hydrate(requireMerchantOrder(merchantId, orderId, false));
     }
 
@@ -100,15 +148,15 @@ public class ShopMerchantOrderService
         }
     }
 
-    private void insertStatusLog(long orderId, long merchantId)
+    private void insertStatusLog(long orderId, String fromStatus, String toStatus, long merchantId, String remark)
     {
         ShopOrderStatusLog log = new ShopOrderStatusLog();
         log.setOrderId(orderId);
-        log.setFromStatus(ShopOrderService.PAID);
-        log.setToStatus(ShopOrderService.SHIPPED);
+        log.setFromStatus(fromStatus);
+        log.setToStatus(toStatus);
         log.setOperatorType("MERCHANT");
         log.setOperatorId(merchantId);
-        log.setRemark("商家发货");
+        log.setRemark(remark);
         if (orderMapper.insertStatusLog(log) == 0)
         {
             throw new ServiceException("订单状态日志创建失败");

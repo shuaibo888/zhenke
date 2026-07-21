@@ -29,18 +29,3 @@ export function shipOrderById(orders: ManagedOrder[], orderId: number) {
 
   return orders.map((order) => (order.id === orderId ? { ...order, status: 'shipped' as const } : order));
 }
-
-export function refundOrderById(orders: ManagedOrder[], orderId: number) {
-  const target = orders.find((order) => order.id === orderId);
-  if (!target || !target.refundRequested || target.status === 'refunded' || target.status === 'canceled') return orders;
-
-  return orders.map((order) =>
-    order.id === orderId
-      ? {
-          ...order,
-          status: 'refunded' as const,
-          refundRequested: false,
-        }
-      : order,
-  );
-}

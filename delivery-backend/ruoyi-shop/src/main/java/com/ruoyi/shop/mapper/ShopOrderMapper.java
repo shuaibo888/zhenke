@@ -6,6 +6,7 @@ import com.ruoyi.shop.domain.ShopOrder;
 import com.ruoyi.shop.domain.ShopOrderAddress;
 import com.ruoyi.shop.domain.ShopOrderItem;
 import com.ruoyi.shop.domain.ShopOrderLogisticsEvent;
+import com.ruoyi.shop.domain.ShopOrderRefund;
 import com.ruoyi.shop.domain.ShopOrderStatusLog;
 import com.ruoyi.shop.domain.ShopProduct;
 import com.ruoyi.shop.domain.ShopUserAddress;
@@ -22,6 +23,11 @@ public interface ShopOrderMapper
     int insertOrderAddress(ShopOrderAddress address);
     int insertStatusLog(ShopOrderStatusLog log);
     int insertLogisticsEvent(ShopOrderLogisticsEvent event);
+    int insertRefund(ShopOrderRefund refund);
+    ShopOrderRefund selectLatestRefund(Long orderId);
+    int updateRefundAudit(@Param("refundId") Long refundId, @Param("merchantId") Long merchantId,
+            @Param("fromStatus") String fromStatus, @Param("toStatus") String toStatus,
+            @Param("auditBy") Long auditBy, @Param("auditRemark") String auditRemark);
     List<ShopOrder> selectUserOrders(Long userId);
     ShopOrder selectUserOrder(@Param("userId") Long userId, @Param("orderId") Long orderId);
     ShopOrder selectUserOrderForUpdate(@Param("userId") Long userId, @Param("orderId") Long orderId);

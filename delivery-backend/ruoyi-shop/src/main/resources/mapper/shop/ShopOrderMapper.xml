@@ -43,6 +43,28 @@
         <result property="shipTime" column="ship_time" />
         <result property="receiveTime" column="receive_time" />
         <result property="cancelTime" column="cancel_time" />
+        <result property="refundStatus" column="refund_status" />
+        <result property="refundReason" column="refund_reason" />
+        <result property="refundReviewRequired" column="refund_review_required" />
+        <result property="refundAuditRemark" column="refund_audit_remark" />
+        <result property="refundRequestTime" column="refund_request_time" />
+        <result property="refundAuditTime" column="refund_audit_time" />
+        <result property="createTime" column="create_time" />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <resultMap id="ShopOrderRefundResult" type="ShopOrderRefund">
+        <id property="refundId" column="refund_id" />
+        <result property="orderId" column="order_id" />
+        <result property="userId" column="user_id" />
+        <result property="merchantId" column="merchant_id" />
+        <result property="refundStatus" column="refund_status" />
+        <result property="refundReason" column="refund_reason" />
+        <result property="reviewRequired" column="review_required" />
+        <result property="auditRemark" column="audit_remark" />
+        <result property="auditBy" column="audit_by" />
+        <result property="requestTime" column="request_time" />
+        <result property="auditTime" column="audit_time" />
         <result property="createTime" column="create_time" />
         <result property="updateTime" column="update_time" />
     </resultMap>
@@ -96,6 +118,26 @@
     </resultMap>
 
     <sql id="selectOrderColumns">
+        select o.order_id, o.order_no, o.user_id,
+               coalesce(u.nick_name, u.user_name) as buyer_name, o.merchant_id,
+               m.company_name as merchant_name, o.status as order_status,
+               o.total_amount, o.item_count, o.del_flag, o.pay_time,
+               o.carrier, o.tracking_no, o.ship_time, o.receive_time, o.cancel_time,
+               r.refund_status, r.refund_reason, r.review_required as refund_review_required,
+               r.audit_remark as refund_audit_remark, r.request_time as refund_request_time,
+               r.audit_time as refund_audit_time,
+               o.create_time, o.update_time
+        from shop_order o
+        inner join shop_merchant m on m.merchant_id = o.merchant_id
+        inner join shop_user u on u.user_id = o.user_id
+        left join shop_order_refund r on r.refund_id = (
+            select max(latest_refund.refund_id)
+            from shop_order_refund latest_refund
+            where latest_refund.order_id = o.order_id
+        )
+    </sql>
+
+    <sql id="selectOrderForUpdateColumns">
         select o.order_id, o.order_no, o.user_id,
                coalesce(u.nick_name, u.user_name) as buyer_name, o.merchant_id,
                m.company_name as merchant_name, o.status as order_status,
@@ -185,6 +227,33 @@
         (#{orderId}, #{eventCode}, #{description}, #{location}, sysdate(), #{source}, #{sourceEventId}, sysdate())
     </insert>
 
+    <insert id="insertRefund" parameterType="ShopOrderRefund" useGeneratedKeys="true" keyProperty="refundId">
+        insert into shop_order_refund
+        (order_id, user_id, merchant_id, refund_status, refund_reason, review_required,
+         audit_remark, audit_by, request_time, audit_time, create_time, update_time)
+        values
+        (#{orderId}, #{userId}, #{merchantId}, #{refundStatus}, #{refundReason}, #{reviewRequired},
+         #{auditRemark}, #{auditBy}, sysdate(),
+         case when #{refundStatus} = 'APPROVED' then sysdate() else null end, sysdate(), sysdate())
+    </insert>
+
+    <select id="selectLatestRefund" parameterType="Long" resultMap="ShopOrderRefundResult">
+        select refund_id, order_id, user_id, merchant_id, refund_status, refund_reason,
+               review_required, audit_remark, audit_by, request_time, audit_time, create_time, update_time
+        from shop_order_refund
+        where order_id = #{orderId}
+        order by refund_id desc
+        limit 1
+    </select>
+
+    <update id="updateRefundAudit">
+        update shop_order_refund
+        set refund_status = #{toStatus}, audit_by = #{auditBy}, audit_remark = #{auditRemark},
+            audit_time = sysdate(), update_time = sysdate()
+        where refund_id = #{refundId} and merchant_id = #{merchantId}
+          and refund_status = #{fromStatus} and review_required = '1'
+    </update>
+
     <select id="selectUserOrders" parameterType="Long" resultMap="ShopOrderResult">
         <include refid="selectOrderColumns" />
         where o.user_id = #{userId} and o.del_flag = '0'
@@ -198,7 +267,7 @@
     </select>
 
     <select id="selectUserOrderForUpdate" resultMap="ShopOrderResult">
-        <include refid="selectOrderColumns" />
+        <include refid="selectOrderForUpdateColumns" />
         where o.user_id = #{userId} and o.order_id = #{orderId} and o.del_flag = '0'
         limit 1 for update
     </select>
@@ -271,7 +340,7 @@
     </select>
 
     <select id="selectMerchantOrderForUpdate" resultMap="ShopOrderResult">
-        <include refid="selectOrderColumns" />
+        <include refid="selectOrderForUpdateColumns" />
         where o.merchant_id = #{merchantId} and o.order_id = #{orderId} and o.del_flag = '0'
         limit 1 for update
     </select>

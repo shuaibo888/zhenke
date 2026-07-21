@@ -88,6 +88,14 @@ test('profile hides simulated earnings and message modules', () => {
   assert.doesNotMatch(profileBlock, /<h3>消息<\/h3>/);
 });
 
+test('orders expose the real refund flow for paid, shipped, and received states', () => {
+  assert.match(contentServiceSource, /\/shop\/orders\/\$\{orderId\}\/refund/);
+  assert.match(pageSource, /requestShopOrderRefund\(refundOrder\.id, reason\)/);
+  assert.match(pageSource, /订单已发货，请先确认收货后再申请退款/);
+  assert.match(pageSource, /退款申请已提交，等待商家审核/);
+  assert.match(pageSource, /退款审核中/);
+});
+
 test('profile uses a menu layer before rendering each detail section', () => {
   const profileStart = pageSource.indexOf('const renderProfile = () =>');
   const profileEnd = pageSource.indexOf('if (!activeUser)', profileStart);

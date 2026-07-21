@@ -23,11 +23,14 @@ import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.shop.domain.ShopOrder;
 import com.ruoyi.shop.domain.ShopOrderAddress;
+import com.ruoyi.shop.domain.ShopOrderItem;
+import com.ruoyi.shop.domain.ShopOrderRefund;
 import com.ruoyi.shop.domain.ShopOrderStatusLog;
 import com.ruoyi.shop.domain.ShopProduct;
 import com.ruoyi.shop.domain.ShopUserAddress;
 import com.ruoyi.shop.domain.dto.ShopOrderCreateBody;
 import com.ruoyi.shop.domain.dto.ShopOrderItemBody;
+import com.ruoyi.shop.domain.dto.ShopOrderRefundBody;
 import com.ruoyi.shop.mapper.ShopCartMapper;
 import com.ruoyi.shop.mapper.ShopOrderMapper;
 import com.ruoyi.shop.security.ShopAccountIdentity;
@@ -225,6 +228,75 @@ class ShopOrderServiceTest
         verify(paidMapper, never()).insertStatusLog(any());
     }
 
+    @Test
+    void paidRefundIsAutomaticAndRestoresStock()
+    {
+        ShopOrderMapper orderMapper = mock(ShopOrderMapper.class);
+        ShopOrderService service = new ShopOrderService(orderMapper, mock(ShopCartMapper.class));
+        ShopOrder paid = order(21L, ShopOrderService.PAID);
+        paid.setMerchantId(5L);
+        ShopOrderItem item = new ShopOrderItem();
+        item.setProductId(10L);
+        item.setQuantity(2);
+        when(orderMapper.selectUserOrderForUpdate(USER_ID, 21L)).thenReturn(paid);
+        when(orderMapper.updateStatus(USER_ID, 21L, ShopOrderService.PAID, ShopOrderService.REFUNDED)).thenReturn(1);
+        when(orderMapper.selectOrderItems(21L)).thenReturn(List.of(item));
+        when(orderMapper.restoreStock(10L, 2)).thenReturn(1);
+        when(orderMapper.insertRefund(any())).thenReturn(1);
+        when(orderMapper.insertStatusLog(any())).thenReturn(1);
+        when(orderMapper.selectUserOrder(USER_ID, 21L)).thenReturn(order(21L, ShopOrderService.REFUNDED));
+
+        try (MockedStatic<SecurityUtils> security = shopUserLogin())
+        {
+            assertEquals(ShopOrderService.REFUNDED, service.requestRefund(21L, refundBody("不想要了")).getStatus());
+        }
+
+        ArgumentCaptor<ShopOrderRefund> refundCaptor = ArgumentCaptor.forClass(ShopOrderRefund.class);
+        verify(orderMapper).insertRefund(refundCaptor.capture());
+        assertEquals(ShopOrderService.REFUND_APPROVED, refundCaptor.getValue().getRefundStatus());
+        assertEquals("0", refundCaptor.getValue().getReviewRequired());
+        verify(orderMapper).restoreStock(10L, 2);
+    }
+
+    @Test
+    void shippedRefundRequiresReceiptFirst()
+    {
+        ShopOrderMapper orderMapper = mock(ShopOrderMapper.class);
+        ShopOrderService service = new ShopOrderService(orderMapper, mock(ShopCartMapper.class));
+        when(orderMapper.selectUserOrderForUpdate(USER_ID, 21L)).thenReturn(order(21L, ShopOrderService.SHIPPED));
+
+        try (MockedStatic<SecurityUtils> security = shopUserLogin())
+        {
+            assertThrows(ServiceException.class, () -> service.requestRefund(21L, refundBody("商品有问题")));
+        }
+
+        verify(orderMapper, never()).insertRefund(any());
+    }
+
+    @Test
+    void receivedRefundWaitsForMerchantReview()
+    {
+        ShopOrderMapper orderMapper = mock(ShopOrderMapper.class);
+        ShopOrderService service = new ShopOrderService(orderMapper, mock(ShopCartMapper.class));
+        ShopOrder received = order(21L, ShopOrderService.RECEIVED);
+        received.setMerchantId(5L);
+        when(orderMapper.selectUserOrderForUpdate(USER_ID, 21L)).thenReturn(received);
+        when(orderMapper.insertRefund(any())).thenReturn(1);
+        when(orderMapper.selectUserOrder(USER_ID, 21L)).thenReturn(received);
+        when(orderMapper.selectOrderItems(21L)).thenReturn(List.of());
+
+        try (MockedStatic<SecurityUtils> security = shopUserLogin())
+        {
+            assertEquals(ShopOrderService.RECEIVED, service.requestRefund(21L, refundBody("商品不符合预期")).getStatus());
+        }
+
+        ArgumentCaptor<ShopOrderRefund> refundCaptor = ArgumentCaptor.forClass(ShopOrderRefund.class);
+        verify(orderMapper).insertRefund(refundCaptor.capture());
+        assertEquals(ShopOrderService.REFUND_PENDING, refundCaptor.getValue().getRefundStatus());
+        assertEquals("1", refundCaptor.getValue().getReviewRequired());
+        verify(orderMapper, never()).updateStatus(anyLong(), anyLong(), any(), any());
+    }
+
     private static ShopOrderCreateBody orderBody(long productId, int quantity)
     {
         ShopOrderItemBody item = new ShopOrderItemBody();
@@ -233,6 +305,13 @@ class ShopOrderServiceTest
         ShopOrderCreateBody body = new ShopOrderCreateBody();
         body.setAddressId(3L);
         body.setItems(List.of(item));
+        return body;
+    }
+
+    private static ShopOrderRefundBody refundBody(String reason)
+    {
+        ShopOrderRefundBody body = new ShopOrderRefundBody();
+        body.setReason(reason);
         return body;
     }
 

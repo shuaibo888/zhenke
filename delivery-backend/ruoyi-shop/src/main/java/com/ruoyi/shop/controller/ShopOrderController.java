@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.shop.domain.dto.ShopCartCheckoutBody;
 import com.ruoyi.shop.domain.dto.ShopOrderCreateBody;
+import com.ruoyi.shop.domain.dto.ShopOrderRefundBody;
 import com.ruoyi.shop.service.ShopOrderService;
 
 @RestController
@@ -64,5 +65,11 @@ public class ShopOrderController
     public AjaxResult received(@PathVariable long orderId)
     {
         return AjaxResult.success(orderService.confirmReceived(orderId));
+    }
+
+    @PostMapping("/{orderId}/refund")
+    public AjaxResult refund(@PathVariable long orderId, @Valid @RequestBody ShopOrderRefundBody body)
+    {
+        return AjaxResult.success(orderService.requestRefund(orderId, body));
     }
 }

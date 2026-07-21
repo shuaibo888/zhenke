@@ -2,7 +2,7 @@ export type MemberRole = 'zhenke' | 'yanzhenke' | 'xinzhenke';
 
 export type ProductCategory = 'verified' | 'local' | 'other' | `CATEGORY_${1 | 2 | 3 | 4}`;
 
-export type OrderStatus = 'unpaid' | 'paid' | 'shipped' | 'completed' | 'canceled';
+export type OrderStatus = 'unpaid' | 'paid' | 'shipped' | 'completed' | 'canceled' | 'refunded';
 
 export interface Merchant {
   merchantId: number;
@@ -96,6 +96,12 @@ export interface Order {
   trackingNo?: string;
   shippedAt?: string;
   receivedAt?: string;
+  refundStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  refundReason?: string;
+  refundReviewRequired?: boolean;
+  refundAuditRemark?: string;
+  refundRequestedAt?: string;
+  refundAuditedAt?: string;
   logistics?: LogisticsInfo;
   items?: Array<{
     orderItemId: number;

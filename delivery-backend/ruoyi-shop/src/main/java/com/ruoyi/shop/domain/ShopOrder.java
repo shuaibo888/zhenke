@@ -22,6 +22,12 @@ public class ShopOrder
     private Date shipTime;
     private Date receiveTime;
     private Date cancelTime;
+    private String refundStatus;
+    private String refundReason;
+    private String refundReviewRequired;
+    private String refundAuditRemark;
+    private Date refundRequestTime;
+    private Date refundAuditTime;
     private Date createTime;
     private Date updateTime;
     private List<ShopOrderItem> items;
@@ -61,6 +67,18 @@ public class ShopOrder
     public void setReceiveTime(Date receiveTime) { this.receiveTime = receiveTime; }
     public Date getCancelTime() { return cancelTime; }
     public void setCancelTime(Date cancelTime) { this.cancelTime = cancelTime; }
+    public String getRefundStatus() { return refundStatus; }
+    public void setRefundStatus(String refundStatus) { this.refundStatus = refundStatus; }
+    public String getRefundReason() { return refundReason; }
+    public void setRefundReason(String refundReason) { this.refundReason = refundReason; }
+    public String getRefundReviewRequired() { return refundReviewRequired; }
+    public void setRefundReviewRequired(String refundReviewRequired) { this.refundReviewRequired = refundReviewRequired; }
+    public String getRefundAuditRemark() { return refundAuditRemark; }
+    public void setRefundAuditRemark(String refundAuditRemark) { this.refundAuditRemark = refundAuditRemark; }
+    public Date getRefundRequestTime() { return refundRequestTime; }
+    public void setRefundRequestTime(Date refundRequestTime) { this.refundRequestTime = refundRequestTime; }
+    public Date getRefundAuditTime() { return refundAuditTime; }
+    public void setRefundAuditTime(Date refundAuditTime) { this.refundAuditTime = refundAuditTime; }
     public Date getCreateTime() { return createTime; }
     public void setCreateTime(Date createTime) { this.createTime = createTime; }
     public Date getUpdateTime() { return updateTime; }
