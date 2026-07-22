@@ -37,6 +37,12 @@
         <result property="totalAmount" column="total_amount" />
         <result property="itemCount" column="item_count" />
         <result property="delFlag" column="del_flag" />
+        <result property="paymentExpireTime" column="payment_expire_time" />
+        <result property="paymentChannel" column="payment_channel" />
+        <result property="paymentTradeType" column="payment_trade_type" />
+        <result property="paymentMchId" column="payment_mch_id" />
+        <result property="paymentAppId" column="payment_app_id" />
+        <result property="wechatTransactionId" column="wechat_transaction_id" />
         <result property="payTime" column="pay_time" />
         <result property="carrier" column="carrier" />
         <result property="trackingNo" column="tracking_no" />
@@ -49,6 +55,7 @@
         <result property="refundAuditRemark" column="refund_audit_remark" />
         <result property="refundRequestTime" column="refund_request_time" />
         <result property="refundAuditTime" column="refund_audit_time" />
+        <result property="refundCompleteTime" column="refund_complete_time" />
         <result property="createTime" column="create_time" />
         <result property="updateTime" column="update_time" />
     </resultMap>
@@ -65,6 +72,12 @@
         <result property="auditBy" column="audit_by" />
         <result property="requestTime" column="request_time" />
         <result property="auditTime" column="audit_time" />
+        <result property="refundTime" column="refund_time" />
+        <result property="outRefundNo" column="out_refund_no" />
+        <result property="wechatRefundId" column="wechat_refund_id" />
+        <result property="channelStatus" column="channel_status" />
+        <result property="channelError" column="channel_error" />
+        <result property="channelLastAttemptTime" column="channel_last_attempt_time" />
         <result property="createTime" column="create_time" />
         <result property="updateTime" column="update_time" />
     </resultMap>
@@ -121,11 +134,14 @@
         select o.order_id, o.order_no, o.user_id,
                coalesce(u.nick_name, u.user_name) as buyer_name, o.merchant_id,
                m.company_name as merchant_name, o.status as order_status,
-               o.total_amount, o.item_count, o.del_flag, o.pay_time,
+               o.total_amount, o.item_count, o.del_flag,
+               date_add(o.create_time, interval 30 minute) as payment_expire_time,
+               o.payment_channel, o.payment_trade_type, o.payment_mch_id, o.payment_app_id,
+               o.wechat_transaction_id, o.pay_time,
                o.carrier, o.tracking_no, o.ship_time, o.receive_time, o.cancel_time,
                r.refund_status, r.refund_reason, r.review_required as refund_review_required,
                r.audit_remark as refund_audit_remark, r.request_time as refund_request_time,
-               r.audit_time as refund_audit_time,
+               r.audit_time as refund_audit_time, r.refund_time as refund_complete_time,
                o.create_time, o.update_time
         from shop_order o
         inner join shop_merchant m on m.merchant_id = o.merchant_id
@@ -141,7 +157,10 @@
         select o.order_id, o.order_no, o.user_id,
                coalesce(u.nick_name, u.user_name) as buyer_name, o.merchant_id,
                m.company_name as merchant_name, o.status as order_status,
-               o.total_amount, o.item_count, o.del_flag, o.pay_time,
+               o.total_amount, o.item_count, o.del_flag,
+               date_add(o.create_time, interval 30 minute) as payment_expire_time,
+               o.payment_channel, o.payment_trade_type, o.payment_mch_id, o.payment_app_id,
+               o.wechat_transaction_id, o.pay_time,
                o.carrier, o.tracking_no, o.ship_time, o.receive_time, o.cancel_time,
                o.create_time, o.update_time
         from shop_order o
@@ -230,21 +249,63 @@
     <insert id="insertRefund" parameterType="ShopOrderRefund" useGeneratedKeys="true" keyProperty="refundId">
         insert into shop_order_refund
         (order_id, user_id, merchant_id, refund_status, refund_reason, review_required,
-         audit_remark, audit_by, request_time, audit_time, create_time, update_time)
+         audit_remark, audit_by, request_time, audit_time, refund_time, out_refund_no,
+         wechat_refund_id, channel_status, channel_error, channel_last_attempt_time, create_time, update_time)
         values
-        (#{orderId}, #{userId}, #{merchantId}, #{refundStatus}, #{refundReason}, #{reviewRequired},
+         (#{orderId}, #{userId}, #{merchantId}, #{refundStatus}, #{refundReason}, #{reviewRequired},
          #{auditRemark}, #{auditBy}, sysdate(),
-         case when #{refundStatus} = 'APPROVED' then sysdate() else null end, sysdate(), sysdate())
+         case when #{refundStatus} = 'REFUNDING' then sysdate() else null end,
+         null, #{outRefundNo}, #{wechatRefundId}, #{channelStatus}, #{channelError},
+         #{channelLastAttemptTime}, sysdate(), sysdate())
     </insert>
 
     <select id="selectLatestRefund" parameterType="Long" resultMap="ShopOrderRefundResult">
         select refund_id, order_id, user_id, merchant_id, refund_status, refund_reason,
-               review_required, audit_remark, audit_by, request_time, audit_time, create_time, update_time
+               review_required, audit_remark, audit_by, request_time, audit_time,
+               refund_time, out_refund_no, wechat_refund_id, channel_status, channel_error,
+               channel_last_attempt_time, create_time, update_time
         from shop_order_refund
         where order_id = #{orderId}
         order by refund_id desc
         limit 1
     </select>
+
+    <select id="selectRefundByOutRefundNo" parameterType="String" resultMap="ShopOrderRefundResult">
+        select refund_id, order_id, user_id, merchant_id, refund_status, refund_reason,
+               review_required, audit_remark, audit_by, request_time, audit_time,
+               refund_time, out_refund_no, wechat_refund_id, channel_status, channel_error,
+               channel_last_attempt_time, create_time, update_time
+        from shop_order_refund
+        where out_refund_no = #{outRefundNo}
+        limit 1
+    </select>
+
+    <select id="selectRefundingOrderIds" resultType="Long">
+        select order_id
+        from shop_order_refund
+        where refund_status = 'REFUNDING'
+          and (channel_status is null or channel_status in ('ERROR', 'PROCESSING'))
+          and (channel_last_attempt_time is null
+               or channel_last_attempt_time &lt;= date_sub(sysdate(), interval 1 minute))
+        order by refund_id
+        limit #{limit}
+    </select>
+
+    <update id="updateRefundChannelResult">
+        update shop_order_refund
+        set wechat_refund_id = coalesce(#{wechatRefundId}, wechat_refund_id),
+            channel_status = #{channelStatus}, channel_error = #{channelError},
+            channel_last_attempt_time = sysdate(), update_time = sysdate()
+        where refund_id = #{refundId} and refund_status = 'REFUNDING'
+    </update>
+
+    <update id="updateRefundStatus">
+        update shop_order_refund
+        set refund_status = #{toStatus},
+            refund_time = case when #{toStatus} = 'REFUNDED' then sysdate() else refund_time end,
+            update_time = sysdate()
+        where refund_id = #{refundId} and refund_status = #{fromStatus}
+    </update>
 
     <update id="updateRefundAudit">
         update shop_order_refund
@@ -258,6 +319,15 @@
         <include refid="selectOrderColumns" />
         where o.user_id = #{userId} and o.del_flag = '0'
         order by o.order_id desc
+    </select>
+
+    <select id="selectExpiredPendingOrderIds" resultType="Long">
+        select order_id
+        from shop_order
+        where status = 'PENDING_PAYMENT' and del_flag = '0'
+          and create_time &lt;= date_sub(sysdate(), interval 30 minute)
+        order by create_time, order_id
+        limit #{limit}
     </select>
 
     <select id="selectUserOrder" resultMap="ShopOrderResult">
@@ -281,6 +351,18 @@
           on published.order_item_id = oi.order_item_id and published.status = 'PUBLISHED'
         where oi.order_id = #{orderId}
         order by oi.order_item_id
+    </select>
+
+    <select id="selectOrderForUpdate" parameterType="Long" resultMap="ShopOrderResult">
+        <include refid="selectOrderForUpdateColumns" />
+        where o.order_id = #{orderId} and o.del_flag = '0'
+        limit 1 for update
+    </select>
+
+    <select id="selectOrderByOrderNoForUpdate" parameterType="String" resultMap="ShopOrderResult">
+        <include refid="selectOrderForUpdateColumns" />
+        where o.order_no = #{orderNo} and o.del_flag = '0'
+        limit 1 for update
     </select>
 
     <select id="selectUserReceivedOrderItemForUpdate" resultMap="ShopOrderItemResult">
@@ -325,6 +407,27 @@
             cancel_time = case when #{toStatus} = 'CANCELLED' then sysdate() else cancel_time end,
             update_time = sysdate()
         where user_id = #{userId} and order_id = #{orderId} and status = #{fromStatus} and del_flag = '0'
+    </update>
+
+    <update id="markWechatPrepay">
+        update shop_order
+        set payment_channel = 'WECHAT', payment_trade_type = #{tradeType},
+            payment_mch_id = #{mchId}, payment_app_id = #{appId}, update_time = sysdate()
+        where user_id = #{userId} and order_id = #{orderId}
+          and status = 'PENDING_PAYMENT' and del_flag = '0'
+          and (payment_channel is null
+               or (payment_channel = 'WECHAT' and payment_trade_type = #{tradeType}
+                   and payment_mch_id = #{mchId} and payment_app_id = #{appId}))
+    </update>
+
+    <update id="updateWechatPaymentSucceeded">
+        update shop_order
+        set status = 'PAID', payment_channel = 'WECHAT', payment_trade_type = #{tradeType},
+            payment_mch_id = #{mchId}, payment_app_id = #{appId},
+            wechat_transaction_id = #{transactionId}, pay_time = sysdate(), update_time = sysdate()
+        where user_id = #{userId} and order_id = #{orderId}
+          and status = 'PENDING_PAYMENT' and del_flag = '0'
+          and payment_channel = 'WECHAT' and payment_mch_id = #{mchId} and payment_app_id = #{appId}
     </update>
 
     <select id="selectMerchantOrders" parameterType="Long" resultMap="ShopOrderResult">

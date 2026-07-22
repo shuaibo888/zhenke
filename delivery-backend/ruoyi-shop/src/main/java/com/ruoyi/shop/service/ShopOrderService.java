@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,12 +38,17 @@ public class ShopOrderService
     public static final String SHIPPED = "SHIPPED";
     public static final String RECEIVED = "RECEIVED";
     public static final String CANCELLED = "CANCELLED";
+    public static final String REFUNDING = "REFUNDING";
     public static final String REFUNDED = "REFUNDED";
     public static final String REFUND_PENDING = "PENDING";
-    public static final String REFUND_APPROVED = "APPROVED";
+    public static final String REFUND_AUDIT_APPROVED = "APPROVED";
+    public static final String REFUND_STATUS_REFUNDING = "REFUNDING";
+    public static final String REFUND_STATUS_REFUNDED = "REFUNDED";
     public static final String REFUND_REJECTED = "REJECTED";
+    public static final int PAYMENT_TIMEOUT_MINUTES = 30;
 
     private static final DateTimeFormatter ORDER_TIME = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
+    private static final long PAYMENT_TIMEOUT_MILLIS = PAYMENT_TIMEOUT_MINUTES * 60L * 1000L;
 
     private final ShopOrderMapper orderMapper;
     private final ShopCartMapper cartMapper;
@@ -121,20 +127,59 @@ public class ShopOrderService
     }
 
     @Transactional
-    public ShopOrder pay(long orderId)
+    public boolean expirePendingOrder(long orderId)
     {
-        long userId = ShopAccountIdentity.requireShopUserId();
-        ShopOrder order = requireUserOrder(userId, orderId, true);
+        ShopOrder order = orderMapper.selectOrderForUpdate(orderId);
+        if (order == null || !PENDING_PAYMENT.equals(order.getStatus()) || !isPaymentExpired(order))
+        {
+            return false;
+        }
+        if (orderMapper.updateStatus(order.getUserId(), orderId, PENDING_PAYMENT, CANCELLED) == 0)
+        {
+            return false;
+        }
+        for (ShopOrderItem item : orderMapper.selectOrderItems(orderId))
+        {
+            if (orderMapper.restoreStock(item.getProductId(), item.getQuantity()) == 0)
+            {
+                throw new ServiceException("超时订单库存恢复失败");
+            }
+        }
+        insertStatusLog(orderId, PENDING_PAYMENT, CANCELLED, 0L,
+                "订单超过30分钟未支付，系统自动取消", "SYSTEM");
+        return true;
+    }
+
+    /** 仅供验签成功的微信支付通知或主动查单结果调用。 */
+    @Transactional
+    public ShopOrder confirmWechatPayment(String orderNo, String transactionId, String tradeType,
+            String mchId, String appId, int amountFen)
+    {
+        ShopOrder order = orderMapper.selectOrderByOrderNoForUpdate(orderNo);
+        if (order == null)
+        {
+            throw new ServiceException("微信支付对应订单不存在");
+        }
+        validateWechatPayment(order, tradeType, mchId, appId, amountFen);
         if (!PENDING_PAYMENT.equals(order.getStatus()))
         {
-            throw new ServiceException(PAID.equals(order.getStatus()) ? "订单已支付，请勿重复操作" : "只有待付款订单可以支付");
+            if (transactionId.equals(order.getWechatTransactionId())
+                    && (PAID.equals(order.getStatus()) || SHIPPED.equals(order.getStatus())
+                        || RECEIVED.equals(order.getStatus()) || REFUNDING.equals(order.getStatus())
+                        || REFUNDED.equals(order.getStatus())))
+            {
+                return hydrate(orderMapper.selectUserOrder(order.getUserId(), order.getOrderId()));
+            }
+            throw new ServiceException("订单状态与微信支付成功通知不一致");
         }
-        if (orderMapper.updateStatus(userId, orderId, PENDING_PAYMENT, PAID) == 0)
+        if (orderMapper.updateWechatPaymentSucceeded(order.getUserId(), order.getOrderId(),
+                transactionId, tradeType, mchId, appId) == 0)
         {
-            throw new ServiceException("订单状态已变化，请刷新后重试");
+            throw new ServiceException("订单支付状态已变化，请稍后主动查单");
         }
-        insertStatusLog(orderId, PENDING_PAYMENT, PAID, userId, "用户模拟支付订单");
-        return hydrate(requireUserOrder(userId, orderId, false));
+        insertStatusLog(order.getOrderId(), PENDING_PAYMENT, PAID, 0L,
+                "微信支付成功，微信支付订单号：" + transactionId, "SYSTEM");
+        return hydrate(orderMapper.selectUserOrder(order.getUserId(), order.getOrderId()));
     }
 
     @Transactional
@@ -174,25 +219,23 @@ public class ShopOrderService
         {
             throw new ServiceException("订单已发货，请先确认收货后再申请退款");
         }
-        if (REFUNDED.equals(order.getStatus()))
+        if (REFUNDING.equals(order.getStatus()) || REFUNDED.equals(order.getStatus()))
         {
-            throw new ServiceException("订单已退款，请勿重复申请");
+            throw new ServiceException(REFUNDING.equals(order.getStatus())
+                    ? "订单正在退款中，请勿重复申请" : "订单已退款，请勿重复申请");
+        }
+        if (!"WECHAT".equals(order.getPaymentChannel()))
+        {
+            throw new ServiceException("该订单不是微信支付订单，无法发起微信原路退款");
         }
         if (PAID.equals(order.getStatus()))
         {
-            if (orderMapper.updateStatus(userId, orderId, PAID, REFUNDED) == 0)
+            if (orderMapper.updateStatus(userId, orderId, PAID, REFUNDING) == 0)
             {
                 throw new ServiceException("订单状态已变化，请刷新后重试");
             }
-            for (ShopOrderItem item : orderMapper.selectOrderItems(orderId))
-            {
-                if (orderMapper.restoreStock(item.getProductId(), item.getQuantity()) == 0)
-                {
-                    throw new ServiceException("订单库存恢复失败");
-                }
-            }
-            insertRefund(order, reason, REFUND_APPROVED, "0", "待发货订单自动退款");
-            insertStatusLog(orderId, PAID, REFUNDED, userId, "用户申请待发货订单退款，系统自动处理");
+            insertRefund(order, reason, REFUND_STATUS_REFUNDING, "0", "待发货订单无需审核，已发起退款");
+            insertStatusLog(orderId, PAID, REFUNDING, userId, "用户申请待发货订单退款，等待支付渠道退款结果");
             return hydrate(requireUserOrder(userId, orderId, false));
         }
         if (RECEIVED.equals(order.getStatus()))
@@ -202,6 +245,61 @@ public class ShopOrderService
         }
         throw new ServiceException(PENDING_PAYMENT.equals(order.getStatus())
                 ? "待付款订单请直接取消" : "当前订单状态不能申请退款");
+    }
+
+    /** 仅供验签成功的支付渠道退款成功回调调用。 */
+    @Transactional
+    public ShopOrder confirmRefundSucceeded(long orderId)
+    {
+        return confirmRefundSucceeded(orderId, null);
+    }
+
+    /** 仅供验签成功的微信退款通知或主动查退款结果调用。 */
+    @Transactional
+    public ShopOrder confirmRefundSucceeded(long orderId, String outRefundNo)
+    {
+        ShopOrder order = orderMapper.selectOrderForUpdate(orderId);
+        if (order == null)
+        {
+            throw new ServiceException("订单不存在");
+        }
+        ShopOrderRefund refund = orderMapper.selectLatestRefund(orderId);
+        if (REFUNDED.equals(order.getStatus()) && refund != null
+                && REFUND_STATUS_REFUNDED.equals(refund.getRefundStatus()))
+        {
+            return hydrate(orderMapper.selectUserOrder(order.getUserId(), orderId));
+        }
+        if (!REFUNDING.equals(order.getStatus()) || refund == null
+                || !REFUND_STATUS_REFUNDING.equals(refund.getRefundStatus()))
+        {
+            throw new ServiceException("订单不在退款处理中");
+        }
+        if (outRefundNo != null && !outRefundNo.equals(refund.getOutRefundNo()))
+        {
+            throw new ServiceException("微信退款单号与当前退款申请不一致");
+        }
+        if ("0".equals(refund.getReviewRequired()))
+        {
+            for (ShopOrderItem item : orderMapper.selectOrderItems(orderId))
+            {
+                if (orderMapper.restoreStock(item.getProductId(), item.getQuantity()) == 0)
+                {
+                    throw new ServiceException("订单库存恢复失败");
+                }
+            }
+        }
+        if (orderMapper.updateRefundStatus(refund.getRefundId(),
+                REFUND_STATUS_REFUNDING, REFUND_STATUS_REFUNDED) == 0)
+        {
+            throw new ServiceException("退款状态已变化，请刷新后重试");
+        }
+        if (orderMapper.updateStatus(order.getUserId(), orderId, REFUNDING, REFUNDED) == 0)
+        {
+            throw new ServiceException("订单状态已变化，请刷新后重试");
+        }
+        insertStatusLog(orderId, REFUNDING, REFUNDED, 0L,
+                "支付渠道通知退款成功", "SYSTEM");
+        return hydrate(orderMapper.selectUserOrder(order.getUserId(), orderId));
     }
 
     private List<ShopOrder> createForUser(long userId, long addressId, List<ShopOrderItemBody> requestedItems)
@@ -335,11 +433,17 @@ public class ShopOrderService
 
     private void insertStatusLog(long orderId, String fromStatus, String toStatus, long operatorId, String remark)
     {
+        insertStatusLog(orderId, fromStatus, toStatus, operatorId, remark, "SHOP_USER");
+    }
+
+    private void insertStatusLog(long orderId, String fromStatus, String toStatus,
+            long operatorId, String remark, String operatorType)
+    {
         ShopOrderStatusLog log = new ShopOrderStatusLog();
         log.setOrderId(orderId);
         log.setFromStatus(fromStatus);
         log.setToStatus(toStatus);
-        log.setOperatorType("SHOP_USER");
+        log.setOperatorType(operatorType);
         log.setOperatorId(operatorId);
         log.setRemark(remark);
         if (orderMapper.insertStatusLog(log) == 0)
@@ -358,6 +462,8 @@ public class ShopOrderService
         refund.setRefundReason(reason);
         refund.setReviewRequired(reviewRequired);
         refund.setAuditRemark(auditRemark);
+        refund.setOutRefundNo("ZKR" + order.getOrderNo() + "-"
+                + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
         if (orderMapper.insertRefund(refund) == 0)
         {
             throw new ServiceException("退款申请创建失败");
@@ -397,6 +503,35 @@ public class ShopOrderService
         order.setStatusLogs(orderMapper.selectStatusLogs(order.getOrderId()));
         order.setLogisticsEvents(orderMapper.selectLogisticsEvents(order.getOrderId()));
         return order;
+    }
+
+    private boolean isPaymentExpired(ShopOrder order)
+    {
+        Date createTime = order.getCreateTime();
+        return createTime != null && createTime.getTime() + PAYMENT_TIMEOUT_MILLIS <= System.currentTimeMillis();
+    }
+
+    private void validateWechatPayment(ShopOrder order, String tradeType, String mchId, String appId, int amountFen)
+    {
+        if (!"WECHAT".equals(order.getPaymentChannel())
+                || !tradeType.equals(order.getPaymentTradeType())
+                || !mchId.equals(order.getPaymentMchId()) || !appId.equals(order.getPaymentAppId()))
+        {
+            throw new ServiceException("微信支付场景或商户信息与订单预支付信息不一致");
+        }
+        int expectedFen;
+        try
+        {
+            expectedFen = order.getTotalAmount().movePointRight(2).intValueExact();
+        }
+        catch (ArithmeticException exception)
+        {
+            throw new ServiceException("订单金额无法转换为微信支付金额");
+        }
+        if (expectedFen != amountFen)
+        {
+            throw new ServiceException("微信支付通知金额与订单金额不一致");
+        }
     }
 
     private String newOrderNo()

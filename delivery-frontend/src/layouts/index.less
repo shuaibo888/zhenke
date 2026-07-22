@@ -2,10 +2,13 @@ html,
 body,
 #root {
   min-height: 100%;
+  min-height: 100dvh;
+  max-width: 100%;
 }
 
 body {
   margin: 0;
+  overflow-x: hidden;
   color: #18231f;
   background: #f4f7f3;
   font-family:
@@ -28,6 +31,12 @@ button,
 input,
 textarea {
   font: inherit;
+}
+
+button,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 a {

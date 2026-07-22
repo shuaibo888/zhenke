@@ -14,6 +14,7 @@ export const orderStatusMeta: Record<
   shipped: { label: '待收货', color: 'processing', actionLabel: '确认收货' },
   completed: { label: '已完成', color: 'success' },
   canceled: { label: '已取消', color: 'default' },
+  refunding: { label: '退款中', color: 'processing' },
   refunded: { label: '已退款', color: 'default' },
 };
 

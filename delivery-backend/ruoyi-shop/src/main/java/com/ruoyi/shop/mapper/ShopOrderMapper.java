@@ -25,12 +25,22 @@ public interface ShopOrderMapper
     int insertLogisticsEvent(ShopOrderLogisticsEvent event);
     int insertRefund(ShopOrderRefund refund);
     ShopOrderRefund selectLatestRefund(Long orderId);
+    ShopOrderRefund selectRefundByOutRefundNo(String outRefundNo);
+    List<Long> selectRefundingOrderIds(@Param("limit") Integer limit);
+    int updateRefundChannelResult(@Param("refundId") Long refundId,
+            @Param("wechatRefundId") String wechatRefundId, @Param("channelStatus") String channelStatus,
+            @Param("channelError") String channelError);
+    int updateRefundStatus(@Param("refundId") Long refundId, @Param("fromStatus") String fromStatus,
+            @Param("toStatus") String toStatus);
     int updateRefundAudit(@Param("refundId") Long refundId, @Param("merchantId") Long merchantId,
             @Param("fromStatus") String fromStatus, @Param("toStatus") String toStatus,
             @Param("auditBy") Long auditBy, @Param("auditRemark") String auditRemark);
     List<ShopOrder> selectUserOrders(Long userId);
+    List<Long> selectExpiredPendingOrderIds(@Param("limit") Integer limit);
     ShopOrder selectUserOrder(@Param("userId") Long userId, @Param("orderId") Long orderId);
     ShopOrder selectUserOrderForUpdate(@Param("userId") Long userId, @Param("orderId") Long orderId);
+    ShopOrder selectOrderForUpdate(Long orderId);
+    ShopOrder selectOrderByOrderNoForUpdate(String orderNo);
     List<ShopOrderItem> selectOrderItems(Long orderId);
     ShopOrderItem selectUserReceivedOrderItemForUpdate(@Param("userId") Long userId,
             @Param("orderItemId") Long orderItemId);
@@ -39,6 +49,11 @@ public interface ShopOrderMapper
     List<ShopOrderLogisticsEvent> selectLogisticsEvents(Long orderId);
     int updateStatus(@Param("userId") Long userId, @Param("orderId") Long orderId,
             @Param("fromStatus") String fromStatus, @Param("toStatus") String toStatus);
+    int markWechatPrepay(@Param("userId") Long userId, @Param("orderId") Long orderId,
+            @Param("tradeType") String tradeType, @Param("mchId") String mchId, @Param("appId") String appId);
+    int updateWechatPaymentSucceeded(@Param("userId") Long userId, @Param("orderId") Long orderId,
+            @Param("transactionId") String transactionId, @Param("tradeType") String tradeType,
+            @Param("mchId") String mchId, @Param("appId") String appId);
     List<ShopOrder> selectMerchantOrders(Long merchantId);
     ShopOrder selectMerchantOrder(@Param("merchantId") Long merchantId, @Param("orderId") Long orderId);
     ShopOrder selectMerchantOrderForUpdate(@Param("merchantId") Long merchantId, @Param("orderId") Long orderId);

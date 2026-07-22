@@ -15,6 +15,12 @@ public class ShopOrderRefund
     private Long auditBy;
     private Date requestTime;
     private Date auditTime;
+    private Date refundTime;
+    private String outRefundNo;
+    private String wechatRefundId;
+    private String channelStatus;
+    private String channelError;
+    private Date channelLastAttemptTime;
     private Date createTime;
     private Date updateTime;
 
@@ -40,6 +46,18 @@ public class ShopOrderRefund
     public void setRequestTime(Date requestTime) { this.requestTime = requestTime; }
     public Date getAuditTime() { return auditTime; }
     public void setAuditTime(Date auditTime) { this.auditTime = auditTime; }
+    public Date getRefundTime() { return refundTime; }
+    public void setRefundTime(Date refundTime) { this.refundTime = refundTime; }
+    public String getOutRefundNo() { return outRefundNo; }
+    public void setOutRefundNo(String outRefundNo) { this.outRefundNo = outRefundNo; }
+    public String getWechatRefundId() { return wechatRefundId; }
+    public void setWechatRefundId(String wechatRefundId) { this.wechatRefundId = wechatRefundId; }
+    public String getChannelStatus() { return channelStatus; }
+    public void setChannelStatus(String channelStatus) { this.channelStatus = channelStatus; }
+    public String getChannelError() { return channelError; }
+    public void setChannelError(String channelError) { this.channelError = channelError; }
+    public Date getChannelLastAttemptTime() { return channelLastAttemptTime; }
+    public void setChannelLastAttemptTime(Date channelLastAttemptTime) { this.channelLastAttemptTime = channelLastAttemptTime; }
     public Date getCreateTime() { return createTime; }
     public void setCreateTime(Date createTime) { this.createTime = createTime; }
     public Date getUpdateTime() { return updateTime; }

@@ -16,6 +16,12 @@ public class ShopOrder
     private BigDecimal totalAmount;
     private Integer itemCount;
     private String delFlag;
+    private Date paymentExpireTime;
+    private String paymentChannel;
+    private String paymentTradeType;
+    private String paymentMchId;
+    private String paymentAppId;
+    private String wechatTransactionId;
     private Date payTime;
     private String carrier;
     private String trackingNo;
@@ -28,6 +34,7 @@ public class ShopOrder
     private String refundAuditRemark;
     private Date refundRequestTime;
     private Date refundAuditTime;
+    private Date refundCompleteTime;
     private Date createTime;
     private Date updateTime;
     private List<ShopOrderItem> items;
@@ -55,6 +62,18 @@ public class ShopOrder
     public void setItemCount(Integer itemCount) { this.itemCount = itemCount; }
     public String getDelFlag() { return delFlag; }
     public void setDelFlag(String delFlag) { this.delFlag = delFlag; }
+    public Date getPaymentExpireTime() { return paymentExpireTime; }
+    public void setPaymentExpireTime(Date paymentExpireTime) { this.paymentExpireTime = paymentExpireTime; }
+    public String getPaymentChannel() { return paymentChannel; }
+    public void setPaymentChannel(String paymentChannel) { this.paymentChannel = paymentChannel; }
+    public String getPaymentTradeType() { return paymentTradeType; }
+    public void setPaymentTradeType(String paymentTradeType) { this.paymentTradeType = paymentTradeType; }
+    public String getPaymentMchId() { return paymentMchId; }
+    public void setPaymentMchId(String paymentMchId) { this.paymentMchId = paymentMchId; }
+    public String getPaymentAppId() { return paymentAppId; }
+    public void setPaymentAppId(String paymentAppId) { this.paymentAppId = paymentAppId; }
+    public String getWechatTransactionId() { return wechatTransactionId; }
+    public void setWechatTransactionId(String wechatTransactionId) { this.wechatTransactionId = wechatTransactionId; }
     public Date getPayTime() { return payTime; }
     public void setPayTime(Date payTime) { this.payTime = payTime; }
     public String getCarrier() { return carrier; }
@@ -79,6 +98,8 @@ public class ShopOrder
     public void setRefundRequestTime(Date refundRequestTime) { this.refundRequestTime = refundRequestTime; }
     public Date getRefundAuditTime() { return refundAuditTime; }
     public void setRefundAuditTime(Date refundAuditTime) { this.refundAuditTime = refundAuditTime; }
+    public Date getRefundCompleteTime() { return refundCompleteTime; }
+    public void setRefundCompleteTime(Date refundCompleteTime) { this.refundCompleteTime = refundCompleteTime; }
     public Date getCreateTime() { return createTime; }
     public void setCreateTime(Date createTime) { this.createTime = createTime; }
     public Date getUpdateTime() { return updateTime; }

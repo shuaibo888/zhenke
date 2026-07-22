@@ -3,12 +3,14 @@ import {
   CameraOutlined,
   CheckCircleFilled,
   DeleteOutlined,
+  DownOutlined,
   EditOutlined,
   EnvironmentOutlined,
   HeartOutlined,
   HomeOutlined,
   LockOutlined,
   LoginOutlined,
+  LogoutOutlined,
   MinusOutlined,
   PlusOutlined,
   ProfileOutlined,
@@ -19,7 +21,7 @@ import {
   UploadOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Badge, Button, Cascader, ConfigProvider, Drawer, Form, Input, message, Modal, Radio, Segmented, Select, Spin, Switch, Tag, Upload } from 'antd';
+import { Badge, Button, Cascader, ConfigProvider, Drawer, Dropdown, Form, Input, message, Modal, Radio, Segmented, Select, Spin, Switch, Tag, Upload } from 'antd';
 import type { KeyboardEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import pcaCode from 'china-division/dist/pca-code.json';
@@ -57,6 +59,7 @@ import {
   deleteReportComment,
   deleteShopCartItem,
   fetchHomeFeed,
+  fetchMyVerificationReports,
   fetchShopCart,
   fetchShopOrders,
   fetchMyTrialApplications,
@@ -64,7 +67,8 @@ import {
   fetchPublicProduct,
   fetchPublishedReport,
   fetchReportComments,
-  payShopOrder,
+  prepareWechatPayment,
+  reconcileWechatPayment,
   publishPurchaseVerificationReport,
   publishVerificationReport,
   requestShopOrderRefund,
@@ -88,7 +92,49 @@ import { getLogisticsView, getTrialDeadlineMeta } from '@/utils/profileData';
 import styles from './index.less';
 
 type TabKey = 'reviews' | 'profile';
+
+type WeixinJsBridgeResult = { err_msg?: string };
+type WechatOauthAuthorization = { code?: string; state?: string };
+
+declare global {
+  interface Window {
+    WeixinJSBridge?: {
+      invoke: (name: string, params: Record<string, string>, callback: (result: WeixinJsBridgeResult) => void) => void;
+    };
+  }
+}
+
+function isWechatBrowser() {
+  return typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent);
+}
+
+function invokeWechatJsapi(params: Record<string, string>) {
+  return new Promise<WeixinJsBridgeResult>((resolve, reject) => {
+    const invoke = () => {
+      if (!window.WeixinJSBridge) {
+        reject(new Error('当前微信版本无法调起支付，请升级微信后重试'));
+        return;
+      }
+      window.WeixinJSBridge.invoke('getBrandWCPayRequest', params, resolve);
+    };
+    if (window.WeixinJSBridge) {
+      invoke();
+      return;
+    }
+    document.addEventListener('WeixinJSBridgeReady', invoke, { once: true });
+    window.setTimeout(() => {
+      if (!window.WeixinJSBridge) reject(new Error('微信支付组件加载超时，请重试'));
+    }, 8000);
+  });
+}
+
+function clearWechatPaymentQuery() {
+  const url = new URL(window.location.href);
+  ['code', 'state', 'wechatPayOrderId', 'wechatPayReturn'].forEach((key) => url.searchParams.delete(key));
+  window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+}
 type JourneyView = 'feed' | 'product' | 'report' | 'purchase';
+type ReportDetailOrigin = 'feed' | 'profile';
 type ProfileView = 'menu' | 'orders' | 'trials' | 'reports';
 type ProfileSection = Exclude<ProfileView, 'menu'>;
 type HomeFeedFilter = 'ALL' | 'ONLINE' | 'OFFLINE' | 'REPORT';
@@ -115,6 +161,19 @@ const profileSectionMeta: Record<ProfileSection, { title: string; description: s
   reports: { title: '我的甄客验', description: '查看我发布的真实体验' },
 };
 
+function getPaymentRemainingSeconds(expiresAt: string | undefined, now: number) {
+  if (!expiresAt) return Number.POSITIVE_INFINITY;
+  const expiresAtMillis = Date.parse(expiresAt);
+  if (Number.isNaN(expiresAtMillis)) return 0;
+  return Math.max(0, Math.ceil((expiresAtMillis - now) / 1000));
+}
+
+function formatPaymentCountdown(remainingSeconds: number) {
+  const minutes = Math.floor(remainingSeconds / 60);
+  const seconds = remainingSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
 const commerceTheme = {
   token: {
     colorPrimary: '#1f6f5b',
@@ -123,6 +182,9 @@ const commerceTheme = {
       'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
   },
 };
+
+const responsiveModalProps = { rootClassName: styles.responsiveModal } as const;
+const responsiveDrawerProps = { rootClassName: styles.responsiveDrawer } as const;
 
 type ProfileDialog = 'name' | 'password' | 'avatar' | null;
 type ReportFormValues = {
@@ -326,6 +388,7 @@ function mapShopOrder(dto: ShopOrderDto, role: MemberRole): Order {
     SHIPPED: 'shipped',
     RECEIVED: 'completed',
     CANCELLED: 'canceled',
+    REFUNDING: 'refunding',
     REFUNDED: 'refunded',
   };
   const firstItem = dto.items?.[0];
@@ -343,6 +406,7 @@ function mapShopOrder(dto: ShopOrderDto, role: MemberRole): Order {
     returnDays: roleMeta[role].returnDays,
     merchantName: dto.merchantName,
     createdAt: dto.createTime,
+    paymentExpiresAt: dto.paymentExpireTime,
     paidAt: dto.payTime,
     carrier: dto.carrier,
     trackingNo: dto.trackingNo,
@@ -354,6 +418,7 @@ function mapShopOrder(dto: ShopOrderDto, role: MemberRole): Order {
     refundAuditRemark: dto.refundAuditRemark,
     refundRequestedAt: dto.refundRequestTime,
     refundAuditedAt: dto.refundAuditTime,
+    refundCompletedAt: dto.refundCompleteTime,
     logistics: dto.carrier && dto.trackingNo ? {
       orderId: dto.orderId,
       carrier: dto.carrier,
@@ -385,6 +450,7 @@ export default function HomePage() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [logoutSubmitting, setLogoutSubmitting] = useState(false);
   const [captcha, setCaptcha] = useState<CaptchaState>({ enabled: false, image: '', uuid: '' });
   const [captchaReady, setCaptchaReady] = useState(false);
   const [captchaLoading, setCaptchaLoading] = useState(true);
@@ -401,6 +467,9 @@ export default function HomePage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [imageProduct, setImageProduct] = useState<Product | null>(null);
   const [reports, setReports] = useState<VerifyReport[]>([]);
+  const [myReports, setMyReports] = useState<VerifyReport[]>([]);
+  const [myReportsLoading, setMyReportsLoading] = useState(false);
+  const [profileReportOpeningId, setProfileReportOpeningId] = useState<number | null>(null);
   const [userOrders, setUserOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [trials, setTrials] = useState<TrialRecord[]>([]);
@@ -409,6 +478,7 @@ export default function HomePage() {
   const [trialApplying, setTrialApplying] = useState(false);
   const [journeyView, setJourneyView] = useState<JourneyView>('feed');
   const [journeyReport, setJourneyReport] = useState<VerifyReport | null>(null);
+  const [reportDetailOrigin, setReportDetailOrigin] = useState<ReportDetailOrigin>('feed');
   const [reportComments, setReportComments] = useState<ReportCommentDto[]>([]);
   const [reportCommentsLoading, setReportCommentsLoading] = useState(false);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
@@ -437,7 +507,9 @@ export default function HomePage() {
   const [pendingBuyProduct, setPendingBuyProduct] = useState<Product | null>(null);
   const [pendingBuyAttribution, setPendingBuyAttribution] = useState<ReportAttribution | undefined>(undefined);
   const [payOrder, setPayOrder] = useState<Order | null>(null);
+  const [paymentClock, setPaymentClock] = useState(() => Date.now());
   const [paying, setPaying] = useState(false);
+  const paymentReturnHandledRef = useRef(false);
   const [orderMutatingId, setOrderMutatingId] = useState<number | null>(null);
   const [refundOrder, setRefundOrder] = useState<Order | null>(null);
   const [refundReason, setRefundReason] = useState('');
@@ -457,6 +529,16 @@ export default function HomePage() {
   const [merchantOpen, setMerchantOpen] = useState(false);
   const [merchantApplication, setMerchantApplication] = useState<Merchant | null>(null);
   const [merchantLoading, setMerchantLoading] = useState(false);
+
+  const hasPaymentCountdown = userOrders.some((order) => order.status === 'unpaid' && order.paymentExpiresAt)
+    || Boolean(payOrder?.paymentExpiresAt);
+
+  useEffect(() => {
+    if (!hasPaymentCountdown) return undefined;
+    setPaymentClock(Date.now());
+    const timer = window.setInterval(() => setPaymentClock(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [hasPaymentCountdown]);
   const [merchantSubmitting, setMerchantSubmitting] = useState(false);
   const [form] = Form.useForm();
   const [authForm] = Form.useForm();
@@ -467,6 +549,57 @@ export default function HomePage() {
   const [trialApplyForm] = Form.useForm<TrialApplyFormValues>();
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const activeUser = currentUser;
+
+  const continueWechatPayment = async (order: Order, authorization: WechatOauthAuthorization = {}) => {
+    if (!activeUser || paying) return;
+    setPayOrder(order);
+    setPaying(true);
+    try {
+      if (!isWechatBrowser()) {
+        throw new Error('当前仅支持微信内支付，请使用微信打开本页面后重试');
+      }
+      const prepared = await prepareWechatPayment(order.id, authorization);
+      if (prepared.type === 'OAUTH') {
+        if (!prepared.oauthUrl) throw new Error('微信网页授权地址缺失');
+        window.location.assign(prepared.oauthUrl);
+        return;
+      }
+      if (!prepared.appId || !prepared.timeStamp || !prepared.nonceStr
+        || !prepared.packageValue || !prepared.signType || !prepared.paySign) {
+        throw new Error('微信 JSAPI 支付参数不完整');
+      }
+      // 网页授权 code 只能使用一次；拿到预支付参数后立即清理，避免刷新重复拉起或复用旧 code。
+      clearWechatPaymentQuery();
+      const result = await invokeWechatJsapi({
+        appId: prepared.appId,
+        timeStamp: prepared.timeStamp,
+        nonceStr: prepared.nonceStr,
+        package: prepared.packageValue,
+        signType: prepared.signType,
+        paySign: prepared.paySign,
+      });
+      if (result.err_msg === 'get_brand_wcpay_request:cancel') {
+        message.info('你已取消微信支付，订单仍可在倒计时内继续支付');
+        return;
+      }
+      if (result.err_msg !== 'get_brand_wcpay_request:ok') {
+        throw new Error('微信支付未完成，请重试');
+      }
+      const paid = mapShopOrder(await reconcileWechatPayment(order.id), activeUser.role);
+      setUserOrders((items) => items.map((item) => (item.id === paid.id ? paid : item)));
+      if (paid.status !== 'paid') {
+        message.info('微信正在确认支付结果，请稍后刷新订单');
+        return;
+      }
+      setPayOrder(null);
+      message.success('微信支付成功，等待商家发货');
+    } catch (error) {
+      if (authorization.code || authorization.state) clearWechatPaymentQuery();
+      message.error(error instanceof Error ? error.message : '微信支付失败');
+    } finally {
+      setPaying(false);
+    }
+  };
 
   const loadCaptcha = async (showError = true) => {
     setCaptchaLoading(true);
@@ -609,6 +742,70 @@ export default function HomePage() {
   useEffect(() => {
     let mounted = true;
     if (!currentUser) {
+      setMyReports([]);
+      setMyReportsLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+    setMyReportsLoading(true);
+    fetchMyVerificationReports()
+      .then((items) => {
+        if (mounted) setMyReports(items.map(mapVerificationReport));
+      })
+      .catch((error) => {
+        if (mounted) message.error(error instanceof Error ? error.message : '我的甄客验加载失败');
+      })
+      .finally(() => {
+        if (mounted) setMyReportsLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (!currentUser || paymentReturnHandledRef.current || userOrders.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const orderId = Number(params.get('wechatPayOrderId'));
+    if (!Number.isSafeInteger(orderId) || orderId <= 0) return;
+    const order = userOrders.find((item) => item.id === orderId);
+    if (!order) return;
+    if (params.get('wechatPayReturn') === '1') {
+      paymentReturnHandledRef.current = true;
+      setActiveTab('profile');
+      setProfileView('orders');
+      setPaying(true);
+      reconcileWechatPayment(orderId)
+        .then((dto) => {
+          const refreshed = mapShopOrder(dto, currentUser.role);
+          setUserOrders((items) => items.map((item) => item.id === orderId ? refreshed : item));
+          message.success(refreshed.status === 'paid' ? '微信支付成功，等待商家发货' : '支付结果尚未确认，请稍后刷新订单');
+        })
+        .catch((error) => message.error(error instanceof Error ? error.message : '微信支付结果确认失败'))
+        .finally(() => {
+          setPaying(false);
+          clearWechatPaymentQuery();
+      });
+      return;
+    }
+    const code = params.get('code') ?? undefined;
+    const state = params.get('state') ?? undefined;
+    if (code && state) {
+      paymentReturnHandledRef.current = true;
+      setActiveTab('profile');
+      setProfileView('orders');
+      if (order.status === 'unpaid') {
+        void continueWechatPayment(order, { code, state });
+      } else {
+        clearWechatPaymentQuery();
+      }
+    }
+  }, [currentUser, userOrders]);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!currentUser) {
       setCartItems([]);
       setUserOrders([]);
       setCartLoading(false);
@@ -722,7 +919,14 @@ export default function HomePage() {
   };
 
   const handleLogout = async () => {
-    await logoutShopUser();
+    if (logoutSubmitting) return;
+    setLogoutSubmitting(true);
+    let remoteLogoutFailed = false;
+    try {
+      await logoutShopUser();
+    } catch {
+      remoteLogoutFailed = true;
+    }
     setCurrentUser(null);
     setCartItems([]);
     setUserOrders([]);
@@ -735,7 +939,8 @@ export default function HomePage() {
     setProfileDialog(null);
     authForm.resetFields(['password', 'code']);
     await loadCaptcha();
-    message.success('已退出登录');
+    setLogoutSubmitting(false);
+    message.success(remoteLogoutFailed ? '已退出当前设备登录' : '已退出登录');
   };
 
   const userMeta = activeUser ? roleMeta[activeUser.role] : roleMeta.zhenke;
@@ -846,14 +1051,15 @@ export default function HomePage() {
         ...reportImageUrls.filter((url) => !url.startsWith('blob:')).map((resourceUrl) => ({ resourceType: 'IMAGE' as const, resourceUrl })),
         ...(reportVideoUrl && !reportVideoUrl.startsWith('blob:') ? [{ resourceType: 'VIDEO' as const, resourceUrl: reportVideoUrl }] : []),
       ];
-      await publishVerificationReport({
+      const publishedReport = mapVerificationReport(await publishVerificationReport({
         trialApplicationId: trial.applicationId,
         experience: values.experience.trim(),
         shortcoming: shortcomingTrimmed,
         fitCrowd: values.fitCrowd?.trim() || '真实使用后再判断',
         recommend: Boolean(values.recommend),
         resources,
-      });
+      }));
+      setMyReports((items) => [publishedReport, ...items.filter((item) => item.id !== publishedReport.id)]);
       const applications = await fetchMyTrialApplications();
       setTrials(applications.map(mapTrialApplication));
       await loadHomeContent();
@@ -967,6 +1173,10 @@ export default function HomePage() {
     if (!order) return;
 
     if (order.status === 'unpaid') {
+      if (getPaymentRemainingSeconds(order.paymentExpiresAt, Date.now()) <= 0) {
+        message.warning('订单已超过支付时间，正在等待系统取消');
+        return;
+      }
       setPayOrder(order);
       return;
     }
@@ -1016,7 +1226,7 @@ export default function HomePage() {
 
     setReviewSubmitting(true);
     try {
-      await publishPurchaseVerificationReport({
+      const publishedReport = mapVerificationReport(await publishPurchaseVerificationReport({
         orderItemId: reviewOrderItem.orderItemId,
         experience: reviewContent.trim(),
         shortcoming: reviewShortcoming.trim(),
@@ -1024,7 +1234,8 @@ export default function HomePage() {
         recommend: reviewRecommend,
         ...reviewStars,
         resources: reviewImages.map((resourceUrl) => ({ resourceType: 'IMAGE' as const, resourceUrl })),
-      });
+      }));
+      setMyReports((items) => [publishedReport, ...items.filter((item) => item.id !== publishedReport.id)]);
       const refreshedOrders = await fetchShopOrders();
       setUserOrders(refreshedOrders.map((order) => mapShopOrder(order, activeUser.role)));
       await loadHomeContent();
@@ -1068,9 +1279,11 @@ export default function HomePage() {
       setSelectedLogisticsOrder((current) => current?.id === updated.id ? updated : current);
       setRefundOrder(null);
       setRefundReason('');
-      message.success(updated.status === 'refunded'
-        ? '退款成功，订单已退款'
-        : '退款申请已提交，等待商家审核');
+      message.success(updated.status === 'refunding'
+        ? '退款申请已受理，正在等待支付渠道退款结果'
+        : updated.status === 'refunded'
+          ? '退款成功，订单已退款'
+          : '退款申请已提交，等待商家审核');
     } catch (error) {
       message.error(error instanceof Error ? error.message : '退款申请提交失败');
     } finally {
@@ -1124,19 +1337,9 @@ export default function HomePage() {
     setReviewImages([]);
   };
 
-  const handlePay = async () => {
+  const handlePay = () => {
     if (!payOrder || !activeUser || paying) return;
-    setPaying(true);
-    try {
-      const paid = mapShopOrder(await payShopOrder(payOrder.id), activeUser.role);
-      setUserOrders((items) => items.map((item) => (item.id === paid.id ? paid : item)));
-      setPayOrder(null);
-      message.success('模拟支付成功，等待商家发货');
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : '模拟支付失败');
-    } finally {
-      setPaying(false);
-    }
+    void continueWechatPayment(payOrder);
   };
 
   const handleConfirmBuyNow = async () => {
@@ -1180,7 +1383,11 @@ export default function HomePage() {
           setUserOrders((items) => items.map((order) => order.id === orderId
             ? mapShopOrder(cancelled, activeUser.role)
             : order));
-          message.success('订单已取消，库存已恢复');
+          if (cancelled.status === 'CANCELLED') {
+            message.success('订单已取消，库存已恢复');
+          } else {
+            message.info('微信已确认付款，订单不能取消，状态已更新');
+          }
         } catch (error) {
           message.error(error instanceof Error ? error.message : '订单取消失败');
           throw error;
@@ -1375,6 +1582,16 @@ export default function HomePage() {
     setMerchantOpen(true);
   };
 
+  const showReportDetail = (report: VerifyReport, product: Product, origin: ReportDetailOrigin) => {
+    setSelectedProduct(product);
+    setJourneyReport(report);
+    setReportDetailOrigin(origin);
+    setCommentText('');
+    setReplyingTo(null);
+    setJourneyView('report');
+    setActiveTab('reviews');
+  };
+
   const handleOpenReportProduct = (report: VerifyReport) => {
     const product = findProductForReport(products, report);
 
@@ -1383,12 +1600,36 @@ export default function HomePage() {
       return;
     }
 
-    setSelectedProduct(product);
-    setJourneyReport(report);
-    setCommentText('');
-    setReplyingTo(null);
-    setJourneyView('report');
-    setActiveTab('reviews');
+    showReportDetail(report, product, 'feed');
+  };
+
+  const openProfileReportDetail = async (summary: VerifyReport) => {
+    if (profileReportOpeningId !== null) return;
+    setProfileReportOpeningId(summary.id);
+    try {
+      const report = mapVerificationReport(await fetchPublishedReport(summary.id));
+      let product = findProductForReport(products, report);
+      if (!product) {
+        product = mapPublicProduct(await fetchPublicProduct(report.productId), 1);
+        setProducts((items) => [product!, ...items.filter((item) => item.id !== product!.id)]);
+      }
+      const upsertReport = (items: VerifyReport[]) => [report, ...items.filter((item) => item.id !== report.id)];
+      setReports(upsertReport);
+      setMyReports(upsertReport);
+      showReportDetail(report, product, 'profile');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '甄客验详情加载失败');
+    } finally {
+      setProfileReportOpeningId(null);
+    }
+  };
+
+  const returnFromReportDetail = () => {
+    setJourneyView('feed');
+    if (reportDetailOrigin === 'profile') {
+      setActiveTab('profile');
+      setProfileView('reports');
+    }
   };
 
   const reloadReportComments = async (reportId: number) => {
@@ -1521,6 +1762,7 @@ export default function HomePage() {
 
   const renderCartDrawer = () => (
     <Drawer
+      {...responsiveDrawerProps}
       title="购物车"
       open={cartOpen}
       onClose={() => setCartOpen(false)}
@@ -1695,6 +1937,7 @@ export default function HomePage() {
 
   const renderMerchantModal = () => (
     <Modal
+      {...responsiveModalProps}
       title="商家入驻"
       open={merchantOpen}
       onCancel={() => {
@@ -2082,7 +2325,9 @@ export default function HomePage() {
 
     return (
       <main className={styles.journeyPage}>
-        <Button onClick={() => setJourneyView('feed')}>返回甄客验</Button>
+        <Button onClick={returnFromReportDetail}>
+          {reportDetailOrigin === 'profile' ? '返回我的甄客验' : '返回甄客验'}
+        </Button>
         <section className={styles.productHero}>
           <img src={selectedProduct.imageUrl} alt={selectedProduct.title} />
           <div>
@@ -2322,7 +2567,6 @@ export default function HomePage() {
   };
 
   const renderProfile = () => {
-    const profileReports = reports.filter((report) => report.userId === activeUser?.id);
     // 收益和消息仍是模拟数据，真实服务接入前不向测试用户展示。
     const profileMenuItems = [
       {
@@ -2338,7 +2582,7 @@ export default function HomePage() {
       {
         key: 'reports' as const,
         icon: <ProfileOutlined />,
-        summary: `${profileReports.length} 篇甄客验`,
+        summary: `${myReports.length} 篇甄客验`,
       },
     ];
 
@@ -2441,8 +2685,16 @@ export default function HomePage() {
                 <div>
                   <Tag color={orderStatusMeta[order.status].color}>{orderStatusMeta[order.status].label}</Tag>
                   {order.refundStatus === 'PENDING' && <Tag color="gold">退款待审核</Tag>}
+                  {order.refundStatus === 'REFUNDING' && <Tag color="blue">退款处理中</Tag>}
                   {order.refundStatus === 'REJECTED' && <Tag color="red">退款已驳回</Tag>}
                   <span>{formatPrice(order.amount)}</span>
+                  {order.status === 'unpaid' && order.paymentExpiresAt && (
+                    <span className={styles.paymentCountdown}>
+                      {getPaymentRemainingSeconds(order.paymentExpiresAt, paymentClock) > 0
+                        ? `支付剩余 ${formatPaymentCountdown(getPaymentRemainingSeconds(order.paymentExpiresAt, paymentClock))}`
+                        : '支付已超时，等待系统取消'}
+                    </span>
+                  )}
                   <div className={styles.orderActions}>
                     {order.status !== 'unpaid' && order.status !== 'canceled' && (
                       <Button size="small" onClick={() => setSelectedLogisticsOrder(order)}>
@@ -2450,7 +2702,14 @@ export default function HomePage() {
                       </Button>
                     )}
                     {orderStatusMeta[order.status].actionLabel && (
-                      <Button size="small" type="primary" loading={orderMutatingId === order.id} onClick={() => handleAdvanceOrder(order.id)}>
+                      <Button
+                        size="small"
+                        type="primary"
+                        loading={orderMutatingId === order.id}
+                        disabled={order.status === 'unpaid'
+                          && getPaymentRemainingSeconds(order.paymentExpiresAt, paymentClock) <= 0}
+                        onClick={() => handleAdvanceOrder(order.id)}
+                      >
                         {orderStatusMeta[order.status].actionLabel}
                       </Button>
                     )}
@@ -2521,8 +2780,15 @@ export default function HomePage() {
         {profileView === 'reports' && (
           <section className={styles.orderPanel}>
             <h3>我的甄客验</h3>
-            {profileReports.map((report) => (
-              <div className={styles.orderItem} key={report.id}>
+            {myReportsLoading && <Spin />}
+            {!myReportsLoading && myReports.map((report) => (
+              <button
+                type="button"
+                className={`${styles.orderItem} ${styles.profileReportItem}`}
+                key={report.id}
+                disabled={profileReportOpeningId !== null}
+                onClick={() => void openProfileReportDetail(report)}
+              >
                 <div>
                   <strong>{report.productTitle}</strong>
                   <p>{report.shortcoming}</p>
@@ -2530,10 +2796,13 @@ export default function HomePage() {
                 <div>
                   <Tag color={getReportTypeMeta(report).color}>{getReportTypeMeta(report).label}</Tag>
                   <Tag>{report.usefulCount} 有用</Tag>
+                  <span className={styles.profileReportHint}>
+                    {profileReportOpeningId === report.id ? <Spin size="small" /> : <>查看详情 <RightOutlined /></>}
+                  </span>
                 </div>
-              </div>
+              </button>
             ))}
-            {profileReports.length === 0 && <p className={styles.empty}>还没有发布过甄客验。</p>}
+            {!myReportsLoading && myReports.length === 0 && <p className={styles.empty}>还没有发布过甄客验。</p>}
           </section>
         )}
 
@@ -2546,6 +2815,20 @@ export default function HomePage() {
       <ConfigProvider theme={commerceTheme}>
         <main className={styles.authShell}>
           <Spin size="large" />
+        </main>
+      </ConfigProvider>
+    );
+  }
+
+  if (!isWechatBrowser()) {
+    return (
+      <ConfigProvider theme={commerceTheme}>
+        <main className={styles.wechatOnlyPage}>
+          <section className={styles.wechatOnlyCard}>
+            <div className={styles.wechatOnlyIcon}>微</div>
+            <h1>请在微信中打开</h1>
+            <p>当前版本仅开放微信内使用，请将页面链接发送到微信后重新打开。</p>
+          </section>
         </main>
       </ConfigProvider>
     );
@@ -2581,25 +2864,43 @@ export default function HomePage() {
               </div>
             </button>
             <div className={styles.headerActions}>
-              <Button icon={<ShoppingCartOutlined />} onClick={() => setCartOpen(true)}>
+              <Button aria-label={`购物车，共 ${cartCount} 件商品`} icon={<ShoppingCartOutlined />} onClick={() => setCartOpen(true)}>
                 购物车 {cartCount}
               </Button>
-              <Button className={styles.addressButton} icon={<EnvironmentOutlined />} onClick={openAddressDialog}>
+              <Button aria-label="管理收货地址" className={styles.addressButton} icon={<EnvironmentOutlined />} onClick={openAddressDialog}>
                 收货地址
               </Button>
               <div className={styles.accountMenu}>
-                <button type="button" className={styles.accountButton} onClick={() => setActiveTab('profile')}>
-                  {renderUserAvatar(activeUser, styles.accountAvatar)}
-                  <span className={styles.accountText}>
-                    <span className={styles.accountName}>{activeUser.name}</span>
-                    <span className={styles.accountRole}>{userMeta.label}</span>
-                  </span>
-                </button>
-                <div className={styles.accountDropdown}>
-                  <button type="button" className={styles.logoutButton} onClick={handleLogout}>
-                    退出登录
+                <Dropdown
+                  trigger={['hover', 'click']}
+                  placement="bottomRight"
+                  arrow
+                  classNames={{ root: styles.accountPopup }}
+                  menu={{
+                    items: [{
+                      key: 'logout',
+                      danger: true,
+                      disabled: logoutSubmitting,
+                      icon: <LogoutOutlined />,
+                      label: logoutSubmitting ? '正在退出...' : '退出登录',
+                    }],
+                    onClick: () => void handleLogout(),
+                  }}
+                >
+                  <button
+                    type="button"
+                    className={styles.accountButton}
+                    aria-label="打开账号操作菜单"
+                    aria-haspopup="menu"
+                  >
+                    {renderUserAvatar(activeUser, styles.accountAvatar)}
+                    <span className={styles.accountText}>
+                      <span className={styles.accountName}>{activeUser.name}</span>
+                      <span className={styles.accountRole}>{userMeta.label}</span>
+                    </span>
+                    <DownOutlined className={styles.accountChevron} />
                   </button>
-                </div>
+                </Dropdown>
               </div>
             </div>
         </header>
@@ -2611,6 +2912,7 @@ export default function HomePage() {
                 key={item.key}
                 type="button"
                 className={activeTab === item.key ? styles.activeTab : ''}
+                aria-current={activeTab === item.key ? 'page' : undefined}
                 onClick={() => {
                   setActiveTab(item.key);
                   if (item.key === 'reviews') setJourneyView('feed');
@@ -2642,6 +2944,7 @@ export default function HomePage() {
       </Badge>
 
       <Drawer
+        {...responsiveDrawerProps}
         title={selectedProduct?.title}
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
@@ -2662,6 +2965,7 @@ export default function HomePage() {
       </Drawer>
 
       <Modal
+        {...responsiveModalProps}
         title="物流详情"
         open={Boolean(selectedLogisticsOrder)}
         onCancel={() => setSelectedLogisticsOrder(null)}
@@ -2705,6 +3009,7 @@ export default function HomePage() {
       </Modal>
 
       <Modal
+        {...responsiveModalProps}
         title={applyingRecruitment?.trialType === 'OFFLINE' ? '申请线下试用' : '申请线上试用'}
         open={Boolean(applyingRecruitment)}
         onCancel={() => setApplyingRecruitment(null)}
@@ -2731,7 +3036,7 @@ export default function HomePage() {
         </Form>
       </Modal>
 
-      <Modal title="写验证报告" open={reportOpen} onCancel={() => setReportOpen(false)} footer={null}>
+      <Modal {...responsiveModalProps} title="写验证报告" open={reportOpen} onCancel={() => setReportOpen(false)} footer={null}>
         <Form layout="vertical" form={form} onFinish={handlePublish}>
           <Form.Item name="trialApplicationId" label="选择可发布试用" rules={[{ required: true, message: '请选择可发布试用' }]}>
             <Select
@@ -2812,6 +3117,7 @@ export default function HomePage() {
         </Form>
       </Modal>
       <Modal
+        {...responsiveModalProps}
         title={`申请退款${refundOrder ? ` · ${refundOrder.orderNo}` : ''}`}
         open={Boolean(refundOrder)}
         onCancel={() => {
@@ -2844,6 +3150,7 @@ export default function HomePage() {
         )}
       </Modal>
       <Modal
+        {...responsiveModalProps}
         title="确认订单"
         open={Boolean(pendingBuyProduct)}
         onCancel={() => {
@@ -2904,6 +3211,7 @@ export default function HomePage() {
         )}
       </Modal>
       <Modal
+        {...responsiveModalProps}
         title="订单支付"
         open={Boolean(payOrder)}
         onCancel={() => {
@@ -2921,20 +3229,27 @@ export default function HomePage() {
             <div className={styles.payOrderInfo}>
               <span>订单号：{payOrder.orderNo}</span>
               <span>{payOrder.productTitle}</span>
+              {payOrder.paymentExpiresAt && (
+                <span className={styles.paymentCountdown}>
+                  {getPaymentRemainingSeconds(payOrder.paymentExpiresAt, paymentClock) > 0
+                    ? `请在 ${formatPaymentCountdown(getPaymentRemainingSeconds(payOrder.paymentExpiresAt, paymentClock))} 内完成支付`
+                    : '订单支付时间已结束'}
+                </span>
+              )}
             </div>
             <div className={styles.payMethods}>
               <p className={styles.payMethodsTitle}>当前支付方式</p>
               <div className={`${styles.payMethodItem} ${styles.selectedPayMethod}`}>
                 <div className={styles.payMethodLeft}>
                   <div className={`${styles.payIcon} ${styles.wechatIcon}`}>
-                    <span>模</span>
+                    <span>微</span>
                   </div>
                   <div>
-                    <strong>模拟支付</strong>
-                    <p>仅用于当前订单履约联调，不会发起真实扣款</p>
+                    <strong>微信支付</strong>
+                    <p>{isWechatBrowser() ? '微信内安全支付' : '仅支持在微信内打开后支付'}</p>
                   </div>
                 </div>
-                <Tag color="processing">联调模式</Tag>
+                <Tag color="success">官方支付</Tag>
               </div>
             </div>
             <Button
@@ -2942,18 +3257,22 @@ export default function HomePage() {
               size="large"
               block
               loading={paying}
+              disabled={getPaymentRemainingSeconds(payOrder.paymentExpiresAt, paymentClock) <= 0}
               onClick={handlePay}
               className={styles.payButton}
             >
-              {paying ? '支付处理中...' : `确认支付 ${formatPrice(payOrder.amount)}`}
+              {paying
+                ? '微信支付处理中...'
+                : `${isWechatBrowser() ? '微信支付' : '请在微信中打开支付'} ${formatPrice(payOrder.amount)}`}
             </Button>
             <p className={styles.payHint}>
-              提示：微信商户申请完成后，此处将切换为真实微信支付。
+              支付结果以微信支付回调和后端查单为准，请勿重复付款。
             </p>
           </div>
         )}
       </Modal>
       <Modal
+        {...responsiveModalProps}
         title="发布购买甄客验"
         open={Boolean(reviewOrder)}
         onCancel={() => {
@@ -3103,7 +3422,7 @@ export default function HomePage() {
           </div>
         )}
       </Modal>
-      <Modal title="改昵称" open={profileDialog === 'name'} onCancel={() => setProfileDialog(null)} footer={null}>
+      <Modal {...responsiveModalProps} title="改昵称" open={profileDialog === 'name'} onCancel={() => setProfileDialog(null)} footer={null}>
         <Form layout="vertical" form={nameForm} onFinish={handleNameSubmit}>
           <Form.Item name="name" label="昵称" rules={[{ required: true, message: '请输入昵称' }]}>
             <Input size="large" placeholder="输入新的昵称" />
@@ -3113,7 +3432,7 @@ export default function HomePage() {
           </Button>
         </Form>
       </Modal>
-      <Modal title="改密码" open={profileDialog === 'password'} onCancel={() => setProfileDialog(null)} footer={null}>
+      <Modal {...responsiveModalProps} title="改密码" open={profileDialog === 'password'} onCancel={() => setProfileDialog(null)} footer={null}>
         <Form layout="vertical" form={passwordForm} onFinish={handlePasswordSubmit}>
           <Form.Item name="oldPassword" label="旧密码" rules={[{ required: true, message: '请输入旧密码' }]}>
             <Input.Password size="large" placeholder="当前密码" />
@@ -3138,7 +3457,7 @@ export default function HomePage() {
           </Button>
         </Form>
       </Modal>
-      <Modal title="换头像" open={profileDialog === 'avatar'} onCancel={() => setProfileDialog(null)} footer={null}>
+      <Modal {...responsiveModalProps} title="换头像" open={profileDialog === 'avatar'} onCancel={() => setProfileDialog(null)} footer={null}>
         {activeUser && (
           <div className={styles.avatarPicker}>
             <div className={styles.avatarPreview}>{renderUserAvatar(activeUser, styles.profileAvatar)}</div>
@@ -3163,6 +3482,7 @@ export default function HomePage() {
         )}
       </Modal>
       <Modal
+        {...responsiveModalProps}
         title="选择收货地址"
         open={addressPickerOpen}
         onCancel={() => setAddressPickerOpen(false)}
@@ -3176,7 +3496,8 @@ export default function HomePage() {
             <p className={styles.empty}>暂无保存的地址</p>
           ) : (
             shippingAddresses.map((address) => (
-              <div
+              <button
+                type="button"
                 key={address.id}
                 className={`${styles.addressPickerItem} ${address.isDefault ? styles.selectedAddress : ''}`}
                 onClick={() => void handleSelectAddress(address.id)}
@@ -3190,13 +3511,14 @@ export default function HomePage() {
                   <p>{formatShippingAddress(address)}</p>
                 </div>
                 <CheckCircleFilled className={styles.addressPickerCheck} />
-              </div>
+              </button>
             ))
           )}
         </div>
         </Spin>
       </Modal>
       <Modal
+        {...responsiveModalProps}
         title="我的地址"
         open={addressOpen}
         onCancel={() => setAddressOpen(false)}
@@ -3253,6 +3575,7 @@ export default function HomePage() {
         </div>
       </Modal>
       <Modal
+        {...responsiveModalProps}
         title={editingAddressId ? '编辑地址' : '新增地址'}
         open={addressEditorOpen}
         onCancel={() => {
@@ -3295,6 +3618,7 @@ export default function HomePage() {
         </Form>
       </Modal>
       <Modal
+        {...responsiveModalProps}
         title={imageProduct?.title}
         open={Boolean(imageProduct)}
         onCancel={() => setImageProduct(null)}
@@ -3332,7 +3656,18 @@ function ReportCard({
     const aspectRatios = ['75%', '100%', '125%', '140%', '60%'];
     const imageHeightRatio = aspectRatios[report.id % aspectRatios.length];
     return (
-      <article className={styles.reportGridCard} onClick={() => onOpenProduct?.(report)}>
+      <article
+        className={styles.reportGridCard}
+        role={onOpenProduct ? 'button' : undefined}
+        tabIndex={onOpenProduct ? 0 : undefined}
+        onClick={() => onOpenProduct?.(report)}
+        onKeyDown={(event) => {
+          if (onOpenProduct && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault();
+            onOpenProduct(report);
+          }
+        }}
+      >
         <div className={styles.reportGridImage} style={{ paddingTop: imageHeightRatio }}>
           <img src={report.images[0]} alt={`${report.productTitle}实拍`} />
         </div>

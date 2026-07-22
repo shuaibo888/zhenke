@@ -185,21 +185,25 @@ export interface ShopOrderDto {
   userId: number;
   merchantId: number;
   merchantName: string;
-  status: 'PENDING_PAYMENT' | 'PAID' | 'SHIPPED' | 'RECEIVED' | 'CANCELLED' | 'REFUNDED';
+  status: 'PENDING_PAYMENT' | 'PAID' | 'SHIPPED' | 'RECEIVED' | 'CANCELLED' | 'REFUNDING' | 'REFUNDED';
   totalAmount: number;
   itemCount: number;
+  paymentExpireTime?: string;
+  paymentChannel?: 'WECHAT' | 'MOCK';
+  paymentTradeType?: 'JSAPI' | 'H5';
   payTime?: string;
   carrier?: string;
   trackingNo?: string;
   shipTime?: string;
   receiveTime?: string;
   cancelTime?: string;
-  refundStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  refundStatus?: 'PENDING' | 'REFUNDING' | 'REFUNDED' | 'REJECTED';
   refundReason?: string;
   refundReviewRequired?: '0' | '1';
   refundAuditRemark?: string;
   refundRequestTime?: string;
   refundAuditTime?: string;
+  refundCompleteTime?: string;
   createTime: string;
   updateTime: string;
   items: Array<{
@@ -394,13 +398,37 @@ export async function cancelShopOrder(orderId: number) {
   return result.data;
 }
 
-export async function payShopOrder(orderId: number) {
-  const result = await requestApi<ApiResponse<ShopOrderDto>>(
-    `/shop/orders/${orderId}/pay`,
-    { method: 'PUT' },
+export type WechatPaymentPrepareResult = {
+  type: 'OAUTH' | 'JSAPI';
+  oauthUrl?: string;
+  appId?: string;
+  timeStamp?: string;
+  nonceStr?: string;
+  packageValue?: string;
+  signType?: string;
+  paySign?: string;
+};
+
+export async function prepareWechatPayment(orderId: number, body: {
+  code?: string;
+  state?: string;
+}) {
+  const result = await requestApi<ApiResponse<WechatPaymentPrepareResult>>(
+    `/shop/payments/wechat/${orderId}/prepare`,
+    { method: 'POST', body: JSON.stringify(body) },
     true,
   );
-  if (!result.data) throw new Error('订单支付失败');
+  if (!result.data) throw new Error('微信支付下单失败');
+  return result.data;
+}
+
+export async function reconcileWechatPayment(orderId: number) {
+  const result = await requestApi<ApiResponse<ShopOrderDto>>(
+    `/shop/payments/wechat/${orderId}/status`,
+    {},
+    true,
+  );
+  if (!result.data) throw new Error('微信支付查单失败');
   return result.data;
 }
 
@@ -473,7 +501,7 @@ export async function publishPurchaseVerificationReport(body: {
 
 export async function fetchMyVerificationReports() {
   const result = await requestApi<ApiResponse<VerificationReportDto[]>>('/shop/reports/me/list', {}, true);
-  return result.data ?? [];
+  return Array.isArray(result.data) ? result.data : [];
 }
 
 export async function uploadShopContentFile(file: File) {

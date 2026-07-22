@@ -1,6 +1,7 @@
 package com.ruoyi.shop.controller;
 
 import java.util.List;
+
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,19 +22,16 @@ import com.ruoyi.shop.service.ShopMerchantService;
 
 @RestController
 @RequestMapping("/shop/admin/merchants")
-public class ShopMerchantAdminController extends BaseController
-{
+public class ShopMerchantAdminController extends BaseController {
     private final ShopMerchantService merchantService;
 
-    public ShopMerchantAdminController(ShopMerchantService merchantService)
-    {
+    public ShopMerchantAdminController(ShopMerchantService merchantService) {
         this.merchantService = merchantService;
     }
 
     @PreAuthorize("@ss.hasPermi('shop:merchant:list')")
     @GetMapping
-    public TableDataInfo list(ShopMerchant query)
-    {
+    public TableDataInfo list(ShopMerchant query) {
         startPage();
         List<ShopMerchant> merchants = merchantService.selectAdminList(query);
         return getDataTable(merchants);
@@ -41,24 +39,21 @@ public class ShopMerchantAdminController extends BaseController
 
     @PreAuthorize("@ss.hasPermi('shop:merchant:query')")
     @GetMapping("/{merchantId}")
-    public AjaxResult detail(@PathVariable long merchantId)
-    {
+    public AjaxResult detail(@PathVariable long merchantId) {
         return AjaxResult.success(merchantService.detail(merchantId));
     }
 
     @Log(title = "商家入驻审核", businessType = BusinessType.UPDATE)
     @PreAuthorize("@ss.hasPermi('shop:merchant:audit')")
     @PutMapping("/{merchantId}/audit")
-    public AjaxResult audit(@PathVariable long merchantId, @Valid @RequestBody ShopMerchantAuditBody body)
-    {
+    public AjaxResult audit(@PathVariable long merchantId, @Valid @RequestBody ShopMerchantAuditBody body) {
         return AjaxResult.success(merchantService.audit(merchantId, body, getUsername()));
     }
 
     @Log(title = "商家状态", businessType = BusinessType.UPDATE)
     @PreAuthorize("@ss.hasPermi('shop:merchant:status')")
     @PutMapping("/{merchantId}/status")
-    public AjaxResult updateStatus(@PathVariable long merchantId, @Valid @RequestBody ShopMerchantStatusBody body)
-    {
+    public AjaxResult updateStatus(@PathVariable long merchantId, @Valid @RequestBody ShopMerchantStatusBody body) {
         return toAjax(merchantService.updateStatus(merchantId, body.getStatus(), getUsername()));
     }
 }

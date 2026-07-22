@@ -6,6 +6,7 @@ const orderStatusLabel = {
   shipped: '待收货',
   completed: '已完成',
   canceled: '已取消',
+  refunding: '退款中',
   refunded: '已退款',
 };
 
@@ -50,7 +51,8 @@ export function getDashboardStats({
     orderTotal: orders.length,
     todayOrders: orders.filter((order) => order.createdAt.startsWith(today)).length,
     salesAmount: orders
-      .filter((order) => order.status !== 'canceled' && order.status !== 'unpaid' && order.status !== 'refunded')
+      .filter((order) => order.status !== 'canceled' && order.status !== 'unpaid'
+        && order.status !== 'refunding' && order.status !== 'refunded')
       .reduce((sum, order) => sum + order.amount, 0),
     userTotal,
     reportTotal: reports.length,
@@ -78,7 +80,8 @@ export function buildMerchantOverview(products: ManagedProduct[], orders: Manage
       productTotal: merchantProducts.length,
       onSaleCount: merchantProducts.filter((product) => product.status === 'onSale').length,
       salesAmount: merchantOrders
-        .filter((order) => order.status !== 'canceled' && order.status !== 'unpaid' && order.status !== 'refunded')
+        .filter((order) => order.status !== 'canceled' && order.status !== 'unpaid'
+          && order.status !== 'refunding' && order.status !== 'refunded')
         .reduce((sum, order) => sum + order.amount, 0),
     };
   });

@@ -12,6 +12,8 @@ import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.shop.domain.dto.ShopCartCheckoutBody;
 import com.ruoyi.shop.domain.dto.ShopOrderCreateBody;
 import com.ruoyi.shop.domain.dto.ShopOrderRefundBody;
+import com.ruoyi.shop.domain.ShopOrder;
+import com.ruoyi.shop.payment.ShopWechatPaymentService;
 import com.ruoyi.shop.service.ShopOrderService;
 
 @RestController
@@ -19,10 +21,12 @@ import com.ruoyi.shop.service.ShopOrderService;
 public class ShopOrderController
 {
     private final ShopOrderService orderService;
+    private final ShopWechatPaymentService paymentService;
 
-    public ShopOrderController(ShopOrderService orderService)
+    public ShopOrderController(ShopOrderService orderService, ShopWechatPaymentService paymentService)
     {
         this.orderService = orderService;
+        this.paymentService = paymentService;
     }
 
     @GetMapping
@@ -52,13 +56,7 @@ public class ShopOrderController
     @PutMapping("/{orderId}/cancel")
     public AjaxResult cancel(@PathVariable long orderId)
     {
-        return AjaxResult.success(orderService.cancel(orderId));
-    }
-
-    @PutMapping("/{orderId}/pay")
-    public AjaxResult pay(@PathVariable long orderId)
-    {
-        return AjaxResult.success(orderService.pay(orderId));
+        return AjaxResult.success(paymentService.cancelUserOrder(orderId));
     }
 
     @PutMapping("/{orderId}/received")
@@ -70,6 +68,12 @@ public class ShopOrderController
     @PostMapping("/{orderId}/refund")
     public AjaxResult refund(@PathVariable long orderId, @Valid @RequestBody ShopOrderRefundBody body)
     {
-        return AjaxResult.success(orderService.requestRefund(orderId, body));
+        ShopOrder order = orderService.requestRefund(orderId, body);
+        if (ShopOrderService.REFUNDING.equals(order.getStatus()))
+        {
+            paymentService.tryInitiateRefund(orderId);
+            order = orderService.myOrder(orderId);
+        }
+        return AjaxResult.success(order);
     }
 }

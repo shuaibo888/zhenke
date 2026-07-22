@@ -4,7 +4,7 @@ export type ProductCategory = 'verified' | 'local' | 'other' | `CATEGORY_${1 | 2
 
 export type ProductStatus = 'draft' | 'onSale' | 'offSale';
 
-export type OrderStatus = 'unpaid' | 'paid' | 'shipped' | 'completed' | 'canceled' | 'refunded';
+export type OrderStatus = 'unpaid' | 'paid' | 'shipped' | 'completed' | 'canceled' | 'refunding' | 'refunded';
 
 export type ReportStatus = 'published' | 'deleted';
 
@@ -132,12 +132,13 @@ export interface ManagedOrder {
   address: string;
   returnDays: number;
   refundRequested: boolean;
-  refundStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  refundStatus?: 'PENDING' | 'REFUNDING' | 'REFUNDED' | 'REJECTED';
   refundReason?: string;
   refundReviewRequired?: boolean;
   refundAuditRemark?: string;
   refundRequestedAt?: string;
   refundAuditedAt?: string;
+  refundCompletedAt?: string;
   createdAt: string;
   paidAt?: string;
   carrier?: string;

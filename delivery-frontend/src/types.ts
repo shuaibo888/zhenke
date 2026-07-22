@@ -2,7 +2,7 @@ export type MemberRole = 'zhenke' | 'yanzhenke' | 'xinzhenke';
 
 export type ProductCategory = 'verified' | 'local' | 'other' | `CATEGORY_${1 | 2 | 3 | 4}`;
 
-export type OrderStatus = 'unpaid' | 'paid' | 'shipped' | 'completed' | 'canceled' | 'refunded';
+export type OrderStatus = 'unpaid' | 'paid' | 'shipped' | 'completed' | 'canceled' | 'refunding' | 'refunded';
 
 export interface Merchant {
   merchantId: number;
@@ -91,17 +91,19 @@ export interface Order {
   returnDays: number;
   merchantName?: string;
   createdAt?: string;
+  paymentExpiresAt?: string;
   paidAt?: string;
   carrier?: string;
   trackingNo?: string;
   shippedAt?: string;
   receivedAt?: string;
-  refundStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  refundStatus?: 'PENDING' | 'REFUNDING' | 'REFUNDED' | 'REJECTED';
   refundReason?: string;
   refundReviewRequired?: boolean;
   refundAuditRemark?: string;
   refundRequestedAt?: string;
   refundAuditedAt?: string;
+  refundCompletedAt?: string;
   logistics?: LogisticsInfo;
   items?: Array<{
     orderItemId: number;

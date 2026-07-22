@@ -9,19 +9,16 @@ import com.ruoyi.shop.service.ShopMerchantService;
 
 @RestController
 @RequestMapping("/shop/merchant/account")
-public class ShopMerchantAccountController
-{
+public class ShopMerchantAccountController {
     private final ShopMerchantService merchantService;
 
-    public ShopMerchantAccountController(ShopMerchantService merchantService)
-    {
+    public ShopMerchantAccountController(ShopMerchantService merchantService) {
         this.merchantService = merchantService;
     }
 
     @PreAuthorize("@ss.hasPermi('shop:merchant:self')")
     @GetMapping("/me")
-    public AjaxResult currentMerchant()
-    {
+    public AjaxResult currentMerchant() {
         return AjaxResult.success(merchantService.currentMerchantAccount());
     }
 }

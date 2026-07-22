@@ -13,26 +13,22 @@ import com.ruoyi.shop.service.ShopMerchantService;
 
 @RestController
 @RequestMapping("/shop/merchants")
-public class ShopMerchantController
-{
+public class ShopMerchantController {
     private final ShopMerchantService merchantService;
 
-    public ShopMerchantController(ShopMerchantService merchantService)
-    {
+    public ShopMerchantController(ShopMerchantService merchantService) {
         this.merchantService = merchantService;
     }
 
     @Anonymous
     @PostMapping("/status")
-    public AjaxResult applicationStatus(@Valid @RequestBody ShopMerchantQueryBody body)
-    {
+    public AjaxResult applicationStatus(@Valid @RequestBody ShopMerchantQueryBody body) {
         return AjaxResult.success(merchantService.applicationStatus(body));
     }
 
     @Anonymous
     @PostMapping("/apply")
-    public AjaxResult apply(@Valid @RequestBody ShopMerchantApplyBody body)
-    {
+    public AjaxResult apply(@Valid @RequestBody ShopMerchantApplyBody body) {
         return AjaxResult.success("商家入驻申请已提交", merchantService.apply(body));
     }
 }

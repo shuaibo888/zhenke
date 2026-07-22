@@ -114,7 +114,7 @@ interface ShopOrderDto {
   buyerName?: string;
   merchantId: number;
   merchantName?: string;
-  status: 'PENDING_PAYMENT' | 'PAID' | 'SHIPPED' | 'RECEIVED' | 'CANCELLED' | 'REFUNDED';
+  status: 'PENDING_PAYMENT' | 'PAID' | 'SHIPPED' | 'RECEIVED' | 'CANCELLED' | 'REFUNDING' | 'REFUNDED';
   totalAmount: number;
   itemCount: number;
   payTime?: string;
@@ -122,12 +122,13 @@ interface ShopOrderDto {
   trackingNo?: string;
   shipTime?: string;
   receiveTime?: string;
-  refundStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  refundStatus?: 'PENDING' | 'REFUNDING' | 'REFUNDED' | 'REJECTED';
   refundReason?: string;
   refundReviewRequired?: '0' | '1';
   refundAuditRemark?: string;
   refundRequestTime?: string;
   refundAuditTime?: string;
+  refundCompleteTime?: string;
   createTime: string;
   items?: Array<{
     productId: number;
@@ -285,6 +286,7 @@ function toManagedOrder(dto: ShopOrderDto): ManagedOrder {
       SHIPPED: 'shipped',
       RECEIVED: 'completed',
       CANCELLED: 'canceled',
+      REFUNDING: 'refunding',
       REFUNDED: 'refunded',
     } as const)[dto.status],
     amount: Number(dto.totalAmount),
@@ -305,6 +307,7 @@ function toManagedOrder(dto: ShopOrderDto): ManagedOrder {
     refundAuditRemark: dto.refundAuditRemark,
     refundRequestedAt: formatApiDateTime(dto.refundRequestTime),
     refundAuditedAt: formatApiDateTime(dto.refundAuditTime),
+    refundCompletedAt: formatApiDateTime(dto.refundCompleteTime),
     createdAt: formatApiDateTime(dto.createTime) ?? '',
     paidAt: formatApiDateTime(dto.payTime),
     carrier: dto.carrier,

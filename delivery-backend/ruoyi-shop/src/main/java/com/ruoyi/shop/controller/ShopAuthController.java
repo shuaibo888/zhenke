@@ -15,27 +15,23 @@ import com.ruoyi.shop.service.ShopAccountService.LoginResult;
 
 @RestController
 @RequestMapping("/shop/auth")
-public class ShopAuthController
-{
+public class ShopAuthController {
     private final ShopAccountService accountService;
 
-    public ShopAuthController(ShopAccountService accountService)
-    {
+    public ShopAuthController(ShopAccountService accountService) {
         this.accountService = accountService;
     }
 
     @Anonymous
     @PostMapping("/register")
-    public AjaxResult register(@Valid @RequestBody ShopRegisterBody body)
-    {
+    public AjaxResult register(@Valid @RequestBody ShopRegisterBody body) {
         accountService.register(body);
         return AjaxResult.success("注册成功，请登录");
     }
 
     @Anonymous
     @PostMapping("/login")
-    public AjaxResult login(@Valid @RequestBody ShopLoginBody body)
-    {
+    public AjaxResult login(@Valid @RequestBody ShopLoginBody body) {
         LoginResult result = accountService.login(body);
         return AjaxResult.success()
                 .put(Constants.TOKEN, result.token())

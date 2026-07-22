@@ -168,6 +168,9 @@ const adminTheme = {
   },
 };
 
+const responsiveModalProps = { rootClassName: styles.responsiveModal } as const;
+const responsiveDrawerProps = { rootClassName: styles.responsiveDrawer } as const;
+
 const navMeta: Record<NavKey, { label: string; icon: React.ReactNode }> = {
   dashboard: { label: '数据看板', icon: <BarChartOutlined /> },
   users: { label: '用户管理', icon: <TeamOutlined /> },
@@ -196,6 +199,7 @@ const orderStatusMeta: Record<ManagedOrder['status'], { label: string; color: st
   shipped: { label: '待收货', color: 'blue' },
   completed: { label: '已完成', color: 'green' },
   canceled: { label: '已取消', color: 'red' },
+  refunding: { label: '退款中', color: 'blue' },
   refunded: { label: '已退款', color: 'purple' },
 };
 
@@ -858,7 +862,9 @@ function AdminWorkspace() {
       setDetailOrder((current) => current?.id === updated.id ? updated : current);
       setRefundAuditOrder(null);
       refundAuditForm.resetFields();
-      message.success(values.decision === 'APPROVED' ? '退款申请已通过' : '退款申请已驳回');
+      message.success(values.decision === 'APPROVED'
+        ? '退款申请已通过，订单已进入退款中'
+        : '退款申请已驳回');
     } catch (error) {
       message.error(error instanceof Error ? error.message : '退款审核失败');
     } finally {
@@ -967,6 +973,7 @@ function AdminWorkspace() {
     {
       title: '业务资格',
       key: 'eligibility',
+      responsive: ['md'],
       render: (_, user) => (
         <Space size={4} wrap>
           <Tag color={user.reviewEligible === '0' ? 'green' : 'default'}>发布报告</Tag>
@@ -977,6 +984,7 @@ function AdminWorkspace() {
     {
       title: '最近登录',
       key: 'login',
+      responsive: ['md'],
       render: (_, user) => (
         <div>
           <div>{user.loginDate || '尚未登录'}</div>
@@ -984,7 +992,7 @@ function AdminWorkspace() {
         </div>
       ),
     },
-    { title: '注册时间', dataIndex: 'createTime', render: (value?: string) => value || '-' },
+    { title: '注册时间', dataIndex: 'createTime', responsive: ['md'], render: (value?: string) => value || '-' },
     {
       title: '账号状态',
       dataIndex: 'status',
@@ -1018,11 +1026,13 @@ function AdminWorkspace() {
     {
       title: '商家',
       dataIndex: 'merchantId',
+      responsive: ['md'],
       render: (merchantId, product) => product.artisanName || getMerchantName(merchantId),
     },
     {
       title: '分类',
       dataIndex: 'category',
+      responsive: ['md'],
       render: (_: ProductCategory, product) => (
         <Tag color={categoryMeta[product.category]?.color ?? 'blue'}>
           {product.categoryName ?? categoryMeta[product.category]?.label ?? product.category}
@@ -1032,10 +1042,11 @@ function AdminWorkspace() {
     {
       title: '售价',
       dataIndex: 'price',
+      responsive: ['md'],
       render: (price: number) => formatMoney(price),
     },
-    { title: '库存', dataIndex: 'stock' },
-    { title: '销量', dataIndex: 'sales' },
+    { title: '库存', dataIndex: 'stock', responsive: ['md'] },
+    { title: '销量', dataIndex: 'sales', responsive: ['md'] },
     {
       title: '状态',
       dataIndex: 'status',
@@ -1045,7 +1056,7 @@ function AdminWorkspace() {
       title: '操作',
       key: 'actions',
       render: (_, product) => (
-        <Space>
+        <Space wrap size={6}>
           {isAdmin ? <span className={styles.subText}>仅查看</span> : (
             <>
               <Button size="small" icon={<EditOutlined />} onClick={() => openEditProduct(product)}>
@@ -1068,13 +1079,14 @@ function AdminWorkspace() {
 
   const orderColumns: ColumnsType<ManagedOrder> = [
     { title: '订单号', dataIndex: 'orderNo', render: (orderNo) => <span className={styles.monoText}>{orderNo}</span> },
-    { title: '买家', dataIndex: 'buyerName' },
-    { title: '商家', key: 'merchant', render: (_, order) => order.merchantName || getMerchantName(order.merchantId) },
-    { title: '商品', dataIndex: 'productTitles', render: (titles: string[]) => titles.join('、') },
+    { title: '买家', dataIndex: 'buyerName', responsive: ['md'] },
+    { title: '商家', key: 'merchant', responsive: ['md'], render: (_, order) => order.merchantName || getMerchantName(order.merchantId) },
+    { title: '商品', dataIndex: 'productTitles', responsive: ['md'], render: (titles: string[]) => titles.join('、') },
     { title: '金额', dataIndex: 'amount', render: (amount: number) => formatMoney(amount) },
     {
       title: '公益捐赠',
       key: 'publicWelfare',
+      responsive: ['md'],
       render: (_, order) => (
         <span>
           {formatMoney(Math.round(order.amount * 0.05 * 100) / 100)}
@@ -1085,6 +1097,7 @@ function AdminWorkspace() {
     {
       title: '甄客佣金',
       key: 'verifierCommission',
+      responsive: ['md'],
       render: (_, order) => (
         <span>
           {formatMoney(Math.round(order.amount * 0.05 * 100) / 100)}
@@ -1101,19 +1114,21 @@ function AdminWorkspace() {
     {
       title: '退款状态',
       key: 'refundStatus',
+      responsive: ['md'],
       render: (_, order) => {
         if (order.refundStatus === 'PENDING') return <Tag color="gold">待商家审核</Tag>;
-        if (order.refundStatus === 'APPROVED') return <Tag color="green">已退款</Tag>;
+        if (order.refundStatus === 'REFUNDING') return <Tag color="blue">退款中</Tag>;
+        if (order.refundStatus === 'REFUNDED') return <Tag color="green">已退款</Tag>;
         if (order.refundStatus === 'REJECTED') return <Tag color="red">已驳回</Tag>;
         return '-';
       },
     },
-    { title: '下单时间', dataIndex: 'createdAt' },
+    { title: '下单时间', dataIndex: 'createdAt', responsive: ['md'] },
     {
       title: '操作',
       key: 'actions',
       render: (_, order) => (
-        <Space>
+        <Space wrap size={6}>
           {!isAdmin && (
             <Button size="small" icon={<TruckOutlined />} disabled={order.status !== 'paid'} onClick={() => openOrderShipment(order)}>
               发货
@@ -1134,9 +1149,9 @@ function AdminWorkspace() {
 
   const reportColumns: ColumnsType<ManagedReport> = [
     { title: '商品', dataIndex: 'productTitle' },
-    { title: '验证者', dataIndex: 'userName' },
-    { title: '商家', dataIndex: 'merchantId', render: (merchantId, report) => report.merchantName || getMerchantName(merchantId) },
-    { title: '不足', dataIndex: 'shortcoming', render: (text) => <span className={styles.shortcoming}>{text}</span> },
+    { title: '验证者', dataIndex: 'userName', responsive: ['md'] },
+    { title: '商家', dataIndex: 'merchantId', responsive: ['md'], render: (merchantId, report) => report.merchantName || getMerchantName(merchantId) },
+    { title: '不足', dataIndex: 'shortcoming', responsive: ['md'], render: (text) => <span className={styles.shortcoming}>{text}</span> },
     {
       title: '类型',
       key: 'reportType',
@@ -1145,7 +1160,7 @@ function AdminWorkspace() {
         return <Tag color={meta.color}>{meta.label}</Tag>;
       },
     },
-    { title: '有用数', dataIndex: 'usefulCount' },
+    { title: '有用数', dataIndex: 'usefulCount', responsive: ['md'] },
     {
       title: '状态',
       dataIndex: 'status',
@@ -1153,11 +1168,7 @@ function AdminWorkspace() {
         <Tag color={status === 'published' ? 'green' : 'default'}>{status === 'published' ? '展示中' : '已下架'}</Tag>
       ),
     },
-    {
-      title: '操作',
-      key: 'actions',
-      render: () => <span className={styles.subText}>仅查看</span>,
-    },
+    { title: '操作', key: 'actions', responsive: ['md'], render: () => <span className={styles.subText}>仅查看</span> },
   ];
 
   const trialColumns: ColumnsType<ManagedTrialRecruitment> = [
@@ -1165,22 +1176,24 @@ function AdminWorkspace() {
     {
       title: '试用方式',
       dataIndex: 'trialType',
+      responsive: ['md'],
       render: (trialType: ManagedTrialRecruitment['trialType']) => (
         <Tag color={trialType === 'ONLINE' ? 'blue' : 'purple'}>{trialType === 'ONLINE' ? '线上试用' : '线下试用'}</Tag>
       ),
     },
-    { title: '商家', dataIndex: 'merchantId', render: (merchantId, trial) => trial.merchantName || getMerchantName(merchantId) },
+    { title: '商家', dataIndex: 'merchantId', responsive: ['md'], render: (merchantId, trial) => trial.merchantName || getMerchantName(merchantId) },
     {
       title: '招募进度',
       key: 'progress',
+      responsive: ['md'],
       render: (_, trial) => (
         <span>
           {trial.claimedCount} / {trial.targetCount} 人
         </span>
       ),
     },
-    { title: '申请人数', dataIndex: 'applicantCount' },
-    { title: '截止日期', dataIndex: 'deadline' },
+    { title: '申请人数', dataIndex: 'applicantCount', responsive: ['md'] },
+    { title: '截止日期', dataIndex: 'deadline', responsive: ['md'] },
     {
       title: '状态',
       dataIndex: 'status',
@@ -1194,7 +1207,7 @@ function AdminWorkspace() {
         </Tag>
       ),
     },
-    { title: '发布时间', dataIndex: 'createdAt' },
+    { title: '发布时间', dataIndex: 'createdAt', responsive: ['md'] },
     {
       title: '操作',
       key: 'actions',
@@ -1226,15 +1239,17 @@ function AdminWorkspace() {
     {
       title: '试用方式',
       dataIndex: 'trialType',
+      responsive: ['md'],
       render: (trialType: ManagedTrialApplication['trialType']) => (
         <Tag color={trialType === 'ONLINE' ? 'blue' : 'purple'}>{trialType === 'ONLINE' ? '线上' : '线下'}</Tag>
       ),
     },
     { title: '申请用户', key: 'user', render: (_, item) => item.nickName || item.userName },
-    { title: '申请理由', dataIndex: 'applyReason', ellipsis: true },
+    { title: '申请理由', dataIndex: 'applyReason', ellipsis: true, responsive: ['md'] },
     {
       title: '收货信息',
       key: 'shipping',
+      responsive: ['md'],
       render: (_, item) => (
         item.trialType === 'ONLINE' ? (
           <div>
@@ -1256,13 +1271,14 @@ function AdminWorkspace() {
     {
       title: '物流',
       key: 'logistics',
+      responsive: ['md'],
       render: (_, item) => item.trialType === 'OFFLINE' ? '无需物流' : item.trackingNo ? `${item.carrier} ${item.trackingNo}` : '-',
     },
     {
       title: '操作',
       key: 'actions',
       render: (_, item) => (
-        <Space>
+        <Space wrap size={6}>
           {item.status === 'APPLIED' && (
             <>
               <Button size="small" type="primary" onClick={() => approveTrialApplication(item)}>通过</Button>
@@ -1372,6 +1388,7 @@ function AdminWorkspace() {
         </Sider>
 
         <Drawer
+          {...responsiveDrawerProps}
           title="导航菜单"
           placement="left"
           open={mobileMenuOpen}
@@ -1415,8 +1432,8 @@ function AdminWorkspace() {
                 {isAdmin ? '管理员权限' : '商家权限'}
               </Tag>
               <span className={styles.userName}>{session.name}</span>
-              <Button icon={<LogoutOutlined />} onClick={handleLogout} className={styles.logoutBtn}>
-                退出
+              <Button aria-label="退出登录" icon={<LogoutOutlined />} onClick={handleLogout} className={styles.logoutBtn}>
+                <span className={styles.logoutText}>退出</span>
               </Button>
             </div>
           </Header>
@@ -1537,7 +1554,7 @@ function AdminWorkspace() {
                   columns={shopUserColumns}
                   dataSource={shopUsers}
                   loading={shopUsersLoading}
-                  scroll={{ x: 980 }}
+                  scroll={{ x: 'max-content' }}
                   pagination={{
                     current: userPage,
                     pageSize: 10,
@@ -1638,6 +1655,7 @@ function AdminWorkspace() {
                       { label: '待收货', value: 'shipped' },
                       { label: '已完成', value: 'completed' },
                       { label: '已取消', value: 'canceled' },
+                      { label: '退款中', value: 'refunding' },
                       { label: '已退款', value: 'refunded' },
                     ]}
                   />
@@ -1680,7 +1698,7 @@ function AdminWorkspace() {
                       rowKey="applicationId"
                       columns={trialApplicationColumns}
                       dataSource={trialApplications}
-                      scroll={{ x: 1100 }}
+                      scroll={{ x: 'max-content' }}
                       pagination={{ pageSize: 6 }}
                     />
                   </div>
@@ -1719,21 +1737,21 @@ function AdminWorkspace() {
                   dataSource={merchants}
                   loading={merchantsLoading}
                   pagination={false}
-                  scroll={{ x: 900 }}
+                  scroll={{ x: 'max-content' }}
                   columns={[
-                    { title: '申请商家', dataIndex: 'name', width: 140 },
-                    { title: '申请编号', dataIndex: 'applicationNo', width: 190 },
-                    { title: '后台账号', dataIndex: 'username', width: 120 },
-                    { title: '负责人', dataIndex: 'ownerName', width: 80 },
-                    { title: '手机号', dataIndex: 'phone', width: 120 },
-                    { title: '公司地址', dataIndex: 'companyAddress', ellipsis: true },
-                    { title: '入驻时间', dataIndex: 'registeredAt', width: 100 },
-                    { title: '商品数', dataIndex: 'productCount', width: 70 },
-                    { title: '订单数', dataIndex: 'orderCount', width: 70 },
+                    { title: '申请商家', dataIndex: 'name', width: 120 },
+                    { title: '申请编号', dataIndex: 'applicationNo', width: 190, responsive: ['md'] },
+                    { title: '后台账号', dataIndex: 'username', width: 120, responsive: ['md'] },
+                    { title: '负责人', dataIndex: 'ownerName', width: 80, responsive: ['md'] },
+                    { title: '手机号', dataIndex: 'phone', width: 120, responsive: ['md'] },
+                    { title: '公司地址', dataIndex: 'companyAddress', ellipsis: true, responsive: ['md'] },
+                    { title: '入驻时间', dataIndex: 'registeredAt', width: 100, responsive: ['md'] },
+                    { title: '商品数', dataIndex: 'productCount', width: 70, responsive: ['md'] },
+                    { title: '订单数', dataIndex: 'orderCount', width: 70, responsive: ['md'] },
                     {
                       title: '状态',
                       key: 'status',
-                      width: 150,
+                      width: 120,
                       render: (_, merchant: MerchantAccount) => (
                         <Space size={4}>
                           <Tag color={merchant.auditStatus === 'approved' ? 'green' : merchant.auditStatus === 'rejected' ? 'red' : 'processing'}>
@@ -1748,7 +1766,7 @@ function AdminWorkspace() {
                     {
                       title: '操作',
                       key: 'actions',
-                      width: 80,
+                      width: 68,
                       render: (_, merchant) => (
                         <Dropdown
                           menu={{
@@ -1776,6 +1794,7 @@ function AdminWorkspace() {
       </Layout>
 
       <Modal
+        {...responsiveModalProps}
         title="固定四分类设置"
         open={categoryModalOpen}
         onCancel={() => setCategoryModalOpen(false)}
@@ -1790,7 +1809,7 @@ function AdminWorkspace() {
           pagination={false}
           dataSource={categoryDrafts}
           columns={[
-            { title: '稳定编码', dataIndex: 'categoryCode' },
+            { title: '稳定编码', dataIndex: 'categoryCode', responsive: ['md'] },
             {
               title: '显示名称',
               key: 'name',
@@ -1808,6 +1827,7 @@ function AdminWorkspace() {
               title: '排序',
               key: 'sort',
               width: 100,
+              responsive: ['md'],
               render: (_, item: ProductCategoryOption) => (
                 <InputNumber
                   min={1}
@@ -1845,6 +1865,7 @@ function AdminWorkspace() {
       </Modal>
 
       <Drawer
+        {...responsiveDrawerProps}
         title={editingProductId ? '编辑商品' : '新增商品'}
         size="large"
         open={productDrawerOpen}
@@ -1917,7 +1938,7 @@ function AdminWorkspace() {
         </Form>
       </Drawer>
 
-      <Drawer title="订单详情" size="large" open={Boolean(detailOrder)} onClose={() => setDetailOrder(null)} destroyOnHidden>
+      <Drawer {...responsiveDrawerProps} title="订单详情" size="large" open={Boolean(detailOrder)} onClose={() => setDetailOrder(null)} destroyOnHidden>
         {detailOrder && (
           <div className={styles.orderDetail}>
             <div className={styles.detailHeader}>
@@ -1945,8 +1966,10 @@ function AdminWorkspace() {
                 <span>售后</span>
                 <strong>{detailOrder.refundStatus === 'PENDING'
                   ? '退款待审核'
-                  : detailOrder.refundStatus === 'APPROVED'
-                    ? '已退款'
+                  : detailOrder.refundStatus === 'REFUNDING'
+                    ? '退款中'
+                    : detailOrder.refundStatus === 'REFUNDED'
+                      ? '已退款'
                     : detailOrder.refundStatus === 'REJECTED'
                       ? '退款已驳回'
                       : '无退款申请'}</strong>
@@ -2044,6 +2067,7 @@ function AdminWorkspace() {
                   <strong>退款原因：{detailOrder.refundReason}</strong>
                   {detailOrder.refundRequestedAt && <p>申请时间：{detailOrder.refundRequestedAt}</p>}
                   {detailOrder.refundAuditRemark && <p>审核说明：{detailOrder.refundAuditRemark}</p>}
+                  {detailOrder.refundCompletedAt && <p>退款完成时间：{detailOrder.refundCompletedAt}</p>}
                 </div>
                 {!isAdmin && detailOrder.refundStatus === 'PENDING' && (
                   <Button type="primary" danger onClick={() => openRefundAudit(detailOrder)}>
@@ -2056,6 +2080,7 @@ function AdminWorkspace() {
         )}
       </Drawer>
       <Modal
+        {...responsiveModalProps}
         title={`审核退款${refundAuditOrder ? ` · ${refundAuditOrder.orderNo}` : ''}`}
         open={Boolean(refundAuditOrder)}
         onCancel={closeRefundAudit}
@@ -2090,6 +2115,7 @@ function AdminWorkspace() {
         )}
       </Modal>
       <Modal
+        {...responsiveModalProps}
         title={`订单发货${shippingOrder ? ` · ${shippingOrder.orderNo}` : ''}`}
         open={Boolean(shippingOrder)}
         onCancel={closeOrderShipment}
@@ -2110,6 +2136,7 @@ function AdminWorkspace() {
         </Form>
       </Modal>
       <Modal
+        {...responsiveModalProps}
         title="商家入驻审核"
         open={merchantModalOpen}
         onCancel={() => setMerchantModalOpen(false)}
@@ -2136,6 +2163,7 @@ function AdminWorkspace() {
       </Modal>
 
       <Modal
+        {...responsiveModalProps}
         title="发布试用招募"
         open={trialModalOpen}
         onCancel={closeTrialModal}
@@ -2206,6 +2234,7 @@ function AdminWorkspace() {
       </Modal>
 
       <Modal
+        {...responsiveModalProps}
         title={trialApplicationAction === 'ship' ? '填写线上试用物流' : '驳回试用申请'}
         open={Boolean(trialApplicationAction && selectedTrialApplication)}
         onCancel={closeTrialApplicationAction}
@@ -2235,6 +2264,7 @@ function AdminWorkspace() {
       </Modal>
 
       <Modal
+        {...responsiveModalProps}
         title={`${detailMerchant?.name} - 入驻材料`}
         open={!!detailMerchant}
         onCancel={() => setDetailMerchant(null)}

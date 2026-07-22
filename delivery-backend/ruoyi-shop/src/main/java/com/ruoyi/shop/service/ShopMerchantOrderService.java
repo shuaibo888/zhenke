@@ -83,9 +83,13 @@ public class ShopMerchantOrderService
         {
             throw new ServiceException("只有已收货订单的退款申请可以审核");
         }
+        if (!"WECHAT".equals(order.getPaymentChannel()))
+        {
+            throw new ServiceException("该订单不是微信支付订单，无法发起微信原路退款");
+        }
         String decision = StringUtils.trim(body.getDecision());
         String auditRemark = StringUtils.trim(body.getAuditRemark());
-        if (!ShopOrderService.REFUND_APPROVED.equals(decision)
+        if (!ShopOrderService.REFUND_AUDIT_APPROVED.equals(decision)
                 && !ShopOrderService.REFUND_REJECTED.equals(decision))
         {
             throw new ServiceException("退款审核结果无效");
@@ -95,20 +99,22 @@ public class ShopMerchantOrderService
             throw new ServiceException("驳回退款时必须填写审核说明");
         }
         Long auditBy = merchant.getAdminUserId();
+        String refundStatus = ShopOrderService.REFUND_AUDIT_APPROVED.equals(decision)
+                ? ShopOrderService.REFUND_STATUS_REFUNDING : ShopOrderService.REFUND_REJECTED;
         if (orderMapper.updateRefundAudit(refund.getRefundId(), merchantId,
-                ShopOrderService.REFUND_PENDING, decision, auditBy, auditRemark) == 0)
+                ShopOrderService.REFUND_PENDING, refundStatus, auditBy, auditRemark) == 0)
         {
             throw new ServiceException("退款申请状态已变化，请刷新后重试");
         }
-        if (ShopOrderService.REFUND_APPROVED.equals(decision))
+        if (ShopOrderService.REFUND_AUDIT_APPROVED.equals(decision))
         {
             if (orderMapper.updateStatus(order.getUserId(), orderId,
-                    ShopOrderService.RECEIVED, ShopOrderService.REFUNDED) == 0)
+                    ShopOrderService.RECEIVED, ShopOrderService.REFUNDING) == 0)
             {
                 throw new ServiceException("订单状态已变化，请刷新后重试");
             }
-            insertStatusLog(orderId, ShopOrderService.RECEIVED, ShopOrderService.REFUNDED,
-                    merchantId, "商家审核通过退款申请");
+            insertStatusLog(orderId, ShopOrderService.RECEIVED, ShopOrderService.REFUNDING,
+                    merchantId, "商家审核通过退款申请，等待支付渠道退款结果");
         }
         return hydrate(requireMerchantOrder(merchantId, orderId, false));
     }

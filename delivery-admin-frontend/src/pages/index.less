@@ -156,6 +156,7 @@
 
 .appShell {
   min-height: 100vh;
+  min-height: 100dvh;
   background: #eef2ef;
 }
 
@@ -592,6 +593,7 @@
 
 .monoText {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  overflow-wrap: anywhere;
 }
 
 .shortcoming {
@@ -755,11 +757,34 @@
 
 @media (max-width: 720px) {
   .loginShell {
-    padding: 24px;
+    align-content: start;
+    gap: 22px;
+    min-height: 100dvh;
+    padding: calc(20px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
   }
 
   .loginBrand {
-    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .brandMark {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    font-size: 32px;
+  }
+
+  .loginBrand h1 {
+    font-size: 28px;
+  }
+
+  .brandCopy {
+    font-size: 14px;
+    line-height: 1.65;
+  }
+
+  .loginPanel {
+    padding: 22px 18px;
   }
 
   .dashboardGrid,
@@ -770,15 +795,40 @@
   }
 
   .header {
-    align-items: flex-start;
-    height: auto;
-    flex-direction: column;
-    gap: 12px;
-    padding: 18px;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    align-items: center;
+    height: 64px;
+    flex-direction: row;
+    gap: 8px;
+    padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
   }
 
   .content {
-    padding: 16px;
+    min-width: 0;
+    padding: 14px 12px calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .header h2 {
+    margin-top: 2px;
+    font-size: 18px;
+  }
+
+  .headerTitle .eyebrow {
+    display: none;
+  }
+
+  .mobileMenuBtn,
+  .logoutBtn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    padding: 0 !important;
+  }
+
+  .logoutText {
+    display: none;
   }
 
   .productSearch,
@@ -807,6 +857,112 @@
   .refundNotice {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+
+  .detailHeader,
+  .feeRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .feeRow {
+    gap: 4px;
+  }
+
+  .metricCard {
+    min-height: 104px;
+    padding: 16px;
+  }
+
+  .chartPanel {
+    min-height: 300px;
+    padding: 18px 14px;
+  }
+
+  .tableSurface {
+    padding: 14px 10px;
+  }
+
+  .tableSurface :global(.ant-table-cell) {
+    padding: 10px 8px !important;
+    vertical-align: top;
+  }
+
+  .productCell {
+    min-width: 140px;
+    gap: 8px;
+  }
+
+  .productThumb {
+    width: 44px;
+    height: 44px;
+  }
+
+  .productCell .strongText,
+  .productCell .subText {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .tableSurface :global(.ant-space) {
+    flex-wrap: wrap;
+  }
+
+  .tableSurface :global(.ant-btn-sm),
+  .responsiveModal :global(.ant-btn),
+  .responsiveDrawer :global(.ant-btn) {
+    min-height: 40px;
+  }
+
+  .tableSurface :global(.ant-pagination) {
+    justify-content: center;
+    row-gap: 8px;
+  }
+
+  .responsiveModal :global(.ant-modal) {
+    top: max(8px, env(safe-area-inset-top));
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px);
+    margin: 0 auto;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  .responsiveModal :global(.ant-modal-content) {
+    display: flex;
+    max-height: calc(100dvh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)));
+    flex-direction: column;
+    padding: 18px 16px;
+  }
+
+  .responsiveModal :global(.ant-modal-body) {
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .responsiveModal :global(.ant-checkbox-group) {
+    display: grid;
+    gap: 12px;
+  }
+
+  .responsiveDrawer :global(.ant-drawer-content-wrapper) {
+    max-width: 100vw;
+  }
+
+  .responsiveDrawer :global(.ant-drawer-header) {
+    padding-top: calc(16px + env(safe-area-inset-top));
+  }
+
+  .responsiveDrawer :global(.ant-drawer-body) {
+    padding-right: 16px;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom));
+    padding-left: 16px;
+    overscroll-behavior: contain;
   }
 }
 
@@ -908,7 +1064,7 @@
 
   .tableSurface :global(.ant-table-thead > tr > th),
   .tableSurface :global(.ant-table-tbody > tr > td) {
-    white-space: nowrap;
+    white-space: normal;
   }
 }
 

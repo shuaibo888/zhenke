@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const source = readFileSync(resolve(process.cwd(), 'src/pages/index.tsx'), 'utf8');
+const styles = readFileSync(resolve(process.cwd(), 'src/pages/index.less'), 'utf8');
 
 assert.match(source, /管理员登录/);
 assert.match(source, /fetchAdminCaptcha/);
@@ -32,6 +33,8 @@ assert.match(source, /shipMerchantOrder/);
 assert.match(source, /auditMerchantOrderRefund/);
 assert.match(source, /审核退款/);
 assert.match(source, /退款状态/);
+assert.match(source, /退款中/);
+assert.match(source, /订单已进入退款中/);
 assert.doesNotMatch(source, /seedOrders/);
 assert.doesNotMatch(source, /shipOrderById/);
 assert.doesNotMatch(source, /refundOrderById/);
@@ -60,5 +63,11 @@ assert.doesNotMatch(source, /今日处理/);
 assert.doesNotMatch(source, /优先发货与内容兜底/);
 assert.match(source, /filterRowsForSession/);
 assert.match(source, /loginType/);
+assert.match(source, /const responsiveModalProps = \{ rootClassName: styles\.responsiveModal \}/);
+assert.match(source, /const responsiveDrawerProps = \{ rootClassName: styles\.responsiveDrawer \}/);
+assert.match(source, /responsive: \['md'\]/);
+assert.match(source, /aria-label="退出登录"/);
+assert.match(styles, /\.responsiveModal :global\(\.ant-modal-body\)/);
+assert.match(styles, /\.tableSurface :global\(\.ant-pagination\)/);
 
 console.log('admin page structure ok');

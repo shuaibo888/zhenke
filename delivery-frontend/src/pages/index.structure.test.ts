@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 const pageSource = readFileSync(new URL('./index.tsx', import.meta.url), 'utf8');
+const styleSource = readFileSync(new URL('./index.less', import.meta.url), 'utf8');
 const authServiceSource = readFileSync(new URL('../services/shopAuth.ts', import.meta.url), 'utf8');
 const contentServiceSource = readFileSync(new URL('../services/shopContent.ts', import.meta.url), 'utf8');
 
@@ -17,13 +18,36 @@ test('cart and first-stage orders use authenticated server APIs', () => {
   assert.doesNotMatch(pageSource, /createOrdersFromCart\(/);
 });
 
-test('second-stage orders use backend payment, logistics, and receipt APIs', () => {
-  assert.match(contentServiceSource, /\/shop\/orders\/\$\{orderId\}\/pay/);
+test('second-stage orders use real WeChat payment, logistics, and receipt APIs', () => {
+  assert.match(contentServiceSource, /\/shop\/payments\/wechat\/\$\{orderId\}\/prepare/);
+  assert.match(contentServiceSource, /\/shop\/payments\/wechat\/\$\{orderId\}\/status/);
   assert.match(contentServiceSource, /\/shop\/orders\/\$\{orderId\}\/received/);
-  assert.match(pageSource, /payShopOrder\(payOrder\.id\)/);
+  assert.match(pageSource, /prepareWechatPayment\(order\.id, authorization\)/);
+  assert.match(pageSource, /invokeWechatJsapi/);
+  assert.match(pageSource, /当前仅支持微信内支付，请使用微信打开本页面后重试/);
+  assert.doesNotMatch(pageSource, /prepared\.type === 'H5'/);
+  assert.doesNotMatch(contentServiceSource, /'OAUTH' \| 'JSAPI' \| 'H5'/);
+  assert.match(pageSource, /reconcileWechatPayment\(order\.id\)/);
+  assert.match(pageSource, /continueWechatPayment\(order, \{ code, state \}\)/);
+  assert.doesNotMatch(pageSource, /微信身份已确认，请继续完成支付/);
   assert.match(pageSource, /confirmShopOrderReceived\(order\.id\)/);
-  assert.match(pageSource, /模拟支付成功/);
+  assert.match(pageSource, /微信支付成功/);
+  assert.doesNotMatch(pageSource, /模拟支付成功/);
   assert.doesNotMatch(pageSource, /advanceOrderStatus/);
+});
+
+test('public user site is restricted to the WeChat embedded browser', () => {
+  assert.match(pageSource, /if \(!isWechatBrowser\(\)\)/);
+  assert.match(pageSource, /请在微信中打开/);
+  assert.match(pageSource, /当前版本仅开放微信内使用/);
+});
+
+test('pending orders show the backend payment deadline and disable late payment', () => {
+  assert.match(contentServiceSource, /paymentExpireTime\?: string/);
+  assert.match(pageSource, /paymentExpiresAt: dto\.paymentExpireTime/);
+  assert.match(pageSource, /支付剩余/);
+  assert.match(pageSource, /支付已超时，等待系统取消/);
+  assert.match(pageSource, /getPaymentRemainingSeconds/);
 });
 
 test('home feed separates online and offline trial recruitment through the backend query', () => {
@@ -93,6 +117,8 @@ test('orders expose the real refund flow for paid, shipped, and received states'
   assert.match(pageSource, /requestShopOrderRefund\(refundOrder\.id, reason\)/);
   assert.match(pageSource, /订单已发货，请先确认收货后再申请退款/);
   assert.match(pageSource, /退款申请已提交，等待商家审核/);
+  assert.match(pageSource, /退款申请已受理，正在等待支付渠道退款结果/);
+  assert.match(pageSource, /REFUNDING: 'refunding'/);
   assert.match(pageSource, /退款审核中/);
 });
 
@@ -128,6 +154,13 @@ test('profile renders real trial and zhenke report sections', () => {
   assert.match(profileBlock, /确认收货/);
   assert.match(profileBlock, /自愿发布甄客验/);
   assert.match(profileBlock, /<h3>我的甄客验<\/h3>/);
+  assert.match(contentServiceSource, /\/shop\/reports\/me\/list/);
+  assert.match(pageSource, /fetchMyVerificationReports\(\)/);
+  assert.match(profileBlock, /className=\{`\$\{styles\.orderItem\} \$\{styles\.profileReportItem\}`\}/);
+  assert.match(profileBlock, /openProfileReportDetail\(report\)/);
+  assert.match(pageSource, /fetchPublishedReport\(summary\.id\)/);
+  assert.match(pageSource, /fetchPublicProduct\(report\.productId\)/);
+  assert.match(pageSource, /返回我的甄客验/);
   assert.doesNotMatch(profileBlock, /<h3>我的验证<\/h3>/);
 });
 
@@ -175,18 +208,20 @@ test('home shell uses a masthead plus nav row without a repeated trust strip', (
   assert.doesNotMatch(pageSource, /<h1>㤫者商城<\/h1>/);
 });
 
-test('masthead account action exposes a hover logout menu', () => {
-  const accountMenuBlock =
-    pageSource.slice(pageSource.indexOf('className={styles.accountMenu}'), pageSource.indexOf('className={styles.accountDropdown}')) ?? '';
-
+test('masthead account action exposes a touch-friendly logout menu', () => {
   assert.match(pageSource, /className=\{styles\.accountMenu\}/);
+  assert.match(pageSource, /<Dropdown/);
+  assert.match(pageSource, /trigger=\{\['hover', 'click'\]\}/);
+  assert.match(pageSource, /classNames=\{\{ root: styles\.accountPopup \}\}/);
   assert.match(pageSource, /className=\{styles\.accountButton\}/);
+  assert.match(pageSource, /aria-label="打开账号操作菜单"/);
   assert.match(pageSource, /styles\.accountAvatar/);
   assert.match(pageSource, /styles\.accountName/);
   assert.match(pageSource, /styles\.accountRole/);
-  assert.match(pageSource, /className=\{styles\.logoutButton\}/);
+  assert.match(pageSource, /onClick: \(\) => void handleLogout\(\)/);
+  assert.match(pageSource, /remoteLogoutFailed/);
   assert.match(pageSource, /退出登录/);
-  assert.doesNotMatch(accountMenuBlock, /<Badge/);
+  assert.doesNotMatch(styleSource, /accountMenu:hover[\s\S]*accountDropdown/);
 });
 
 test('masthead exposes a shipping address action beside account info', () => {
@@ -355,4 +390,16 @@ test('goods card titles truncate long names without changing card height', () =>
   assert.match(styleSource, /\.productBodyButton h3\s+\{[^}]*overflow: hidden;/);
   assert.match(styleSource, /\.productBodyButton h3\s+\{[^}]*text-overflow: ellipsis;/);
   assert.match(styleSource, /\.productBodyButton h3\s+\{[^}]*white-space: nowrap;/);
+});
+
+test('mobile navigation, safe areas, and overlays remain touch friendly', () => {
+  const styleSource = readFileSync(new URL('./index.less', import.meta.url), 'utf8');
+
+  assert.match(pageSource, /const responsiveModalProps = \{ rootClassName: styles\.responsiveModal \}/);
+  assert.match(pageSource, /const responsiveDrawerProps = \{ rootClassName: styles\.responsiveDrawer \}/);
+  assert.match(pageSource, /aria-current=\{activeTab === item\.key \? 'page' : undefined\}/);
+  assert.match(pageSource, /role=\{onOpenProduct \? 'button' : undefined\}/);
+  assert.match(styleSource, /bottom: calc\(76px \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(styleSource, /\.responsiveModal :global\(\.ant-modal-body\)/);
+  assert.match(styleSource, /\.navBar\s+\{[^}]*position: fixed;/);
 });
