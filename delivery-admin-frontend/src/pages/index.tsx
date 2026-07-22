@@ -1160,6 +1160,12 @@ function AdminWorkspace() {
         return <Tag color={meta.color}>{meta.label}</Tag>;
       },
     },
+    {
+      title: '发布时间',
+      dataIndex: 'createdAt',
+      width: 170,
+      render: (createdAt: string) => <span className={styles.reportPublishedAt}>{createdAt || '-'}</span>,
+    },
     { title: '有用数', dataIndex: 'usefulCount', responsive: ['md'] },
     {
       title: '状态',

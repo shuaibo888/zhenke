@@ -44,6 +44,7 @@ assert.match(source, /getManagedReportTypeMeta/);
 assert.match(source, /购买评价/);
 assert.match(source, /线上试用报告/);
 assert.match(source, /线下试用报告/);
+assert.match(source, /title: '发布时间',[\s\S]*?dataIndex: 'createdAt',[\s\S]*?reportPublishedAt/);
 assert.doesNotMatch(source, /seedReports/);
 assert.doesNotMatch(source, /toggleReportStatus/);
 assert.match(source, /商家管理/);
@@ -69,5 +70,6 @@ assert.match(source, /responsive: \['md'\]/);
 assert.match(source, /aria-label="退出登录"/);
 assert.match(styles, /\.responsiveModal :global\(\.ant-modal-body\)/);
 assert.match(styles, /\.tableSurface :global\(\.ant-pagination\)/);
+assert.match(styles, /\.reportPublishedAt/);
 
 console.log('admin page structure ok');
