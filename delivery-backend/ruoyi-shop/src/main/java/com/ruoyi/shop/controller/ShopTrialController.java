@@ -39,6 +39,12 @@ public class ShopTrialController
         return AjaxResult.success(trialService.myApplications());
     }
 
+    @GetMapping("/me/applications/{applicationId}/logistics")
+    public AjaxResult logistics(@PathVariable long applicationId)
+    {
+        return AjaxResult.success(trialService.myApplicationLogistics(applicationId));
+    }
+
     @PutMapping("/me/applications/{applicationId}/received")
     public AjaxResult confirmReceived(@PathVariable long applicationId)
     {

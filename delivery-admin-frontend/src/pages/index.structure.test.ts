@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 
 const source = readFileSync(resolve(process.cwd(), 'src/pages/index.tsx'), 'utf8');
 const styles = readFileSync(resolve(process.cwd(), 'src/pages/index.less'), 'utf8');
+const adminApiSource = readFileSync(resolve(process.cwd(), 'src/services/adminApi.ts'), 'utf8');
 
 assert.match(source, /管理员登录/);
 assert.match(source, /fetchAdminCaptcha/);
@@ -30,6 +31,9 @@ assert.match(source, /订单详情/);
 assert.match(source, /fetchMerchantOrders/);
 assert.match(source, /fetchMerchantOrder/);
 assert.match(source, /shipMerchantOrder/);
+assert.match(source, /只需填写物流单号，系统会自动识别快递公司/);
+assert.doesNotMatch(source, /name="carrier" label="物流公司"/);
+assert.match(adminApiSource, /JSON\.stringify\(\{ trackingNo \}\)/);
 assert.match(source, /auditMerchantOrderRefund/);
 assert.match(source, /审核退款/);
 assert.match(source, /退款状态/);

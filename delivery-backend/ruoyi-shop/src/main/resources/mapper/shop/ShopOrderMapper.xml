@@ -462,7 +462,7 @@
 
     <update id="shipOrder">
         update shop_order
-        set status = 'SHIPPED', carrier = #{carrier}, tracking_no = #{trackingNo},
+        set status = 'SHIPPED', tracking_no = #{trackingNo},
             ship_time = sysdate(), update_time = sysdate()
         where merchant_id = #{merchantId} and order_id = #{orderId}
           and status = 'PAID' and del_flag = '0'

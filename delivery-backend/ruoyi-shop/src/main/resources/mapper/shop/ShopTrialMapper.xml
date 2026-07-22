@@ -288,7 +288,7 @@
     <update id="shipApplication">
         update shop_trial_application a
         inner join shop_trial_campaign c on c.campaign_id = a.campaign_id
-        set a.status = 'SHIPPED', a.carrier = #{carrier}, a.tracking_no = #{trackingNo},
+        set a.status = 'SHIPPED', a.tracking_no = #{trackingNo},
             a.shipped_at = sysdate(), a.update_time = sysdate()
         where a.application_id = #{applicationId} and c.merchant_id = #{merchantId}
           and c.trial_type = 'ONLINE' and a.status = 'APPROVED'

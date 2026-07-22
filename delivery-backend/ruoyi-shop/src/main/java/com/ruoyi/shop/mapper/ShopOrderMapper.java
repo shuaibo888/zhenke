@@ -60,5 +60,5 @@ public interface ShopOrderMapper
     List<ShopOrder> selectAdminOrders();
     ShopOrder selectAdminOrder(Long orderId);
     int shipOrder(@Param("merchantId") Long merchantId, @Param("orderId") Long orderId,
-            @Param("carrier") String carrier, @Param("trackingNo") String trackingNo);
+            @Param("trackingNo") String trackingNo);
 }

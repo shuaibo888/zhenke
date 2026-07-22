@@ -22,7 +22,9 @@ import com.ruoyi.shop.domain.dto.ShopTrialShipBody;
 import com.ruoyi.shop.domain.dto.ShopVerificationReportBody;
 import com.ruoyi.shop.domain.dto.ShopVerificationResourceBody;
 import com.ruoyi.shop.domain.vo.ShopHomeFeedItem;
+import com.ruoyi.shop.domain.vo.ShopLogisticsTrace;
 import com.ruoyi.shop.domain.vo.ShopReportUsefulResult;
+import com.ruoyi.shop.logistics.AliyunLogisticsService;
 import com.ruoyi.shop.mapper.ShopTrialMapper;
 import com.ruoyi.shop.mapper.ShopUserMapper;
 import com.ruoyi.shop.security.ShopAccountIdentity;
@@ -41,14 +43,17 @@ public class ShopTrialService
     private final ShopUserMapper userMapper;
     private final ShopMerchantService merchantService;
     private final ShopProductService productService;
+    private final AliyunLogisticsService logisticsService;
 
     public ShopTrialService(ShopTrialMapper trialMapper, ShopUserMapper userMapper,
-            ShopMerchantService merchantService, ShopProductService productService)
+            ShopMerchantService merchantService, ShopProductService productService,
+            AliyunLogisticsService logisticsService)
     {
         this.trialMapper = trialMapper;
         this.userMapper = userMapper;
         this.merchantService = merchantService;
         this.productService = productService;
+        this.logisticsService = logisticsService;
     }
 
     public List<ShopTrialCampaign> merchantCampaigns(long merchantId, ShopTrialCampaign query)
@@ -206,6 +211,18 @@ public class ShopTrialService
         return trialMapper.selectUserApplications(ShopAccountIdentity.requireShopUserId());
     }
 
+    public ShopLogisticsTrace myApplicationLogistics(long applicationId)
+    {
+        long shopUserId = ShopAccountIdentity.requireShopUserId();
+        ShopTrialApplication application = requireApplication(
+                trialMapper.selectUserApplication(shopUserId, applicationId));
+        if (!ONLINE.equals(application.getTrialType()))
+        {
+            throw new ServiceException("线下试用无需查询物流");
+        }
+        return logisticsService.query(application.getCarrier(), application.getTrackingNo(), List.of());
+    }
+
     @Transactional
     public ShopTrialApplication auditApplication(long applicationId, ShopTrialAuditBody body)
     {
@@ -238,7 +255,7 @@ public class ShopTrialService
             throw new ServiceException("线下试用审核通过后即可发布报告，不需要发货");
         }
         if (trialMapper.shipApplication(merchant.getMerchantId(), applicationId,
-                StringUtils.trim(body.getCarrier()), StringUtils.trim(body.getTrackingNo())) == 0)
+                StringUtils.trim(body.getTrackingNo())) == 0)
         {
             throw new ServiceException("只有已通过的试用申请可以发货");
         }

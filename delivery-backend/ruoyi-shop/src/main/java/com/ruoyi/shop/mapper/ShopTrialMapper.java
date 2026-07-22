@@ -55,7 +55,7 @@ public interface ShopTrialMapper {
                          @Param("decision") String decision, @Param("auditRemark") String auditRemark);
 
     int shipApplication(@Param("merchantId") Long merchantId, @Param("applicationId") Long applicationId,
-                        @Param("carrier") String carrier, @Param("trackingNo") String trackingNo);
+                        @Param("trackingNo") String trackingNo);
 
     int confirmReceived(@Param("shopUserId") Long shopUserId, @Param("applicationId") Long applicationId);
 

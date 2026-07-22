@@ -243,6 +243,21 @@ export interface ShopOrderDto {
   }>;
 }
 
+export interface LogisticsTraceDto {
+  carrier?: string;
+  trackingNo?: string;
+  state: 'PREPARING' | 'IN_TRANSIT' | 'DELIVERED' | 'EXCEPTION' | 'UNKNOWN';
+  providerMessage?: string;
+  events: Array<{
+    eventCode?: string;
+    description: string;
+    location?: string;
+    eventTime?: string;
+    source: 'SYSTEM' | 'PROVIDER';
+    sourceEventId?: string;
+  }>;
+}
+
 export async function fetchHomeFeed(
   categoryCode?: string,
   contentType: 'ALL' | 'TRIAL' | 'REPORT' = 'ALL',
@@ -502,6 +517,26 @@ export async function publishPurchaseVerificationReport(body: {
 export async function fetchMyVerificationReports() {
   const result = await requestApi<ApiResponse<VerificationReportDto[]>>('/shop/reports/me/list', {}, true);
   return Array.isArray(result.data) ? result.data : [];
+}
+
+export async function fetchShopOrderLogistics(orderId: number) {
+  const result = await requestApi<ApiResponse<LogisticsTraceDto>>(
+    `/shop/orders/${orderId}/logistics`,
+    {},
+    true,
+  );
+  if (!result.data) throw new Error('物流查询失败');
+  return result.data;
+}
+
+export async function fetchTrialApplicationLogistics(applicationId: number) {
+  const result = await requestApi<ApiResponse<LogisticsTraceDto>>(
+    `/shop/trials/me/applications/${applicationId}/logistics`,
+    {},
+    true,
+  );
+  if (!result.data) throw new Error('试用物流查询失败');
+  return result.data;
 }
 
 export async function uploadShopContentFile(file: File) {

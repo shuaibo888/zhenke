@@ -549,10 +549,10 @@ export async function fetchAdminOrder(orderId: number) {
   return toManagedOrder(result.data);
 }
 
-export async function shipMerchantOrder(orderId: number, carrier: string, trackingNo: string) {
+export async function shipMerchantOrder(orderId: number, trackingNo: string) {
   const result = await requestApi<ApiResponse<ShopOrderDto>>(
     `/shop/merchant/orders/${orderId}/ship`,
-    { method: 'PUT', body: JSON.stringify({ carrier, trackingNo }) },
+    { method: 'PUT', body: JSON.stringify({ trackingNo }) },
     true,
   );
   if (!result.data) throw new Error('订单发货失败');
@@ -674,10 +674,10 @@ export async function auditMerchantTrialApplication(
   );
 }
 
-export async function shipMerchantTrialApplication(applicationId: number, carrier: string, trackingNo: string) {
+export async function shipMerchantTrialApplication(applicationId: number, trackingNo: string) {
   return requestApi<ApiResponse<ManagedTrialApplication>>(
     `/shop/merchant/trials/applications/${applicationId}/ship`,
-    { method: 'PUT', body: JSON.stringify({ carrier, trackingNo }) },
+    { method: 'PUT', body: JSON.stringify({ trackingNo }) },
     true,
   );
 }

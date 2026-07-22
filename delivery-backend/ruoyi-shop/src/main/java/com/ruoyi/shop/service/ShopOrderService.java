@@ -26,6 +26,8 @@ import com.ruoyi.shop.domain.ShopUserAddress;
 import com.ruoyi.shop.domain.dto.ShopOrderCreateBody;
 import com.ruoyi.shop.domain.dto.ShopOrderItemBody;
 import com.ruoyi.shop.domain.dto.ShopOrderRefundBody;
+import com.ruoyi.shop.domain.vo.ShopLogisticsTrace;
+import com.ruoyi.shop.logistics.AliyunLogisticsService;
 import com.ruoyi.shop.mapper.ShopCartMapper;
 import com.ruoyi.shop.mapper.ShopOrderMapper;
 import com.ruoyi.shop.security.ShopAccountIdentity;
@@ -52,11 +54,14 @@ public class ShopOrderService
 
     private final ShopOrderMapper orderMapper;
     private final ShopCartMapper cartMapper;
+    private final AliyunLogisticsService logisticsService;
 
-    public ShopOrderService(ShopOrderMapper orderMapper, ShopCartMapper cartMapper)
+    public ShopOrderService(ShopOrderMapper orderMapper, ShopCartMapper cartMapper,
+            AliyunLogisticsService logisticsService)
     {
         this.orderMapper = orderMapper;
         this.cartMapper = cartMapper;
+        this.logisticsService = logisticsService;
     }
 
     public List<ShopOrder> myOrders()
@@ -198,6 +203,14 @@ public class ShopOrderService
         insertStatusLog(orderId, SHIPPED, RECEIVED, userId, "用户确认收货");
         insertLogisticsEvent(orderId, "USER_RECEIVED", "用户已确认收货", "USER_RECEIVED");
         return hydrate(requireUserOrder(userId, orderId, false));
+    }
+
+    public ShopLogisticsTrace myOrderLogistics(long orderId)
+    {
+        long userId = ShopAccountIdentity.requireShopUserId();
+        ShopOrder order = requireUserOrder(userId, orderId, false);
+        return logisticsService.query(order.getCarrier(), order.getTrackingNo(),
+                orderMapper.selectLogisticsEvents(orderId));
     }
 
     @Transactional

@@ -48,17 +48,16 @@ public class ShopMerchantOrderService
             throw new ServiceException(ShopOrderService.SHIPPED.equals(order.getStatus())
                     ? "订单已发货，请勿重复操作" : "只有已支付订单可以发货");
         }
-        String carrier = StringUtils.trim(body.getCarrier());
         String trackingNo = StringUtils.trim(body.getTrackingNo());
-        if (StringUtils.isEmpty(carrier) || StringUtils.isEmpty(trackingNo))
+        if (StringUtils.isEmpty(trackingNo))
         {
-            throw new ServiceException("物流公司和物流单号不能为空");
+            throw new ServiceException("物流单号不能为空");
         }
-        if (carrier.length() > 50 || trackingNo.length() > 100)
+        if (trackingNo.length() > 100)
         {
-            throw new ServiceException("物流公司或物流单号长度超出限制");
+            throw new ServiceException("物流单号长度超出限制");
         }
-        if (orderMapper.shipOrder(merchantId, orderId, carrier, trackingNo) == 0)
+        if (orderMapper.shipOrder(merchantId, orderId, trackingNo) == 0)
         {
             throw new ServiceException("订单状态已变化，请刷新后重试");
         }

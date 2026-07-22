@@ -41,6 +41,12 @@ public class ShopOrderController
         return AjaxResult.success(orderService.myOrder(orderId));
     }
 
+    @GetMapping("/{orderId}/logistics")
+    public AjaxResult logistics(@PathVariable long orderId)
+    {
+        return AjaxResult.success(orderService.myOrderLogistics(orderId));
+    }
+
     @PostMapping
     public AjaxResult create(@Valid @RequestBody ShopOrderCreateBody body)
     {

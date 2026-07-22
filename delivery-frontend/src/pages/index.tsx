@@ -60,9 +60,11 @@ import {
   deleteShopCartItem,
   fetchHomeFeed,
   fetchMyVerificationReports,
+  fetchShopOrderLogistics,
   fetchShopCart,
   fetchShopOrders,
   fetchMyTrialApplications,
+  fetchTrialApplicationLogistics,
   fetchProductCategories,
   fetchPublicProduct,
   fetchPublishedReport,
@@ -76,6 +78,7 @@ import {
   updateShopCartItem,
   uploadShopContentFile,
   type HomeFeedItemDto,
+  type LogisticsTraceDto,
   type ProductCategoryDto,
   type PublicProductDto,
   type ReportCommentDto,
@@ -88,7 +91,7 @@ import { getCartCount, getCartTotal, type CartItem } from '@/utils/cart';
 import { canCancelOrder, orderStatusMeta } from '@/utils/orders';
 import { findProductForReport, getCatalogProducts, type ProductCategoryFilter, type ProductSortKey } from '@/utils/productCatalog';
 import { getProductJourneyState } from '@/utils/productJourney';
-import { getLogisticsView, getTrialDeadlineMeta } from '@/utils/profileData';
+import { getTrialDeadlineMeta } from '@/utils/profileData';
 import styles from './index.less';
 
 type TabKey = 'reviews' | 'profile';
@@ -159,6 +162,22 @@ const profileSectionMeta: Record<ProfileSection, { title: string; description: s
   orders: { title: '我的订单', description: '查看付款、物流、收货与购买甄客验' },
   trials: { title: '我的试用', description: '跟进试用任务与甄客验发布进度' },
   reports: { title: '我的甄客验', description: '查看我发布的真实体验' },
+};
+
+const logisticsStateMeta: Record<LogisticsTraceDto['state'], { label: string; color: string }> = {
+  PREPARING: { label: '商家备货中', color: 'default' },
+  IN_TRANSIT: { label: '运输中', color: 'processing' },
+  DELIVERED: { label: '已签收', color: 'success' },
+  EXCEPTION: { label: '物流异常', color: 'error' },
+  UNKNOWN: { label: '等待物流更新', color: 'default' },
+};
+
+type LogisticsDialogState = {
+  key: string;
+  title: string;
+  referenceLabel: string;
+  referenceNo: string;
+  trace: LogisticsTraceDto;
 };
 
 function getPaymentRemainingSeconds(expiresAt: string | undefined, now: number) {
@@ -445,6 +464,33 @@ function mapShopOrder(dto: ShopOrderDto, role: MemberRole): Order {
   };
 }
 
+function getOrderLogisticsFallback(order: Order): LogisticsTraceDto {
+  return {
+    carrier: order.carrier,
+    trackingNo: order.trackingNo,
+    state: order.trackingNo ? (order.status === 'completed' ? 'DELIVERED' : 'IN_TRANSIT') : 'PREPARING',
+    providerMessage: order.trackingNo ? '正在获取承运商最新物流轨迹' : '商家尚未登记运单号',
+    events: (order.logistics?.events ?? []).map((event, index) => ({
+      eventCode: event.eventCode,
+      description: event.description,
+      location: event.location,
+      eventTime: event.time,
+      source: event.source ?? 'SYSTEM',
+      sourceEventId: `local:${index}`,
+    })),
+  };
+}
+
+function getTrialLogisticsFallback(trial: TrialRecord): LogisticsTraceDto {
+  return {
+    carrier: trial.carrier,
+    trackingNo: trial.trackingNo,
+    state: trial.status === 'completed' ? 'DELIVERED' : 'IN_TRANSIT',
+    providerMessage: '正在获取承运商最新物流轨迹',
+    events: [],
+  };
+}
+
 export default function HomePage() {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -486,7 +532,8 @@ export default function HomePage() {
   const [commentDeletingId, setCommentDeletingId] = useState<number | null>(null);
   const [commentText, setCommentText] = useState('');
   const [replyingTo, setReplyingTo] = useState<ReportCommentDto | null>(null);
-  const [selectedLogisticsOrder, setSelectedLogisticsOrder] = useState<Order | null>(null);
+  const [logisticsDialog, setLogisticsDialog] = useState<LogisticsDialogState | null>(null);
+  const [logisticsLoadingKey, setLogisticsLoadingKey] = useState<string | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [cartLoading, setCartLoading] = useState(false);
   const [cartMutatingId, setCartMutatingId] = useState<number | null>(null);
@@ -959,10 +1006,6 @@ export default function HomePage() {
   const catalogProducts = useMemo(() => getCatalogProducts(products, reports, category, sortMode), [category, products, reports, sortMode]);
   const cartCount = getCartCount(cartItems);
   const cartTotal = getCartTotal(cartItems);
-  const selectedLogisticsView = selectedLogisticsOrder
-    ? getLogisticsView(selectedLogisticsOrder, selectedLogisticsOrder.logistics)
-    : null;
-
   const defaultShippingAddress = shippingAddresses.find((address) => address.isDefault) ?? shippingAddresses[0] ?? null;
   const isShippingAddressReady = isAddressComplete(defaultShippingAddress);
 
@@ -1199,7 +1242,6 @@ export default function HomePage() {
     try {
       const received = mapShopOrder(await confirmShopOrderReceived(order.id), activeUser.role);
       setUserOrders((items) => items.map((item) => (item.id === order.id ? received : item)));
-      setSelectedLogisticsOrder((current) => current?.id === order.id ? received : current);
       message.success('确认收货成功');
     } catch (error) {
       message.error(error instanceof Error ? error.message : '确认收货失败');
@@ -1248,6 +1290,48 @@ export default function HomePage() {
       message.error(error instanceof Error ? error.message : '购买甄客验发布失败');
     } finally {
       setReviewSubmitting(false);
+    }
+  };
+
+  const handleOpenOrderLogistics = async (order: Order) => {
+    const key = `order:${order.id}`;
+    setLogisticsDialog({
+      key,
+      title: order.productTitle,
+      referenceLabel: '订单号',
+      referenceNo: order.orderNo,
+      trace: getOrderLogisticsFallback(order),
+    });
+    if (!order.trackingNo || logisticsLoadingKey !== null) return;
+    setLogisticsLoadingKey(key);
+    try {
+      const trace = await fetchShopOrderLogistics(order.id);
+      setLogisticsDialog((current) => current?.key === key ? { ...current, trace } : current);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '物流查询失败');
+    } finally {
+      setLogisticsLoadingKey((current) => current === key ? null : current);
+    }
+  };
+
+  const handleOpenTrialLogistics = async (trial: TrialRecord) => {
+    if (!trial.applicationId || !trial.trackingNo || logisticsLoadingKey !== null) return;
+    const key = `trial:${trial.applicationId}`;
+    setLogisticsDialog({
+      key,
+      title: trial.productTitle,
+      referenceLabel: '试用申请',
+      referenceNo: String(trial.applicationId),
+      trace: getTrialLogisticsFallback(trial),
+    });
+    setLogisticsLoadingKey(key);
+    try {
+      const trace = await fetchTrialApplicationLogistics(trial.applicationId);
+      setLogisticsDialog((current) => current?.key === key ? { ...current, trace } : current);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '试用物流查询失败');
+    } finally {
+      setLogisticsLoadingKey((current) => current === key ? null : current);
     }
   };
 
@@ -2676,9 +2760,9 @@ export default function HomePage() {
                       </Button>
                     </div>
                   ))}
-                  {(order.status === 'shipped' || order.status === 'completed') && order.carrier && order.trackingNo && (
+                  {(order.status === 'shipped' || order.status === 'completed') && order.trackingNo && (
                     <p className={styles.orderLogisticsSummary}>
-                      物流：{order.carrier} · {order.trackingNo}
+                      物流：{order.carrier ? `${order.carrier} · ` : ''}{order.trackingNo}
                     </p>
                   )}
                 </div>
@@ -2697,7 +2781,11 @@ export default function HomePage() {
                   )}
                   <div className={styles.orderActions}>
                     {order.status !== 'unpaid' && order.status !== 'canceled' && (
-                      <Button size="small" onClick={() => setSelectedLogisticsOrder(order)}>
+                      <Button
+                        size="small"
+                        loading={logisticsLoadingKey === `order:${order.id}`}
+                        onClick={() => void handleOpenOrderLogistics(order)}
+                      >
                         查看物流
                       </Button>
                     )}
@@ -2759,6 +2847,16 @@ export default function HomePage() {
                   </div>
                   <div>
                     <Tag color={deadlineMeta.tone === 'danger' ? 'error' : deadlineMeta.tone}>{deadlineMeta.label}</Tag>
+                    {trial.trialType === 'ONLINE' && trial.trackingNo
+                      && ['shipped', 'pending_report', 'completed'].includes(trial.status) && (
+                        <Button
+                          size="small"
+                          loading={logisticsLoadingKey === `trial:${trial.applicationId}`}
+                          onClick={() => void handleOpenTrialLogistics(trial)}
+                        >
+                          查看物流
+                        </Button>
+                    )}
                     {trial.status === 'shipped' && (
                       <Button size="small" type="primary" onClick={() => void handleConfirmTrialReceived(trial)}>
                         确认收货
@@ -2967,44 +3065,52 @@ export default function HomePage() {
       <Modal
         {...responsiveModalProps}
         title="物流详情"
-        open={Boolean(selectedLogisticsOrder)}
-        onCancel={() => setSelectedLogisticsOrder(null)}
+        open={Boolean(logisticsDialog)}
+        onCancel={() => setLogisticsDialog(null)}
         footer={null}
         width={560}
       >
-        {selectedLogisticsOrder && selectedLogisticsView && (
-          <div className={styles.logisticsOverview}>
+        {logisticsDialog && (
+          <Spin spinning={logisticsLoadingKey === logisticsDialog.key}>
+            <div className={styles.logisticsOverview}>
             <div>
-              <strong>{selectedLogisticsOrder.productTitle}</strong>
-              <span>订单号：{selectedLogisticsOrder.orderNo}</span>
+              <strong>{logisticsDialog.title}</strong>
+              <span>{logisticsDialog.referenceLabel}：{logisticsDialog.referenceNo}</span>
             </div>
-            <Tag color={selectedLogisticsView.kind === 'none' ? 'default' : 'processing'}>
-              {selectedLogisticsView.title}
+            <Tag color={logisticsStateMeta[logisticsDialog.trace.state].color}>
+              {logisticsStateMeta[logisticsDialog.trace.state].label}
             </Tag>
-            {selectedLogisticsView.logistics && (
+            {logisticsDialog.trace.trackingNo && (
               <>
                 <div className={styles.logisticsMeta}>
-                  <span>快递公司：{selectedLogisticsView.logistics.carrier}</span>
-                  <span>运单号：{selectedLogisticsView.logistics.trackingNo}</span>
+                  <span>快递公司：{logisticsDialog.trace.carrier || '自动识别中'}</span>
+                  <span>运单号：{logisticsDialog.trace.trackingNo}</span>
                 </div>
+                {logisticsDialog.trace.providerMessage && (
+                  <p className={styles.logisticsNotice}>{logisticsDialog.trace.providerMessage}</p>
+                )}
                 <div className={styles.logisticsTimeline}>
-                  {selectedLogisticsView.logistics.events.length === 0 && (
+                  {logisticsDialog.trace.events.length === 0 && (
                     <span>承运信息已登记，暂未收到物流轨迹。</span>
                   )}
-                  {selectedLogisticsView.logistics.events.map((event) => (
-                    <div className={styles.logisticsEvent} key={`${event.time}-${event.description}`}>
+                  {logisticsDialog.trace.events.map((event) => (
+                    <div className={styles.logisticsEvent} key={`${event.eventTime}-${event.description}`}>
                       <i />
                       <div>
                         <strong>{event.description}</strong>
                         {event.location && <span>{event.location}</span>}
-                        <span>{event.time}</span>
+                        <span>{event.eventTime || '-'}</span>
                       </div>
                     </div>
                   ))}
                 </div>
               </>
             )}
+            {!logisticsDialog.trace.trackingNo && (
+              <p className={styles.logisticsNotice}>{logisticsDialog.trace.providerMessage}</p>
+            )}
           </div>
+          </Spin>
         )}
       </Modal>
 

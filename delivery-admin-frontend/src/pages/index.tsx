@@ -145,12 +145,10 @@ type TrialFormValues = {
 
 type TrialApplicationActionFormValues = {
   auditRemark?: string;
-  carrier?: string;
   trackingNo?: string;
 };
 
 type OrderShipFormValues = {
-  carrier: string;
   trackingNo: string;
 };
 
@@ -775,7 +773,6 @@ function AdminWorkspace() {
       } else {
         await shipMerchantTrialApplication(
           selectedTrialApplication.applicationId,
-          values.carrier?.trim() ?? '',
           values.trackingNo?.trim() ?? '',
         );
         message.success('试用商品已发货');
@@ -819,7 +816,6 @@ function AdminWorkspace() {
     try {
       const shipped = await shipMerchantOrder(
         shippingOrder.id,
-        values.carrier.trim(),
         values.trackingNo.trim(),
       );
       setOrders((items) => items.map((item) => item.id === shipped.id ? shipped : item));
@@ -1278,7 +1274,8 @@ function AdminWorkspace() {
       title: '物流',
       key: 'logistics',
       responsive: ['md'],
-      render: (_, item) => item.trialType === 'OFFLINE' ? '无需物流' : item.trackingNo ? `${item.carrier} ${item.trackingNo}` : '-',
+      render: (_, item) => item.trialType === 'OFFLINE' ? '无需物流' : item.trackingNo
+        ? [item.carrier, item.trackingNo].filter(Boolean).join(' · ') : '-',
     },
     {
       title: '操作',
@@ -2048,7 +2045,7 @@ function AdminWorkspace() {
             {detailOrder.trackingNo && (
               <section>
                 <h4>物流信息</h4>
-                <p className={styles.addressText}>{detailOrder.carrier} · {detailOrder.trackingNo}</p>
+                <p className={styles.addressText}>{[detailOrder.carrier, detailOrder.trackingNo].filter(Boolean).join(' · ')}</p>
                 <div className={styles.logisticsTimeline}>
                   {(detailOrder.logisticsEvents ?? []).length === 0 && (
                     <p className={styles.logisticsEmpty}>承运信息已登记，暂未收到物流轨迹。</p>
@@ -2129,11 +2126,8 @@ function AdminWorkspace() {
         destroyOnHidden
       >
         <Form form={orderShipForm} layout="vertical" onFinish={submitOrderShipment}>
-          <Form.Item name="carrier" label="物流公司" rules={[{ required: true, message: '请输入物流公司' }, { max: 50 }]}>
-            <Input placeholder="例如：顺丰速运" />
-          </Form.Item>
           <Form.Item name="trackingNo" label="物流单号" rules={[{ required: true, message: '请输入物流单号' }, { max: 100 }]}>
-            <Input placeholder="请输入物流单号" />
+            <Input placeholder="只需填写物流单号，系统会自动识别快递公司" />
           </Form.Item>
           <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
             <Button disabled={orderShipping} onClick={closeOrderShipment}>取消</Button>
@@ -2254,11 +2248,8 @@ function AdminWorkspace() {
             </Form.Item>
           ) : (
             <>
-              <Form.Item name="carrier" label="物流公司" rules={[{ required: true, message: '请输入物流公司' }, { max: 50 }]}>
-                <Input placeholder="例如：顺丰速运" />
-              </Form.Item>
               <Form.Item name="trackingNo" label="物流单号" rules={[{ required: true, message: '请输入物流单号' }, { max: 100 }]}>
-                <Input placeholder="请输入物流单号" />
+                <Input placeholder="只需填写物流单号，系统会自动识别快递公司" />
               </Form.Item>
             </>
           )}

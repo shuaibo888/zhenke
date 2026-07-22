@@ -140,9 +140,13 @@ test('profile uses a menu layer before rendering each detail section', () => {
 
 test('profile orders expose logistics and render a logistics modal', () => {
   assert.match(pageSource, /查看物流/);
-  assert.match(pageSource, /selectedLogisticsOrder/);
+  assert.match(pageSource, /handleOpenOrderLogistics/);
+  assert.match(pageSource, /handleOpenTrialLogistics/);
+  assert.match(pageSource, /logisticsDialog/);
   assert.match(pageSource, /title="物流详情"/);
-  assert.match(pageSource, /getLogisticsView/);
+  assert.match(contentServiceSource, /\/shop\/orders\/\$\{orderId\}\/logistics/);
+  assert.match(contentServiceSource, /\/shop\/trials\/me\/applications\/\$\{applicationId\}\/logistics/);
+  assert.match(pageSource, /快递公司：\{logisticsDialog\.trace\.carrier \|\| '自动识别中'\}/);
 });
 
 test('profile renders real trial and zhenke report sections', () => {
