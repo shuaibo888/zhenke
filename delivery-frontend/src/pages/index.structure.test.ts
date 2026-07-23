@@ -172,6 +172,16 @@ test('profile renders real trial and zhenke report sections', () => {
   assert.doesNotMatch(profileBlock, /<h3>我的验证<\/h3>/);
 });
 
+test('reports show server AI score and keep AI comment collapsed behind a button', () => {
+  assert.match(pageSource, /AI 评分/);
+  assert.match(pageSource, /待评分/);
+  assert.match(pageSource, /评分暂不可用/);
+  assert.match(pageSource, /查看 AI 点评/);
+  assert.match(pageSource, /aiScoreReason/);
+  assert.match(styleSource, /\.aiScoreComment/);
+  assert.doesNotMatch(pageSource, /Math\.random\(\).*aiScore|aiScore.*Math\.random\(\)/);
+});
+
 test('report comments show a backend-provided author badge for comments and replies', () => {
   assert.match(pageSource, /comment\.reportAuthor && <span className=\{styles\.commentAuthorBadge\}>作者<\/span>/);
   assert.match(pageSource, /\(comment\.replies \?\? \[\]\)\.map\(\(reply\) => renderComment\(reply, true\)\)/);

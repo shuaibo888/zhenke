@@ -1,5 +1,6 @@
 package com.ruoyi.shop.domain;
 
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -29,6 +30,10 @@ public class ShopVerificationReport
     private Integer productQuality;
     private Integer logisticsService;
     private Integer serviceAttitude;
+    private BigDecimal aiScore;
+    private String aiScoreStatus;
+    private String aiScoreReason;
+    private Date aiScoredAt;
     private long usefulCount;
     private boolean usefulByMe;
     private String status;
@@ -81,6 +86,14 @@ public class ShopVerificationReport
     public void setLogisticsService(Integer logisticsService) { this.logisticsService = logisticsService; }
     public Integer getServiceAttitude() { return serviceAttitude; }
     public void setServiceAttitude(Integer serviceAttitude) { this.serviceAttitude = serviceAttitude; }
+    public BigDecimal getAiScore() { return aiScore; }
+    public void setAiScore(BigDecimal aiScore) { this.aiScore = aiScore; }
+    public String getAiScoreStatus() { return aiScoreStatus; }
+    public void setAiScoreStatus(String aiScoreStatus) { this.aiScoreStatus = aiScoreStatus; }
+    public String getAiScoreReason() { return aiScoreReason; }
+    public void setAiScoreReason(String aiScoreReason) { this.aiScoreReason = aiScoreReason; }
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") public Date getAiScoredAt() { return aiScoredAt; }
+    public void setAiScoredAt(Date aiScoredAt) { this.aiScoredAt = aiScoredAt; }
     public long getUsefulCount() { return usefulCount; }
     public void setUsefulCount(long usefulCount) { this.usefulCount = usefulCount; }
     public boolean isUsefulByMe() { return usefulByMe; }

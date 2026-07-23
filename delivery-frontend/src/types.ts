@@ -75,6 +75,10 @@ export interface VerifyReport {
   productQuality?: number;
   logisticsService?: number;
   serviceAttitude?: number;
+  aiScore?: number;
+  aiScoreStatus?: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
+  aiScoreReason?: string;
+  aiScoredAt?: string;
   usefulCount: number;
   usefulByMe?: boolean;
   createdAt: string;

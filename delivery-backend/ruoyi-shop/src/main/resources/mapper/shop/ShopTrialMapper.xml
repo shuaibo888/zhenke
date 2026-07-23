@@ -82,6 +82,10 @@
         <result property="productQuality" column="product_quality" />
         <result property="logisticsService" column="logistics_service" />
         <result property="serviceAttitude" column="service_attitude" />
+        <result property="aiScore" column="ai_score" />
+        <result property="aiScoreStatus" column="ai_score_status" />
+        <result property="aiScoreReason" column="ai_score_reason" />
+        <result property="aiScoredAt" column="ai_scored_at" />
         <result property="status" column="report_status" />
         <result property="publishedAt" column="published_at" />
     </resultMap>
@@ -110,6 +114,8 @@
             <result property="userName" column="report_user_name" />
             <result property="shortcoming" column="report_shortcoming" />
             <result property="recommend" column="report_recommend" />
+            <result property="aiScore" column="report_ai_score" />
+            <result property="aiScoreStatus" column="report_ai_score_status" />
         </association>
     </resultMap>
 
@@ -322,11 +328,13 @@
         (product_id, trial_application_id, report_source, order_item_id, source_report_id,
          shop_user_id, experience, shortcoming, fit_crowd, recommend,
          product_quality, logistics_service, service_attitude,
+         ai_score_status, ai_score_updated_at,
          status, published_at, create_time, update_time)
         values
         (#{productId}, #{trialApplicationId}, #{reportSource}, #{orderItemId}, #{sourceReportId},
          #{shopUserId}, #{experience}, #{shortcoming}, #{fitCrowd}, #{recommend},
          #{productQuality}, #{logisticsService}, #{serviceAttitude},
+         'PENDING', sysdate(),
          'PUBLISHED', sysdate(), sysdate(), sysdate())
     </insert>
 
@@ -347,9 +355,10 @@
                p.merchant_id, m.company_name as merchant_name, pc.category_code, pc.category_name,
                r.trial_application_id, c.trial_type, r.report_source, r.order_item_id,
                r.source_report_id, r.shop_user_id, u.user_name, u.nick_name,
-               r.experience, r.shortcoming, r.fit_crowd, r.recommend,
-               r.product_quality, r.logistics_service, r.service_attitude,
-               r.status as report_status, r.published_at
+                r.experience, r.shortcoming, r.fit_crowd, r.recommend,
+                r.product_quality, r.logistics_service, r.service_attitude,
+                r.ai_score, r.ai_score_status, current_score.reason as ai_score_reason, r.ai_scored_at,
+                r.status as report_status, r.published_at
         from shop_verification_report r
         inner join shop_product p on p.product_id = r.product_id
         inner join shop_merchant m on m.merchant_id = p.merchant_id
@@ -357,6 +366,8 @@
         inner join shop_user u on u.user_id = r.shop_user_id
         left join shop_trial_application a on a.application_id = r.trial_application_id
         left join shop_trial_campaign c on c.campaign_id = a.campaign_id
+        left join shop_verification_report_ai_score current_score
+          on current_score.score_id = r.current_ai_score_id and current_score.status = 'SUCCEEDED'
     </sql>
 
     <select id="selectReportById" parameterType="Long" resultMap="ShopVerificationReportResult">
@@ -415,9 +426,10 @@
                  (select count(1) from shop_trial_application a
                    where a.campaign_id = c.campaign_id
                      and a.status in ('APPROVED', 'SHIPPED', 'RECEIVED', 'COMPLETED')) as approved_count,
-                 c.application_deadline,
-                 null as report_user_id, null as report_user_name,
-                 null as report_shortcoming, null as report_recommend
+                  c.application_deadline,
+                  null as report_user_id, null as report_user_name,
+                  null as report_shortcoming, null as report_recommend,
+                  null as report_ai_score, null as report_ai_score_status
           from shop_trial_campaign c
           inner join shop_product p on p.product_id = c.product_id and p.del_flag = '0'
           inner join shop_merchant m on m.merchant_id = p.merchant_id and m.del_flag = '0'
@@ -436,9 +448,10 @@
                  coalesce((select rr.resource_url from shop_verification_report_resource rr
                            where rr.report_id = r.report_id order by rr.resource_sort, rr.resource_id limit 1), p.cover_url) as cover_url,
                  r.published_at, (p.stock &gt; 0) as purchasable,
-                 null as target_count, null as trial_type, null as approved_count, null as application_deadline,
-                 r.shop_user_id as report_user_id, coalesce(u.nick_name, u.user_name) as report_user_name,
-                 r.shortcoming as report_shortcoming, r.recommend as report_recommend
+                  null as target_count, null as trial_type, null as approved_count, null as application_deadline,
+                  r.shop_user_id as report_user_id, coalesce(u.nick_name, u.user_name) as report_user_name,
+                  r.shortcoming as report_shortcoming, r.recommend as report_recommend,
+                  r.ai_score as report_ai_score, r.ai_score_status as report_ai_score_status
           from shop_verification_report r
           inner join shop_product p on p.product_id = r.product_id and p.del_flag = '0'
           inner join shop_merchant m on m.merchant_id = p.merchant_id and m.del_flag = '0'

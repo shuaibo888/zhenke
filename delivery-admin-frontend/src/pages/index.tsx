@@ -221,6 +221,16 @@ function getManagedReportTypeMeta(report: ManagedReport) {
     : { label: '线上试用报告', color: 'blue' };
 }
 
+function getManagedAiScoreMeta(report: ManagedReport) {
+  if (report.aiScoreStatus === 'SUCCEEDED' && report.aiScore != null) {
+    return { label: `${report.aiScore.toFixed(1)}/5`, color: 'gold' };
+  }
+  if (report.aiScoreStatus === 'FAILED') {
+    return { label: '评分暂不可用', color: 'default' };
+  }
+  return { label: '待评分', color: 'processing' };
+}
+
 function AdminWorkspace() {
   const [session, setSession] = useState<AdminSession | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
@@ -1188,6 +1198,14 @@ function AdminWorkspace() {
       dataIndex: 'createdAt',
       width: 170,
       render: (createdAt: string) => <span className={styles.reportPublishedAt}>{createdAt || '-'}</span>,
+    },
+    {
+      title: 'AI 评分',
+      key: 'aiScore',
+      render: (_, report) => {
+        const meta = getManagedAiScoreMeta(report);
+        return <Tag color={meta.color}>{meta.label}</Tag>;
+      },
     },
     { title: '有用数', dataIndex: 'usefulCount', responsive: ['md'] },
     {

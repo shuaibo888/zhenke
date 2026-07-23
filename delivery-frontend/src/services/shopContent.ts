@@ -82,6 +82,8 @@ export interface HomeFeedItemDto {
     userName: string;
     shortcoming: string;
     recommend: '0' | '1';
+    aiScore?: number;
+    aiScoreStatus: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
   };
 }
 
@@ -109,6 +111,10 @@ export interface VerificationReportDto {
   productQuality?: number;
   logisticsService?: number;
   serviceAttitude?: number;
+  aiScore?: number;
+  aiScoreStatus: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
+  aiScoreReason?: string;
+  aiScoredAt?: string;
   usefulCount: number;
   usefulByMe: boolean;
   status: 'PUBLISHED' | 'HIDDEN';

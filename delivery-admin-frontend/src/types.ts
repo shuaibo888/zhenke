@@ -180,6 +180,10 @@ export interface ManagedReport {
   userName: string;
   status: ReportStatus;
   shortcoming: string;
+  aiScore?: number;
+  aiScoreStatus?: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
+  aiScoreReason?: string;
+  aiScoredAt?: string;
   usefulCount: number;
   createdAt: string;
 }

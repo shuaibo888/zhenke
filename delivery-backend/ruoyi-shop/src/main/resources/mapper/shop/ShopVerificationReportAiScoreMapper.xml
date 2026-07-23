@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.shop.mapper.ShopVerificationReportAiScoreMapper">
+
+    <select id="selectPendingReportIds" resultType="long">
+        select report_id
+        from shop_verification_report
+        where status = 'PUBLISHED'
+          and ai_score_status = 'PENDING'
+          and ai_score_attempts &lt; #{maxAttempts}
+          and (ai_score_next_retry_at is null or ai_score_next_retry_at &lt;= sysdate())
+        order by coalesce(ai_score_next_retry_at, published_at), report_id
+        limit #{limit}
+    </select>
+
+    <update id="claimReport">
+        update shop_verification_report
+        set ai_score_status = 'RUNNING',
+            ai_score_version = #{promptVersion},
+            ai_score_input_hash = #{inputHash},
+            ai_score_attempts = ai_score_attempts + 1,
+            ai_score_next_retry_at = null,
+            ai_score_updated_at = sysdate()
+        where report_id = #{reportId}
+          and status = 'PUBLISHED'
+          and ai_score_status = 'PENDING'
+          and ai_score_attempts &lt; #{maxAttempts}
+          and (ai_score_next_retry_at is null or ai_score_next_retry_at &lt;= sysdate())
+    </update>
+
+    <insert id="insertAttempt" parameterType="ShopVerificationReportAiScore"
+            useGeneratedKeys="true" keyProperty="scoreId">
+        insert into shop_verification_report_ai_score
+        (report_id, status, model_provider, model_name, prompt_version, input_hash,
+         started_at, create_time)
+        values
+        (#{reportId}, 'RUNNING', #{modelProvider}, #{modelName}, #{promptVersion}, #{inputHash},
+         sysdate(), sysdate())
+    </insert>
+
+    <update id="bindRunningAttempt">
+        update shop_verification_report
+        set running_ai_score_id = #{scoreId}, ai_score_updated_at = sysdate()
+        where report_id = #{reportId} and status = 'PUBLISHED'
+          and ai_score_status = 'RUNNING' and running_ai_score_id is null
+          and ai_score_version = #{promptVersion}
+          and ai_score_input_hash = #{inputHash}
+    </update>
+
+    <update id="completeAttempt">
+        update shop_verification_report_ai_score
+        set status = 'SUCCEEDED', score = #{score}, reason = #{reason},
+            dimensions_json = #{dimensionsJson}, error_message = null,
+            completed_at = sysdate()
+        where score_id = #{scoreId} and status = 'RUNNING'
+    </update>
+
+    <update id="failAttempt">
+        update shop_verification_report_ai_score
+        set status = 'FAILED', error_message = #{errorMessage}, completed_at = sysdate()
+        where score_id = #{scoreId} and status = 'RUNNING'
+    </update>
+
+    <update id="completeReport">
+        update shop_verification_report
+        set ai_score = #{score}, ai_score_status = 'SUCCEEDED', ai_scored_at = sysdate(),
+            current_ai_score_id = #{scoreId}, ai_score_next_retry_at = null,
+            running_ai_score_id = null, ai_score_updated_at = sysdate()
+        where report_id = #{reportId} and status = 'PUBLISHED'
+          and ai_score_status = 'RUNNING'
+          and running_ai_score_id = #{scoreId}
+          and ai_score_version = #{promptVersion}
+          and ai_score_input_hash = #{inputHash}
+    </update>
+
+    <update id="failReport">
+        update shop_verification_report
+        set ai_score_status = case when ai_score_attempts &lt; #{maxAttempts}
+                                   then 'PENDING' else 'FAILED' end,
+            ai_score_next_retry_at = case when ai_score_attempts &lt; #{maxAttempts}
+                                          then date_add(sysdate(), interval #{retryDelaySeconds} second)
+                                          else null end,
+            running_ai_score_id = null, ai_score_updated_at = sysdate()
+        where report_id = #{reportId} and status = 'PUBLISHED'
+          and ai_score_status = 'RUNNING'
+          and running_ai_score_id = #{scoreId}
+          and ai_score_version = #{promptVersion}
+          and ai_score_input_hash = #{inputHash}
+    </update>
+
+    <update id="failStaleAttempts">
+        update shop_verification_report_ai_score
+        set status = 'FAILED', error_message = '评分任务执行超时，已重新排队', completed_at = sysdate()
+        where status = 'RUNNING'
+          and started_at &lt; date_sub(sysdate(), interval #{runningTimeoutMinutes} minute)
+    </update>
+
+    <update id="recoverStaleReports">
+        update shop_verification_report
+        set ai_score_status = case when ai_score_attempts &lt; #{maxAttempts}
+                                   then 'PENDING' else 'FAILED' end,
+            ai_score_next_retry_at = case when ai_score_attempts &lt; #{maxAttempts}
+                                          then date_add(sysdate(), interval #{retryDelaySeconds} second)
+                                          else null end,
+            running_ai_score_id = null, ai_score_updated_at = sysdate()
+        where status = 'PUBLISHED' and ai_score_status = 'RUNNING'
+          and ai_score_updated_at &lt; date_sub(sysdate(), interval #{runningTimeoutMinutes} minute)
+    </update>
+
+    <update id="retryReport">
+        update shop_verification_report
+        set ai_score_status = 'PENDING', ai_score_attempts = 0,
+            ai_score_next_retry_at = null, running_ai_score_id = null, ai_score_updated_at = sysdate()
+        where report_id = #{reportId} and status = 'PUBLISHED'
+          and ai_score_status != 'RUNNING'
+    </update>
+
+    <update id="queueBackfill">
+        update shop_verification_report
+        set ai_score_status = 'PENDING', ai_score_attempts = 0,
+            ai_score_next_retry_at = null, running_ai_score_id = null, ai_score_updated_at = sysdate()
+        where status = 'PUBLISHED' and ai_score_status != 'RUNNING'
+          and (current_ai_score_id is null or ai_score is null)
+    </update>
+</mapper>

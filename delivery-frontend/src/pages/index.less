@@ -1033,6 +1033,37 @@
   gap: 8px;
 }
 
+.aiScoreRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 12px;
+
+  :global(.ant-btn-link) {
+    height: auto;
+    padding: 0;
+  }
+}
+
+.aiScoreComment {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 1px solid fade(#d8ad55, 32%);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fffaf0, #fff);
+  color: #5e4a22;
+
+  strong {
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  p {
+    margin: 0;
+    line-height: 1.75;
+  }
+}
+
 .purchaseReportRatings span {
   padding: 7px 10px;
   border-radius: 8px;
