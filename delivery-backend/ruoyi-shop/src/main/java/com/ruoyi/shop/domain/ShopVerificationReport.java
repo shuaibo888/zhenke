@@ -4,12 +4,15 @@ import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class ShopVerificationReport
 {
     private Long reportId;
     private Long productId;
     private String productName;
+    private String productSubtitle;
+    private String productDetail;
     private String productCoverUrl;
     private Long merchantId;
     private String merchantName;
@@ -46,6 +49,10 @@ public class ShopVerificationReport
     public void setProductId(Long productId) { this.productId = productId; }
     public String getProductName() { return productName; }
     public void setProductName(String productName) { this.productName = productName; }
+    @JsonIgnore public String getProductSubtitle() { return productSubtitle; }
+    public void setProductSubtitle(String productSubtitle) { this.productSubtitle = productSubtitle; }
+    @JsonIgnore public String getProductDetail() { return productDetail; }
+    public void setProductDetail(String productDetail) { this.productDetail = productDetail; }
     public String getProductCoverUrl() { return productCoverUrl; }
     public void setProductCoverUrl(String productCoverUrl) { this.productCoverUrl = productCoverUrl; }
     public Long getMerchantId() { return merchantId; }

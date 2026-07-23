@@ -338,10 +338,11 @@ function mapVerificationReport(dto: VerificationReportDto): VerifyReport {
     productQuality: dto.productQuality,
     logisticsService: dto.logisticsService,
     serviceAttitude: dto.serviceAttitude,
-    aiScore: dto.aiScore === undefined || dto.aiScore === null ? undefined : Number(dto.aiScore),
-    aiScoreStatus: dto.aiScoreStatus,
-    aiScoreReason: dto.aiScoreReason,
-    aiScoredAt: dto.aiScoredAt,
+    // 智能评分功能暂时隐藏，恢复时取消注释。
+    // aiScore: dto.aiScore === undefined || dto.aiScore === null ? undefined : Number(dto.aiScore),
+    // aiScoreStatus: dto.aiScoreStatus,
+    // aiScoreReason: dto.aiScoreReason,
+    // aiScoredAt: dto.aiScoredAt,
     usefulCount: dto.usefulCount,
     usefulByMe: dto.usefulByMe,
     createdAt: dto.publishedAt,
@@ -355,15 +356,17 @@ function getReportTypeMeta(report: VerifyReport) {
     : { label: '线上试用报告', color: 'blue' };
 }
 
+/* 智能评分功能暂时隐藏，恢复时取消注释。
 function getAiScoreMeta(report: VerifyReport) {
   if (report.aiScoreStatus === 'SUCCEEDED' && report.aiScore != null) {
-    return { label: `AI 评分 ${Number(report.aiScore).toFixed(1)}/5`, color: 'gold' };
+    return { label: `智能评分 ${Number(report.aiScore).toFixed(1)}/5`, color: 'gold' };
   }
   if (report.aiScoreStatus === 'FAILED') {
     return { label: '评分暂不可用', color: 'default' };
   }
   return { label: '待评分', color: 'processing' };
 }
+*/
 
 function mapTrialApplication(dto: TrialApplicationDto): TrialRecord {
   const statusMap: Record<TrialApplicationDto['status'], TrialRecord['status']> = {
@@ -539,7 +542,8 @@ export default function HomePage() {
   const [trialApplying, setTrialApplying] = useState(false);
   const [journeyView, setJourneyView] = useState<JourneyView>('feed');
   const [journeyReport, setJourneyReport] = useState<VerifyReport | null>(null);
-  const [aiCommentVisible, setAiCommentVisible] = useState(false);
+  // 智能评分功能暂时隐藏，恢复时取消注释。
+  // const [aiCommentVisible, setAiCommentVisible] = useState(false);
   const [reportDetailOrigin, setReportDetailOrigin] = useState<ReportDetailOrigin>('feed');
   const [reportComments, setReportComments] = useState<ReportCommentDto[]>([]);
   const [reportCommentsLoading, setReportCommentsLoading] = useState(false);
@@ -792,6 +796,7 @@ export default function HomePage() {
     };
   }, [journeyReport?.id, journeyView]);
 
+  /* 智能评分功能暂时隐藏，恢复时取消注释。
   useEffect(() => {
     if (journeyView !== 'report' || !journeyReport
       || !['PENDING', 'RUNNING'].includes(journeyReport.aiScoreStatus ?? '')) {
@@ -814,6 +819,7 @@ export default function HomePage() {
       window.clearInterval(timer);
     };
   }, [journeyReport?.id, journeyReport?.aiScoreStatus, journeyView]);
+  */
 
   useEffect(() => {
     if (!currentUser) {
@@ -1708,7 +1714,7 @@ export default function HomePage() {
   const showReportDetail = (report: VerifyReport, product: Product, origin: ReportDetailOrigin) => {
     setSelectedProduct(product);
     setJourneyReport(report);
-    setAiCommentVisible(false);
+    // setAiCommentVisible(false); // 智能评分功能暂时隐藏，恢复时取消注释。
     setReportDetailOrigin(origin);
     setCommentText('');
     setReplyingTo(null);
@@ -1827,7 +1833,7 @@ export default function HomePage() {
   const openProductJourney = (product: Product) => {
     setSelectedProduct(product);
     setJourneyReport(null);
-    setAiCommentVisible(false);
+    // setAiCommentVisible(false); // 智能评分功能暂时隐藏，恢复时取消注释。
     setJourneyView('product');
     setActiveTab('reviews');
   };
@@ -2535,7 +2541,7 @@ export default function HomePage() {
 
     const commentCount = reportComments.reduce((count, item) => count + 1 + (item.replies?.length ?? 0), 0);
     const reportTypeMeta = getReportTypeMeta(journeyReport);
-    const aiScoreMeta = getAiScoreMeta(journeyReport);
+    // const aiScoreMeta = getAiScoreMeta(journeyReport); // 智能评分功能暂时隐藏，恢复时取消注释。
     const renderComment = (comment: ReportCommentDto, reply = false) => {
       const displayName = comment.nickName || comment.userName;
       const replyToName = comment.replyToNickName || comment.replyToUserName;
@@ -2589,20 +2595,22 @@ export default function HomePage() {
               <em>{journeyReport.createdAt}</em>
             </div>
             <h1>{journeyReport.productTitle}</h1>
+            {/* 智能评分功能暂时隐藏，恢复时取消注释。
             <div className={styles.aiScoreRow}>
               <Tag color={aiScoreMeta.color}>{aiScoreMeta.label}</Tag>
               {journeyReport.aiScoreStatus === 'SUCCEEDED' && journeyReport.aiScoreReason && (
                 <Button type="link" size="small" onClick={() => setAiCommentVisible((visible) => !visible)}>
-                  {aiCommentVisible ? '收起 AI 点评' : '查看 AI 点评'}
+                  {aiCommentVisible ? '收起智能点评' : '查看智能点评'}
                 </Button>
               )}
             </div>
             {aiCommentVisible && journeyReport.aiScoreReason && (
               <div className={styles.aiScoreComment}>
-                <strong>AI 点评</strong>
+                <strong>智能点评</strong>
                 <p>{journeyReport.aiScoreReason}</p>
               </div>
             )}
+            */}
             <p>{journeyReport.experience}</p>
             {journeyReport.reportSource === 'PURCHASE' && (
               <div className={styles.purchaseReportRatings}>
@@ -2949,7 +2957,9 @@ export default function HomePage() {
                 </div>
                 <div>
                   <Tag color={getReportTypeMeta(report).color}>{getReportTypeMeta(report).label}</Tag>
+                  {/* 智能评分功能暂时隐藏，恢复时取消注释。
                   <Tag color={getAiScoreMeta(report).color}>{getAiScoreMeta(report).label}</Tag>
+                  */}
                   <Tag>{report.usefulCount} 有用</Tag>
                   <span className={styles.profileReportHint}>
                     {profileReportOpeningId === report.id ? <Spin size="small" /> : <>查看详情 <RightOutlined /></>}
@@ -3857,7 +3867,9 @@ function ReportCard({
         </div>
         <div className={styles.reportGridContent}>
           <Tag color={reportTypeMeta.color}>{reportTypeMeta.label}</Tag>
+          {/* 智能评分功能暂时隐藏，恢复时取消注释。
           <Tag color={getAiScoreMeta(report).color}>{getAiScoreMeta(report).label}</Tag>
+          */}
           <p className={styles.reportGridTitle}>{report.productTitle}</p>
           <p className={styles.reportGridDesc}>{report.experience}</p>
           <div className={styles.reportGridShortcoming}>不足：{report.shortcoming}</div>
@@ -3895,7 +3907,9 @@ function ReportCard({
       <div className={styles.reportMeta}>
         <span className={roleClass(report.userRole)}>{roleMeta[report.userRole].label}</span>
         <Tag color={reportTypeMeta.color}>{reportTypeMeta.label}</Tag>
+        {/* 智能评分功能暂时隐藏，恢复时取消注释。
         <Tag color={getAiScoreMeta(report).color}>{getAiScoreMeta(report).label}</Tag>
+        */}
         <strong>{report.userName}</strong>
         <em>{report.createdAt}</em>
       </div>

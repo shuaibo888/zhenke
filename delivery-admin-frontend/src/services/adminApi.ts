@@ -170,10 +170,11 @@ interface VerificationReportDto {
   nickName?: string;
   status: 'PUBLISHED' | 'DELETED';
   shortcoming: string;
-  aiScore?: number;
-  aiScoreStatus: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
-  aiScoreReason?: string;
-  aiScoredAt?: string;
+  // 智能评分功能暂时隐藏，恢复时取消注释。
+  // aiScore?: number;
+  // aiScoreStatus: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
+  // aiScoreReason?: string;
+  // aiScoredAt?: string;
   usefulCount: number;
   publishedAt: string;
 }
@@ -615,10 +616,11 @@ function toManagedReport(dto: VerificationReportDto): ManagedReport {
     userName: dto.nickName || dto.userName,
     status: dto.status === 'PUBLISHED' ? 'published' : 'deleted',
     shortcoming: dto.shortcoming,
-    aiScore: dto.aiScore === undefined || dto.aiScore === null ? undefined : Number(dto.aiScore),
-    aiScoreStatus: dto.aiScoreStatus,
-    aiScoreReason: dto.aiScoreReason,
-    aiScoredAt: formatApiDateTime(dto.aiScoredAt),
+    // 智能评分功能暂时隐藏，恢复时取消注释。
+    // aiScore: dto.aiScore === undefined || dto.aiScore === null ? undefined : Number(dto.aiScore),
+    // aiScoreStatus: dto.aiScoreStatus,
+    // aiScoreReason: dto.aiScoreReason,
+    // aiScoredAt: formatApiDateTime(dto.aiScoredAt),
     usefulCount: Number(dto.usefulCount ?? 0),
     createdAt: formatApiDateTime(dto.publishedAt) ?? '',
   };

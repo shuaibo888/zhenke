@@ -27,7 +27,7 @@ public class ShopVerificationReportAiScoreScheduler
         }
         catch (Exception exception)
         {
-            log.error("扫描甄客验AI评分任务失败", exception);
+            log.error("扫描甄客验智能评分任务失败", exception);
         }
     }
 }

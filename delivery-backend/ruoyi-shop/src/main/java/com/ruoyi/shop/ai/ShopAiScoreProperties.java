@@ -10,7 +10,7 @@ public class ShopAiScoreProperties
     private boolean enabled;
     private String provider = "ALIBABA_CLOUD_MODEL_STUDIO";
     private String model = "qwen-plus";
-    private String promptVersion = "qwen-report-quality-v1";
+    private String promptVersion = "qwen-report-quality-v2-product-match";
     private int batchSize = 10;
     private int maxAttempts = 3;
     private int retryDelaySeconds = 300;

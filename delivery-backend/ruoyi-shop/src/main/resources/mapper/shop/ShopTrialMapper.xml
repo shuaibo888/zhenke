@@ -62,6 +62,8 @@
         <id property="reportId" column="report_id" />
         <result property="productId" column="product_id" />
         <result property="productName" column="product_name" />
+        <result property="productSubtitle" column="product_subtitle" />
+        <result property="productDetail" column="product_detail" />
         <result property="productCoverUrl" column="product_cover_url" />
         <result property="merchantId" column="merchant_id" />
         <result property="merchantName" column="merchant_name" />
@@ -351,7 +353,9 @@
     </select>
 
     <sql id="selectReport">
-        select r.report_id, r.product_id, p.product_name, p.cover_url as product_cover_url,
+        select r.report_id, r.product_id, p.product_name,
+               p.subtitle as product_subtitle, p.detail as product_detail,
+               p.cover_url as product_cover_url,
                p.merchant_id, m.company_name as merchant_name, pc.category_code, pc.category_name,
                r.trial_application_id, c.trial_type, r.report_source, r.order_item_id,
                r.source_report_id, r.shop_user_id, u.user_name, u.nick_name,

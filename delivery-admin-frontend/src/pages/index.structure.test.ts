@@ -49,10 +49,11 @@ assert.doesNotMatch(source, /seedOrders/);
 assert.doesNotMatch(source, /shipOrderById/);
 assert.doesNotMatch(source, /refundOrderById/);
 assert.match(source, /验证报告/);
-assert.match(source, /AI 评分/);
-assert.match(source, /评分暂不可用/);
-assert.match(source, /待评分/);
-assert.match(adminApiSource, /aiScoreStatus/);
+// 智能评分功能暂时隐藏，恢复时取消注释。
+// assert.match(source, /智能评分/);
+// assert.match(source, /评分暂不可用/);
+// assert.match(source, /待评分/);
+// assert.match(adminApiSource, /aiScoreStatus/);
 assert.match(source, /fetchMerchantReports/);
 assert.match(source, /getManagedReportTypeMeta/);
 assert.match(source, /购买评价/);
