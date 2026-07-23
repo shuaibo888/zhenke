@@ -155,6 +155,21 @@ export interface ManagedOrder {
   }>;
 }
 
+export interface ManagedLogisticsTrace {
+  carrier?: string;
+  trackingNo?: string;
+  state: 'PREPARING' | 'IN_TRANSIT' | 'DELIVERED' | 'EXCEPTION' | 'UNKNOWN';
+  providerMessage?: string;
+  events: Array<{
+    eventCode?: string;
+    description: string;
+    location?: string;
+    eventTime?: string;
+    source: 'SYSTEM' | 'PROVIDER';
+    sourceEventId?: string;
+  }>;
+}
+
 export interface ManagedReport {
   id: number;
   merchantId: number;

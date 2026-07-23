@@ -127,6 +127,17 @@ springdoc:
       paths-to-match: '/**'
       packages-to-scan: com.ruoyi.web.controller.tool
 
+# 生产健康检查：仅公开总体状态，内部自动检查应用、数据库、Redis 与磁盘。
+management:
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
 # 防盗链配置
 referer:
   # 防盗链开关

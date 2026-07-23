@@ -541,6 +541,116 @@
   line-height: 1.7;
 }
 
+.logisticsInfoCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px;
+  border: 1px solid rgba(31, 111, 91, 0.2);
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f6fbf8 0%, #ffffff 100%);
+}
+
+.logisticsInfoCard > div {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.logisticsInfoCard span,
+.logisticsInfoCard small,
+.fulfillmentHeading span,
+.merchantLogisticsSummary span,
+.merchantLogisticsSummary small,
+.merchantLogisticsMeta span {
+  color: #7a8780;
+  font-size: 12px;
+}
+
+.logisticsInfoCard strong,
+.merchantLogisticsMeta strong {
+  color: #1c2e29;
+  overflow-wrap: anywhere;
+}
+
+.fulfillmentHeading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fulfillmentHeading h4 {
+  margin-bottom: 0;
+}
+
+.merchantLogisticsDialog {
+  display: grid;
+  gap: 18px;
+}
+
+.merchantLogisticsSummary {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid rgba(31, 111, 91, 0.16);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f1f8f4 0%, #fbfdfc 100%);
+}
+
+.merchantLogisticsIcon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  color: #ffffff;
+  background: #1f6f5b;
+  font-size: 22px;
+}
+
+.merchantLogisticsSummary > div:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.merchantLogisticsSummary strong {
+  color: #173d33;
+  font-size: 20px;
+}
+
+.merchantLogisticsSummary small {
+  overflow-wrap: anywhere;
+}
+
+.merchantLogisticsMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.merchantLogisticsMeta > div {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border: 1px solid #e2e9e5;
+  border-radius: 10px;
+  background: #fafcfb;
+}
+
+.logisticsProviderNotice {
+  margin: 0;
+  padding: 11px 13px;
+  border-radius: 8px;
+  color: #735c1d;
+  background: #fff8df;
+  font-size: 13px;
+}
+
 .logisticsTimeline {
   display: grid;
   gap: 0;
@@ -855,6 +965,36 @@
   }
 
   .detailGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .logisticsInfoCard,
+  .fulfillmentHeading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .logisticsInfoCard :global(.ant-btn) {
+    width: 100%;
+  }
+
+  .merchantLogisticsSummary {
+    grid-template-columns: 42px minmax(0, 1fr);
+    padding: 14px;
+  }
+
+  .merchantLogisticsSummary :global(.ant-tag) {
+    grid-column: 2;
+    width: max-content;
+    margin-inline-end: 0;
+  }
+
+  .merchantLogisticsIcon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .merchantLogisticsMeta {
     grid-template-columns: 1fr;
   }
 

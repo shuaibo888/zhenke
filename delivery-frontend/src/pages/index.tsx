@@ -18,6 +18,7 @@ import {
   ShoppingCartOutlined,
   StarFilled,
   RightOutlined,
+  TruckOutlined,
   UploadOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -469,7 +470,7 @@ function getOrderLogisticsFallback(order: Order): LogisticsTraceDto {
     carrier: order.carrier,
     trackingNo: order.trackingNo,
     state: order.trackingNo ? (order.status === 'completed' ? 'DELIVERED' : 'IN_TRANSIT') : 'PREPARING',
-    providerMessage: order.trackingNo ? '正在获取承运商最新物流轨迹' : '商家尚未登记运单号',
+    providerMessage: order.trackingNo ? '正在加载物流轨迹' : '商家尚未登记运单号',
     events: (order.logistics?.events ?? []).map((event, index) => ({
       eventCode: event.eventCode,
       description: event.description,
@@ -486,7 +487,7 @@ function getTrialLogisticsFallback(trial: TrialRecord): LogisticsTraceDto {
     carrier: trial.carrier,
     trackingNo: trial.trackingNo,
     state: trial.status === 'completed' ? 'DELIVERED' : 'IN_TRANSIT',
-    providerMessage: '正在获取承运商最新物流轨迹',
+    providerMessage: '正在加载物流轨迹',
     events: [],
   };
 }
@@ -3073,43 +3074,64 @@ export default function HomePage() {
         {logisticsDialog && (
           <Spin spinning={logisticsLoadingKey === logisticsDialog.key}>
             <div className={styles.logisticsOverview}>
-            <div>
-              <strong>{logisticsDialog.title}</strong>
-              <span>{logisticsDialog.referenceLabel}：{logisticsDialog.referenceNo}</span>
-            </div>
-            <Tag color={logisticsStateMeta[logisticsDialog.trace.state].color}>
-              {logisticsStateMeta[logisticsDialog.trace.state].label}
-            </Tag>
-            {logisticsDialog.trace.trackingNo && (
-              <>
-                <div className={styles.logisticsMeta}>
-                  <span>快递公司：{logisticsDialog.trace.carrier || '自动识别中'}</span>
-                  <span>运单号：{logisticsDialog.trace.trackingNo}</span>
+              <section className={styles.logisticsSummaryCard}>
+                <div className={styles.logisticsSummaryHeader}>
+                  <div className={styles.logisticsCarrierMark} aria-hidden="true">
+                    <TruckOutlined />
+                  </div>
+                  <div className={styles.logisticsStatusCopy}>
+                    <span>当前物流状态</span>
+                    <strong>{logisticsStateMeta[logisticsDialog.trace.state].label}</strong>
+                  </div>
+                  <Tag color={logisticsStateMeta[logisticsDialog.trace.state].color}>
+                    {logisticsStateMeta[logisticsDialog.trace.state].label}
+                  </Tag>
                 </div>
-                {logisticsDialog.trace.providerMessage && (
-                  <p className={styles.logisticsNotice}>{logisticsDialog.trace.providerMessage}</p>
-                )}
-                <div className={styles.logisticsTimeline}>
-                  {logisticsDialog.trace.events.length === 0 && (
-                    <span>承运信息已登记，暂未收到物流轨迹。</span>
-                  )}
-                  {logisticsDialog.trace.events.map((event) => (
-                    <div className={styles.logisticsEvent} key={`${event.eventTime}-${event.description}`}>
-                      <i />
-                      <div>
-                        <strong>{event.description}</strong>
-                        {event.location && <span>{event.location}</span>}
-                        <span>{event.eventTime || '-'}</span>
-                      </div>
+                <div className={styles.logisticsOrderBrief}>
+                  <strong>{logisticsDialog.title}</strong>
+                  <span>{logisticsDialog.referenceLabel}：{logisticsDialog.referenceNo}</span>
+                </div>
+                {logisticsDialog.trace.trackingNo && (
+                  <div className={styles.logisticsMeta}>
+                    <div>
+                      <span>承运公司</span>
+                      <strong>{logisticsDialog.trace.carrier || '自动识别中'}</strong>
                     </div>
-                  ))}
-                </div>
-              </>
-            )}
-            {!logisticsDialog.trace.trackingNo && (
-              <p className={styles.logisticsNotice}>{logisticsDialog.trace.providerMessage}</p>
-            )}
-          </div>
+                    <div>
+                      <span>物流单号</span>
+                      <strong>{logisticsDialog.trace.trackingNo}</strong>
+                    </div>
+                  </div>
+                )}
+              </section>
+              {logisticsDialog.trace.providerMessage && (
+                <p className={styles.logisticsNotice}>
+                  {logisticsDialog.trace.trackingNo ? '物流信息暂未更新，请稍后查看' : '商家尚未登记物流单号'}
+                </p>
+              )}
+              {logisticsDialog.trace.trackingNo && (
+                <>
+                  <div className={styles.logisticsSectionHeading}>
+                    <strong>物流轨迹</strong>
+                  </div>
+                  <div className={styles.logisticsTimeline}>
+                    {logisticsDialog.trace.events.length === 0 && (
+                      <span className={styles.logisticsEmpty}>承运信息已登记，暂未收到物流轨迹。</span>
+                    )}
+                    {logisticsDialog.trace.events.map((event) => (
+                      <div className={styles.logisticsEvent} key={`${event.eventTime}-${event.description}`}>
+                        <i />
+                        <div>
+                          <strong>{event.description}</strong>
+                          {event.location && <span>{event.location}</span>}
+                          <span>{event.eventTime || '-'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </Spin>
         )}
       </Modal>

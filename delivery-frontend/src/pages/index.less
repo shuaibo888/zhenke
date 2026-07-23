@@ -1463,52 +1463,175 @@
 
 .logisticsOverview {
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
-.logisticsOverview > div:first-child,
-.logisticsMeta {
+.logisticsSummaryCard {
   display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid rgba(31, 111, 91, 0.17);
+  border-radius: 12px;
+  background: linear-gradient(145deg, #f2f9f5 0%, #ffffff 72%);
+  box-shadow: 0 8px 24px rgba(25, 70, 57, 0.06);
+}
+
+.logisticsSummaryHeader {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.logisticsCarrierMark {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #195c4b 0%, #27816a 100%);
+  box-shadow: 0 7px 16px rgba(31, 111, 91, 0.2);
+  font-size: 22px;
+}
+
+.logisticsStatusCopy,
+.logisticsOrderBrief,
+.logisticsMeta > div {
+  display: grid;
+  min-width: 0;
   gap: 4px;
 }
 
-.logisticsOverview span,
+.logisticsStatusCopy span,
+.logisticsOrderBrief span,
+.logisticsMeta span,
+.logisticsSectionHeading span,
 .logisticsEvent span {
   color: #7a8780;
   font-size: 12px;
 }
 
+.logisticsStatusCopy strong {
+  color: #173d33;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.logisticsSummaryHeader :global(.ant-tag) {
+  margin-inline-end: 0;
+  padding-inline: 10px;
+  border-radius: 999px;
+}
+
+.logisticsOrderBrief {
+  padding-top: 14px;
+  border-top: 1px solid rgba(31, 111, 91, 0.1);
+}
+
+.logisticsOrderBrief strong,
+.logisticsMeta strong {
+  color: #1c2e29;
+  overflow-wrap: anywhere;
+}
+
+.logisticsOrderBrief strong {
+  font-size: 15px;
+}
+
+.logisticsMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.logisticsMeta > div {
+  padding: 12px;
+  border: 1px solid #e1e9e5;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
 .logisticsNotice {
   margin: 0;
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: 11px 13px;
+  border: 1px solid #f3e6b5;
+  border-radius: 9px;
   color: #735c1d;
   background: #fff8df;
+  font-size: 13px;
+}
+
+.logisticsSectionHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.logisticsSectionHeading strong {
+  color: #17241f;
+  font-size: 16px;
 }
 
 .logisticsTimeline {
   display: grid;
   gap: 0;
+  padding: 2px 2px 0;
 }
 
 .logisticsEvent {
+  position: relative;
   display: grid;
   grid-template-columns: 14px minmax(0, 1fr);
   gap: 10px;
-  padding-bottom: 18px;
+  padding-bottom: 22px;
+}
+
+.logisticsEvent::before {
+  position: absolute;
+  top: 15px;
+  bottom: 0;
+  left: 4px;
+  width: 1px;
+  background: #dbe8e2;
+  content: '';
+}
+
+.logisticsEvent:last-child::before {
+  display: none;
 }
 
 .logisticsEvent i {
+  position: relative;
+  z-index: 1;
   width: 10px;
   height: 10px;
   margin-top: 4px;
   border: 2px solid #1f6f5b;
   border-radius: 50%;
+  background: #ffffff;
 }
 
 .logisticsEvent div {
   display: grid;
   gap: 4px;
+}
+
+.logisticsEvent strong {
+  color: #263630;
+  line-height: 1.65;
+}
+
+.logisticsEvent:first-child strong {
+  color: #175e4c;
+}
+
+.logisticsEmpty {
+  padding: 14px;
+  border-radius: 9px;
+  background: #f7f9f8;
+  text-align: center;
 }
 
 .recruitmentSection {
@@ -3054,6 +3177,43 @@
     overflow: visible;
     overflow-wrap: anywhere;
     white-space: normal;
+  }
+
+  .logisticsSummaryCard {
+    gap: 14px;
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .logisticsSummaryHeader {
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .logisticsCarrierMark {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    font-size: 19px;
+  }
+
+  .logisticsStatusCopy strong {
+    font-size: 18px;
+  }
+
+  .logisticsSummaryHeader :global(.ant-tag) {
+    grid-column: 2;
+    width: max-content;
+  }
+
+  .logisticsMeta {
+    grid-template-columns: 1fr;
+  }
+
+  .logisticsSectionHeading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
   }
 
   .responsiveModal :global(.ant-modal) {

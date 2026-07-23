@@ -51,6 +51,11 @@ public class ShopMerchantOrderController extends BaseController {
         return AjaxResult.success(orderService.merchantOrder(orderId));
     }
 
+    @GetMapping("/{orderId}/logistics")
+    public AjaxResult logistics(@PathVariable long orderId) {
+        return AjaxResult.success(orderService.merchantOrderLogistics(orderId));
+    }
+
     @Log(title = "商城订单发货", businessType = BusinessType.UPDATE)
     @PutMapping("/{orderId}/ship")
     public AjaxResult ship(@PathVariable long orderId, @Valid @RequestBody ShopOrderShipBody body) {

@@ -44,7 +44,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import type { AdminSession, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, NavKey, ProductCategory, ProductCategoryOption, ProductStatus, ShopMemberLevel, ShopUserAccount } from '@/types';
+import type { AdminSession, ManagedLogisticsTrace, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, NavKey, ProductCategory, ProductCategoryOption, ProductStatus, ShopMemberLevel, ShopUserAccount } from '@/types';
 import {
   auditMerchantOrderRefund,
   auditMerchantTrialApplication,
@@ -59,6 +59,7 @@ import {
   fetchManagedTrials,
   fetchMerchantDetail,
   fetchMerchantOrder,
+  fetchMerchantOrderLogistics,
   fetchMerchantOrders,
   fetchMerchantReports,
   fetchMerchantTrialApplications,
@@ -201,6 +202,14 @@ const orderStatusMeta: Record<ManagedOrder['status'], { label: string; color: st
   refunded: { label: '已退款', color: 'purple' },
 };
 
+const logisticsStateMeta: Record<ManagedLogisticsTrace['state'], { label: string; color: string }> = {
+  PREPARING: { label: '商家备货中', color: 'default' },
+  IN_TRANSIT: { label: '运输中', color: 'processing' },
+  DELIVERED: { label: '已签收', color: 'success' },
+  EXCEPTION: { label: '物流异常', color: 'error' },
+  UNKNOWN: { label: '等待物流更新', color: 'default' },
+};
+
 function formatMoney(value: number) {
   return `¥${value.toFixed(2)}`;
 }
@@ -262,6 +271,11 @@ function AdminWorkspace() {
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [detailOrder, setDetailOrder] = useState<ManagedOrder | null>(null);
+  const [orderLogisticsDialog, setOrderLogisticsDialog] = useState<{
+    orderNo: string;
+    trace: ManagedLogisticsTrace;
+  } | null>(null);
+  const [orderLogisticsLoading, setOrderLogisticsLoading] = useState(false);
   const [detailMerchant, setDetailMerchant] = useState<MerchantAccount | null>(null);
   const [trialModalOpen, setTrialModalOpen] = useState(false);
   const [productForm] = Form.useForm<ProductFormValues>();
@@ -827,6 +841,19 @@ function AdminWorkspace() {
       message.error(error instanceof Error ? error.message : '订单发货失败');
     } finally {
       setOrderShipping(false);
+    }
+  };
+
+  const openOrderLogistics = async (order: ManagedOrder) => {
+    if (isAdmin || !order.trackingNo || orderLogisticsLoading) return;
+    setOrderLogisticsLoading(true);
+    try {
+      const trace = await fetchMerchantOrderLogistics(order.id);
+      setOrderLogisticsDialog({ orderNo: order.orderNo, trace });
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '物流查询失败，请稍后重试');
+    } finally {
+      setOrderLogisticsLoading(false);
     }
   };
 
@@ -2045,11 +2072,33 @@ function AdminWorkspace() {
             {detailOrder.trackingNo && (
               <section>
                 <h4>物流信息</h4>
-                <p className={styles.addressText}>{[detailOrder.carrier, detailOrder.trackingNo].filter(Boolean).join(' · ')}</p>
-                <div className={styles.logisticsTimeline}>
-                  {(detailOrder.logisticsEvents ?? []).length === 0 && (
-                    <p className={styles.logisticsEmpty}>承运信息已登记，暂未收到物流轨迹。</p>
+                <div className={styles.logisticsInfoCard}>
+                  <div>
+                    <span>物流单号</span>
+                    <strong>{detailOrder.trackingNo}</strong>
+                  </div>
+                  {!isAdmin && (
+                    <Button
+                      type="primary"
+                      ghost
+                      icon={<TruckOutlined />}
+                      loading={orderLogisticsLoading}
+                      onClick={() => openOrderLogistics(detailOrder)}
+                    >
+                      查看物流
+                    </Button>
                   )}
+                </div>
+              </section>
+            )}
+
+            {(detailOrder.logisticsEvents ?? []).length > 0 && (
+              <section>
+                <div className={styles.fulfillmentHeading}>
+                  <h4>订单履约记录</h4>
+                  <span>记录平台内发货、确认收货等操作，不代表包裹实际运输进度</span>
+                </div>
+                <div className={styles.logisticsTimeline}>
                   {(detailOrder.logisticsEvents ?? []).map((event) => (
                     <div className={styles.logisticsEvent} key={event.eventId}>
                       <i />
@@ -2082,6 +2131,65 @@ function AdminWorkspace() {
           </div>
         )}
       </Drawer>
+      <Modal
+        {...responsiveModalProps}
+        title="物流轨迹"
+        open={Boolean(orderLogisticsDialog)}
+        onCancel={() => setOrderLogisticsDialog(null)}
+        footer={null}
+        width={620}
+        zIndex={1100}
+      >
+        {orderLogisticsDialog && (
+          <div className={styles.merchantLogisticsDialog}>
+            <div className={styles.merchantLogisticsSummary}>
+              <div className={styles.merchantLogisticsIcon}><TruckOutlined /></div>
+              <div>
+                <span>当前物流状态</span>
+                <strong>{logisticsStateMeta[orderLogisticsDialog.trace.state].label}</strong>
+                <small>订单号：{orderLogisticsDialog.orderNo}</small>
+              </div>
+              <Tag color={logisticsStateMeta[orderLogisticsDialog.trace.state].color}>
+                {logisticsStateMeta[orderLogisticsDialog.trace.state].label}
+              </Tag>
+            </div>
+            <div className={styles.merchantLogisticsMeta}>
+              <div>
+                <span>承运公司</span>
+                <strong>{orderLogisticsDialog.trace.carrier || '自动识别中'}</strong>
+              </div>
+              <div>
+                <span>物流单号</span>
+                <strong>{orderLogisticsDialog.trace.trackingNo || '-'}</strong>
+              </div>
+            </div>
+            {orderLogisticsDialog.trace.providerMessage && (
+              <p className={styles.logisticsProviderNotice}>物流信息暂未更新，请稍后查看</p>
+            )}
+            <div className={styles.fulfillmentHeading}>
+              <h4>实时物流轨迹</h4>
+            </div>
+            <div className={styles.logisticsTimeline}>
+              {orderLogisticsDialog.trace.events.length === 0 && (
+                <p className={styles.logisticsEmpty}>承运信息已登记，暂未查询到物流轨迹。</p>
+              )}
+              {orderLogisticsDialog.trace.events.map((event, index) => (
+                <div
+                  className={styles.logisticsEvent}
+                  key={event.sourceEventId || `${event.eventTime}-${index}`}
+                >
+                  <i />
+                  <div>
+                    <strong>{event.description}</strong>
+                    {event.location && <span>{event.location}</span>}
+                    <span>{event.eventTime || '-'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </Modal>
       <Modal
         {...responsiveModalProps}
         title={`审核退款${refundAuditOrder ? ` · ${refundAuditOrder.orderNo}` : ''}`}
