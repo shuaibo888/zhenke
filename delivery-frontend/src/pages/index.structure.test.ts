@@ -146,7 +146,11 @@ test('profile orders expose logistics and render a logistics modal', () => {
   assert.match(pageSource, /title="物流详情"/);
   assert.match(contentServiceSource, /\/shop\/orders\/\$\{orderId\}\/logistics/);
   assert.match(contentServiceSource, /\/shop\/trials\/me\/applications\/\$\{applicationId\}\/logistics/);
-  assert.match(pageSource, /快递公司：\{logisticsDialog\.trace\.carrier \|\| '自动识别中'\}/);
+  assert.match(pageSource, /className=\{styles\.logisticsSummaryCard\}/);
+  assert.match(pageSource, /当前物流状态/);
+  assert.match(pageSource, /承运公司/);
+  assert.doesNotMatch(pageSource, /阿里云|信息由承运商实时更新|以下信息来自/);
+  assert.match(styleSource, /\.logisticsSummaryHeader/);
 });
 
 test('profile renders real trial and zhenke report sections', () => {

@@ -1,4 +1,4 @@
-import type { AdminSession, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, MerchantAuditLog, ProductCategoryOption, ShopMemberLevel, ShopUserAccount } from '@/types';
+import type { AdminSession, ManagedLogisticsTrace, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, MerchantAuditLog, ProductCategoryOption, ShopMemberLevel, ShopUserAccount } from '@/types';
 
 const tokenStorageKey = 'zhenke_admin_access_token';
 
@@ -541,6 +541,16 @@ export async function fetchMerchantOrder(orderId: number) {
   const result = await requestApi<ApiResponse<ShopOrderDto>>(`/shop/merchant/orders/${orderId}`, {}, true);
   if (!result.data) throw new Error('订单详情加载失败');
   return toManagedOrder(result.data);
+}
+
+export async function fetchMerchantOrderLogistics(orderId: number) {
+  const result = await requestApi<ApiResponse<ManagedLogisticsTrace>>(
+    `/shop/merchant/orders/${orderId}/logistics`,
+    {},
+    true,
+  );
+  if (!result.data) throw new Error('物流查询失败');
+  return { ...result.data, events: Array.isArray(result.data.events) ? result.data.events : [] };
 }
 
 export async function fetchAdminOrder(orderId: number) {

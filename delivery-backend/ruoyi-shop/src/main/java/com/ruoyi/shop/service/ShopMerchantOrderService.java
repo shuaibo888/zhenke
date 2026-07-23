@@ -12,6 +12,8 @@ import com.ruoyi.shop.domain.ShopOrderRefund;
 import com.ruoyi.shop.domain.ShopOrderStatusLog;
 import com.ruoyi.shop.domain.dto.ShopOrderShipBody;
 import com.ruoyi.shop.domain.dto.ShopOrderRefundAuditBody;
+import com.ruoyi.shop.domain.vo.ShopLogisticsTrace;
+import com.ruoyi.shop.logistics.AliyunLogisticsService;
 import com.ruoyi.shop.mapper.ShopOrderMapper;
 
 @Service
@@ -19,11 +21,14 @@ public class ShopMerchantOrderService
 {
     private final ShopOrderMapper orderMapper;
     private final ShopMerchantService merchantService;
+    private final AliyunLogisticsService logisticsService;
 
-    public ShopMerchantOrderService(ShopOrderMapper orderMapper, ShopMerchantService merchantService)
+    public ShopMerchantOrderService(ShopOrderMapper orderMapper, ShopMerchantService merchantService,
+            AliyunLogisticsService logisticsService)
     {
         this.orderMapper = orderMapper;
         this.merchantService = merchantService;
+        this.logisticsService = logisticsService;
     }
 
     public List<ShopOrder> merchantOrders(long merchantId)
@@ -35,6 +40,13 @@ public class ShopMerchantOrderService
     {
         long merchantId = merchantService.currentMerchantAccount().getMerchantId();
         return hydrate(requireMerchantOrder(merchantId, orderId, false));
+    }
+
+    public ShopLogisticsTrace merchantOrderLogistics(long orderId)
+    {
+        long merchantId = merchantService.currentMerchantAccount().getMerchantId();
+        ShopOrder order = requireMerchantOrder(merchantId, orderId, false);
+        return logisticsService.query(order.getCarrier(), order.getTrackingNo(), List.of());
     }
 
     @Transactional
