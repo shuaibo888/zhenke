@@ -92,6 +92,7 @@ export interface VerificationReportDto {
   reportId: number;
   productId: number;
   productName: string;
+  title: string;
   productCoverUrl: string;
   title?: string;
   merchantId: number;
@@ -478,6 +479,7 @@ export async function confirmTrialReceived(applicationId: number) {
 
 export async function publishVerificationReport(body: {
   trialApplicationId: number;
+  title: string;
   experience: string;
   shortcoming: string;
   fitCrowd: string;
@@ -505,6 +507,7 @@ export async function requestShopOrderRefund(orderId: number, reason: string) {
 
 export async function publishPurchaseVerificationReport(body: {
   orderItemId: number;
+  title: string;
   experience: string;
   shortcoming: string;
   fitCrowd: string;

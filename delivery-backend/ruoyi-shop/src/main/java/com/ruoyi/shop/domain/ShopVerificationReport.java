@@ -26,6 +26,7 @@ public class ShopVerificationReport
     private Long shopUserId;
     private String userName;
     private String nickName;
+    private String title;
     private String experience;
     private String shortcoming;
     private String fitCrowd;
@@ -79,6 +80,8 @@ public class ShopVerificationReport
     public void setUserName(String userName) { this.userName = userName; }
     public String getNickName() { return nickName; }
     public void setNickName(String nickName) { this.nickName = nickName; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
     public String getExperience() { return experience; }
     public void setExperience(String experience) { this.experience = experience; }
     public String getShortcoming() { return shortcoming; }

@@ -30,7 +30,8 @@
         <jwt.version>0.9.1</jwt.version>
         <jaxb-api.version>2.3.1</jaxb-api.version>
         <springdoc.version>2.8.17</springdoc.version>
-        <spring-ai.version>1.1.8</spring-ai.version>
+        <spring-ai.version>1.1.2</spring-ai.version>
+        <spring-ai-alibaba.version>1.1.2.3</spring-ai-alibaba.version>
         <wechatpay-java.version>0.2.17</wechatpay-java.version>
     </properties>
 
@@ -47,11 +48,20 @@
                 <scope>import</scope>
             </dependency>
 
-            <!-- Spring AI 1.1.x 与 Spring Boot 3.5.x 对应 -->
+            <!-- 仅用于对齐 Spring AI Alibaba 底层核心 API 版本；BOM 本身不会引入 OpenAI 或其他模型实现 -->
             <dependency>
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>
                 <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- 只接入阿里云百炼 DashScope/Qwen 模型适配，不引入 OpenAI 模型 Starter -->
+            <dependency>
+                <groupId>com.alibaba.cloud.ai</groupId>
+                <artifactId>spring-ai-alibaba-bom</artifactId>
+                <version>${spring-ai-alibaba.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

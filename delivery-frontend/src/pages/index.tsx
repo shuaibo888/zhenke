@@ -353,7 +353,7 @@ function mapVerificationReport(dto: VerificationReportDto): VerifyReport {
     id: dto.reportId,
     productId: dto.productId,
     productTitle: dto.productName,
-    title: dto.title,
+    title: dto.title || dto.productName,
     trialType: dto.trialType,
     reportSource: dto.reportSource,
     sourceReportId: dto.sourceReportId,
@@ -642,6 +642,7 @@ export default function HomePage() {
     const timer = window.setInterval(() => setPaymentClock(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [hasPaymentCountdown]);
+  const [showAuthPage, setShowAuthPage] = useState(false);
   const [merchantSubmitting, setMerchantSubmitting] = useState(false);
   const [form] = Form.useForm();
   const [authForm] = Form.useForm();
@@ -1115,6 +1116,7 @@ export default function HomePage() {
       const user = await loginShopUser(values.username, values.password, values.code, captcha.uuid);
       setCurrentUser(user);
       setLoginPromptOpen(false);
+      setShowAuthPage(false);
       message.success(`欢迎回来，${user.name}`);
     } catch (error) {
       message.error(error instanceof Error ? error.message : '操作失败，请稍后重试');
@@ -1137,6 +1139,7 @@ export default function HomePage() {
       remoteLogoutFailed = true;
     }
     setCurrentUser(null);
+    setShowAuthPage(false);
     setCartItems([]);
     setUserOrders([]);
     setActiveTab('reviews');
@@ -1211,7 +1214,8 @@ export default function HomePage() {
 
   const handleUseful = async (reportId: number) => {
     if (!activeUser) {
-      requireLogin('登录后即可为甄客验点有用');
+      message.info('请先登录');
+      setShowAuthPage(true);
       return;
     }
     const target = reports.find((report) => report.id === reportId) ?? journeyReport;
@@ -1245,6 +1249,11 @@ export default function HomePage() {
   }, [catalogProducts]);
 
   const openReportModal = (product?: Product, selectedTrial?: TrialRecord) => {
+    if (!activeUser) {
+      message.info('请先登录后再发布甄客验');
+      setShowAuthPage(true);
+      return;
+    }
     form.resetFields();
     setReportImageUrls([]);
     setReportVideoUrl(undefined);
@@ -1275,6 +1284,12 @@ export default function HomePage() {
 
     if (reportImageUrls.length === 0) {
       message.warning('请上传至少1张实拍图');
+      return;
+    }
+
+    const title = values.title?.trim();
+    if (!title) {
+      message.warning('请输入甄客验标题');
       return;
     }
 
@@ -1333,6 +1348,7 @@ export default function HomePage() {
       ];
       const publishedReport = { ...mapVerificationReport(await publishVerificationReport({
         trialApplicationId: trial.applicationId,
+        title,
         experience: values.experience.trim(),
         shortcoming: shortcomingTrimmed,
         fitCrowd: values.fitCrowd?.trim() || '真实使用后再判断',
@@ -1362,7 +1378,8 @@ export default function HomePage() {
       return;
     }
     if (!activeUser) {
-      requireLogin('登录后即可加入购物车');
+      message.info('请先登录后再加入购物车');
+      setShowAuthPage(true);
       return;
     }
     setCartMutatingId(product.id);
@@ -1441,7 +1458,11 @@ export default function HomePage() {
       message.warning('该商品当前无库存，暂不能购买');
       return;
     }
-    if (!activeUser) return;
+    if (!activeUser) {
+      message.info('请先登录后再购买');
+      setShowAuthPage(true);
+      return;
+    }
 
     setSelectedProduct(product);
     setPendingBuyProduct(product);
@@ -1501,7 +1522,12 @@ export default function HomePage() {
   };
 
   const handleSubmitReview = async () => {
-    if (!activeUser || !reviewOrder || !reviewOrderItem || reviewSubmitting) return;
+    if (!activeUser) {
+      message.info('请先登录后再提交评价');
+      setShowAuthPage(true);
+      return;
+    }
+    if (!reviewOrder || !reviewOrderItem || reviewSubmitting) return;
     const reviewTitleTrimmed = reviewTitle.trim();
     if (!reviewTitleTrimmed || reviewTitleTrimmed.length > 20) {
       message.warning('请填写1-20字的标题');
@@ -1560,6 +1586,7 @@ export default function HomePage() {
     try {
       const publishedReport = { ...mapVerificationReport(await publishPurchaseVerificationReport({
         orderItemId: reviewOrderItem.orderItemId,
+        title: reviewTitle.trim(),
         experience: reviewContent.trim(),
         shortcoming: reviewShortcoming.trim(),
         fitCrowd: reviewFitCrowd.trim(),
@@ -1640,7 +1667,12 @@ export default function HomePage() {
   };
 
   const submitRefundRequest = async () => {
-    if (!activeUser || !refundOrder || refundSubmitting) return;
+    if (!activeUser) {
+      message.info('请先登录');
+      setShowAuthPage(true);
+      return;
+    }
+    if (!refundOrder || refundSubmitting) return;
     const reason = refundReason.trim();
     if (reason.length < 2) {
       message.warning('请填写至少2个字的退款原因');
@@ -1729,7 +1761,12 @@ export default function HomePage() {
   };
 
   const handleConfirmBuyNow = async () => {
-    if (!activeUser || !pendingBuyProduct) return;
+    if (!activeUser) {
+      message.info('请先登录');
+      setShowAuthPage(true);
+      return;
+    }
+    if (!pendingBuyProduct) return;
     if (localPreviewMode) {
       const p = pendingBuyProduct;
       const newId = 700 + userOrders.length + 1;
@@ -1809,7 +1846,10 @@ export default function HomePage() {
   };
 
   const openProfileDialog = (dialog: Exclude<ProfileDialog, null>) => {
-    if (!activeUser) return;
+    if (!activeUser) {
+      setShowAuthPage(true);
+      return;
+    }
 
     setProfileDialog(dialog);
     if (dialog === 'name') nameForm.setFieldsValue({ name: activeUser.name });
@@ -1817,7 +1857,11 @@ export default function HomePage() {
   };
 
   const openAddressDialog = () => {
-    if (!activeUser) return;
+    if (!activeUser) {
+      message.info('请先登录后管理收货地址');
+      setShowAuthPage(true);
+      return;
+    }
     setAddressOpen(true);
   };
 
@@ -2060,7 +2104,8 @@ export default function HomePage() {
   const submitReportComment = async () => {
     if (!journeyReport) return;
     if (!activeUser) {
-      requireLogin('登录后即可发表评论');
+      message.info('请先登录后再评论');
+      setShowAuthPage(true);
       return;
     }
     const content = commentText.trim();
@@ -2108,7 +2153,8 @@ export default function HomePage() {
 
   const startReply = (comment: ReportCommentDto) => {
     if (!activeUser) {
-      requireLogin('登录后即可回复评论');
+      message.info('请先登录后再回复');
+      setShowAuthPage(true);
       return;
     }
     setReplyingTo(comment);
@@ -2202,7 +2248,8 @@ export default function HomePage() {
 
   const handleApplyForVerification = (recruitment: TrialRecruitment) => {
     if (!activeUser) {
-      requireLogin('登录后即可申请试用');
+      message.info('请先登录');
+      setShowAuthPage(true);
       return;
     }
     if (recruitment.trialType === 'ONLINE' && (!isShippingAddressReady || !defaultShippingAddress)) {
@@ -2765,14 +2812,14 @@ export default function HomePage() {
                 >
                   加入购物车
                 </Button>
-          <Button type="primary" size="large" onClick={() => openReportModal(selectedProduct)} disabled={!canReview}>
+          <Button type="primary" size="large" onClick={() => openReportModal(selectedProduct)} disabled={activeUser && !canReview}>
                   写验证报告
                 </Button>
               </div>
               <Button block icon={<ProfileOutlined />} onClick={() => setDetailOpen(true)}>
                 查看完整详情
               </Button>
-              {!canReview && <p className={styles.hint}>只有买过且未写过报告的商品可以验证。</p>}
+              {activeUser && !canReview && <p className={styles.hint}>只有买过且未写过报告的商品可以验证。</p>}
             </div>
           </>
         )}
@@ -2800,18 +2847,34 @@ export default function HomePage() {
     const emptyFeedText = '当前分类还没有正在招募的试用或已发布的甄客验。';
     return (
       <main className={`${styles.singleColumn} ${styles.homeFeedPage}`}>
-        <div className={styles.homeCategoryNav} aria-label="商品分类">
-          {homeCategoryItems.map((item) => (
-            <button
-              key={item.value}
-              type="button"
-              className={category === item.value ? styles.homeCategoryActive : ''}
-              aria-pressed={category === item.value}
-              onClick={() => setCategory((current) => current === item.value ? 'all' : item.value)}
-            >
-              {item.label}
-            </button>
-          ))}
+        <div className={styles.sectionHeader}>
+          <div>
+            <span className={styles.eyebrow}>Verified stories</span>
+            <h2>甄客验</h2>
+          </div>
+          <Button type="primary" onClick={() => openReportModal()} disabled={activeUser && reviewableProducts.length === 0}>
+            发布甄客验
+          </Button>
+        </div>
+        <div className={styles.catalogControls} style={{ marginBottom: 20 }}>
+          <Segmented
+            value={category}
+            onChange={(value) => setCategory(value as ProductCategoryFilter)}
+            options={[
+              { label: '全部', value: 'all' },
+              ...productCategories.map((item) => ({ label: item.categoryName, value: item.categoryCode })),
+            ]}
+          />
+          <Segmented
+            value={homeFeedFilter}
+            onChange={(value) => setHomeFeedFilter(value as HomeFeedFilter)}
+            options={[
+              { label: '全部', value: 'ALL' },
+              { label: '线上试用', value: 'ONLINE' },
+              { label: '线下试用', value: 'OFFLINE' },
+              { label: '验证报告', value: 'REPORT' },
+            ]}
+          />
         </div>
         {contentLoading && <div className={styles.sessionLoading}><Spin /></div>}
         <div className={styles.reportGrid}>
@@ -3084,6 +3147,7 @@ export default function HomePage() {
               <strong>{journeyReport.userName}</strong>
               <em>{journeyReport.createdAt}</em>
             </div>
+            <h1>{journeyReport.title}</h1>
             {/* 智能评分功能暂时隐藏，恢复时取消注释。
             <div className={styles.aiScoreRow}>
               <Tag color={aiScoreMeta.color}>{aiScoreMeta.label}</Tag>
@@ -3140,11 +3204,23 @@ export default function HomePage() {
               showCount
               autoSize={{ minRows: 3, maxRows: 6 }}
               placeholder={activeUser ? (replyingTo ? '写下你的回复' : '说说你对这份甄客验的看法') : '登录后可以评论和回复'}
-              disabled={!activeUser}
               onChange={(event) => setCommentText(event.target.value)}
+              onClick={() => {
+                if (!activeUser) {
+                  message.info('请先登录');
+                  setShowAuthPage(true);
+                }
+              }}
             />
-            <Button type="primary" loading={commentSubmitting} disabled={!activeUser} onClick={() => void submitReportComment()}>
-              {replyingTo ? '发布回复' : '发布评论'}
+            <Button type="primary" loading={commentSubmitting} onClick={() => {
+              if (!activeUser) {
+                message.info('请先登录');
+                setShowAuthPage(true);
+                return;
+              }
+              void submitReportComment();
+            }}>
+              {activeUser ? (replyingTo ? '发布回复' : '发布评论') : '登录并评论'}
             </Button>
           </div>
           <Spin spinning={reportCommentsLoading}>
@@ -3536,15 +3612,15 @@ export default function HomePage() {
                 <img className={styles.reportListThumb} src={report.images?.[0] || '/goods/yanzhao.jpg'} alt={report.productTitle} />
                 <div className={styles.reportListBody}>
                   <p className={styles.reportListTitle}>{report.title || report.productTitle}</p>
-                  <p className={styles.reportListExcerpt}>{report.productTitle}</p>
+                  <p className={styles.reportListExcerpt}>{report.shortcoming || report.productTitle}</p>
                   <div className={styles.reportListMeta}>
                     <Tag color={getReportTypeMeta(report).color}>{getReportTypeMeta(report).label}</Tag>
                     <span className={styles.reportListUseful}><LikeOutlined /> {report.usefulCount}</span>
                   </div>
-                </div>
                 <span className={styles.profileReportHint}>
                   {profileReportOpeningId === report.id ? <Spin size="small" /> : <RightOutlined />}
                 </span>
+              </div>
               </button>
             ))}
             {!myReportsLoading && myReports.length === 0 && <p className={styles.empty}>还没有发布过甄客验。</p>}
@@ -3579,10 +3655,21 @@ export default function HomePage() {
     );
   }
 
-  if (!activeUser) {
+  if (showAuthPage || (!activeUser && activeTab === 'profile')) {
     return (
       <ConfigProvider theme={commerceTheme}>
         <div className={`${styles.appShell} ${styles.authPage}`}>
+          <Button 
+            type="text" 
+            icon={<ArrowLeftOutlined />} 
+            onClick={() => {
+              setShowAuthPage(false);
+              setActiveTab('reviews');
+            }} 
+            style={{ position: 'absolute', top: 24, left: 24, zIndex: 10 }}
+          >
+            返回浏览
+          </Button>
           {renderAuth()}
           {renderMerchantModal()}
         </div>
@@ -3606,44 +3693,50 @@ export default function HomePage() {
               <h1>㤫者商城</h1>
             </button>
             <div className={styles.headerActions}>
-              <Button aria-label={`购物车，共 ${cartCount} 件商品`} icon={<ShoppingCartOutlined />} onClick={() => setCartOpen(true)}>
-                购物车 {cartCount}
-              </Button>
-              <Button aria-label="管理收货地址" className={styles.addressButton} icon={<EnvironmentOutlined />} onClick={openAddressDialog}>
-                收货地址
-              </Button>
-              <div className={styles.accountMenu}>
-                <Dropdown
-                  trigger={['hover', 'click']}
-                  placement="bottomRight"
-                  arrow
-                  classNames={{ root: styles.accountPopup }}
-                  menu={{
-                    items: [{
-                      key: 'logout',
-                      danger: true,
-                      disabled: logoutSubmitting,
-                      icon: <LogoutOutlined />,
-                      label: logoutSubmitting ? '正在退出...' : '退出登录',
-                    }],
-                    onClick: () => void handleLogout(),
-                  }}
-                >
-                  <button
-                    type="button"
-                    className={styles.accountButton}
-                    aria-label="打开账号操作菜单"
-                    aria-haspopup="menu"
-                  >
-                    {renderUserAvatar(activeUser, styles.accountAvatar)}
-                    <span className={styles.accountText}>
-                      <span className={styles.accountName}>{activeUser.name}</span>
-                      <span className={styles.accountRole}>{userMeta.label}</span>
-                    </span>
-                    <DownOutlined className={styles.accountChevron} />
-                  </button>
-                </Dropdown>
-              </div>
+              {activeUser ? (
+                <>
+                  <Button aria-label={`购物车，共 ${cartCount} 件商品`} icon={<ShoppingCartOutlined />} onClick={() => setCartOpen(true)}>
+                    购物车 {cartCount}
+                  </Button>
+                  <Button aria-label="管理收货地址" className={styles.addressButton} icon={<EnvironmentOutlined />} onClick={openAddressDialog}>
+                    收货地址
+                  </Button>
+                  <div className={styles.accountMenu}>
+                    <Dropdown
+                      trigger={['hover', 'click']}
+                      placement="bottomRight"
+                      arrow
+                      classNames={{ root: styles.accountPopup }}
+                      menu={{
+                        items: [{
+                          key: 'logout',
+                          danger: true,
+                          disabled: logoutSubmitting,
+                          icon: <LogoutOutlined />,
+                          label: logoutSubmitting ? '正在退出...' : '退出登录',
+                        }],
+                        onClick: () => void handleLogout(),
+                      }}
+                    >
+                      <button
+                        type="button"
+                        className={styles.accountButton}
+                        aria-label="打开账号操作菜单"
+                        aria-haspopup="menu"
+                      >
+                        {renderUserAvatar(activeUser, styles.accountAvatar)}
+                        <span className={styles.accountText}>
+                          <span className={styles.accountName}>{activeUser.name}</span>
+                          <span className={styles.accountRole}>{userMeta.label}</span>
+                        </span>
+                        <DownOutlined className={styles.accountChevron} />
+                      </button>
+                    </Dropdown>
+                  </div>
+                </>
+              ) : (
+                <Button type="primary" onClick={() => setShowAuthPage(true)}>登录 / 注册</Button>
+              )}
             </div>
         </header>
         )}
@@ -3657,6 +3750,10 @@ export default function HomePage() {
                 className={activeTab === item.key ? styles.activeTab : ''}
                 aria-current={activeTab === item.key ? 'page' : undefined}
                 onClick={() => {
+                  if (item.key === 'profile' && !activeUser) {
+                    setShowAuthPage(true);
+                    return;
+                  }
                   setActiveTab(item.key);
                   if (item.key === 'reviews') setJourneyView('feed');
                 }}
@@ -3682,7 +3779,14 @@ export default function HomePage() {
           type="primary"
           shape="circle"
           icon={<ShoppingCartOutlined />}
-          onClick={() => setCartOpen(true)}
+          onClick={() => {
+            if (!activeUser) {
+              message.info('请先登录后再使用购物车');
+              setShowAuthPage(true);
+              return;
+            }
+            setCartOpen(true);
+          }}
         />
       </Badge>
 
@@ -3836,6 +3940,16 @@ export default function HomePage() {
             />
           </Form.Item>
           {reviewableTrials.length === 0 && <p className={styles.hint}>暂无可发布甄客验的试用：线上需确认收货，线下需审核通过。</p>}
+          <Form.Item
+            name="title"
+            label="甄客验标题"
+            rules={[
+              { required: true, whitespace: true, message: '请输入甄客验标题' },
+              { max: 100, message: '甄客验标题不能超过100个字符' },
+            ]}
+          >
+            <Input size="large" maxLength={100} showCount placeholder="请概括这次真实体验，用于首页展示" />
+          </Form.Item>
           <Form.Item label="实拍图（必填，至少1张）" required>
             <Upload
               listType="picture-card"
@@ -4080,7 +4194,18 @@ export default function HomePage() {
             </div>
 
             <>
-                <div className={styles.reviewStarsRow}>
+              <div className={styles.reviewTextarea}>
+                <strong>甄客验标题</strong>
+                <Input
+                  size="large"
+                  placeholder="请输入甄客验标题，用于首页展示"
+                  value={reviewTitle}
+                  onChange={(event) => setReviewTitle(event.target.value)}
+                  maxLength={100}
+                  showCount
+                />
+              </div>
+              <div className={styles.reviewStarsRow}>
                   <div className={styles.reviewStarItem}>
                     <span>物品质量</span>
                     <div className={styles.starsInteractive}>
@@ -4474,6 +4599,8 @@ function ReportCard({
           <Tag color={getAiScoreMeta(report).color}>{getAiScoreMeta(report).label}</Tag>
           */}
           <p className={styles.reportGridTitle}>{report.title || report.experience}</p>
+          {report.title && <p className={styles.reportGridDesc}>{report.experience}</p>}
+          <div className={styles.reportGridShortcoming}>不足：{report.shortcoming}</div>
           <div className={styles.reportGridFooter}>
             <span className={styles.gridAuthor}>
               <span className={styles.gridAuthorAvatar}>{(report.userName || '甄').slice(0, 1)}</span>
@@ -4514,13 +4641,7 @@ function ReportCard({
       </div>
       {!compact && (
         <h3>
-          {onOpenProduct ? (
-            <button className={styles.reportProductLink} type="button" onClick={() => onOpenProduct(report)}>
-              {report.productTitle}
-            </button>
-          ) : (
-            report.productTitle
-          )}
+          {report.title}
         </h3>
       )}
       <p>{report.experience}</p>

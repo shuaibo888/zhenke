@@ -65,18 +65,19 @@ spring:
     restart:
       # 热部署开关
       enabled: false
-  # Spring AI 通过阿里云百炼 OpenAI 兼容接口调用 Qwen-Plus。
-  # API Key 只允许由环境变量注入；默认占位值仅用于在评分功能关闭时完成应用启动。
+  # 甄客验智能评分：通过 Spring AI Alibaba 原生 DashScope 适配调用 Qwen。
   ai:
-    openai:
-      api-key: ${DASHSCOPE_API_KEY:not-configured}
-      base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+    model:
+      chat: dashscope
+    dashscope:
+      api-key: ${DASHSCOPE_API_KEY:}
       chat:
         options:
-          model: ${QWEN_MODEL:qwen-plus}
-          temperature: ${QWEN_TEMPERATURE:0.2}
+          model: qwen3.7-max
+          temperature: 0.2
+          enable-thinking: false
           response-format:
-            type: JSON_OBJECT
+            type: json_object
     retry:
       # 业务任务层负责可审计重试，Spring AI 单次调用不做长时间内置重试。
       max-attempts: 1
@@ -89,8 +90,6 @@ spring:
       port: 6379
       # 数据库索引
       database: 0
-      # 密码
-      password:
       # 连接超时时间
       timeout: 10s
       lettuce:
@@ -108,23 +107,15 @@ spring:
 token:
   # 令牌自定义标识
   header: Authorization
-  # 令牌密钥
-  secret: abcdefghijklmnopqrstuvwxyz
+  # 登录令牌签名密钥，由本地环境变量或 Docker 容器环境变量注入。
+  secret: ${TOKEN_SECRET}
   # 令牌有效期（默认30分钟）
   expireTime: 30
 
-# 甄客验 AI 评分。只有同时配置 DASHSCOPE_API_KEY 并显式启用后才会调用模型。
+# 设为 true 后，已发布的甄客验会在发布成功后异步评分。
 shop:
   ai-score:
-    enabled: ${SHOP_AI_SCORE_ENABLED:false}
-    provider: ALIBABA_CLOUD_MODEL_STUDIO
-    model: ${QWEN_MODEL:qwen-plus}
-    prompt-version: qwen-report-quality-v1
-    batch-size: 10
-    max-attempts: 3
-    retry-delay-seconds: 300
-    running-timeout-minutes: 10
-    reason-max-length: 300
+    enabled: false
 
 # MyBatis配置
 mybatis:
@@ -181,3 +172,39 @@ xss:
   excludes: /system/notice
   # 匹配链接
   urlPatterns: /system/*,/monitor/*,/tool/*
+
+# 微信支付 APIv3 配置。公开标识和路径保留在此处，真实密钥由环境变量注入。
+wechat-pay:
+  enabled: true
+  # 与微信支付商户号绑定的已认证服务号 AppID；当前仅用于微信内 JSAPI 支付。
+  app-id: wx445f3b9c251e7617
+  # 仅用于微信内网页 snsapi_base 授权换取 OpenID，不会返回给前端。
+  app-secret: ${WECHAT_PAY_APP_SECRET}
+  merchant-id: 1704306287
+  # 商户 API 证书序列号，必须与下方私钥来自同一套证书。
+  merchant-serial-number: 28431D1FB21B77B728A64D2EAB776DDAE77F5710
+  # 部署时把与证书序列号匹配的 apiclient_key.pem 挂载到该容器路径。
+  private-key-path: /app/certs/apiclient_key.pem
+  # APIv3 密钥用于平台证书和支付/退款通知解密。
+  api-v3-key: ${WECHAT_PAY_API_V3_KEY}
+  # 当前使用自动下载平台证书模式，不需要配置微信支付公钥 ID 和公钥文件。
+  credential-mode: AUTO_CERTIFICATE
+  # 两个通知地址必须是公网 HTTPS、不能携带查询参数，并转发到当前后端。
+  payment-notify-url: https://miniats.cboo.cloud/api/shop/payments/wechat/notify/payment
+  refund-notify-url: https://miniats.cboo.cloud/api/shop/payments/wechat/notify/refund
+  # 公众号网页授权后返回的前端页面，不要携带查询参数。
+  frontend-return-url: https://miniats.cboo.cloud/
+  # 用于签署公众号 OAuth state，至少 32 个字符且不要与登录 token 密钥复用。
+  oauth-state-secret: ${WECHAT_PAY_OAUTH_STATE_SECRET}
+
+# 阿里云市场物流查询配置（APPCODE 鉴权）。购买订单和线上试用共用本配置。
+aliyun-logistics:
+  enabled: true
+  # 默认适配阿里云市场“全国快递物流查询”接口；请求时只发送 no=运单号，不发送 type 或手机号。
+  endpoint: https://wuliu.market.alicloudapi.com/kdi
+  # 阿里云物流 AppCode，由环境变量注入。
+  app-code: ${ALIYUN_LOGISTICS_APP_CODE:}
+  # 与阿里云建立连接的最长等待秒数。
+  connect-timeout-seconds: 5
+  # 单次物流查询的最长等待秒数。
+  request-timeout-seconds: 8

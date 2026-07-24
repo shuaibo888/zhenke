@@ -66,6 +66,14 @@
             <artifactId>ruoyi-shop</artifactId>
         </dependency>
 
+        <!-- 本地 IDE 启动时显式装配微信支付核心 SDK -->
+        <dependency>
+            <groupId>com.github.wechatpay-apiv3</groupId>
+            <artifactId>wechatpay-java-core</artifactId>
+            <version>${wechatpay-java.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
     </dependencies>
 
     <build>

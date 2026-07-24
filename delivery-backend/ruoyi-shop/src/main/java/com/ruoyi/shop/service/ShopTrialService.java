@@ -301,6 +301,7 @@ public class ShopTrialService
         report.setTrialApplicationId(application.getApplicationId());
         report.setReportSource("TRIAL");
         report.setShopUserId(shopUserId);
+        report.setTitle(StringUtils.trim(body.getTitle()));
         report.setExperience(StringUtils.trim(body.getExperience()));
         report.setShortcoming(StringUtils.trim(body.getShortcoming()));
         report.setFitCrowd(StringUtils.trim(body.getFitCrowd()));

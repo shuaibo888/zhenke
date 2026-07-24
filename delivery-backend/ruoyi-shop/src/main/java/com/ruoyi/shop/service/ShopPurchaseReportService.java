@@ -65,6 +65,7 @@ public class ShopPurchaseReportService
         report.setOrderItemId(orderItem.getOrderItemId());
         report.setSourceReportId(orderItem.getSourceReportId());
         report.setShopUserId(shopUserId);
+        report.setTitle(StringUtils.trim(body.getTitle()));
         report.setExperience(experience);
         report.setShortcoming(shortcoming);
         report.setFitCrowd(StringUtils.trim(body.getFitCrowd()));

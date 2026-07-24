@@ -77,6 +77,7 @@
         <result property="shopUserId" column="shop_user_id" />
         <result property="userName" column="user_name" />
         <result property="nickName" column="nick_name" />
+        <result property="title" column="report_title" />
         <result property="experience" column="experience" />
         <result property="shortcoming" column="shortcoming" />
         <result property="fitCrowd" column="fit_crowd" />
@@ -328,13 +329,13 @@
     <insert id="insertReport" parameterType="ShopVerificationReport" useGeneratedKeys="true" keyProperty="reportId">
         insert into shop_verification_report
         (product_id, trial_application_id, report_source, order_item_id, source_report_id,
-         shop_user_id, experience, shortcoming, fit_crowd, recommend,
+         shop_user_id, report_title, experience, shortcoming, fit_crowd, recommend,
          product_quality, logistics_service, service_attitude,
          ai_score_status, ai_score_updated_at,
          status, published_at, create_time, update_time)
         values
         (#{productId}, #{trialApplicationId}, #{reportSource}, #{orderItemId}, #{sourceReportId},
-         #{shopUserId}, #{experience}, #{shortcoming}, #{fitCrowd}, #{recommend},
+         #{shopUserId}, #{title}, #{experience}, #{shortcoming}, #{fitCrowd}, #{recommend},
          #{productQuality}, #{logisticsService}, #{serviceAttitude},
          'PENDING', sysdate(),
          'PUBLISHED', sysdate(), sysdate(), sysdate())
@@ -359,7 +360,7 @@
                p.merchant_id, m.company_name as merchant_name, pc.category_code, pc.category_name,
                r.trial_application_id, c.trial_type, r.report_source, r.order_item_id,
                r.source_report_id, r.shop_user_id, u.user_name, u.nick_name,
-                r.experience, r.shortcoming, r.fit_crowd, r.recommend,
+                r.report_title, r.experience, r.shortcoming, r.fit_crowd, r.recommend,
                 r.product_quality, r.logistics_service, r.service_attitude,
                 r.ai_score, r.ai_score_status, current_score.reason as ai_score_reason, r.ai_scored_at,
                 r.status as report_status, r.published_at
@@ -447,7 +448,8 @@
           union all
           select 'REPORT' as content_type, r.report_id as content_id,
                  p.product_id, p.merchant_id, m.company_name as merchant_name,
-                 pc.category_code, pc.category_name, p.product_name as title,
+                 pc.category_code, pc.category_name,
+                 coalesce(nullif(r.report_title, ''), p.product_name) as title,
                  substring(r.experience, 1, 180) as summary,
                  coalesce((select rr.resource_url from shop_verification_report_resource rr
                            where rr.report_id = r.report_id order by rr.resource_sort, rr.resource_id limit 1), p.cover_url) as cover_url,

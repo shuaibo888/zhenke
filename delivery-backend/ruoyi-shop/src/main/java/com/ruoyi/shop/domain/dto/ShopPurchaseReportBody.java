@@ -12,6 +12,9 @@ public class ShopPurchaseReportBody
 {
     @NotNull(message = "请选择要评价的订单商品")
     private Long orderItemId;
+    @NotBlank(message = "请输入甄客验标题")
+    @Size(max = 100, message = "甄客验标题不能超过100个字符")
+    private String title;
     @NotBlank(message = "请输入真实体验")
     @Size(min = 20, max = 10000, message = "真实体验长度必须在20到10000个字符之间")
     private String experience;
@@ -35,6 +38,8 @@ public class ShopPurchaseReportBody
 
     public Long getOrderItemId() { return orderItemId; }
     public void setOrderItemId(Long orderItemId) { this.orderItemId = orderItemId; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
     public String getExperience() { return experience; }
     public void setExperience(String experience) { this.experience = experience; }
     public String getShortcoming() { return shortcoming; }

@@ -10,6 +10,9 @@ public class ShopVerificationReportBody
 {
     @NotNull(message = "请选择当前可发布报告的试用")
     private Long trialApplicationId;
+    @NotBlank(message = "请输入甄客验标题")
+    @Size(max = 100, message = "甄客验标题不能超过100个字符")
+    private String title;
     @NotBlank(message = "请输入真实体验")
     @Size(max = 10000, message = "真实体验不能超过10000个字符")
     private String experience;
@@ -27,6 +30,8 @@ public class ShopVerificationReportBody
 
     public Long getTrialApplicationId() { return trialApplicationId; }
     public void setTrialApplicationId(Long trialApplicationId) { this.trialApplicationId = trialApplicationId; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
     public String getExperience() { return experience; }
     public void setExperience(String experience) { this.experience = experience; }
     public String getShortcoming() { return shortcoming; }

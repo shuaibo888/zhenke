@@ -87,6 +87,7 @@ public class ShopVerificationReportAiScoreService
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
     private final String apiKey;
+    private final String modelName;
     private final AtomicBoolean missingKeyLogged = new AtomicBoolean();
 
     public ShopVerificationReportAiScoreService(ShopAiScoreProperties properties,
@@ -95,7 +96,8 @@ public class ShopVerificationReportAiScoreService
             ChatClient.Builder chatClientBuilder,
             ObjectMapper objectMapper,
             TransactionTemplate transactionTemplate,
-            @Value("${spring.ai.openai.api-key:}") String apiKey)
+            @Value("${spring.ai.dashscope.api-key:}") String apiKey,
+            @Value("${spring.ai.dashscope.chat.options.model}") String modelName)
     {
         this.properties = properties;
         this.trialMapper = trialMapper;
@@ -104,6 +106,7 @@ public class ShopVerificationReportAiScoreService
         this.objectMapper = objectMapper;
         this.transactionTemplate = transactionTemplate;
         this.apiKey = apiKey;
+        this.modelName = modelName;
     }
 
     public int processPendingBatch()
@@ -153,7 +156,7 @@ public class ShopVerificationReportAiScoreService
         }
 
         String inputJson = buildInputJson(report);
-        String inputHash = sha256(properties.getPromptVersion() + "\n" + properties.getModel() + "\n" + inputJson);
+        String inputHash = sha256(properties.getPromptVersion() + "\n" + modelName + "\n" + inputJson);
         Long scoreId = transactionTemplate.execute(status -> claim(reportId, inputHash));
         if (scoreId == null)
         {
@@ -221,7 +224,7 @@ public class ShopVerificationReportAiScoreService
         ShopVerificationReportAiScore attempt = new ShopVerificationReportAiScore();
         attempt.setReportId(reportId);
         attempt.setModelProvider(properties.getProvider());
-        attempt.setModelName(properties.getModel());
+        attempt.setModelName(modelName);
         attempt.setPromptVersion(properties.getPromptVersion());
         attempt.setInputHash(inputHash);
         if (scoreMapper.insertAttempt(attempt) == 0 || attempt.getScoreId() == null)
@@ -273,7 +276,7 @@ public class ShopVerificationReportAiScoreService
         {
             if (missingKeyLogged.compareAndSet(false, true))
             {
-                log.error("甄客验智能评分已启用，但未在application.yml的spring.ai.openai.api-key中配置百炼API Key，任务将保持待处理");
+                log.error("甄客验智能评分已启用，但未在application.yml的spring.ai.dashscope.api-key中配置百炼API Key，任务将保持待处理");
             }
             return false;
         }
@@ -295,6 +298,7 @@ public class ShopVerificationReportAiScoreService
         Map<String, Object> reportData = new LinkedHashMap<>();
         reportData.put("reportSource", report.getReportSource());
         reportData.put("trialType", report.getTrialType());
+        reportData.put("title", clip(report.getTitle()));
         reportData.put("experience", clip(report.getExperience()));
         reportData.put("shortcoming", clip(report.getShortcoming()));
         reportData.put("fitCrowd", clip(report.getFitCrowd()));

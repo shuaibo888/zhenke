@@ -8,8 +8,7 @@ import org.springframework.stereotype.Component;
 public class ShopAiScoreProperties
 {
     private boolean enabled;
-    private String provider = "ALIBABA_CLOUD_MODEL_STUDIO";
-    private String model = "qwen-plus";
+    private String provider = "DASHSCOPE";
     private String promptVersion = "qwen-report-quality-v2-product-match";
     private int batchSize = 10;
     private int maxAttempts = 3;
@@ -21,8 +20,6 @@ public class ShopAiScoreProperties
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public String getProvider() { return provider; }
     public void setProvider(String provider) { this.provider = provider; }
-    public String getModel() { return model; }
-    public void setModel(String model) { this.model = model; }
     public String getPromptVersion() { return promptVersion; }
     public void setPromptVersion(String promptVersion) { this.promptVersion = promptVersion; }
     public int getBatchSize() { return batchSize; }

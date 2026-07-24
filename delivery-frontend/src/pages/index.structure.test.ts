@@ -234,6 +234,8 @@ test('report useful action uses the backend count instead of local-only incremen
 test('received order items publish purchase verification reports into the shared feed', () => {
   assert.match(pageSource, /publishPurchaseVerificationReport/);
   assert.match(pageSource, /orderItemId: reviewOrderItem\.orderItemId/);
+  assert.match(pageSource, /title: reviewTitle\.trim\(\)/);
+  assert.match(pageSource, /value=\{reviewTitle\}/);
   assert.match(pageSource, /购买甄客验已发布，已进入甄客验内容流/);
   assert.match(pageSource, /item\.verificationReportId \? '查看甄客验' : '发布甄客验'/);
   assert.match(pageSource, /report\.reportSource === 'PURCHASE'/);
@@ -322,6 +324,9 @@ test('verification publishing binds the eligible online or offline trial applica
   assert.match(pageSource, /publishVerificationReport/);
   assert.match(pageSource, /trial\.status === 'pending_report'/);
   assert.match(pageSource, /name="trialApplicationId"/);
+  assert.match(pageSource, /name="title"/);
+  assert.match(pageSource, /label="甄客验标题"/);
+  assert.match(pageSource, /title,/);
   assert.match(pageSource, /选择可发布试用/);
   assert.match(pageSource, /reviewableTrials/);
   assert.doesNotMatch(pageSource, /getReviewableProductsFromOrders/);
@@ -347,6 +352,12 @@ test('avatar editing uses local file upload instead of URL input', () => {
   assert.match(pageSource, /file\.size > 5 \* 1024 \* 1024/);
   assert.doesNotMatch(pageSource, /uploadAvatarFile/);
   assert.doesNotMatch(pageSource, /label="图片 URL"/);
+});
+
+test('verification cards and details use the user-authored report title', () => {
+  assert.match(pageSource, /title: dto\.title \|\| dto\.productName/);
+  assert.match(pageSource, /className=\{styles\.reportGridTitle\}>\{report\.title\}/);
+  assert.match(pageSource, /<h1>\{journeyReport\.title\}<\/h1>/);
 });
 
 test('profile and order views do not advertise return-day benefits', () => {
