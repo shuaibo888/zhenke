@@ -1,0 +1,18 @@
+/* 全局基础样式：统一 box-sizing，避免 width:100% + padding 造成横向溢出。 */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  /* 兜底：禁止整页横向滚动，防止个别元素溢出把页面推宽。 */
+  overflow-x: hidden;
+}
+
+#root {
+  overflow-x: hidden;
+}

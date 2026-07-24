@@ -60,6 +60,7 @@ export interface VerifyReport {
   id: number;
   productId: number;
   productTitle: string;
+  title?: string;
   trialType?: 'ONLINE' | 'OFFLINE';
   reportSource?: 'TRIAL' | 'PURCHASE';
   sourceReportId?: number;

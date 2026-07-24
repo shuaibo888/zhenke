@@ -6,6 +6,7 @@ const pageSource = readFileSync(new URL('./index.tsx', import.meta.url), 'utf8')
 const styleSource = readFileSync(new URL('./index.less', import.meta.url), 'utf8');
 const authServiceSource = readFileSync(new URL('../services/shopAuth.ts', import.meta.url), 'utf8');
 const contentServiceSource = readFileSync(new URL('../services/shopContent.ts', import.meta.url), 'utf8');
+const previewModeSource = readFileSync(new URL('../preview/previewMode.ts', import.meta.url), 'utf8');
 
 test('cart and first-stage orders use authenticated server APIs', () => {
   assert.match(contentServiceSource, /\/shop\/users\/me\/cart/);
@@ -42,6 +43,23 @@ test('public user site is restricted to the WeChat embedded browser', () => {
   assert.match(pageSource, /当前版本仅开放微信内使用/);
 });
 
+test('localhost preview mode bypasses WeChat and session checks only when explicitly requested', () => {
+  assert.match(previewModeSource, /process\.env\.NODE_ENV/);
+  assert.match(previewModeSource, /isPrivateIpv4/);
+  assert.match(previewModeSource, /searchParams\.get\('preview'\) === '1'/);
+  assert.match(pageSource, /const localPreviewUser: AuthUser/);
+  assert.match(pageSource, /if \(localPreviewMode\)/);
+  assert.match(pageSource, /if \(!localPreviewMode && !isWechatBrowser\(\)\)/);
+});
+
+test('local preview exposes a full-flow inspector without affecting normal mode', () => {
+  assert.match(pageSource, /localPreviewMode && new URLSearchParams\(window\.location\.search\)\.get\('inspector'\) === '1'/);
+  assert.match(pageSource, /<PreviewInspector/);
+  assert.match(pageSource, /onNavigate=\{navigatePreview\}/);
+  assert.match(styleSource, /\.previewInspectorPanel/);
+  assert.match(styleSource, /\.previewInspectorGrid/);
+});
+
 test('pending orders show the backend payment deadline and disable late payment', () => {
   assert.match(contentServiceSource, /paymentExpireTime\?: string/);
   assert.match(pageSource, /paymentExpiresAt: dto\.paymentExpireTime/);
@@ -50,13 +68,26 @@ test('pending orders show the backend payment deadline and disable late payment'
   assert.match(pageSource, /getPaymentRemainingSeconds/);
 });
 
-test('home feed separates online and offline trial recruitment through the backend query', () => {
-  assert.match(pageSource, /type HomeFeedFilter = 'ALL' \| 'ONLINE' \| 'OFFLINE' \| 'REPORT';/);
-  assert.match(pageSource, /\{ label: '线上试用', value: 'ONLINE' \}/);
-  assert.match(pageSource, /\{ label: '线下试用', value: 'OFFLINE' \}/);
-  assert.match(pageSource, /fetchHomeFeed\(categoryCode, contentType, trialType\)/);
+test('home feed defaults to all mixed content and only exposes the four product categories', () => {
+  const reviewsStart = pageSource.indexOf('const renderReviews = () =>');
+  const reviewsEnd = pageSource.indexOf('const renderProductJourney = () =>', reviewsStart);
+  const reviewsBlock = pageSource.slice(reviewsStart, reviewsEnd);
+
+  assert.match(pageSource, /useState<ProductCategoryFilter>\('all'\)/);
+  assert.match(pageSource, /fetchHomeFeed\(categoryCode, 'ALL', 'ALL'\)/);
+  assert.match(reviewsBlock, /homeCategoryItems/);
+  assert.match(pageSource, /\{ label: '户外', value: 'CATEGORY_1' \}/);
+  assert.match(pageSource, /\{ label: '运动服装', value: 'CATEGORY_2' \}/);
+  assert.match(pageSource, /\{ label: '健康产品', value: 'CATEGORY_3' \}/);
+  assert.match(pageSource, /\{ label: '生活优选', value: 'CATEGORY_4' \}/);
+  assert.doesNotMatch(pageSource, /type HomeFeedFilter/);
+  assert.doesNotMatch(pageSource, /setHomeFeedFilter/);
+  assert.doesNotMatch(reviewsBlock, /\{ label: '全部', value: 'all' \}/);
+  assert.doesNotMatch(reviewsBlock, /\{ label: '全部', value: 'ALL' \}/);
+  assert.doesNotMatch(reviewsBlock, /\{ label: '线上试用', value: 'ONLINE' \}/);
+  assert.doesNotMatch(reviewsBlock, /\{ label: '线下试用', value: 'OFFLINE' \}/);
+  assert.doesNotMatch(reviewsBlock, /\{ label: '验证报告', value: 'REPORT' \}/);
   assert.match(contentServiceSource, /if \(trialType !== 'ALL'\) params\.set\('trialType', trialType\)/);
-  assert.doesNotMatch(pageSource, /\{ label: '试用招募', value: 'TRIAL' \}/);
 });
 
 test('merchant application is available on the public home page without a shop-user session', () => {
@@ -70,15 +101,19 @@ test('merchant application is available on the public home page without a shop-u
 });
 
 test('login waits for a confirmed captcha state and exposes retry on load failure', () => {
-  assert.match(pageSource, /captchaReady/);
-  assert.match(pageSource, /captchaLoading/);
-  assert.match(pageSource, /captchaLoadError/);
+  const authStart = pageSource.indexOf('const renderAuth = () =>');
+  const authEnd = pageSource.indexOf('const renderMerchantModal = () =>', authStart);
+  const authBlock = pageSource.slice(authStart, authEnd);
+
+  assert.match(authBlock, /captchaReady/);
+  assert.match(authBlock, /captchaLoading/);
+  assert.match(authBlock, /captchaLoadError/);
   assert.match(pageSource, /验证码尚未准备好，请重新获取后再登录/);
-  assert.match(pageSource, /重新获取/);
+  assert.match(authBlock, /重新获取/);
   assert.match(pageSource, /验证码尚未准备好，请重新获取后再提交/);
-  assert.doesNotMatch(pageSource, /\.catch\(\(\) => undefined\)/);
-  assert.doesNotMatch(pageSource, /onClick=\{loadCaptcha\}/);
-  assert.match(pageSource, /onClick=\{\(\) => void loadCaptcha\(\)\}/);
+  assert.doesNotMatch(authBlock, /\.catch\(\(\) => undefined\)/);
+  assert.doesNotMatch(authBlock, /onClick=\{loadCaptcha\}/);
+  assert.match(authBlock, /onClick=\{\(\) => void loadCaptcha\(\)\}/);
 });
 
 test('merchant commitment switches are direct Form.Item controls', () => {
@@ -90,7 +125,7 @@ test('merchant commitment switches are direct Form.Item controls', () => {
 
 test('primary navigation only exposes reviews and profile', () => {
   assert.match(pageSource, /type TabKey = 'reviews' \| 'profile';/);
-  assert.match(pageSource, /\{ key: 'reviews', label: '甄客验'/);
+  assert.match(pageSource, /\{ key: 'reviews', label: '首页'/);
   assert.match(pageSource, /\{ key: 'profile', label: '我的'/);
   assert.doesNotMatch(pageSource, /\{ key: 'goods', label: '好物'/);
   assert.doesNotMatch(pageSource, /\{ key: 'verify', label: '真实验'/);
@@ -223,9 +258,9 @@ test('product journey covers recruitment, evidence, report detail, and attributi
 test('home shell uses a masthead plus nav row without a repeated trust strip', () => {
   assert.match(pageSource, /className=\{styles\.masthead\}/);
   assert.match(pageSource, /className=\{styles\.navBar\}/);
-  assert.match(pageSource, /真正的消费指南，信任就从一次次验证里长出来。/);
   assert.doesNotMatch(pageSource, /className=\{styles\.trustStrip\}/);
-  assert.doesNotMatch(pageSource, /<h1>㤫者商城<\/h1>/);
+  assert.match(pageSource, /<h1>㤫者商城<\/h1>/);
+  assert.doesNotMatch(pageSource, /<span>㤫<\/span>/);
 });
 
 test('masthead account action exposes a touch-friendly logout menu', () => {
@@ -419,7 +454,7 @@ test('mobile navigation, safe areas, and overlays remain touch friendly', () => 
   assert.match(pageSource, /const responsiveDrawerProps = \{ rootClassName: styles\.responsiveDrawer \}/);
   assert.match(pageSource, /aria-current=\{activeTab === item\.key \? 'page' : undefined\}/);
   assert.match(pageSource, /role=\{onOpenProduct \? 'button' : undefined\}/);
-  assert.match(styleSource, /bottom: calc\(76px \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(styleSource, /bottom: calc\(92px \+ env\(safe-area-inset-bottom\)\)/);
   assert.match(styleSource, /\.responsiveModal :global\(\.ant-modal-body\)/);
   assert.match(styleSource, /\.navBar\s+\{[^}]*position: fixed;/);
 });

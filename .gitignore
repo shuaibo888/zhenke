@@ -64,3 +64,6 @@ Desktop.ini
 
 # Upstream repository metadata not applicable to this project
 **/.github/FUNDING.yml
+
+# 本地 superpowers 工具临时文件（brainstorm 草稿、进程 pid）
+.superpowers/

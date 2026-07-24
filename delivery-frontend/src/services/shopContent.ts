@@ -93,6 +93,7 @@ export interface VerificationReportDto {
   productId: number;
   productName: string;
   productCoverUrl: string;
+  title?: string;
   merchantId: number;
   merchantName: string;
   categoryCode: ProductCategoryDto['categoryCode'];
