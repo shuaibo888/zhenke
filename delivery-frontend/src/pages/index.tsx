@@ -98,10 +98,6 @@ import { canCancelOrder, orderStatusMeta } from '@/utils/orders';
 import { findProductForReport, getCatalogProducts, type ProductCategoryFilter, type ProductSortKey } from '@/utils/productCatalog';
 import { getProductJourneyState } from '@/utils/productJourney';
 import { getTrialDeadlineMeta } from '@/utils/profileData';
-import { isLocalPreviewMode } from '@/preview/previewMode';
-import { previewCategories, previewComments, previewFeed, previewProducts, previewReports } from '@/preview/previewFixtures';
-import { previewCart, previewOrders, previewTrials } from '@/preview/previewCommerce';
-import PreviewInspector, { type PreviewDestination } from '@/preview/PreviewInspector';
 import styles from './index.less';
 
 type TabKey = 'reviews' | 'profile';
@@ -120,20 +116,6 @@ declare global {
 function isWechatBrowser() {
   return typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent);
 }
-
-const localPreviewUser: AuthUser = {
-  id: 0,
-  username: 'local_preview',
-  name: '本地预览',
-  avatarType: 'letter',
-  avatarImage: '',
-  role: 'zhenke',
-  roleName: '甄客',
-  reportCount: 0,
-  usefulCount: 0,
-  reviewEligible: false,
-  trialEligible: false,
-};
 
 function invokeWechatJsapi(params: Record<string, string>) {
   return new Promise<WeixinJsBridgeResult>((resolve, reject) => {
@@ -180,13 +162,6 @@ const tabItems = [
   { key: 'reviews', label: '首页', icon: <HomeOutlined /> },
   { key: 'profile', label: '我的', icon: <UserOutlined /> },
 ] as const;
-
-const homeCategoryItems: Array<{ label: string; value: Exclude<ProductCategoryFilter, 'all'> }> = [
-  { label: '户外', value: 'CATEGORY_1' },
-  { label: '运动服装', value: 'CATEGORY_2' },
-  { label: '健康产品', value: 'CATEGORY_3' },
-  { label: '生活优选', value: 'CATEGORY_4' },
-];
 
 const profileSectionMeta: Record<ProfileSection, { title: string; description: string }> = {
   orders: { title: '我的订单', description: '查看付款、物流、收货与购买甄客验' },
@@ -541,8 +516,6 @@ function getTrialLogisticsFallback(trial: TrialRecord): LogisticsTraceDto {
 }
 
 export default function HomePage() {
-  const localPreviewMode = isLocalPreviewMode();
-  const [previewInspectorOpen, setPreviewInspectorOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -729,30 +702,6 @@ export default function HomePage() {
     setContentLoading(true);
     try {
       const categoryCode = category === 'all' ? undefined : category;
-      if (localPreviewMode) {
-        const rows = categoryCode
-          ? previewFeed.filter((item) => item.categoryCode === categoryCode)
-          : previewFeed;
-        const visibleProductIds = new Set(rows.map((item) => item.productId));
-        setProductCategories(previewCategories);
-        setHomeFeed(rows);
-        setProducts(previewProducts.filter((item) => visibleProductIds.has(item.productId)).map((item) => (
-          mapPublicProduct(item, previewReports.filter((report) => report.productId === item.productId).length)
-        )));
-        setReports(previewReports.filter((item) => visibleProductIds.has(item.productId)).map(mapVerificationReport));
-        setRecruitments(rows.flatMap((item) => item.contentType === 'TRIAL' && item.trial ? [{
-          id: item.contentId,
-          productId: item.productId,
-          trialType: item.trial.trialType,
-          targetCount: item.trial.targetCount,
-          claimedCount: item.trial.approvedCount,
-          deadline: item.trial.applicationDeadline.slice(0, 10),
-          applicantUserIds: [],
-          campaignTitle: item.title,
-          campaignSummary: item.summary,
-        }] : []));
-        return;
-      }
       const [feedResult, categories] = await Promise.all([
         fetchHomeFeed(categoryCode, 'ALL', 'ALL'),
         fetchProductCategories(),
@@ -792,14 +741,6 @@ export default function HomePage() {
 
   useEffect(() => {
     let mounted = true;
-    if (localPreviewMode) {
-      setCurrentUser(localPreviewUser);
-      setAuthLoading(false);
-      setCaptchaLoading(false);
-      return () => {
-        mounted = false;
-      };
-    }
     restoreShopSession()
       .then((user) => {
         if (mounted) setCurrentUser(user);
@@ -828,23 +769,16 @@ export default function HomePage() {
     return () => {
       mounted = false;
     };
-  }, [localPreviewMode]);
+  }, []);
 
   useEffect(() => {
     void loadHomeContent();
-  }, [category, localPreviewMode]);
+  }, [category]);
 
   useEffect(() => {
     let mounted = true;
     if (journeyView !== 'report' || !journeyReport) {
       setReportComments([]);
-      setReportCommentsLoading(false);
-      return () => {
-        mounted = false;
-      };
-    }
-    if (localPreviewMode) {
-      setReportComments(previewComments);
       setReportCommentsLoading(false);
       return () => {
         mounted = false;
@@ -864,7 +798,7 @@ export default function HomePage() {
     return () => {
       mounted = false;
     };
-  }, [journeyReport?.id, journeyView, localPreviewMode]);
+  }, [journeyReport?.id, journeyView]);
 
   /* 智能评分功能暂时隐藏，恢复时取消注释。
   useEffect(() => {
@@ -896,14 +830,10 @@ export default function HomePage() {
       setTrials([]);
       return;
     }
-    if (localPreviewMode) {
-      setTrials(previewTrials);
-      return;
-    }
     fetchMyTrialApplications()
       .then((items) => setTrials(items.map(mapTrialApplication)))
       .catch((error) => message.error(error instanceof Error ? error.message : '我的试用加载失败'));
-  }, [currentUser?.id, localPreviewMode]);
+  }, [currentUser?.id]);
 
   useEffect(() => {
     let mounted = true;
@@ -915,13 +845,6 @@ export default function HomePage() {
       };
     }
     setMyReportsLoading(true);
-    if (localPreviewMode) {
-      setMyReports(previewReports.map(mapVerificationReport));
-      setMyReportsLoading(false);
-      return () => {
-        mounted = false;
-      };
-    }
     fetchMyVerificationReports()
       .then((items) => {
         if (mounted) setMyReports(items.map(mapVerificationReport));
@@ -935,7 +858,7 @@ export default function HomePage() {
     return () => {
       mounted = false;
     };
-  }, [currentUser?.id, localPreviewMode]);
+  }, [currentUser?.id]);
 
   useEffect(() => {
     if (!currentUser || paymentReturnHandledRef.current || userOrders.length === 0) return;
@@ -990,15 +913,6 @@ export default function HomePage() {
 
     setCartLoading(true);
     setOrdersLoading(true);
-    if (localPreviewMode) {
-      setCartItems(previewCart);
-      setUserOrders(previewOrders);
-      setCartLoading(false);
-      setOrdersLoading(false);
-      return () => {
-        mounted = false;
-      };
-    }
     Promise.all([fetchShopCart(), fetchShopOrders()])
       .then(([cart, orders]) => {
         if (!mounted) return;
@@ -1017,7 +931,7 @@ export default function HomePage() {
     return () => {
       mounted = false;
     };
-  }, [currentUser?.id, localPreviewMode]);
+  }, [currentUser?.id]);
 
   useEffect(() => {
     let mounted = true;
@@ -1030,13 +944,6 @@ export default function HomePage() {
     }
 
     setAddressesLoading(true);
-    if (localPreviewMode) {
-      setShippingAddresses([]);
-      setAddressesLoading(false);
-      return () => {
-        mounted = false;
-      };
-    }
     fetchShopShippingAddresses()
       .then((items) => {
         if (mounted) setShippingAddresses(items);
@@ -1050,17 +957,10 @@ export default function HomePage() {
     return () => {
       mounted = false;
     };
-  }, [currentUser?.id, localPreviewMode]);
+  }, [currentUser?.id]);
 
   useEffect(() => {
     let mounted = true;
-    if (localPreviewMode) {
-      setMerchantApplication(null);
-      setMerchantLoading(false);
-      return () => {
-        mounted = false;
-      };
-    }
     setMerchantLoading(true);
     fetchMyMerchantApplication()
       .then((application) => {
@@ -1075,7 +975,7 @@ export default function HomePage() {
     return () => {
       mounted = false;
     };
-  }, [localPreviewMode]);
+  }, []);
 
   const submitAuthFormFromEnter = (event: KeyboardEvent<HTMLFormElement>) => {
     if (event.key !== 'Enter') return;
@@ -1087,19 +987,6 @@ export default function HomePage() {
     if (authMode === 'login' && (!captchaReady || captchaLoading || (captcha.enabled && (!captcha.uuid || !captcha.image)))) {
       message.warning('验证码尚未准备好，请重新获取后再登录');
       await loadCaptcha();
-      return;
-    }
-    if (localPreviewMode) {
-      // 预览态不连后端：注册切回登录、登录直接用预览用户并关闭弹窗。
-      if (authMode === 'register') {
-        setAuthMode('login');
-        authForm.setFieldsValue({ username: values.username.trim(), password: '', code: '' });
-        message.success('注册成功，请登录');
-        return;
-      }
-      setCurrentUser(localPreviewUser);
-      setLoginPromptOpen(false);
-      message.success(`欢迎回来，${localPreviewUser.name}`);
       return;
     }
     setAuthSubmitting(true);
@@ -1208,7 +1095,7 @@ export default function HomePage() {
     if (tip) message.info(tip);
     setAuthMode('login');
     authForm.resetFields();
-    if (!localPreviewMode) void loadCaptcha();
+    void loadCaptcha();
     setLoginPromptOpen(true);
   };
 
@@ -1310,37 +1197,6 @@ export default function HomePage() {
       return;
     }
 
-    if (localPreviewMode) {
-      const previewReport: VerifyReport = {
-        id: 50000 + myReports.length + 1,
-        productId: reportProduct.id,
-        productTitle: reportProduct.title,
-        title: titleTrimmed,
-        trialType: trial.trialType,
-        reportSource: 'TRIAL',
-        userId: activeUser.id,
-        userName: activeUser.name,
-        userRole: activeUser.role,
-        images: reportImageUrls.length ? reportImageUrls : [reportProduct.imageUrl],
-        experience: values.experience.trim(),
-        shortcoming: shortcomingTrimmed,
-        fitCrowd: values.fitCrowd?.trim() || '真实使用后再判断',
-        recommend: Boolean(values.recommend),
-        usefulCount: 0,
-        usefulByMe: false,
-        createdAt: '刚刚',
-      };
-      setMyReports((items) => [previewReport, ...items]);
-      setReports((items) => [previewReport, ...items]);
-      setTrials((items) => items.map((item) => item.applicationId === trial.applicationId
-        ? { ...item, status: 'completed' } : item));
-      setReportOpen(false);
-      form.resetFields();
-      setReportImageUrls([]);
-      setReportVideoUrl(undefined);
-      message.success('甄客验已发布，已进入首页内容流');
-      return;
-    }
     try {
       const resources = [
         ...reportImageUrls.filter((url) => !url.startsWith('blob:')).map((resourceUrl) => ({ resourceType: 'IMAGE' as const, resourceUrl })),
@@ -1474,12 +1330,6 @@ export default function HomePage() {
     if (!order) return;
 
     if (order.status === 'unpaid') {
-      if (localPreviewMode) {
-        setUserOrders((items) => items.map((item) => (item.id === orderId
-          ? { ...item, status: 'paid', paidAt: '2026-07-24 12:00:00', paymentExpiresAt: undefined } : item)));
-        message.success('支付成功，等待商家发货');
-        return;
-      }
       if (getPaymentRemainingSeconds(order.paymentExpiresAt, Date.now()) <= 0) {
         message.warning('订单已超过支付时间，正在等待系统取消');
         return;
@@ -1502,12 +1352,6 @@ export default function HomePage() {
 
   const handleConfirmReceive = async (order: Order) => {
     if (!activeUser || orderMutatingId === order.id) return;
-    if (localPreviewMode) {
-      setUserOrders((items) => items.map((item) => (item.id === order.id
-        ? { ...item, status: 'completed', receivedAt: '2026-07-24 12:00:00' } : item)));
-      message.success('确认收货成功，现在可以发布甄客验');
-      return;
-    }
     setOrderMutatingId(order.id);
     try {
       const received = mapShopOrder(await confirmShopOrderReceived(order.id), activeUser.role);
@@ -1546,42 +1390,6 @@ export default function HomePage() {
       return;
     }
 
-    if (localPreviewMode) {
-      const orderRef = reviewOrder;
-      const itemRef = reviewOrderItem;
-      const previewReport: VerifyReport = {
-        id: 51000 + myReports.length + 1,
-        productId: itemRef.productId,
-        productTitle: itemRef.productTitle,
-        title: reviewTitleTrimmed,
-        reportSource: 'PURCHASE',
-        userId: activeUser.id,
-        userName: activeUser.name,
-        userRole: activeUser.role,
-        images: reviewImages.length ? reviewImages : [itemRef.coverUrl],
-        experience: reviewContent.trim(),
-        shortcoming: reviewShortcoming.trim(),
-        fitCrowd: reviewFitCrowd.trim(),
-        recommend: reviewRecommend,
-        productQuality: reviewStars.productQuality,
-        logisticsService: reviewStars.logisticsService,
-        serviceAttitude: reviewStars.serviceAttitude,
-        usefulCount: 0,
-        usefulByMe: false,
-        createdAt: '刚刚',
-      };
-      setMyReports((items) => [previewReport, ...items]);
-      setReports((items) => [previewReport, ...items]);
-      setUserOrders((items) => items.map((o) => o.id === orderRef.id
-        ? { ...o, items: (o.items ?? []).map((it) => it.orderItemId === itemRef.orderItemId
-          ? { ...it, verificationReportId: previewReport.id } : it) }
-        : o));
-      setReviewOrder(null);
-      setReviewOrderItem(null);
-      setReviewSubmitting(false);
-      message.success('购买甄客验已发布，已进入甄客验内容流');
-      return;
-    }
     setReviewSubmitting(true);
     try {
       const publishedReport = { ...mapVerificationReport(await publishPurchaseVerificationReport({
@@ -1723,18 +1531,6 @@ export default function HomePage() {
 
   const openReviewModal = async (order: Order, orderItem: NonNullable<Order['items']>[number]) => {
     if (orderItem.verificationReportId) {
-      if (localPreviewMode) {
-        const pool = [...myReports, ...reports];
-        const cached = pool.find((item) => item.id === orderItem.verificationReportId)
-          ?? pool.find((item) => item.productId === orderItem.productId);
-        if (cached) {
-          setActiveTab('reviews');
-          handleOpenReportProduct(cached);
-        } else {
-          message.info('这条甄客验暂未在预览数据中');
-        }
-        return;
-      }
       try {
         const report = mapVerificationReport(await fetchPublishedReport(orderItem.verificationReportId));
         setActiveTab('reviews');
@@ -1767,25 +1563,6 @@ export default function HomePage() {
       return;
     }
     if (!pendingBuyProduct) return;
-    if (localPreviewMode) {
-      const p = pendingBuyProduct;
-      const newId = 700 + userOrders.length + 1;
-      const previewOrder: Order = {
-        id: newId, orderNo: `PREVIEW${newId}`, productId: p.id, productTitle: p.title,
-        status: 'unpaid', quantity: 1, amount: p.price, returnDays: 7, merchantName: p.artisanName,
-        createdAt: '2026-07-24 12:00:00',
-        paymentExpiresAt: new Date(Date.now() + 25 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' '),
-        items: [{ orderItemId: newId * 10, productId: p.id, productTitle: p.title, coverUrl: p.imageUrl, unitPrice: p.price, quantity: 1, amount: p.price }],
-      };
-      setUserOrders((items) => [previewOrder, ...items]);
-      setPendingBuyProduct(null);
-      setPendingBuyAttribution(undefined);
-      setActiveTab('profile');
-      setProfileView('orders');
-      setOrderStatusFilter('unpaid');
-      message.success('下单成功，请在我的订单中继续付款');
-      return;
-    }
     if (!defaultShippingAddress || !isShippingAddressReady) return;
     setOrderSubmitting(true);
     try {
@@ -1821,12 +1598,6 @@ export default function HomePage() {
       okText: '确认取消',
       cancelText: '再想想',
       onOk: async () => {
-        if (localPreviewMode) {
-          setUserOrders((items) => items.map((order) => order.id === orderId
-            ? { ...order, status: 'canceled', paymentExpiresAt: undefined } : order));
-          message.success('订单已取消，库存已恢复');
-          return;
-        }
         try {
           const cancelled = await cancelShopOrder(orderId);
           setUserOrders((items) => items.map((order) => order.id === orderId
@@ -2062,13 +1833,6 @@ export default function HomePage() {
 
   const openProfileReportDetail = async (summary: VerifyReport) => {
     if (profileReportOpeningId !== null) return;
-    if (localPreviewMode) {
-      const product = findProductForReport(products, summary)
-        ?? products.find((item) => item.id === summary.productId)
-        ?? products[0];
-      if (product) showReportDetail(summary, product, 'profile');
-      return;
-    }
     setProfileReportOpeningId(summary.id);
     try {
       const report = mapVerificationReport(await fetchPublishedReport(summary.id));
@@ -2111,30 +1875,6 @@ export default function HomePage() {
     const content = commentText.trim();
     if (!content) {
       message.warning('请输入评论内容');
-      return;
-    }
-    if (localPreviewMode) {
-      const newComment: ReportCommentDto = {
-        commentId: 90000 + reportComments.length + 1,
-        reportId: journeyReport.id,
-        shopUserId: activeUser.id,
-        userName: activeUser.name,
-        nickName: activeUser.name,
-        reportAuthor: journeyReport.userId === activeUser.id,
-        content,
-        createTime: '刚刚',
-        replies: [],
-      };
-      if (replyingTo) {
-        setReportComments((items) => items.map((item) => item.commentId === (replyingTo.parentCommentId ?? replyingTo.commentId)
-          ? { ...item, replies: [...(item.replies ?? []), { ...newComment, parentCommentId: replyingTo.commentId, replyToUserName: replyingTo.userName, replyToNickName: replyingTo.nickName }] }
-          : item));
-      } else {
-        setReportComments((items) => [newComment, ...items]);
-      }
-      setCommentText('');
-      setReplyingTo(null);
-      message.success(replyingTo ? '回复发布成功' : '评论发布成功');
       return;
     }
     setCommentSubmitting(true);
@@ -2198,54 +1938,6 @@ export default function HomePage() {
     setActiveTab('reviews');
   };
 
-  const navigatePreview = (destination: PreviewDestination) => {
-    setPreviewInspectorOpen(false);
-    if (destination === 'auth') {
-      requireLogin();
-      return;
-    }
-    if (destination === 'cart') {
-      setCartOpen(true);
-      return;
-    }
-    if (destination === 'orders' || destination === 'reports' || destination === 'profile') {
-      setActiveTab('profile');
-      setProfileView(destination === 'profile' ? 'menu' : destination);
-      return;
-    }
-    if (destination === 'home') {
-      setActiveTab('reviews');
-      setJourneyView('feed');
-      return;
-    }
-    if (destination === 'purchase-report' || destination === 'trial-report') {
-      const report = reports.find((item) => (
-        destination === 'purchase-report' ? item.reportSource === 'PURCHASE' : item.reportSource === 'TRIAL'
-      ));
-      const product = report && products.find((item) => item.id === report.productId);
-      if (report && product) showReportDetail(report, product, 'feed');
-      return;
-    }
-    const trialType = destination === 'online-trial' ? 'ONLINE' : 'OFFLINE';
-    const recruitment = recruitments.find((item) => item.trialType === trialType);
-    const product = recruitment && products.find((item) => item.id === recruitment.productId);
-    if (product) openProductJourney(product);
-  };
-
-  // 本地预览深链：?preview=1&view=purchase-report 等，方便直接截图各页面。
-  const previewDeepLinkDoneRef = useRef(false);
-  useEffect(() => {
-    if (!localPreviewMode || previewDeepLinkDoneRef.current) return;
-    if (reports.length === 0 && recruitments.length === 0) return;
-    const view = new URLSearchParams(window.location.search).get('view') as PreviewDestination | null;
-    const known: PreviewDestination[] = ['home', 'purchase-report', 'trial-report', 'online-trial', 'offline-trial', 'cart', 'orders', 'reports', 'profile', 'auth'];
-    if (view && known.includes(view)) {
-      previewDeepLinkDoneRef.current = true;
-      navigatePreview(view);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localPreviewMode, reports.length, recruitments.length]);
-
   const handleApplyForVerification = (recruitment: TrialRecruitment) => {
     if (!activeUser) {
       message.info('请先登录');
@@ -2265,28 +1957,6 @@ export default function HomePage() {
     if (!applyingRecruitment) return;
     if (applyingRecruitment.trialType === 'ONLINE' && !defaultShippingAddress) return;
     setTrialApplying(true);
-    if (localPreviewMode) {
-      const applied = applyingRecruitment;
-      const product = products.find((item) => item.id === applied.productId);
-      setTrials((items) => [{
-        id: 900 + applied.id,
-        applicationId: 900 + applied.id,
-        campaignId: applied.id,
-        trialType: applied.trialType,
-        productId: applied.productId,
-        productTitle: product?.title ?? applied.campaignTitle ?? '试用商品',
-        status: 'applied',
-        claimedAt: '2026-07-23',
-        deadline: applied.deadline,
-      }, ...items]);
-      setApplyingRecruitment(null);
-      trialApplyForm.resetFields();
-      setTrialApplying(false);
-      message.success(applied.trialType === 'ONLINE'
-        ? '申请已提交，可在“我的订单”查看审核和寄送进度'
-        : '申请已提交，审核通过后即可发布甄客验');
-      return;
-    }
     try {
       await applyForTrial(applyingRecruitment.id, {
         applyReason: values.applyReason.trim(),
@@ -2312,12 +1982,6 @@ export default function HomePage() {
 
   const handleConfirmTrialReceived = async (trial: TrialRecord) => {
     if (!trial.applicationId) return;
-    if (localPreviewMode) {
-      setTrials((items) => items.map((item) => item.applicationId === trial.applicationId
-        ? { ...item, status: 'pending_report' } : item));
-      message.success('已确认收货，现在可以自愿发布验证报告');
-      return;
-    }
     try {
       await confirmTrialReceived(trial.applicationId);
       const applications = await fetchMyTrialApplications();
@@ -2442,7 +2106,7 @@ export default function HomePage() {
               </div>
             </Form.Item>
           )}
-          {authMode === 'login' && !captchaReady && !localPreviewMode && (
+          {authMode === 'login' && !captchaReady && (
             <Form.Item label="验证码" required>
               <div className={styles.captchaRow}>
                 <span className={styles.hint}>
@@ -2461,7 +2125,7 @@ export default function HomePage() {
             htmlType="submit"
             icon={<LoginOutlined />}
             loading={authSubmitting}
-            disabled={!localPreviewMode && authMode === 'login' && (!captchaReady || captchaLoading || (captcha.enabled && (!captcha.uuid || !captcha.image)))}
+            disabled={authMode === 'login' && (!captchaReady || captchaLoading || (captcha.enabled && (!captcha.uuid || !captcha.image)))}
           >
             {authMode === 'login' ? '登录' : '注册'}
           </Button>
@@ -2812,7 +2476,7 @@ export default function HomePage() {
                 >
                   加入购物车
                 </Button>
-          <Button type="primary" size="large" onClick={() => openReportModal(selectedProduct)} disabled={activeUser && !canReview}>
+          <Button type="primary" size="large" onClick={() => openReportModal(selectedProduct)} disabled={!!activeUser && !canReview}>
                   写验证报告
                 </Button>
               </div>
@@ -2852,7 +2516,7 @@ export default function HomePage() {
             <span className={styles.eyebrow}>Verified stories</span>
             <h2>甄客验</h2>
           </div>
-          <Button type="primary" onClick={() => openReportModal()} disabled={activeUser && reviewableProducts.length === 0}>
+          <Button type="primary" onClick={() => openReportModal()} disabled={!!activeUser && reviewableProducts.length === 0}>
             发布甄客验
           </Button>
         </div>
@@ -2863,16 +2527,6 @@ export default function HomePage() {
             options={[
               { label: '全部', value: 'all' },
               ...productCategories.map((item) => ({ label: item.categoryName, value: item.categoryCode })),
-            ]}
-          />
-          <Segmented
-            value={homeFeedFilter}
-            onChange={(value) => setHomeFeedFilter(value as HomeFeedFilter)}
-            options={[
-              { label: '全部', value: 'ALL' },
-              { label: '线上试用', value: 'ONLINE' },
-              { label: '线下试用', value: 'OFFLINE' },
-              { label: '验证报告', value: 'REPORT' },
             ]}
           />
         </div>
@@ -3641,7 +3295,7 @@ export default function HomePage() {
     );
   }
 
-  if (!localPreviewMode && !isWechatBrowser()) {
+  if (!isWechatBrowser()) {
     return (
       <ConfigProvider theme={commerceTheme}>
         <main className={styles.wechatOnlyPage}>
@@ -3790,20 +3444,6 @@ export default function HomePage() {
         />
       </Badge>
 
-      {localPreviewMode && new URLSearchParams(window.location.search).get('inspector') === '1' && (
-        <PreviewInspector
-          open={previewInspectorOpen}
-          onToggle={() => setPreviewInspectorOpen((open) => !open)}
-          onNavigate={navigatePreview}
-          classNames={{
-            root: styles.previewInspector,
-            toggle: styles.previewInspectorToggle,
-            panel: styles.previewInspectorPanel,
-            badge: styles.previewInspectorBadge,
-            grid: styles.previewInspectorGrid,
-          }}
-        />
-      )}
 
       <Drawer
         {...responsiveDrawerProps}

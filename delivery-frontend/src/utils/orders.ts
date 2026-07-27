@@ -1,5 +1,4 @@
-import type { MemberRole, Order, OrderStatus, Product } from '@/types';
-import type { CartItem } from './cart';
+import type { Order, OrderStatus } from '@/types';
 
 export const orderStatusMeta: Record<
   OrderStatus,
@@ -18,61 +17,6 @@ export const orderStatusMeta: Record<
   refunded: { label: '已退款', color: 'default' },
 };
 
-const roleReturnDays: Record<MemberRole, number> = {
-  zhenke: 7,
-  yanzhenke: 15,
-  xinzhenke: 30,
-};
-
-export function getReturnDaysByRole(role: MemberRole) {
-  return roleReturnDays[role];
-}
-
-export function createOrdersFromCart(items: CartItem[], role: MemberRole, seed = Date.now()): Order[] {
-  const orderPrefix = `ZK${seed}`;
-
-  return items.map((item, index) => ({
-    id: seed + index,
-    orderNo: `${orderPrefix}${String(index + 1).padStart(2, '0')}`,
-    productId: item.product.id,
-    productTitle: item.product.title,
-    status: 'unpaid',
-    quantity: item.quantity,
-    amount: item.product.price * item.quantity,
-    returnDays: getReturnDaysByRole(role),
-    sourceReportId: item.attribution?.sourceReportId,
-  }));
-}
-
-export function advanceOrderStatus(order: Order): Order {
-  const nextStatus: Partial<Record<OrderStatus, OrderStatus>> = {
-    unpaid: 'paid',
-    paid: 'shipped',
-    shipped: 'completed',
-  };
-
-  return { ...order, status: nextStatus[order.status] ?? order.status };
-}
-
 export function canCancelOrder(order: Order) {
   return order.status === 'unpaid';
-}
-
-export function cancelOrder(order: Order): Order {
-  if (!canCancelOrder(order)) return order;
-  return { ...order, status: 'canceled' };
-}
-
-export function getReviewableProductsFromOrders(
-  products: Product[],
-  orders: Order[],
-  reports: Array<{ productId: number; userId: number }>,
-  userId: number,
-) {
-  const reportedProductIds = new Set(reports.filter((report) => report.userId === userId).map((report) => report.productId));
-  const completedProductIds = new Set(
-    orders.filter((order) => order.status === 'completed' && !reportedProductIds.has(order.productId)).map((order) => order.productId),
-  );
-
-  return products.filter((product) => completedProductIds.has(product.id));
 }

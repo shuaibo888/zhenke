@@ -12,6 +12,7 @@ export default defineConfig({
     },
     '/api': {
       target: 'http://127.0.0.1:8080',
+      // target: 'https://miniats.cboo.cloud',
       changeOrigin: true,
       pathRewrite: { '^/api': '' },
     },

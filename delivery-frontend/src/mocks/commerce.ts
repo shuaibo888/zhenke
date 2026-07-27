@@ -1,7 +1,5 @@
 import type {
-  EarningRecord,
   LogisticsInfo,
-  NotificationItem,
   Order,
   Product,
   ProductEvidence,
@@ -266,25 +264,6 @@ export const orders: Order[] = [
   },
 ];
 
-export const notifications: NotificationItem[] = [
-  {
-    id: 301,
-    type: 'useful',
-    title: '你的验证被认为有用',
-    content: '咖啡报告新增 1 个有用，距离验甄客只差一步。',
-    isRead: false,
-    createdAt: '刚刚',
-  },
-  {
-    id: 302,
-    type: 'system',
-    title: '欢迎来到㤫者商城',
-    content: '买过、用过、写出真实不足，才会成为这里的信任资产。',
-    isRead: true,
-    createdAt: '今天',
-  },
-];
-
 export const logisticsRecords: LogisticsInfo[] = [
   {
     orderId: 201,
@@ -329,35 +308,6 @@ export const trialRecords: TrialRecord[] = [
     status: 'overdue',
     claimedAt: '2026-06-18',
     deadline: '2026-06-25',
-  },
-];
-
-export const earningRecords: EarningRecord[] = [
-  {
-    id: 501,
-    reportId: 105,
-    reportTitle: '武夷山岩茶肉桂甄客验',
-    orderNo: 'ZK-EARNING-001',
-    orderAmount: 128,
-    commissionRate: 0.05,
-    commissionAmount: 6.4,
-    publicWelfareRate: 0.05,
-    publicWelfareAmount: 6.4,
-    status: 'settled',
-    createdAt: '2026-06-28',
-  },
-  {
-    id: 502,
-    reportId: 104,
-    reportTitle: '景德镇手作影青杯甄客验',
-    orderNo: 'ZK-EARNING-002',
-    orderAmount: 268,
-    commissionRate: 0.05,
-    commissionAmount: 13.4,
-    publicWelfareRate: 0.05,
-    publicWelfareAmount: 13.4,
-    status: 'pending',
-    createdAt: '2026-07-04',
   },
 ];
 
