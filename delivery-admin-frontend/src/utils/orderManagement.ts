@@ -22,10 +22,3 @@ export function filterOrders(orders: ManagedOrder[], filters: OrderFilterState) 
     return [order.orderNo, order.buyerName].some((value) => value.toLowerCase().includes(normalizedKeyword));
   });
 }
-
-export function shipOrderById(orders: ManagedOrder[], orderId: number) {
-  const target = orders.find((order) => order.id === orderId);
-  if (!target || target.status !== 'paid') return orders;
-
-  return orders.map((order) => (order.id === orderId ? { ...order, status: 'shipped' as const } : order));
-}

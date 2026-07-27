@@ -1,4 +1,4 @@
-import type { ManagedOrder, ManagedProduct, ManagedReport, MerchantAccount } from '@/types';
+import type { ManagedOrder, ManagedProduct, ManagedReport } from '@/types';
 
 const orderStatusLabel = {
   unpaid: '待付款',
@@ -9,28 +9,6 @@ const orderStatusLabel = {
   refunding: '退款中',
   refunded: '已退款',
 };
-
-export function toggleReportStatus(reports: ManagedReport[], reportId: number) {
-  return reports.map((report) =>
-    report.id === reportId
-      ? {
-          ...report,
-          status: report.status === 'published' ? 'deleted' as const : 'published' as const,
-        }
-      : report,
-  );
-}
-
-export function toggleMerchantStatus(merchants: MerchantAccount[], merchantId: number) {
-  return merchants.map((merchant) =>
-    merchant.id === merchantId
-      ? {
-          ...merchant,
-          status: merchant.status === 'active' ? 'disabled' as const : 'active' as const,
-        }
-      : merchant,
-  );
-}
 
 export function getDashboardStats({
   products,
@@ -68,23 +46,6 @@ export function buildOrderStatusChart(orders: ManagedOrder[]) {
   });
 
   return Array.from(counts.entries()).map(([status, count]) => ({ status, count }));
-}
-
-export function buildMerchantOverview(products: ManagedProduct[], orders: ManagedOrder[], merchants: MerchantAccount[]) {
-  return merchants.map((merchant) => {
-    const merchantProducts = products.filter((product) => product.merchantId === merchant.id);
-    const merchantOrders = orders.filter((order) => order.merchantId === merchant.id);
-
-    return {
-      merchant: merchant.name,
-      productTotal: merchantProducts.length,
-      onSaleCount: merchantProducts.filter((product) => product.status === 'onSale').length,
-      salesAmount: merchantOrders
-        .filter((order) => order.status !== 'canceled' && order.status !== 'unpaid'
-          && order.status !== 'refunding' && order.status !== 'refunded')
-        .reduce((sum, order) => sum + order.amount, 0),
-    };
-  });
 }
 
 export function buildProductStatusPie(products: ManagedProduct[]) {

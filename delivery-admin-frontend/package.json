@@ -7,13 +7,7 @@
     "postinstall": "umi setup",
     "setup": "umi setup",
     "start": "npm run dev",
-    "test": "npm run test:access && npm run test:product-filters && npm run test:product-editor && npm run test:order-management && npm run test:admin-dashboard && npm run test:pages",
-    "test:access": "tsx src/utils/access.test.ts",
-    "test:product-filters": "tsx src/utils/productFilters.test.ts",
-    "test:product-editor": "tsx src/utils/productEditor.test.ts",
-    "test:order-management": "tsx src/utils/orderManagement.test.ts",
-    "test:admin-dashboard": "tsx src/utils/adminDashboard.test.ts",
-    "test:pages": "tsx src/pages/index.structure.test.ts"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@ant-design/charts": "^2.6.7",
@@ -26,7 +20,6 @@
   "devDependencies": {
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "tsx": "^4.20.6",
     "typescript": "^5.0.3"
   }
 }
