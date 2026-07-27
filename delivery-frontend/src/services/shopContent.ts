@@ -404,6 +404,7 @@ export type WechatPaymentPrepareResult = {
 export async function prepareWechatPayment(orderId: number, body: {
   code?: string;
   state?: string;
+  returnUrl?: string;
 }) {
   const result = await requestApi<ApiResponse<WechatPaymentPrepareResult>>(
     `/shop/payments/wechat/${orderId}/prepare`,

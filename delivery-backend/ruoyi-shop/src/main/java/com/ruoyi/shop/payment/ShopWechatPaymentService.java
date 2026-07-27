@@ -76,7 +76,7 @@ public class ShopWechatPaymentService
         }
         if (StringUtils.isEmpty(StringUtils.trim(body.getCode())))
         {
-            return WechatPaymentPrepareResult.oauth(buildOauthUrl(userId, orderId));
+            return WechatPaymentPrepareResult.oauth(buildOauthUrl(userId, orderId, body.getReturnUrl()));
         }
         verifyOauthState(body.getState(), userId, orderId);
         String openId = exchangeOpenId(body.getCode());
@@ -370,9 +370,14 @@ public class ShopWechatPaymentService
                 toFen(order.getTotalAmount()), description, timeExpire);
     }
 
-    private String buildOauthUrl(long userId, long orderId)
+    private String buildOauthUrl(long userId, long orderId, String returnUrl)
     {
-        String redirectUrl = addQuery(properties.getFrontendReturnUrl(), "wechatPayOrderId=" + orderId);
+        String baseUrl = properties.getFrontendReturnUrl();
+        if (StringUtils.isNotEmpty(StringUtils.trim(returnUrl)) && returnUrl.startsWith(baseUrl))
+        {
+            baseUrl = returnUrl;
+        }
+        String redirectUrl = addQuery(baseUrl, "wechatPayOrderId=" + orderId);
         String state = signOauthState(userId, orderId, Instant.now().getEpochSecond() + OAUTH_STATE_TTL_SECONDS);
         return "https://open.weixin.qq.com/connect/oauth2/authorize?appid=" + encode(properties.getAppId())
                 + "&redirect_uri=" + encode(redirectUrl)

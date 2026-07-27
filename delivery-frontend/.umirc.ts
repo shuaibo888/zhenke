@@ -1,8 +1,16 @@
-import { defineConfig } from "umi";
+import { defineConfig } from 'umi';
 
 export default defineConfig({
   routes: [
-    { path: "/", component: "index" },
+    { path: '/', component: '@/pages/home' },
+    { path: '/products/:productId', component: '@/pages/products/detail' },
+    { path: '/reports/:reportId', component: '@/pages/reports/detail' },
+    { path: '/profile', component: '@/pages/profile' },
+    { path: '/profile/orders', component: '@/pages/profile/orders' },
+    { path: '/profile/trials', component: '@/pages/profile/trials' },
+    { path: '/profile/reports', component: '@/pages/profile/reports' },
+    { path: '/auth', component: '@/pages/auth' },
+    { path: '/*', component: '@/pages/404' },
   ],
   proxy: {
     '/admin': {
@@ -11,11 +19,12 @@ export default defineConfig({
       ws: true,
     },
     '/api': {
-      target: 'http://127.0.0.1:8080',
-      // target: 'https://miniats.cboo.cloud',
+      // target: 'http://127.0.0.1:8080',
+      // pathRewrite: { '^/api': '' },
+      target: 'https://miniats.cboo.cloud',
       changeOrigin: true,
-      pathRewrite: { '^/api': '' },
     },
   },
   npmClient: 'npm',
+  esbuildMinifyIIFE: true,
 });
