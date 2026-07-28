@@ -1,9 +1,11 @@
 package com.ruoyi.shop.service;
 
-import java.util.Date;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import com.github.pagehelper.PageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.common.exception.ServiceException;
@@ -77,10 +79,29 @@ public class ShopTrialService
         return requireCampaign(trialMapper.selectPublicCampaign(campaignId));
     }
 
+    public List<String> availableTrialTypes(long productId)
+    {
+        productService.merchantProduct(productId);
+        List<String> available = new ArrayList<>();
+        if (trialMapper.countBlockingRecruitingCampaigns(productId, ONLINE) == 0)
+        {
+            available.add(ONLINE);
+        }
+        if (trialMapper.countBlockingRecruitingCampaigns(productId, OFFLINE) == 0)
+        {
+            available.add(OFFLINE);
+        }
+        return available;
+    }
+
     @Transactional
     public List<ShopTrialCampaign> createCampaigns(ShopTrialCampaignBody body, String operator)
     {
         ShopMerchant merchant = merchantService.currentMerchantAccount();
+        if (isBeforeToday(body.getApplicationDeadline()))
+        {
+            throw new ServiceException("申请截止日期不能早于今天");
+        }
         ShopProduct product = productService.merchantProduct(body.getProductId());
         if (!ShopProductService.ON_SALE.equals(product.getStatus()))
         {
@@ -129,9 +150,9 @@ public class ShopTrialService
             {
                 throw new ServiceException("试用招募不存在");
             }
-            if (!campaign.getApplicationDeadline().after(new Date()))
+            if (isBeforeToday(campaign.getApplicationDeadline()))
             {
-                throw new ServiceException("申请截止时间已过，不能发布招募");
+                throw new ServiceException("申请截止日期已过，不能发布招募");
             }
             ShopProduct product = productService.merchantProduct(campaign.getProductId());
             if (!ShopProductService.ON_SALE.equals(product.getStatus()))
@@ -241,7 +262,19 @@ public class ShopTrialService
         {
             throw new ServiceException("申请状态已变化或试用名额已满");
         }
+        if ("APPROVED".equals(body.getDecision()))
+        {
+            closeEndedRecruitingCampaigns();
+        }
         return requireApplication(trialMapper.selectMerchantApplication(merchant.getMerchantId(), applicationId));
+    }
+
+    @Transactional
+    public int closeEndedRecruitingCampaigns()
+    {
+        int expiredApplications = trialMapper.expirePendingApplicationsForEndedCampaigns();
+        int closedCampaigns = trialMapper.closeEndedCampaigns();
+        return expiredApplications + closedCampaigns;
     }
 
     @Transactional
@@ -283,6 +316,15 @@ public class ShopTrialService
     public ShopVerificationReport publishReport(ShopVerificationReportBody body)
     {
         long shopUserId = ShopAccountIdentity.requireShopUserId();
+        if (body.getResources() == null
+                || body.getResources().stream().noneMatch(item -> "IMAGE".equals(item.getResourceType())))
+        {
+            throw new ServiceException("请至少上传一张图片");
+        }
+        if (body.getResources().stream().filter(item -> "VIDEO".equals(item.getResourceType())).count() > 1)
+        {
+            throw new ServiceException("最多上传一个视频");
+        }
         ShopTrialApplication application = requireApplication(
                 trialMapper.selectUserApplication(shopUserId, body.getTrialApplicationId()));
         String reportReadyStatus = OFFLINE.equals(application.getTrialType()) ? "APPROVED" : "RECEIVED";
@@ -304,7 +346,7 @@ public class ShopTrialService
         report.setTitle(StringUtils.trim(body.getTitle()));
         report.setExperience(StringUtils.trim(body.getExperience()));
         report.setShortcoming(StringUtils.trim(body.getShortcoming()));
-        report.setFitCrowd(StringUtils.trim(body.getFitCrowd()));
+        report.setFitCrowd("");
         report.setRecommend(Boolean.TRUE.equals(body.getRecommend()) ? "0" : "1");
         report.setStatus("PUBLISHED");
         trialMapper.insertReport(report);
@@ -334,10 +376,9 @@ public class ShopTrialService
         return withResources(trialMapper.selectUserReports(shopUserId), shopUserId);
     }
 
-    public List<ShopVerificationReport> merchantReports()
+    public List<ShopVerificationReport> merchantReports(long merchantId)
     {
-        ShopMerchant merchant = merchantService.currentMerchantAccount();
-        return withResources(trialMapper.selectMerchantReports(merchant.getMerchantId()), null);
+        return withResources(trialMapper.selectMerchantReports(merchantId), null);
     }
 
     public ShopVerificationReport publishedReport(long reportId)
@@ -372,8 +413,13 @@ public class ShopTrialService
         return new ShopReportUsefulResult(reportId, trialMapper.countReportUseful(reportId), usefulByMe);
     }
 
-    public List<ShopHomeFeedItem> homeFeed(String categoryCode, String contentType, String trialType)
+    public List<ShopHomeFeedItem> homeFeed(Long productId, String categoryCode, String contentType,
+                                           String trialType, int pageNum, int pageSize)
     {
+        if (productId != null && productId <= 0)
+        {
+            throw new ServiceException("商品编号无效");
+        }
         String type = StringUtils.isEmpty(contentType) ? "ALL" : contentType.trim().toUpperCase();
         if (!type.matches("ALL|TRIAL|REPORT"))
         {
@@ -393,7 +439,15 @@ public class ShopTrialService
         {
             throw new ServiceException("商品分类编码无效");
         }
-        return trialMapper.selectHomeFeed(category, type, normalizedTrialType);
+        int safePageNum = Math.max(pageNum, 1);
+        int safePageSize = Math.max(1, Math.min(pageSize, 24));
+        PageHelper.startPage(safePageNum, safePageSize);
+        return trialMapper.selectHomeFeed(
+                productId,
+                category,
+                type,
+                normalizedTrialType,
+                ShopAccountIdentity.currentShopUserIdOrNull());
     }
 
     private ShopVerificationReport reportWithResources(long reportId, Long viewerShopUserId)
@@ -406,6 +460,12 @@ public class ShopTrialService
         report.setResources(trialMapper.selectReportResources(reportId));
         enrichUseful(report, viewerShopUserId);
         return report;
+    }
+
+    private boolean isBeforeToday(java.util.Date value)
+    {
+        LocalDate deadline = value.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        return deadline.isBefore(LocalDate.now(ZoneId.systemDefault()));
     }
 
     private List<ShopVerificationReport> withResources(List<ShopVerificationReport> reports, Long viewerShopUserId)

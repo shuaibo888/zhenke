@@ -8,8 +8,8 @@ import com.ruoyi.shop.domain.ShopMerchantAuditLog;
 public interface ShopMerchantMapper
 {
     ShopMerchant selectById(Long merchantId);
-    ShopMerchant selectByApplicationNo(String applicationNo);
     ShopMerchant selectByAccountUsername(String accountUsername);
+    ShopMerchant selectByContactPhone(String contactPhone);
     ShopMerchant selectByAdminUserId(Long adminUserId);
     List<ShopMerchant> selectAdminList(ShopMerchant query);
     List<ShopMerchantAuditLog> selectAuditLogs(Long merchantId);

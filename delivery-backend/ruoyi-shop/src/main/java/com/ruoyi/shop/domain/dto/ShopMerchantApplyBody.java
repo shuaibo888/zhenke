@@ -19,8 +19,6 @@ public class ShopMerchantApplyBody
 
     private String code;
     private String uuid;
-    private String applicationNo;
-    private String queryToken;
 
     @NotBlank(message = "请输入公司名称")
     @Size(max = 100, message = "公司名称不能超过100个字符")
@@ -35,7 +33,7 @@ public class ShopMerchantApplyBody
     private String contactName;
 
     @NotBlank(message = "请输入联系电话")
-    @Pattern(regexp = "^[0-9+\\- ]{6,20}$", message = "联系电话格式不正确")
+    @Pattern(regexp = "^1\\d{10}$", message = "请输入11位手机号")
     private String contactPhone;
 
     @NotBlank(message = "请输入营业执照图片或资源地址")
@@ -54,8 +52,8 @@ public class ShopMerchantApplyBody
     @AssertTrue(message = "必须承诺发起验证招募")
     private Boolean acceptsVerificationRecruitment;
 
-    @NotNull(message = "请确认公益分成约定")
-    @AssertTrue(message = "必须接受公益分成约定")
+    @NotNull(message = "请确认公益合作约定")
+    @AssertTrue(message = "必须确认公益合作约定")
     private Boolean acceptsPublicWelfare;
 
     @NotNull(message = "请阅读并同意商家入驻协议")
@@ -70,11 +68,6 @@ public class ShopMerchantApplyBody
     public void setCode(String code) { this.code = code; }
     public String getUuid() { return uuid; }
     public void setUuid(String uuid) { this.uuid = uuid; }
-    public String getApplicationNo() { return applicationNo; }
-    public void setApplicationNo(String applicationNo) { this.applicationNo = applicationNo; }
-    public String getQueryToken() { return queryToken; }
-    public void setQueryToken(String queryToken) { this.queryToken = queryToken; }
-
     public String getCompanyName() { return companyName; }
     public void setCompanyName(String companyName) { this.companyName = companyName; }
     public String getCompanyAddress() { return companyAddress; }

@@ -2,7 +2,7 @@ import type { Merchant } from '@/types';
 import type { AuthUser } from '@/utils/authRules';
 import { getToken, storeToken, requestApi, type ApiResponse } from './apiClient';
 
-const merchantApplicationStorageKey = 'zhenke_merchant_application';
+const merchantApplicationStorageKey = 'zhenke_merchant_application_phone';
 
 interface CaptchaResponse extends ApiResponse {
   captchaEnabled: boolean;
@@ -175,44 +175,69 @@ export interface MerchantApplicationBody {
   agreeProtocol: boolean;
 }
 
-export async function fetchMyMerchantApplication() {
+export interface MerchantApplicationLookup {
+  contactPhone: string;
+}
+
+function storeMerchantApplicationLookup(lookup: MerchantApplicationLookup) {
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(merchantApplicationStorageKey, JSON.stringify(lookup));
+  }
+}
+
+export function getStoredMerchantApplicationLookup() {
   if (typeof window === 'undefined') return null;
   const saved = window.localStorage.getItem(merchantApplicationStorageKey);
   if (!saved) return null;
-  let credentials: { applicationNo: string; queryToken: string };
   try {
-    credentials = JSON.parse(saved);
+    const lookup = JSON.parse(saved) as Partial<MerchantApplicationLookup>;
+    if (typeof lookup.contactPhone === 'string' && /^1\d{10}$/.test(lookup.contactPhone)) {
+      return { contactPhone: lookup.contactPhone };
+    }
   } catch {
-    window.localStorage.removeItem(merchantApplicationStorageKey);
-    return null;
+    // Invalid data is removed below.
   }
+  window.localStorage.removeItem(merchantApplicationStorageKey);
+  return null;
+}
+
+export async function fetchMerchantApplication(lookup: MerchantApplicationLookup) {
   const result = await requestApi<ApiResponse<Merchant>>(
     '/shop/merchants/status',
-    { method: 'POST', body: JSON.stringify(credentials) },
+    { method: 'POST', body: JSON.stringify(lookup) },
   );
-  return result.data ?? null;
+  if (!result.data) throw new Error('商家入驻申请查询失败');
+  storeMerchantApplicationLookup(lookup);
+  return result.data;
+}
+
+export async function fetchMyMerchantApplication() {
+  const lookup = getStoredMerchantApplicationLookup();
+  if (!lookup) return null;
+  return fetchMerchantApplication(lookup);
+}
+
+export async function uploadMerchantBusinessLicense(file: File, code?: string, uuid?: string) {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (code) formData.append('code', code);
+  if (uuid) formData.append('uuid', uuid);
+  const result = await requestApi<ApiResponse & { url?: string }>(
+    '/shop/merchants/license',
+    { method: 'POST', body: formData },
+  );
+  if (!result.url) throw new Error('营业执照上传失败');
+  return result.url;
 }
 
 export async function submitMerchantApplication(body: MerchantApplicationBody) {
   const { agreeProtocol, ...application } = body;
-  let previous: { applicationNo: string; queryToken: string } | undefined;
-  if (typeof window !== 'undefined') {
-    try {
-      previous = JSON.parse(window.localStorage.getItem(merchantApplicationStorageKey) || 'null') || undefined;
-    } catch {
-      previous = undefined;
-    }
-  }
-  const result = await requestApi<ApiResponse<{ merchant: Merchant; queryToken: string }>>(
+  const result = await requestApi<ApiResponse<{ merchant: Merchant }>>(
     '/shop/merchants/apply',
-    { method: 'POST', body: JSON.stringify({ ...application, ...previous, protocolAgreed: agreeProtocol }) },
+    { method: 'POST', body: JSON.stringify({ ...application, protocolAgreed: agreeProtocol }) },
   );
-  if (!result.data?.merchant || !result.data.queryToken) throw new Error('商家入驻申请提交失败');
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(merchantApplicationStorageKey, JSON.stringify({
-      applicationNo: result.data.merchant.applicationNo,
-      queryToken: result.data.queryToken,
-    }));
-  }
-  return result.data.merchant;
+  if (!result.data?.merchant) throw new Error('商家入驻申请提交失败');
+  const lookup = { contactPhone: body.contactPhone.trim() };
+  storeMerchantApplicationLookup(lookup);
+  return { merchant: result.data.merchant, lookup };
 }

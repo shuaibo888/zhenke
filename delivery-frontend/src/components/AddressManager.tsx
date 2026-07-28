@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import pcaCode from 'china-division/dist/pca-code.json';
 import { useShop } from '@/app/ShopContext';
 import type { ShopShippingAddress, ShopShippingAddressBody } from '@/services/shopAuth';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import styles from '@/styles/commerce.less';
 
 type RegionNode = { code: string; name: string; children?: RegionNode[] };
@@ -32,6 +33,7 @@ export function AddressManager({
   const [editorOpen, setEditorOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [mutatingId, setMutatingId] = useState<number | null>(null);
+  useBodyScrollLock(open || editorOpen);
   const options = useMemo<RegionOption[]>(() => (pcaCode as RegionNode[]).map((province) => ({
     value: province.code,
     label: province.name,

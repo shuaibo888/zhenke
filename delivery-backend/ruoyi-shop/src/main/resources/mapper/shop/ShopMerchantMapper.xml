@@ -6,7 +6,6 @@
         <result property="applicationNo" column="application_no" />
         <result property="accountUsername" column="account_username" />
         <result property="accountPassword" column="account_password" />
-        <result property="queryTokenHash" column="query_token_hash" />
         <result property="companyName" column="company_name" />
         <result property="companyAddress" column="company_address" />
         <result property="contactName" column="contact_name" />
@@ -46,7 +45,7 @@
     </resultMap>
 
     <sql id="selectMerchant">
-        select m.merchant_id, m.application_no, m.account_username, m.account_password, m.query_token_hash,
+        select m.merchant_id, m.application_no, m.account_username, m.account_password,
                m.company_name, m.company_address, m.contact_name, m.contact_phone,
                m.business_license, m.product_intro, m.origin_traceability,
                m.accepts_verification_recruitment, m.accepts_public_welfare, m.protocol_agreed,
@@ -63,14 +62,14 @@
         where m.merchant_id = #{merchantId} and m.del_flag = '0'
     </select>
 
-    <select id="selectByApplicationNo" parameterType="String" resultMap="ShopMerchantResult">
-        <include refid="selectMerchant" />
-        where m.application_no = #{applicationNo} and m.del_flag = '0' limit 1
-    </select>
-
     <select id="selectByAccountUsername" parameterType="String" resultMap="ShopMerchantResult">
         <include refid="selectMerchant" />
         where m.account_username = #{accountUsername} and m.del_flag = '0' limit 1
+    </select>
+
+    <select id="selectByContactPhone" parameterType="String" resultMap="ShopMerchantResult">
+        <include refid="selectMerchant" />
+        where m.contact_phone = #{contactPhone} and m.del_flag = '0' limit 1
     </select>
 
     <select id="selectByAdminUserId" parameterType="Long" resultMap="ShopMerchantResult">
@@ -108,13 +107,13 @@
 
     <insert id="insert" parameterType="ShopMerchant" useGeneratedKeys="true" keyProperty="merchantId">
         insert into shop_merchant
-        (application_no, account_username, account_password, query_token_hash,
+        (application_no, account_username, account_password,
          company_name, company_address, contact_name, contact_phone,
          business_license, product_intro, origin_traceability, accepts_verification_recruitment,
          accepts_public_welfare, protocol_agreed, audit_status, status, del_flag,
          create_by, create_time, update_by, update_time)
         values
-        (#{applicationNo}, #{accountUsername}, #{accountPassword}, #{queryTokenHash},
+        (#{applicationNo}, #{accountUsername}, #{accountPassword},
          #{companyName}, #{companyAddress}, #{contactName}, #{contactPhone},
          #{businessLicense}, #{productIntro}, #{originTraceability}, #{acceptsVerificationRecruitment},
          #{acceptsPublicWelfare}, #{protocolAgreed}, #{auditStatus}, #{status}, #{delFlag},

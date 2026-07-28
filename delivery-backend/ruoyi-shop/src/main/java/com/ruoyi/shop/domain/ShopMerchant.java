@@ -14,7 +14,6 @@ public class ShopMerchant extends BaseEntity
     private String applicationNo;
     private String accountUsername;
     private String accountPassword;
-    private String queryTokenHash;
     private String companyName;
     private String companyAddress;
     private String contactName;
@@ -44,9 +43,6 @@ public class ShopMerchant extends BaseEntity
     @JsonIgnore
     public String getAccountPassword() { return accountPassword; }
     public void setAccountPassword(String accountPassword) { this.accountPassword = accountPassword; }
-    @JsonIgnore
-    public String getQueryTokenHash() { return queryTokenHash; }
-    public void setQueryTokenHash(String queryTokenHash) { this.queryTokenHash = queryTokenHash; }
     public String getCompanyName() { return companyName; }
     public void setCompanyName(String companyName) { this.companyName = companyName; }
     public String getCompanyAddress() { return companyAddress; }

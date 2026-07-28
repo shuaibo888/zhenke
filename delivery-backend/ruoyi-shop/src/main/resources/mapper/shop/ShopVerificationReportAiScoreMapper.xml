@@ -109,19 +109,4 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
           and ai_score_updated_at &lt; date_sub(sysdate(), interval #{runningTimeoutMinutes} minute)
     </update>
 
-    <update id="retryReport">
-        update shop_verification_report
-        set ai_score_status = 'PENDING', ai_score_attempts = 0,
-            ai_score_next_retry_at = null, running_ai_score_id = null, ai_score_updated_at = sysdate()
-        where report_id = #{reportId} and status = 'PUBLISHED'
-          and ai_score_status != 'RUNNING'
-    </update>
-
-    <update id="queueBackfill">
-        update shop_verification_report
-        set ai_score_status = 'PENDING', ai_score_attempts = 0,
-            ai_score_next_retry_at = null, running_ai_score_id = null, ai_score_updated_at = sysdate()
-        where status = 'PUBLISHED' and ai_score_status != 'RUNNING'
-          and (current_ai_score_id is null or ai_score is null)
-    </update>
 </mapper>

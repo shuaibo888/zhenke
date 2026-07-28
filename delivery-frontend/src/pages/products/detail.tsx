@@ -13,22 +13,22 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { AddressManager } from '@/components/AddressManager';
-import { ReportCard } from '@/components/ReportCard';
+import { HomeFeedReportCard } from '@/components/HomeFeedReportCard';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import {
   applyForTrial,
   fetchHomeFeed,
   fetchPublicProduct,
-  fetchPublishedReport,
   toggleReportUseful,
   type HomeFeedItemDto,
   type PublicProductDto,
-  type VerificationReportDto,
 } from '@/services/shopContent';
 import type { ShopShippingAddress } from '@/services/shopAuth';
 import { buildProductShareLink, copyText, formatPrice } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
 
 type PendingAddressAction = 'buy' | 'trial' | null;
+const PRODUCT_REPORT_PAGE_SIZE = 6;
 
 function formatAddress(address: ShopShippingAddress) {
   return `${address.region.join(' ')} ${address.detail}`.trim();
@@ -58,7 +58,6 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
     addToCart,
     buyNow,
     refreshTrials,
-    replaceReport,
   } = useShop();
   const productId = productIdProp ?? Number(productIdParam);
   const campaignId = Number(searchParams.get('campaign'));
@@ -66,7 +65,10 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   const validSourceReportId = Number.isSafeInteger(sourceReportId) && sourceReportId > 0 ? sourceReportId : undefined;
   const [product, setProduct] = useState<PublicProductDto | null>(null);
   const [feed, setFeed] = useState<HomeFeedItemDto[]>([]);
-  const [reports, setReports] = useState<VerificationReportDto[]>([]);
+  const [reports, setReports] = useState<HomeFeedItemDto[]>([]);
+  const [reportTotal, setReportTotal] = useState(0);
+  const [reportPage, setReportPage] = useState(1);
+  const [reportsLoadingMore, setReportsLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [trialChoiceOpen, setTrialChoiceOpen] = useState(false);
   const [trialOpen, setTrialOpen] = useState(false);
@@ -79,6 +81,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   const [shareOpen, setShareOpen] = useState(false);
   const [showAllReports, setShowAllReports] = useState(false);
   const [form] = Form.useForm<{ applyReason: string }>();
+  useBodyScrollLock(trialChoiceOpen || trialOpen || addressOpen || shareOpen);
 
   useEffect(() => {
     if (!Number.isSafeInteger(productId) || productId <= 0) {
@@ -87,16 +90,23 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
     }
     let mounted = true;
     setLoading(true);
-    Promise.all([fetchPublicProduct(productId), fetchHomeFeed(undefined, 'ALL', 'ALL')])
-      .then(async ([nextProduct, feedResult]) => {
-        const rows = (Array.isArray(feedResult.rows) ? feedResult.rows : []).filter((item) => item.productId === productId);
-        const reportRows = await Promise.all(
-          rows.filter((item) => item.contentType === 'REPORT').map((item) => fetchPublishedReport(item.contentId)),
-        );
+    Promise.all([
+      fetchPublicProduct(productId),
+      fetchHomeFeed({ productId, contentType: 'TRIAL', pageNum: 1, pageSize: 4 }),
+      fetchHomeFeed({
+        productId,
+        contentType: 'REPORT',
+        pageNum: 1,
+        pageSize: PRODUCT_REPORT_PAGE_SIZE,
+      }),
+    ])
+      .then(([nextProduct, trialResult, reportResult]) => {
         if (!mounted) return;
         setProduct(nextProduct);
-        setFeed(rows);
-        setReports(reportRows);
+        setFeed(trialResult.rows);
+        setReports(reportResult.rows);
+        setReportTotal(reportResult.total);
+        setReportPage(1);
       })
       .catch((error) => {
         if (mounted) message.error(error instanceof Error ? error.message : '商品加载失败');
@@ -216,19 +226,46 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
     }
   };
 
-  const useful = async (report: VerificationReportDto) => {
+  const useful = async (report: HomeFeedItemDto) => {
+    if (!report.report) return;
     if (!requireLogin() || !user) return;
-    if (report.shopUserId === user.id) {
+    if (report.report.shopUserId === user.id) {
       message.warning('不能给自己的甄客验点有用');
       return;
     }
     try {
-      const result = await toggleReportUseful(report.reportId);
-      const updated = { ...report, ...result };
-      setReports((items) => items.map((item) => item.reportId === report.reportId ? updated : item));
-      replaceReport(updated);
+      const result = await toggleReportUseful(report.contentId);
+      setReports((items) => items.map((item) => (
+        item.contentId === report.contentId && item.report
+          ? { ...item, report: { ...item.report, ...result } }
+          : item
+      )));
     } catch (error) {
       message.error(error instanceof Error ? error.message : '操作失败');
+    }
+  };
+
+  const loadMoreReports = async () => {
+    if (reportsLoadingMore || reports.length >= reportTotal) return;
+    const nextPage = reportPage + 1;
+    setReportsLoadingMore(true);
+    try {
+      const result = await fetchHomeFeed({
+        productId,
+        contentType: 'REPORT',
+        pageNum: nextPage,
+        pageSize: PRODUCT_REPORT_PAGE_SIZE,
+      });
+      setReports((current) => {
+        const existing = new Set(current.map((item) => item.contentId));
+        return [...current, ...result.rows.filter((item) => !existing.has(item.contentId))];
+      });
+      setReportTotal(result.total);
+      setReportPage(nextPage);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '更多甄客验加载失败');
+    } finally {
+      setReportsLoadingMore(false);
     }
   };
 
@@ -309,7 +346,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
           <p className={styles.productDetail}>{product.detail}</p>
         </section>
 
-        {reports.length > 0 && (
+        {reportTotal > 0 && (
           <section className={styles.productReportFlow}>
             <button
               type="button"
@@ -318,21 +355,26 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
             >
               <div className={styles.sectionHeader}>
                 <div><span className={styles.eyebrow}>真实体验参考</span><h2>先看这件商品的甄客验</h2></div>
-                <span>{reports.length} 份真实评价</span>
+                <span>{reportTotal} 份真实评价</span>
               </div>
               <DownOutlined className={`${styles.productReportsArrow} ${showAllReports ? styles.productReportsArrowOpen : ''}`} />
             </button>
             {showAllReports && (
               <div className={styles.productReportsList}>
                 {reports.map((report) => (
-                  <ReportCard
-                    key={report.reportId}
-                    report={report}
-                    variant="detail"
-                    onOpen={() => navigate(`/reports/${report.reportId}`)}
+                  <HomeFeedReportCard
+                    key={report.contentId}
+                    item={report}
+                    variant="preview"
+                    onOpen={() => navigate(`/reports/${report.contentId}`)}
                     onUseful={() => void useful(report)}
                   />
                 ))}
+                {reports.length < reportTotal && (
+                  <Button block loading={reportsLoadingMore} onClick={() => void loadMoreReports()}>
+                    加载更多甄客验
+                  </Button>
+                )}
               </div>
             )}
           </section>

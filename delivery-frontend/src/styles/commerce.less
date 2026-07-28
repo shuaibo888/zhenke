@@ -547,21 +547,52 @@
   color: #315d50;
 }
 
-.merchantModal {
+.responsiveModal :global(.ant-modal-content) {
+  display: flex;
+  max-height: calc(100dvh - 32px);
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.responsiveModal :global(.ant-modal-body) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.responsiveModal :global(.ant-modal-wrap) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.merchantModal,
+.scrollableFormModal {
   max-height: 85vh;
   overflow: hidden;
 }
 
-.merchantModal :global(.ant-modal-content) {
+.merchantModal :global(.ant-modal-content),
+.scrollableFormModal :global(.ant-modal-content) {
   max-height: 85vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
-.merchantModal :global(.ant-modal-body) {
-  flex: 1;
+.merchantModal :global(.ant-modal-body),
+.scrollableFormModal :global(.ant-modal-body) {
+  flex: 1 1 auto;
+  max-height: calc(85vh - 72px);
+  max-height: calc(85dvh - 72px);
   overflow-y: auto;
   min-height: 0;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 .contentGrid {
@@ -637,6 +668,19 @@
 .homeCategoryNav button:focus-visible {
   outline: 2px solid rgba(31, 111, 91, 0.42);
   outline-offset: 2px;
+}
+
+.homeLoadMore {
+  display: flex;
+  justify-content: center;
+  min-height: 68px;
+  padding: 18px 0 6px;
+}
+
+.homeLoadMore :global(.ant-btn) {
+  min-width: 132px;
+  border-color: rgba(31, 111, 91, 0.24);
+  color: #1f6f5b;
 }
 
 .sortSelect {
@@ -2964,11 +3008,28 @@
   background: #f5f5f5;
 }
 
-.reportDetailImage img {
+.reportDetailImage img,
+.reportDetailImage video {
+  display: block;
   width: 100%;
   height: auto;
   max-height: 400px;
   object-fit: cover;
+}
+
+.reportDetailImage video {
+  aspect-ratio: 16 / 9;
+  background: #111;
+  object-fit: contain;
+}
+
+.reportDetailMediaMissing {
+  display: grid;
+  min-height: 220px;
+  place-items: center;
+  color: #87968f;
+  background: #f4f8f6;
+  font-size: 14px;
 }
 
 .reportDetailPhotoBadge {
@@ -2990,14 +3051,37 @@
   padding-bottom: 2px;
 }
 
-.reportDetailThumbs img {
+.reportDetailThumbs button {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  cursor: pointer;
+  background: #eef3f0;
+}
+
+.reportDetailVideoThumbLabel {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.reportDetailThumbs img,
+.reportDetailThumbs video {
+  display: block;
   width: 60px;
   height: 60px;
   object-fit: cover;
-  border-radius: 8px;
-  border: 2px solid transparent;
-  flex-shrink: 0;
-  cursor: pointer;
 }
 
 .reportDetailThumbActive {
@@ -4073,7 +4157,8 @@
 
 .reviewModal {
   display: grid;
-  gap: 18px;
+  gap: 16px;
+  padding-bottom: 2px;
 }
 
 .reviewOrderInfo {
@@ -4147,19 +4232,84 @@
 }
 
 .reviewRecommendField {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
   border: 1px solid #e4ebe7;
-  border-radius: 8px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f5fbf8, #ffffff);
   color: #17241f;
-  font-weight: 700;
+}
+
+.reviewRecommendField > div:first-child {
+  display: grid;
+  gap: 5px;
+}
+
+.reviewRecommendField strong {
+  font-size: 15px;
+}
+
+.reviewRecommendField p {
+  margin: 0;
+  color: #77847e;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.reviewRecommendField :global(.ant-radio-group) {
+  display: grid;
+  gap: 10px;
+}
+
+.reviewRecommendField :global(.ant-radio-wrapper) {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #e0e8e3;
+  border-radius: 9px;
+  background: #fff;
 }
 
 .reviewUpload {
   display: grid;
-  gap: 8px;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid #dce8e1;
+  border-radius: 12px;
+  background: #f8fcfa;
+}
+
+.reviewUploadError {
+  border-color: #ff7875;
+}
+
+.reviewFieldHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reviewFieldHeading strong {
+  color: #17241f;
+  font-size: 15px;
+}
+
+.reviewFieldHeading strong span {
+  color: #ff4d4f;
+}
+
+.reviewFieldHeading em {
+  color: #77847e;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.reviewFieldDescription {
+  margin: 0;
+  color: #77847e;
+  font-size: 13px;
+  line-height: 1.65;
 }
 
 .reviewImages {
@@ -4170,17 +4320,42 @@
 
 .reviewImageItem {
   position: relative;
-  width: 80px;
-  height: 80px;
+  width: 92px;
+  height: 92px;
   border-radius: 8px;
   overflow: hidden;
   background: #f0f2f1;
 }
 
-.reviewImageItem img {
+.reviewVideoItem {
+  width: 180px;
+  height: 112px;
+  background: #111;
+}
+
+.reviewImageItem img,
+.reviewImageItem video {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.reviewVideoItem video {
+  object-fit: contain;
+}
+
+.reviewMediaBadge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 1;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(16, 45, 37, 0.82);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.2;
+  pointer-events: none;
 }
 
 .removeImageBtn {
@@ -4224,11 +4399,35 @@
   font-size: 22px;
 }
 
-.uploadHint {
-  margin: 0;
-  color: #909b96;
+.reviewUploadButtons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.reviewUploadRules {
+  display: grid;
+  gap: 5px;
+  padding-top: 2px;
+  color: #7f8b85;
   font-size: 12px;
-  text-align: right;
+  line-height: 1.55;
+}
+
+.reviewUploadRules p {
+  margin: 0;
+}
+
+.reviewUploadRules strong {
+  color: #53625b;
+  font-weight: 700;
+}
+
+.reviewFieldError {
+  margin: 0;
+  color: #ff4d4f;
+  font-size: 13px;
 }
 
 .reviewActions {
@@ -4615,7 +4814,8 @@
     grid-template-columns: 1fr;
   }
 
-  .reportDetailImage img {
+  .reportDetailImage img,
+  .reportDetailImage video {
     max-height: 300px;
   }
 }
@@ -5587,13 +5787,44 @@
     max-height: calc(100dvh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)));
     flex-direction: column;
     padding: 18px 16px;
+    overflow: hidden;
   }
 
   .responsiveModal :global(.ant-modal-body) {
+    flex: 1 1 auto;
     min-height: 0;
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .responsiveModal :global(.ant-modal-wrap) {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .publishReportModal .reviewUploadButtons {
+    width: 100%;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+
+  .publishReportModal .reviewUploadButtons > :global(.ant-upload-wrapper) {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .publishReportModal .reviewUploadButtons :global(.ant-upload-select),
+  .publishReportModal .reviewUploadButtons :global(.ant-btn) {
+    width: 100%;
+  }
+
+  .publishReportModal .reviewUploadButtons :global(.ant-btn) {
+    padding-inline: 6px;
+    font-size: 13px;
+    white-space: nowrap;
   }
 
   .responsiveModal :global(.ant-input),
@@ -5696,6 +5927,64 @@
   display: grid;
   gap: 12px;
   padding: 8px 0;
+}
+
+.merchantRejected {
+  margin-bottom: 18px;
+}
+
+.merchantRecovery {
+  margin: -4px 0 18px;
+  padding: 10px 14px 14px;
+  border: 1px solid rgba(31, 111, 91, 0.12);
+  border-radius: 8px;
+  background: #f8faf9;
+}
+
+.merchantRecovery > :global(.ant-btn) {
+  padding-inline: 0;
+}
+
+.merchantCredentials {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+
+.merchantCredentials small {
+  grid-column: 1 / -1;
+  color: #7a8882;
+}
+
+.merchantLicenseField {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.merchantLicenseField > label {
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+}
+
+.merchantLicenseField > :global(.ant-upload-wrapper),
+.merchantLicenseField > :global(.ant-upload-wrapper) :global(.ant-upload-select) {
+  display: block;
+  width: 100%;
+}
+
+.merchantLicenseField small {
+  color: #7a8882;
+}
+
+.merchantLicensePreview {
+  width: min(100%, 360px);
+  max-height: 240px;
+  object-fit: contain;
+  border: 1px solid rgba(31, 111, 91, 0.15);
+  border-radius: 8px;
+  background: #f8faf9;
 }
 
 .reviewStars {

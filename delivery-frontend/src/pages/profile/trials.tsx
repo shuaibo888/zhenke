@@ -5,6 +5,7 @@ import { useShop } from '@/app/ShopContext';
 import { LogisticsModal } from '@/components/LogisticsModal';
 import { ProfileBackButton } from '@/components/ProfileBackButton';
 import { PublishReportModal } from '@/components/PublishReportModal';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import {
   confirmTrialReceived,
   fetchTrialApplicationLogistics,
@@ -41,6 +42,7 @@ export default function TrialsPage() {
   const [logistics, setLogistics] = useState<LogisticsTraceDto | null>(null);
   const [logisticsLoading, setLogisticsLoading] = useState(false);
   const [publishTrial, setPublishTrial] = useState<TrialApplicationDto | null>(null);
+  useBodyScrollLock(Boolean(logisticsTrial) || Boolean(publishTrial));
 
   if (!user) {
     return <Navigate to="/auth" replace />;

@@ -79,11 +79,6 @@ interface ProductDto {
   images?: Array<{ imageId: number; imageUrl: string; imageSort: number }>;
 }
 
-interface ProductListResponse extends ApiResponse {
-  rows: ProductDto[];
-  total: number;
-}
-
 interface TrialCampaignDto {
   campaignId: number;
   merchantId: number;
@@ -100,11 +95,6 @@ interface TrialCampaignDto {
   status: 'DRAFT' | 'RECRUITING' | 'CLOSED' | 'FINISHED';
   publishedAt?: string;
   createTime?: string;
-}
-
-interface TrialCampaignListResponse extends ApiResponse {
-  rows: TrialCampaignDto[];
-  total: number;
 }
 
 interface ShopOrderDto {
@@ -152,11 +142,6 @@ interface ShopOrderDto {
     eventTime: string;
     source: 'SYSTEM' | 'PROVIDER';
   }>;
-}
-
-interface ShopOrderListResponse extends ApiResponse {
-  rows?: ShopOrderDto[];
-  total: number;
 }
 
 interface VerificationReportDto {
@@ -222,6 +207,19 @@ async function requestApi<T extends ApiResponse>(path: string, init: RequestInit
   return payload;
 }
 
+export interface DashboardSummaryDto {
+  productTotal: number;
+  onSaleCount: number;
+  orderTotal: number;
+  todayOrders: number;
+  salesAmount: number;
+  userTotal: number;
+  reportTotal: number;
+  orderStatusCounts: Array<{ code: ShopOrderDto['status']; count: number }>;
+  productStatusCounts: Array<{ code: ProductDto['status']; count: number }>;
+  orderDailyCounts: Array<{ date: string; count: number }>;
+}
+
 function formatApiDateTime(value?: string) {
   if (!value) return undefined;
   const match = value.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})/);
@@ -243,9 +241,7 @@ function toMerchantAccount(dto: MerchantDto): MerchantAccount {
     originTraceability: dto.originTraceability,
     acceptsVerificationRecruitment: dto.acceptsVerificationRecruitment === '0',
     acceptsPublicWelfare: dto.acceptsPublicWelfare === '0',
-    registeredAt: dto.createTime,
-    productCount: 0,
-    orderCount: 0,
+    registeredAt: formatApiDateTime(dto.createTime),
     auditStatus: ({ PENDING: 'pending', APPROVED: 'approved', REJECTED: 'rejected' } as const)[dto.auditStatus],
     auditRemark: dto.auditRemark,
     auditBy: dto.auditBy,
@@ -388,6 +384,13 @@ export async function logoutAdmin() {
   }
 }
 
+export async function fetchDashboardSummary(session: AdminSession) {
+  const path = session.loginType === 'merchant' ? '/shop/merchant/dashboard' : '/shop/admin/dashboard';
+  const result = await requestApi<ApiResponse<DashboardSummaryDto>>(path, {}, true);
+  if (!result.data) throw new Error('数据看板加载失败');
+  return result.data;
+}
+
 export async function fetchShopUsers(query: ShopUserQuery) {
   const params = new URLSearchParams({ pageNum: String(query.pageNum), pageSize: String(query.pageSize) });
   if (query.keyword) params.set('userName', query.keyword);
@@ -420,7 +423,7 @@ export async function updateShopUserLevel(userId: number, levelId: number) {
 export async function fetchMerchants(query: { pageNum?: number; pageSize?: number; auditStatus?: string } = {}) {
   const params = new URLSearchParams({
     pageNum: String(query.pageNum ?? 1),
-    pageSize: String(query.pageSize ?? 100),
+    pageSize: String(query.pageSize ?? 10),
   });
   if (query.auditStatus) params.set('auditStatus', query.auditStatus);
   const result = await requestApi<MerchantListResponse>(`/shop/admin/merchants?${params.toString()}`, {}, true);
@@ -475,10 +478,35 @@ export async function updateProductCategory(
   );
 }
 
-export async function fetchManagedProducts(session: AdminSession) {
+export interface ManagedPageQuery {
+  pageNum?: number;
+  pageSize?: number;
+}
+
+export interface ManagedProductQuery extends ManagedPageQuery {
+  keyword?: string;
+  categoryId?: number;
+  status?: 'DRAFT' | 'ON_SALE' | 'OFF_SALE';
+  trialOnly?: boolean;
+}
+
+export async function fetchManagedProducts(session: AdminSession, query: ManagedProductQuery = {}) {
   const path = session.loginType === 'merchant' ? '/shop/merchant/products' : '/shop/admin/products';
-  const result = await requestApi<ProductListResponse>(`${path}?pageNum=1&pageSize=100`, {}, true);
-  return { rows: result.rows.map(toManagedProduct), total: result.total };
+  const params = new URLSearchParams({
+    pageNum: String(query.pageNum ?? 1),
+    pageSize: String(query.pageSize ?? 10),
+  });
+  if (query.keyword) params.set('productName', query.keyword);
+  if (query.categoryId) params.set('categoryId', String(query.categoryId));
+  if (query.status) params.set('status', query.status);
+  if (query.trialOnly) params.set('trialOnly', 'true');
+  const result = await requestApi<ApiResponse & { rows?: ProductDto[]; total: number }>(
+    `${path}?${params.toString()}`,
+    {},
+    true,
+  );
+  const rows = Array.isArray(result.rows) ? result.rows : [];
+  return { rows: rows.map(toManagedProduct), total: Number(result.total ?? 0) };
 }
 
 export interface ProductWriteBody {
@@ -522,24 +550,33 @@ export async function updateMerchantProductSaleStatus(productId: number, status:
   return toManagedProduct(result.data);
 }
 
-export async function fetchMerchantOrders() {
-  const result = await requestApi<ShopOrderListResponse>(
-    '/shop/merchant/orders?pageNum=1&pageSize=100',
-    {},
-    true,
-  );
-  const rows = Array.isArray(result.rows) ? result.rows : [];
-  return { rows: rows.map(toManagedOrder), total: typeof result.total === 'number' ? result.total : 0 };
+export interface ManagedOrderQuery extends ManagedPageQuery {
+  keyword?: string;
+  status?: ShopOrderDto['status'];
 }
 
-export async function fetchAdminOrders() {
-  const result = await requestApi<ShopOrderListResponse>(
-    '/shop/admin/orders?pageNum=1&pageSize=100',
+async function fetchManagedOrders(path: string, query: ManagedOrderQuery = {}) {
+  const params = new URLSearchParams({
+    pageNum: String(query.pageNum ?? 1),
+    pageSize: String(query.pageSize ?? 10),
+  });
+  if (query.keyword) params.set('keyword', query.keyword);
+  if (query.status) params.set('status', query.status);
+  const result = await requestApi<ApiResponse & { rows?: ShopOrderDto[]; total: number }>(
+    `${path}?${params.toString()}`,
     {},
     true,
   );
   const rows = Array.isArray(result.rows) ? result.rows : [];
-  return { rows: rows.map(toManagedOrder), total: typeof result.total === 'number' ? result.total : 0 };
+  return { rows: rows.map(toManagedOrder), total: Number(result.total ?? 0) };
+}
+
+export async function fetchMerchantOrders(query: ManagedOrderQuery = {}) {
+  return fetchManagedOrders('/shop/merchant/orders', query);
+}
+
+export async function fetchAdminOrders(query: ManagedOrderQuery = {}) {
+  return fetchManagedOrders('/shop/admin/orders', query);
 }
 
 export async function fetchMerchantOrder(orderId: number) {
@@ -584,7 +621,7 @@ function toManagedTrial(dto: TrialCampaignDto): ManagedTrialRecruitment {
     trialType: dto.trialType,
     targetCount: dto.targetCount,
     claimedCount: dto.approvedCount,
-    deadline: formatApiDateTime(dto.applicationDeadline) ?? dto.applicationDeadline,
+    deadline: dto.applicationDeadline?.slice(0, 10) ?? '',
     applicantCount: dto.applicantCount,
     status: ({ DRAFT: 'draft', RECRUITING: 'recruiting', CLOSED: 'closed', FINISHED: 'finished' } as const)[dto.status],
     createdAt: formatApiDateTime(dto.publishedAt ?? dto.createTime) ?? '',
@@ -626,16 +663,33 @@ function toManagedReport(dto: VerificationReportDto): ManagedReport {
   };
 }
 
-export async function fetchManagedTrials(session: AdminSession) {
+export async function fetchManagedTrials(session: AdminSession, query: ManagedPageQuery = {}) {
   const path = session.loginType === 'merchant' ? '/shop/merchant/trials' : '/shop/admin/trials';
-  const result = await requestApi<TrialCampaignListResponse>(`${path}?pageNum=1&pageSize=100`, {}, true);
-  return { rows: result.rows.map(toManagedTrial), total: result.total };
+  const params = new URLSearchParams({
+    pageNum: String(query.pageNum ?? 1),
+    pageSize: String(query.pageSize ?? 10),
+  });
+  const result = await requestApi<ApiResponse & { rows?: TrialCampaignDto[]; total: number }>(
+    `${path}?${params.toString()}`,
+    {},
+    true,
+  );
+  const rows = Array.isArray(result.rows) ? result.rows : [];
+  return { rows: rows.map(toManagedTrial), total: Number(result.total ?? 0) };
 }
 
-export async function fetchMerchantReports() {
-  const result = await requestApi<ApiResponse<VerificationReportDto[]>>('/shop/merchant/reports', {}, true);
-  const rows = Array.isArray(result.data) ? result.data : [];
-  return rows.map(toManagedReport);
+export async function fetchMerchantReports(query: ManagedPageQuery = {}) {
+  const params = new URLSearchParams({
+    pageNum: String(query.pageNum ?? 1),
+    pageSize: String(query.pageSize ?? 10),
+  });
+  const result = await requestApi<ApiResponse & { rows?: VerificationReportDto[]; total: number }>(
+    `/shop/merchant/reports?${params.toString()}`,
+    {},
+    true,
+  );
+  const rows = Array.isArray(result.rows) ? result.rows : [];
+  return { rows: rows.map(toManagedReport), total: Number(result.total ?? 0) };
 }
 
 export async function createMerchantTrial(body: {
@@ -655,6 +709,15 @@ export async function createMerchantTrial(body: {
   return result.data;
 }
 
+export async function fetchAvailableTrialTypes(productId: number) {
+  const result = await requestApi<ApiResponse<Array<'ONLINE' | 'OFFLINE'>>>(
+    `/shop/merchant/trials/available-types?productId=${productId}`,
+    {},
+    true,
+  );
+  return Array.isArray(result.data) ? result.data : [];
+}
+
 export async function updateMerchantTrialStatus(
   campaignId: number,
   status: 'RECRUITING' | 'CLOSED' | 'FINISHED',
@@ -668,18 +731,20 @@ export async function updateMerchantTrialStatus(
   return result.data;
 }
 
-interface TrialApplicationListResponse extends ApiResponse {
-  rows: ManagedTrialApplication[];
-  total: number;
-}
-
-export async function fetchMerchantTrialApplications() {
-  const result = await requestApi<TrialApplicationListResponse>(
-    '/shop/merchant/trials/applications?pageNum=1&pageSize=100',
+export async function fetchMerchantTrialApplications(query: ManagedPageQuery = {}) {
+  const params = new URLSearchParams({
+    pageNum: String(query.pageNum ?? 1),
+    pageSize: String(query.pageSize ?? 10),
+  });
+  const result = await requestApi<ApiResponse & { rows?: ManagedTrialApplication[]; total: number }>(
+    `/shop/merchant/trials/applications?${params.toString()}`,
     {},
     true,
   );
-  return { rows: result.rows, total: result.total };
+  return {
+    rows: Array.isArray(result.rows) ? result.rows : [],
+    total: Number(result.total ?? 0),
+  };
 }
 
 export async function auditMerchantTrialApplication(

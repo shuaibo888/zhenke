@@ -1,5 +1,6 @@
 import { TruckOutlined } from '@ant-design/icons';
 import { Modal, Spin, Tag } from 'antd';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import type { LogisticsTraceDto } from '@/services/shopContent';
 import { formatDateTime } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
@@ -27,6 +28,7 @@ export function LogisticsModal({
   trace: LogisticsTraceDto | null;
   onClose: () => void;
 }) {
+  useBodyScrollLock(open);
   return (
     <Modal title={title} open={open} onCancel={onClose} footer={null} width={560} rootClassName={styles.responsiveModal}>
       <Spin spinning={loading}>

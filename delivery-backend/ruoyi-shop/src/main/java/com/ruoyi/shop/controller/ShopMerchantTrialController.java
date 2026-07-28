@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.github.pagehelper.PageHelper;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
@@ -39,10 +40,12 @@ public class ShopMerchantTrialController extends BaseController
 
     @PreAuthorize("@ss.hasPermi('shop:trial:list')")
     @GetMapping
-    public TableDataInfo list(ShopTrialCampaign query)
+    public TableDataInfo list(ShopTrialCampaign query,
+                              @RequestParam(defaultValue = "1") int pageNum,
+                              @RequestParam(defaultValue = "10") int pageSize)
     {
         long merchantId = merchantService.currentMerchantAccount().getMerchantId();
-        startPage();
+        PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(pageSize, 50)));
         List<ShopTrialCampaign> rows = trialService.merchantCampaigns(merchantId, query);
         return getDataTable(rows);
     }
@@ -52,6 +55,13 @@ public class ShopMerchantTrialController extends BaseController
     public AjaxResult detail(@PathVariable long campaignId)
     {
         return AjaxResult.success(trialService.merchantCampaign(campaignId));
+    }
+
+    @PreAuthorize("@ss.hasPermi('shop:trial:list')")
+    @GetMapping("/available-types")
+    public AjaxResult availableTypes(@RequestParam long productId)
+    {
+        return AjaxResult.success(trialService.availableTrialTypes(productId));
     }
 
     @Log(title = "试用招募", businessType = BusinessType.INSERT)
@@ -74,10 +84,12 @@ public class ShopMerchantTrialController extends BaseController
     @PreAuthorize("@ss.hasPermi('shop:trial:list')")
     @GetMapping("/applications")
     public TableDataInfo applications(@RequestParam(required = false) Long campaignId,
-            @RequestParam(required = false) String status)
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "10") int pageSize)
     {
         long merchantId = merchantService.currentMerchantAccount().getMerchantId();
-        startPage();
+        PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(pageSize, 50)));
         List<ShopTrialApplication> rows = trialService.merchantApplications(merchantId, campaignId, status);
         return getDataTable(rows);
     }

@@ -3,6 +3,7 @@ import { Button, Drawer, Modal, Spin, message } from 'antd';
 import { useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { formatPrice, getCartCount, getCartTotal } from '@/utils/shop';
 import { AddressManager } from './AddressManager';
 import styles from '@/styles/commerce.less';
@@ -21,6 +22,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const [mutatingId, setMutatingId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
+  useBodyScrollLock(open || addressOpen);
   const count = getCartCount(cart);
   const total = getCartTotal(cart);
 

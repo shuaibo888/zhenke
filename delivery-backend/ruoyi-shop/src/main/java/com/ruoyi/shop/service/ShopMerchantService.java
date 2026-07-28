@@ -1,10 +1,21 @@
 package com.ruoyi.shop.service;
 
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import javax.imageio.ImageIO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.LoginUser;
@@ -14,6 +25,8 @@ import com.ruoyi.common.exception.user.CaptchaException;
 import com.ruoyi.common.exception.user.CaptchaExpireException;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.common.utils.file.FileUploadUtils;
+import com.ruoyi.common.utils.file.MimeTypeUtils;
 import com.ruoyi.shop.domain.ShopMerchant;
 import com.ruoyi.shop.domain.ShopMerchantAuditLog;
 import com.ruoyi.shop.domain.dto.ShopMerchantApplyBody;
@@ -31,6 +44,10 @@ public class ShopMerchantService
     public static final String APPROVED = "APPROVED";
     public static final String REJECTED = "REJECTED";
     private static final String MERCHANT_ROLE_KEY = "merchant";
+    private static final long MAX_LICENSE_SIZE = 5 * 1024 * 1024L;
+    private static final String[] LICENSE_EXTENSIONS = { "jpg", "jpeg", "png" };
+    private static final Set<String> LICENSE_CONTENT_TYPES = Set.of(
+            MimeTypeUtils.IMAGE_JPG, MimeTypeUtils.IMAGE_JPEG, MimeTypeUtils.IMAGE_PNG);
 
     private final ShopMerchantMapper merchantMapper;
     private final ISysUserService sysUserService;
@@ -48,9 +65,30 @@ public class ShopMerchantService
 
     public ShopMerchant applicationStatus(ShopMerchantQueryBody body)
     {
-        ShopMerchant merchant = merchantMapper.selectByApplicationNo(StringUtils.trim(body.getApplicationNo()));
-        verifyQueryToken(merchant, body.getQueryToken());
+        ShopMerchant merchant = merchantMapper.selectByContactPhone(StringUtils.trim(body.getContactPhone()));
+        if (merchant == null)
+        {
+            throw new ServiceException("该手机号暂无商家入驻申请");
+        }
         return withAuditLogs(merchant);
+    }
+
+    public String uploadBusinessLicense(MultipartFile file, String code, String uuid)
+    {
+        validateCaptcha(code, uuid);
+        validateBusinessLicense(file);
+        try
+        {
+            return FileUploadUtils.upload(
+                    RuoYiConfig.getUploadPath() + "/merchant-license",
+                    file,
+                    LICENSE_EXTENSIONS,
+                    true);
+        }
+        catch (Exception exception)
+        {
+            throw new ServiceException("营业执照上传失败，请重新选择图片");
+        }
     }
 
     @Transactional
@@ -59,23 +97,12 @@ public class ShopMerchantService
         validateCaptcha(body.getCode(), body.getUuid());
         String accountUsername = normalizeAccountUsername(body.getAccountUsername());
         validateInitialPassword(body.getPassword());
+        String contactPhone = StringUtils.trim(body.getContactPhone());
 
-        ShopMerchant existing = null;
-        String queryToken;
-        if (StringUtils.isNotEmpty(body.getApplicationNo()) || StringUtils.isNotEmpty(body.getQueryToken()))
+        ShopMerchant existing = merchantMapper.selectByContactPhone(contactPhone);
+        if (existing != null && !REJECTED.equals(existing.getAuditStatus()))
         {
-            existing = merchantMapper.selectByApplicationNo(StringUtils.trim(body.getApplicationNo()));
-            verifyQueryToken(existing, body.getQueryToken());
-            if (!REJECTED.equals(existing.getAuditStatus()))
-            {
-                throw new ServiceException("只有已驳回的申请可以重新提交");
-            }
-            queryToken = body.getQueryToken();
-        }
-        else
-        {
-            queryToken = UUID.randomUUID().toString().replace("-", "")
-                    + UUID.randomUUID().toString().replace("-", "");
+            throw new ServiceException("该手机号已提交过商家入驻申请，请查询申请进度");
         }
 
         ShopMerchant usernameOwner = merchantMapper.selectByAccountUsername(accountUsername);
@@ -100,7 +127,6 @@ public class ShopMerchantService
         if (existing == null)
         {
             merchant.setApplicationNo("M" + UUID.randomUUID().toString().replace("-", "").toUpperCase());
-            merchant.setQueryTokenHash(SecurityUtils.encryptPassword(queryToken));
             merchantMapper.insert(merchant);
         }
         else
@@ -116,7 +142,7 @@ public class ShopMerchantService
 
         insertAuditLog(merchant.getMerchantId(), action, fromStatus, PENDING, "提交商家入驻申请",
                 "MERCHANT_APPLICANT", null, accountUsername);
-        return new ShopMerchantApplyResult(detail(merchant.getMerchantId()), queryToken);
+        return new ShopMerchantApplyResult(detail(merchant.getMerchantId()));
     }
 
     public List<ShopMerchant> selectAdminList(ShopMerchant query)
@@ -149,7 +175,7 @@ public class ShopMerchantService
             Long roleId = merchantMapper.selectRoleIdByKey(MERCHANT_ROLE_KEY);
             if (roleId == null)
             {
-                throw new ServiceException("商家角色尚未初始化，请先执行 shop_merchant.sql");
+                throw new ServiceException("商家角色配置异常，请联系管理员");
             }
 
             SysUser account = new SysUser();
@@ -230,22 +256,13 @@ public class ShopMerchantService
         merchant.setCompanyAddress(body.getCompanyAddress().trim());
         merchant.setContactName(body.getContactName().trim());
         merchant.setContactPhone(body.getContactPhone().trim());
-        merchant.setBusinessLicense(body.getBusinessLicense().trim());
+        merchant.setBusinessLicense(validateBusinessLicenseAddress(body.getBusinessLicense()));
         merchant.setProductIntro(body.getProductIntro().trim());
         merchant.setOriginTraceability(body.getOriginTraceability().trim());
         merchant.setAcceptsVerificationRecruitment(Boolean.TRUE.equals(body.getAcceptsVerificationRecruitment()) ? "0" : "1");
         merchant.setAcceptsPublicWelfare(Boolean.TRUE.equals(body.getAcceptsPublicWelfare()) ? "0" : "1");
         merchant.setProtocolAgreed(Boolean.TRUE.equals(body.getProtocolAgreed()) ? "0" : "1");
         return merchant;
-    }
-
-    private void verifyQueryToken(ShopMerchant merchant, String queryToken)
-    {
-        if (merchant == null || StringUtils.isEmpty(queryToken)
-                || !SecurityUtils.matchesPassword(queryToken, merchant.getQueryTokenHash()))
-        {
-            throw new ServiceException("申请编号或查询凭证无效");
-        }
     }
 
     private void validateCaptcha(String code, String uuid)
@@ -264,6 +281,60 @@ public class ShopMerchantService
         if (!captcha.equalsIgnoreCase(StringUtils.nvl(code, "")))
         {
             throw new CaptchaException();
+        }
+    }
+
+    private void validateBusinessLicense(MultipartFile file)
+    {
+        if (file == null || file.isEmpty())
+        {
+            throw new ServiceException("请选择营业执照图片");
+        }
+        if (file.getSize() > MAX_LICENSE_SIZE)
+        {
+            throw new ServiceException("营业执照图片不能超过 5MB");
+        }
+        if (!LICENSE_CONTENT_TYPES.contains(file.getContentType()))
+        {
+            throw new ServiceException("营业执照仅支持 JPG、PNG 格式");
+        }
+        try (InputStream input = file.getInputStream())
+        {
+            BufferedImage image = ImageIO.read(input);
+            if (image == null)
+            {
+                throw new ServiceException("营业执照文件不是有效图片");
+            }
+        }
+        catch (IOException exception)
+        {
+            throw new ServiceException("营业执照图片读取失败");
+        }
+    }
+
+    private String validateBusinessLicenseAddress(String value)
+    {
+        String address = StringUtils.trim(value);
+        try
+        {
+            String resourcePath = URI.create(address).getPath();
+            if (resourcePath == null
+                    || !resourcePath.matches("^/profile/upload/merchant-license/"
+                            + "\\d{4}/\\d{2}/\\d{2}/[A-Za-z0-9_-]+\\.(?i:jpg|jpeg|png)$"))
+            {
+                throw new ServiceException("请上传有效的营业执照图片");
+            }
+            Path profile = Paths.get(RuoYiConfig.getProfile()).toAbsolutePath().normalize();
+            Path uploaded = profile.resolve(resourcePath.substring("/profile/".length())).normalize();
+            if (!uploaded.startsWith(profile) || !Files.isRegularFile(uploaded))
+            {
+                throw new ServiceException("营业执照图片不存在，请重新上传");
+            }
+            return address;
+        }
+        catch (IllegalArgumentException exception)
+        {
+            throw new ServiceException("营业执照地址无效，请重新上传");
         }
     }
 

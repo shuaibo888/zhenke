@@ -49,7 +49,4 @@ public interface ShopVerificationReportAiScoreMapper
                             @Param("maxAttempts") int maxAttempts,
                             @Param("retryDelaySeconds") int retryDelaySeconds);
 
-    int retryReport(@Param("reportId") long reportId);
-
-    int queueBackfill();
 }

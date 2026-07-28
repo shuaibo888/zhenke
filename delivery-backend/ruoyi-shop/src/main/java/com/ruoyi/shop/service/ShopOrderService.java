@@ -4,12 +4,14 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.common.exception.ServiceException;
@@ -67,7 +69,7 @@ public class ShopOrderService
     public List<ShopOrder> myOrders()
     {
         long userId = ShopAccountIdentity.requireShopUserId();
-        return orderMapper.selectUserOrders(userId).stream().map(this::hydrate).toList();
+        return hydrateList(orderMapper.selectUserOrders(userId));
     }
 
     public ShopOrder myOrder(long orderId)
@@ -516,6 +518,20 @@ public class ShopOrderService
         order.setStatusLogs(orderMapper.selectStatusLogs(order.getOrderId()));
         order.setLogisticsEvents(orderMapper.selectLogisticsEvents(order.getOrderId()));
         return order;
+    }
+
+    private List<ShopOrder> hydrateList(List<ShopOrder> orders)
+    {
+        if (orders == null || orders.isEmpty())
+        {
+            return orders;
+        }
+        List<Long> orderIds = orders.stream().map(ShopOrder::getOrderId).toList();
+        Map<Long, List<ShopOrderItem>> itemsByOrder = orderMapper.selectOrderItemsByOrderIds(orderIds)
+                .stream().collect(Collectors.groupingBy(ShopOrderItem::getOrderId));
+        orders.forEach(order -> order.setItems(
+                itemsByOrder.getOrDefault(order.getOrderId(), Collections.emptyList())));
+        return orders;
     }
 
     private boolean isPaymentExpired(ShopOrder order)

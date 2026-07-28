@@ -29,6 +29,10 @@ public interface ShopTrialMapper {
                              @Param("fromStatus") String fromStatus, @Param("toStatus") String toStatus,
                              @Param("updateBy") String updateBy);
 
+    int expirePendingApplicationsForEndedCampaigns();
+
+    int closeEndedCampaigns();
+
     Long lockProductForCampaign(@Param("merchantId") Long merchantId, @Param("campaignId") Long campaignId);
 
     Long lockMerchantProductForTrial(@Param("merchantId") Long merchantId, @Param("productId") Long productId);
@@ -90,6 +94,8 @@ public interface ShopTrialMapper {
 
     int countUsefulReceivedByUser(Long shopUserId);
 
-    List<ShopHomeFeedItem> selectHomeFeed(@Param("categoryCode") String categoryCode,
-                                          @Param("contentType") String contentType, @Param("trialType") String trialType);
+    List<ShopHomeFeedItem> selectHomeFeed(@Param("productId") Long productId,
+                                          @Param("categoryCode") String categoryCode,
+                                          @Param("contentType") String contentType, @Param("trialType") String trialType,
+                                          @Param("viewerShopUserId") Long viewerShopUserId);
 }

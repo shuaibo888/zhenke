@@ -36,6 +36,15 @@ public class ShopPurchaseReportService
     public ShopVerificationReport publish(ShopPurchaseReportBody body)
     {
         long shopUserId = ShopAccountIdentity.requireShopUserId();
+        if (body.getResources() == null
+                || body.getResources().stream().noneMatch(item -> "IMAGE".equals(item.getResourceType())))
+        {
+            throw new ServiceException("请至少上传一张图片");
+        }
+        if (body.getResources().stream().filter(item -> "VIDEO".equals(item.getResourceType())).count() > 1)
+        {
+            throw new ServiceException("最多上传一个视频");
+        }
         ShopOrderItem orderItem = orderMapper.selectUserReceivedOrderItemForUpdate(
                 shopUserId, body.getOrderItemId());
         if (orderItem == null)
@@ -56,7 +65,7 @@ public class ShopPurchaseReportService
         }
         if (INVALID_SHORTCOMINGS.contains(shortcoming))
         {
-            throw new ServiceException("请客观描述产品不足，不能填写无效内容");
+            throw new ServiceException("请填写具体、客观的优化建议");
         }
 
         ShopVerificationReport report = new ShopVerificationReport();
@@ -68,7 +77,7 @@ public class ShopPurchaseReportService
         report.setTitle(StringUtils.trim(body.getTitle()));
         report.setExperience(experience);
         report.setShortcoming(shortcoming);
-        report.setFitCrowd(StringUtils.trim(body.getFitCrowd()));
+        report.setFitCrowd("");
         report.setRecommend(Boolean.TRUE.equals(body.getRecommend()) ? "0" : "1");
         report.setProductQuality(body.getProductQuality());
         report.setLogisticsService(body.getLogisticsService());

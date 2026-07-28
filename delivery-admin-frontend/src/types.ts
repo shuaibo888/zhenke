@@ -65,8 +65,6 @@ export interface MerchantAccount {
   acceptsVerificationRecruitment?: boolean;
   acceptsPublicWelfare?: boolean;
   registeredAt?: string;
-  productCount: number;
-  orderCount: number;
   auditStatus?: 'pending' | 'approved' | 'rejected';
   auditRemark?: string;
   auditBy?: string;
@@ -127,8 +125,6 @@ export interface ManagedOrder {
     quantity: number;
     unitPrice: number;
   }>;
-  fromReviewId?: number;
-  fromVerifierName?: string;
   address: string;
   returnDays: number;
   refundRequested: boolean;

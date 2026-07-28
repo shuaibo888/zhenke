@@ -5,6 +5,7 @@ import { useShop } from '@/app/ShopContext';
 import { LogisticsModal } from '@/components/LogisticsModal';
 import { ProfileBackButton } from '@/components/ProfileBackButton';
 import { PublishReportModal } from '@/components/PublishReportModal';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import {
   cancelShopOrder,
   confirmShopOrderReceived,
@@ -53,6 +54,7 @@ export default function OrdersPage() {
   const [refundReason, setRefundReason] = useState('');
   const [refundSubmitting, setRefundSubmitting] = useState(false);
   const [reportItem, setReportItem] = useState<PurchaseItem | null>(null);
+  useBodyScrollLock(logisticsOpen || Boolean(refundOrder) || Boolean(reportItem));
 
   useEffect(() => {
     const timer = window.setInterval(() => setClock(Date.now()), 1000);

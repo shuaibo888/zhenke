@@ -1,12 +1,16 @@
 package com.ruoyi.shop.service;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.shop.domain.ShopMerchant;
 import com.ruoyi.shop.domain.ShopOrder;
+import com.ruoyi.shop.domain.ShopOrderItem;
 import com.ruoyi.shop.domain.ShopOrderLogisticsEvent;
 import com.ruoyi.shop.domain.ShopOrderRefund;
 import com.ruoyi.shop.domain.ShopOrderStatusLog;
@@ -31,9 +35,9 @@ public class ShopMerchantOrderService
         this.logisticsService = logisticsService;
     }
 
-    public List<ShopOrder> merchantOrders(long merchantId)
+    public List<ShopOrder> merchantOrders(long merchantId, String status, String keyword)
     {
-        return orderMapper.selectMerchantOrders(merchantId).stream().map(this::hydrate).toList();
+        return hydrateList(orderMapper.selectMerchantOrders(merchantId, status, keyword));
     }
 
     public ShopOrder merchantOrder(long orderId)
@@ -149,6 +153,20 @@ public class ShopMerchantOrderService
         order.setStatusLogs(orderMapper.selectStatusLogs(order.getOrderId()));
         order.setLogisticsEvents(orderMapper.selectLogisticsEvents(order.getOrderId()));
         return order;
+    }
+
+    private List<ShopOrder> hydrateList(List<ShopOrder> orders)
+    {
+        if (orders == null || orders.isEmpty())
+        {
+            return orders;
+        }
+        List<Long> orderIds = orders.stream().map(ShopOrder::getOrderId).toList();
+        Map<Long, List<ShopOrderItem>> itemsByOrder = orderMapper.selectOrderItemsByOrderIds(orderIds)
+                .stream().collect(Collectors.groupingBy(ShopOrderItem::getOrderId));
+        orders.forEach(order -> order.setItems(
+                itemsByOrder.getOrDefault(order.getOrderId(), Collections.emptyList())));
+        return orders;
     }
 
     private void insertLogisticsEvent(long orderId)

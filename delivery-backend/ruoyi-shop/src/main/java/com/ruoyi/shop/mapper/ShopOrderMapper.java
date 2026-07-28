@@ -42,6 +42,7 @@ public interface ShopOrderMapper
     ShopOrder selectOrderForUpdate(Long orderId);
     ShopOrder selectOrderByOrderNoForUpdate(String orderNo);
     List<ShopOrderItem> selectOrderItems(Long orderId);
+    List<ShopOrderItem> selectOrderItemsByOrderIds(@Param("orderIds") List<Long> orderIds);
     ShopOrderItem selectUserReceivedOrderItemForUpdate(@Param("userId") Long userId,
             @Param("orderItemId") Long orderItemId);
     ShopOrderAddress selectOrderAddress(Long orderId);
@@ -54,10 +55,11 @@ public interface ShopOrderMapper
     int updateWechatPaymentSucceeded(@Param("userId") Long userId, @Param("orderId") Long orderId,
             @Param("transactionId") String transactionId, @Param("tradeType") String tradeType,
             @Param("mchId") String mchId, @Param("appId") String appId);
-    List<ShopOrder> selectMerchantOrders(Long merchantId);
+    List<ShopOrder> selectMerchantOrders(@Param("merchantId") Long merchantId,
+            @Param("status") String status, @Param("keyword") String keyword);
     ShopOrder selectMerchantOrder(@Param("merchantId") Long merchantId, @Param("orderId") Long orderId);
     ShopOrder selectMerchantOrderForUpdate(@Param("merchantId") Long merchantId, @Param("orderId") Long orderId);
-    List<ShopOrder> selectAdminOrders();
+    List<ShopOrder> selectAdminOrders(@Param("status") String status, @Param("keyword") String keyword);
     ShopOrder selectAdminOrder(Long orderId);
     int shipOrder(@Param("merchantId") Long merchantId, @Param("orderId") Long orderId,
             @Param("trackingNo") String trackingNo);

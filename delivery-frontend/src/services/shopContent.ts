@@ -50,6 +50,8 @@ export interface HomeFeedItemDto {
     userName: string;
     shortcoming: string;
     recommend: '0' | '1';
+    usefulCount: number;
+    usefulByMe: boolean;
     // 智能评分功能暂时隐藏，恢复时取消注释。
     // aiScore?: number;
     // aiScoreStatus: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
@@ -76,7 +78,6 @@ export interface VerificationReportDto {
   nickName?: string;
   experience: string;
   shortcoming: string;
-  fitCrowd: string;
   recommend: '0' | '1';
   productQuality?: number;
   logisticsService?: number;
@@ -235,15 +236,33 @@ export interface LogisticsTraceDto {
   }>;
 }
 
-export async function fetchHomeFeed(
-  categoryCode?: string,
-  contentType: 'ALL' | 'TRIAL' | 'REPORT' = 'ALL',
-  trialType: 'ALL' | 'ONLINE' | 'OFFLINE' = 'ALL',
-) {
-  const params = new URLSearchParams({ pageNum: '1', pageSize: '100', contentType });
-  if (categoryCode) params.set('categoryCode', categoryCode);
+export interface HomeFeedQuery {
+  productId?: number;
+  categoryCode?: string;
+  contentType?: 'ALL' | 'TRIAL' | 'REPORT';
+  trialType?: 'ALL' | 'ONLINE' | 'OFFLINE';
+  pageNum?: number;
+  pageSize?: number;
+}
+
+export async function fetchHomeFeed(query: HomeFeedQuery = {}) {
+  const pageNum = Math.max(1, Math.trunc(query.pageNum ?? 1));
+  const pageSize = Math.max(1, Math.min(24, Math.trunc(query.pageSize ?? 12)));
+  const contentType = query.contentType ?? 'ALL';
+  const trialType = query.trialType ?? 'ALL';
+  const params = new URLSearchParams({
+    pageNum: String(pageNum),
+    pageSize: String(pageSize),
+    contentType,
+  });
+  if (query.productId) params.set('productId', String(query.productId));
+  if (query.categoryCode) params.set('categoryCode', query.categoryCode);
   if (trialType !== 'ALL') params.set('trialType', trialType);
-  const result = await requestApi<TableResponse<HomeFeedItemDto>>(`/shop/home/feed?${params.toString()}`);
+  const result = await requestApi<TableResponse<HomeFeedItemDto>>(
+    `/shop/home/feed?${params.toString()}`,
+    {},
+    Boolean(getToken()),
+  );
   return {
     ...result,
     rows: Array.isArray(result.rows) ? result.rows : [],
@@ -450,9 +469,8 @@ export async function publishVerificationReport(body: {
   title: string;
   experience: string;
   shortcoming: string;
-  fitCrowd: string;
   recommend: boolean;
-  resources?: Array<{ resourceType: 'IMAGE' | 'VIDEO'; resourceUrl: string }>;
+  resources: Array<{ resourceType: 'IMAGE' | 'VIDEO'; resourceUrl: string }>;
 }) {
   const result = await requestApi<ApiResponse<VerificationReportDto>>(
     '/shop/reports',
@@ -478,12 +496,11 @@ export async function publishPurchaseVerificationReport(body: {
   title: string;
   experience: string;
   shortcoming: string;
-  fitCrowd: string;
   recommend: boolean;
   productQuality: number;
   logisticsService: number;
   serviceAttitude: number;
-  resources?: Array<{ resourceType: 'IMAGE'; resourceUrl: string }>;
+  resources: Array<{ resourceType: 'IMAGE' | 'VIDEO'; resourceUrl: string }>;
 }) {
   const result = await requestApi<ApiResponse<VerificationReportDto>>(
     '/shop/reports/purchase',
@@ -520,18 +537,13 @@ export async function fetchTrialApplicationLogistics(applicationId: number) {
 }
 
 export async function uploadShopContentFile(file: File) {
-  const token = getToken();
-  if (!token) throw new Error('请先登录后再上传文件');
   const body = new FormData();
   body.append('file', file);
-  const response = await fetch('/api/common/upload', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body,
-  });
-  const payload = (await response.json().catch(() => null)) as (ApiResponse & { url?: string }) | null;
-  if (!response.ok || !payload || payload.code !== 200 || !payload.url) {
-    throw new Error(payload?.msg || '文件上传失败');
-  }
-  return payload.url;
+  const result = await requestApi<ApiResponse<string>>(
+    '/shop/reports/resources',
+    { method: 'POST', body },
+    true,
+  );
+  if (!result.data) throw new Error('甄客验资源上传失败');
+  return result.data;
 }

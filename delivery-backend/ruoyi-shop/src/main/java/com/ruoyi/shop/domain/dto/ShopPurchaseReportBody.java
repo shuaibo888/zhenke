@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -13,18 +14,15 @@ public class ShopPurchaseReportBody
     @NotNull(message = "请选择要评价的订单商品")
     private Long orderItemId;
     @NotBlank(message = "请输入甄客验标题")
-    @Size(max = 100, message = "甄客验标题不能超过100个字符")
+    @Size(max = 20, message = "甄客验标题不能超过20个字符")
     private String title;
     @NotBlank(message = "请输入真实体验")
-    @Size(min = 20, max = 10000, message = "真实体验长度必须在20到10000个字符之间")
+    @Size(min = 20, max = 500, message = "真实体验长度必须在20到500个字符之间")
     private String experience;
-    @NotBlank(message = "请如实填写产品不足")
-    @Size(max = 2000, message = "产品不足不能超过2000个字符")
+    @NotBlank(message = "请填写优化建议")
+    @Size(max = 500, message = "优化建议不能超过500个字符")
     private String shortcoming;
-    @NotBlank(message = "请输入适合人群")
-    @Size(max = 1000, message = "适合人群不能超过1000个字符")
-    private String fitCrowd;
-    @NotNull(message = "请选择是否推荐")
+    @NotNull(message = "请选择是否在首页推荐")
     private Boolean recommend;
     @NotNull @Min(1) @Max(5)
     private Integer productQuality;
@@ -33,7 +31,8 @@ public class ShopPurchaseReportBody
     @NotNull @Min(1) @Max(5)
     private Integer serviceAttitude;
     @Valid
-    @Size(max = 9, message = "评价图片最多9张")
+    @NotEmpty(message = "请至少上传一张图片")
+    @Size(max = 9, message = "报告图片或视频最多9个")
     private List<ShopVerificationResourceBody> resources;
 
     public Long getOrderItemId() { return orderItemId; }
@@ -44,8 +43,6 @@ public class ShopPurchaseReportBody
     public void setExperience(String experience) { this.experience = experience; }
     public String getShortcoming() { return shortcoming; }
     public void setShortcoming(String shortcoming) { this.shortcoming = shortcoming; }
-    public String getFitCrowd() { return fitCrowd; }
-    public void setFitCrowd(String fitCrowd) { this.fitCrowd = fitCrowd; }
     public Boolean getRecommend() { return recommend; }
     public void setRecommend(Boolean recommend) { this.recommend = recommend; }
     public Integer getProductQuality() { return productQuality; }

@@ -22,6 +22,7 @@ public class ShopProduct extends BaseEntity
     private Integer salesCount;
     private String status;
     private String delFlag;
+    private Boolean trialOnly;
     private List<ShopProductImage> images;
 
     public Long getProductId() { return productId; }
@@ -54,6 +55,8 @@ public class ShopProduct extends BaseEntity
     public void setStatus(String status) { this.status = status; }
     public String getDelFlag() { return delFlag; }
     public void setDelFlag(String delFlag) { this.delFlag = delFlag; }
+    public Boolean getTrialOnly() { return trialOnly; }
+    public void setTrialOnly(Boolean trialOnly) { this.trialOnly = trialOnly; }
     public List<ShopProductImage> getImages() { return images; }
     public void setImages(List<ShopProductImage> images) { this.images = images; }
 }

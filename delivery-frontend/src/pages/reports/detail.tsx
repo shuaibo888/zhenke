@@ -11,6 +11,7 @@ import { Button, Drawer, Input, Modal, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import {
   createReportComment,
   deleteReportComment,
@@ -87,8 +88,11 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [usefulLoading, setUsefulLoading] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [activeResourceIndex, setActiveResourceIndex] = useState(0);
+  useBodyScrollLock(shareOpen);
 
   useEffect(() => {
+    setActiveResourceIndex(0);
     if (!Number.isSafeInteger(reportId) || reportId <= 0) {
       setLoading(false);
       return;
@@ -222,7 +226,11 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
 
   const type = getReportType(report);
   const authorName = report.nickName || report.userName;
-  const images = report.resources?.filter((item) => item.resourceType === 'IMAGE').map((item) => item.resourceUrl) ?? [];
+  const reportResources = report.resources ?? [];
+  const activeResource = reportResources.length
+    ? reportResources[Math.min(activeResourceIndex, reportResources.length - 1)]
+    : undefined;
+  const sharePreviewImage = report.resources?.find((item) => item.resourceType === 'IMAGE')?.resourceUrl;
 
   return (
     <>
@@ -243,13 +251,38 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
         <section className={styles.reportDetail}>
           <div className={styles.reportDetailGallery}>
             <div className={styles.reportDetailImage}>
-              <img src={images[0] || report.productCoverUrl} alt={`${authorName}的实拍`} />
-              <span className={styles.reportDetailPhotoBadge}>甄客实拍</span>
+              {activeResource
+                ? (
+                  <>
+                    {activeResource.resourceType === 'VIDEO'
+                      ? <video key={activeResource.resourceUrl} src={activeResource.resourceUrl} controls playsInline preload="metadata" />
+                      : <img src={activeResource.resourceUrl} alt={`${authorName}的实拍`} />}
+                    <span className={styles.reportDetailPhotoBadge}>
+                      {activeResource.resourceType === 'VIDEO' ? '甄客视频 · 可播放' : '甄客实拍'}
+                    </span>
+                  </>
+                )
+                : <div className={styles.reportDetailMediaMissing}>体验图片缺失</div>}
             </div>
-            {images.length > 1 && (
+            {reportResources.length > 1 && (
               <div className={styles.reportDetailThumbs}>
-                {images.map((image, index) => (
-                  <img key={image} src={image} alt={`实拍${index + 1}`} className={index === 0 ? styles.reportDetailThumbActive : ''} />
+                {reportResources.map((resource, index) => (
+                  <button
+                    type="button"
+                    key={`${resource.resourceId}-${resource.resourceUrl}`}
+                    aria-label={`查看第 ${index + 1} 个体验资源`}
+                    className={index === activeResourceIndex ? styles.reportDetailThumbActive : ''}
+                    onClick={() => setActiveResourceIndex(index)}
+                  >
+                    {resource.resourceType === 'VIDEO'
+                      ? (
+                        <>
+                          <video src={resource.resourceUrl} muted preload="metadata" />
+                          <span className={styles.reportDetailVideoThumbLabel}>视频</span>
+                        </>
+                      )
+                      : <img src={resource.resourceUrl} alt={`实拍${index + 1}`} />}
+                  </button>
                 ))}
               </div>
             )}
@@ -272,8 +305,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
             )}
             <h2 className={styles.reportDetailSubhead}>真实体验</h2>
             <p className={styles.reportDetailText}>{report.experience}</p>
-            <div className={styles.shortcoming}>不足：{report.shortcoming}</div>
-            <p className={styles.reportDetailFit}>适合人群：{report.fitCrowd}</p>
+            <div className={styles.shortcoming}>优化建议：{report.shortcoming}</div>
           </div>
         </section>
 
@@ -374,7 +406,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
       >
         <div className={styles.shareSheet}>
           <div className={styles.sharePreview}>
-            <img src={images[0] || report.productCoverUrl} alt={`${authorName}的甄客验`} />
+            {sharePreviewImage && <img src={sharePreviewImage} alt={`${authorName}的甄客验`} />}
             <div className={styles.sharePreviewText}>
               <strong>{authorName} 的甄客验：{report.productName}</strong>
               <p>{report.experience.slice(0, 40)}</p>

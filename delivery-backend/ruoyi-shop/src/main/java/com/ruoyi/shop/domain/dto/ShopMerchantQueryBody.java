@@ -1,17 +1,14 @@
 package com.ruoyi.shop.domain.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 
 public class ShopMerchantQueryBody
 {
-    @NotBlank(message = "缺少申请编号")
-    private String applicationNo;
+    @NotBlank(message = "请输入申请手机号")
+    @Pattern(regexp = "^1\\d{10}$", message = "请输入11位手机号")
+    private String contactPhone;
 
-    @NotBlank(message = "缺少申请查询凭证")
-    private String queryToken;
-
-    public String getApplicationNo() { return applicationNo; }
-    public void setApplicationNo(String applicationNo) { this.applicationNo = applicationNo; }
-    public String getQueryToken() { return queryToken; }
-    public void setQueryToken(String queryToken) { this.queryToken = queryToken; }
+    public String getContactPhone() { return contactPhone; }
+    public void setContactPhone(String contactPhone) { this.contactPhone = contactPhone; }
 }

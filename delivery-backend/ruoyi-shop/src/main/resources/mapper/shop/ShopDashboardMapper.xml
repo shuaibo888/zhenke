@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.shop.mapper.ShopDashboardMapper">
+    <resultMap id="ShopDashboardSummaryResult" type="ShopDashboardSummary">
+        <result property="productTotal" column="product_total" />
+        <result property="onSaleCount" column="on_sale_count" />
+        <result property="orderTotal" column="order_total" />
+        <result property="todayOrders" column="today_orders" />
+        <result property="salesAmount" column="sales_amount" />
+        <result property="userTotal" column="user_total" />
+        <result property="reportTotal" column="report_total" />
+    </resultMap>
+
+    <resultMap id="ShopDashboardCountResult" type="ShopDashboardCount">
+        <result property="code" column="code" />
+        <result property="count" column="count_value" />
+    </resultMap>
+
+    <resultMap id="ShopDashboardDailyCountResult" type="ShopDashboardDailyCount">
+        <result property="date" column="date_value" />
+        <result property="count" column="count_value" />
+    </resultMap>
+
+    <select id="selectSummary" resultMap="ShopDashboardSummaryResult">
+        select
+          (select count(1) from shop_product p
+           where p.del_flag = '0'
+           <if test="merchantId != null">and p.merchant_id = #{merchantId}</if>) as product_total,
+          (select count(1) from shop_product p
+           where p.del_flag = '0' and p.status = 'ON_SALE'
+           <if test="merchantId != null">and p.merchant_id = #{merchantId}</if>) as on_sale_count,
+          (select count(1) from shop_order o
+           where o.del_flag = '0'
+           <if test="merchantId != null">and o.merchant_id = #{merchantId}</if>) as order_total,
+          (select count(1) from shop_order o
+           where o.del_flag = '0' and o.create_time &gt;= curdate()
+             and o.create_time &lt; date_add(curdate(), interval 1 day)
+           <if test="merchantId != null">and o.merchant_id = #{merchantId}</if>) as today_orders,
+          (select coalesce(sum(o.total_amount), 0) from shop_order o
+           where o.del_flag = '0' and o.status in ('PAID', 'SHIPPED', 'RECEIVED')
+           <if test="merchantId != null">and o.merchant_id = #{merchantId}</if>) as sales_amount,
+          <choose>
+            <when test="merchantId != null">
+              (select count(distinct o.user_id) from shop_order o
+               where o.del_flag = '0' and o.merchant_id = #{merchantId})
+            </when>
+            <otherwise>
+              (select count(1) from shop_user u where u.del_flag = '0')
+            </otherwise>
+          </choose> as user_total,
+          <choose>
+            <when test="merchantId != null">
+              (select count(1) from shop_verification_report r
+               inner join shop_product p on p.product_id = r.product_id
+               where r.status = 'PUBLISHED' and p.merchant_id = #{merchantId} and p.del_flag = '0')
+            </when>
+            <otherwise>0</otherwise>
+          </choose> as report_total
+    </select>
+
+    <select id="selectOrderStatusCounts" resultMap="ShopDashboardCountResult">
+        select o.status as code, count(1) as count_value
+        from shop_order o
+        where o.del_flag = '0'
+        <if test="merchantId != null">and o.merchant_id = #{merchantId}</if>
+        group by o.status
+    </select>
+
+    <select id="selectProductStatusCounts" resultMap="ShopDashboardCountResult">
+        select p.status as code, count(1) as count_value
+        from shop_product p
+        where p.del_flag = '0'
+        <if test="merchantId != null">and p.merchant_id = #{merchantId}</if>
+        group by p.status
+    </select>
+
+    <select id="selectOrderDailyCounts" resultMap="ShopDashboardDailyCountResult">
+        select date_format(o.create_time, '%Y-%m-%d') as date_value, count(1) as count_value
+        from shop_order o
+        where o.del_flag = '0' and o.create_time &gt;= date_sub(curdate(), interval 6 day)
+          and o.create_time &lt; date_add(curdate(), interval 1 day)
+        <if test="merchantId != null">and o.merchant_id = #{merchantId}</if>
+        group by date_format(o.create_time, '%Y-%m-%d')
+        order by date_value
+    </select>
+</mapper>

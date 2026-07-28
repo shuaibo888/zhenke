@@ -44,7 +44,6 @@ import com.ruoyi.system.service.ISysConfigService;
 public class ShopAccountService
 {
     private static final long MAX_AVATAR_SIZE = 5 * 1024 * 1024L;
-    private static final int MAX_AVATAR_DIMENSION = 4096;
     private static final String[] AVATAR_EXTENSIONS = { "gif", "jpg", "jpeg", "png" };
     private static final Set<String> AVATAR_CONTENT_TYPES = Set.of(
             MimeTypeUtils.IMAGE_GIF, MimeTypeUtils.IMAGE_JPG, MimeTypeUtils.IMAGE_JPEG, MimeTypeUtils.IMAGE_PNG);
@@ -248,10 +247,6 @@ public class ShopAccountService
             if (image == null)
             {
                 throw new ServiceException("头像文件不是有效图片");
-            }
-            if (image.getWidth() > MAX_AVATAR_DIMENSION || image.getHeight() > MAX_AVATAR_DIMENSION)
-            {
-                throw new ServiceException("头像图片的宽高不能超过 4096 像素");
             }
         }
         catch (IOException exception)

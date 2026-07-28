@@ -117,6 +117,8 @@
             <result property="userName" column="report_user_name" />
             <result property="shortcoming" column="report_shortcoming" />
             <result property="recommend" column="report_recommend" />
+            <result property="usefulCount" column="report_useful_count" />
+            <result property="usefulByMe" column="report_useful_by_me" />
             <result property="aiScore" column="report_ai_score" />
             <result property="aiScoreStatus" column="report_ai_score_status" />
         </association>
@@ -168,7 +170,7 @@
     <select id="selectPublicCampaign" parameterType="Long" resultMap="ShopTrialCampaignResult">
         <include refid="selectCampaign" />
         where c.campaign_id = #{campaignId} and c.status = 'RECRUITING'
-          and c.application_deadline &gt; sysdate()
+          and c.application_deadline &gt;= curdate()
           and m.audit_status = 'APPROVED' and m.status = '0'
           and p.status = 'ON_SALE' and pc.status = '0'
     </select>
@@ -177,7 +179,7 @@
         select count(1)
         from shop_trial_campaign c
         where c.product_id = #{productId} and c.trial_type = #{trialType}
-          and c.status = 'RECRUITING' and c.application_deadline &gt; sysdate()
+          and c.status = 'RECRUITING' and c.application_deadline &gt;= curdate()
           and (select count(1) from shop_trial_application a
                where a.campaign_id = c.campaign_id
                  and a.status in ('APPROVED', 'SHIPPED', 'RECEIVED', 'COMPLETED')) &lt; c.target_count
@@ -200,6 +202,35 @@
             published_at = case when #{toStatus} = 'RECRUITING' then sysdate() else published_at end,
             update_by = #{updateBy}, update_time = sysdate()
         where campaign_id = #{campaignId} and merchant_id = #{merchantId} and status = #{fromStatus}
+    </update>
+
+    <update id="expirePendingApplicationsForEndedCampaigns">
+        update shop_trial_application a
+        inner join shop_trial_campaign c on c.campaign_id = a.campaign_id
+        left join (
+            select campaign_id, count(1) as approved_count
+            from shop_trial_application
+            where status in ('APPROVED', 'SHIPPED', 'RECEIVED', 'COMPLETED')
+            group by campaign_id
+        ) capacity on capacity.campaign_id = c.campaign_id
+        set a.status = 'EXPIRED', a.update_time = sysdate()
+        where a.status = 'APPLIED' and c.status = 'RECRUITING'
+          and (c.application_deadline &lt; curdate()
+               or coalesce(capacity.approved_count, 0) &gt;= c.target_count)
+    </update>
+
+    <update id="closeEndedCampaigns">
+        update shop_trial_campaign c
+        left join (
+            select campaign_id, count(1) as approved_count
+            from shop_trial_application
+            where status in ('APPROVED', 'SHIPPED', 'RECEIVED', 'COMPLETED')
+            group by campaign_id
+        ) capacity on capacity.campaign_id = c.campaign_id
+        set c.status = 'CLOSED', c.update_by = 'system', c.update_time = sysdate()
+        where c.status = 'RECRUITING'
+          and (c.application_deadline &lt; curdate()
+               or coalesce(capacity.approved_count, 0) &gt;= c.target_count)
     </update>
 
     <select id="lockProductForCampaign" resultType="Long">
@@ -422,6 +453,7 @@
 
     <select id="selectHomeFeed" resultMap="ShopHomeFeedResult">
         select feed.* from (
+          <if test="contentType == 'ALL' or contentType == 'TRIAL'">
           select 'TRIAL' as content_type, c.campaign_id as content_id,
                  p.product_id, p.merchant_id, m.company_name as merchant_name,
                  pc.category_code, pc.category_name, c.campaign_title as title,
@@ -434,29 +466,48 @@
                   c.application_deadline,
                   null as report_user_id, null as report_user_name,
                   null as report_shortcoming, null as report_recommend,
+                  null as report_useful_count, null as report_useful_by_me,
                   null as report_ai_score, null as report_ai_score_status
           from shop_trial_campaign c
           inner join shop_product p on p.product_id = c.product_id and p.del_flag = '0'
           inner join shop_merchant m on m.merchant_id = p.merchant_id and m.del_flag = '0'
           inner join shop_product_category pc on pc.category_id = p.category_id
-          where c.status = 'RECRUITING' and c.application_deadline &gt; sysdate()
+          where c.status = 'RECRUITING' and c.application_deadline &gt;= curdate()
             and (select count(1) from shop_trial_application active_application
                  where active_application.campaign_id = c.campaign_id
                    and active_application.status in ('APPROVED', 'SHIPPED', 'RECEIVED', 'COMPLETED')) &lt; c.target_count
             and m.audit_status = 'APPROVED' and m.status = '0'
             and p.status = 'ON_SALE' and pc.status = '0'
-          union all
+            <if test="productId != null">and p.product_id = #{productId}</if>
+            <if test="categoryCode != null and categoryCode != ''">and pc.category_code = #{categoryCode}</if>
+            <if test="trialType != null and trialType != '' and trialType != 'ALL'">
+              and c.trial_type = #{trialType}
+            </if>
+          </if>
+          <if test="contentType == 'ALL'">union all</if>
+          <if test="contentType == 'ALL' or contentType == 'REPORT'">
           select 'REPORT' as content_type, r.report_id as content_id,
                  p.product_id, p.merchant_id, m.company_name as merchant_name,
                  pc.category_code, pc.category_name,
                  coalesce(nullif(r.report_title, ''), p.product_name) as title,
                  substring(r.experience, 1, 180) as summary,
                  coalesce((select rr.resource_url from shop_verification_report_resource rr
-                           where rr.report_id = r.report_id order by rr.resource_sort, rr.resource_id limit 1), p.cover_url) as cover_url,
+                           where rr.report_id = r.report_id and rr.resource_type = 'IMAGE'
+                           order by rr.resource_sort, rr.resource_id limit 1), p.cover_url) as cover_url,
                  r.published_at, (p.stock &gt; 0) as purchasable,
                   null as target_count, null as trial_type, null as approved_count, null as application_deadline,
                   r.shop_user_id as report_user_id, coalesce(u.nick_name, u.user_name) as report_user_name,
                   r.shortcoming as report_shortcoming, r.recommend as report_recommend,
+                  (select count(1) from shop_verification_report_useful useful
+                   where useful.report_id = r.report_id) as report_useful_count,
+                  <choose>
+                    <when test="viewerShopUserId != null">
+                      exists(select 1 from shop_verification_report_useful useful_by_me
+                             where useful_by_me.report_id = r.report_id
+                               and useful_by_me.shop_user_id = #{viewerShopUserId})
+                    </when>
+                    <otherwise>0</otherwise>
+                  </choose> as report_useful_by_me,
                   r.ai_score as report_ai_score, r.ai_score_status as report_ai_score_status
           from shop_verification_report r
           inner join shop_product p on p.product_id = r.product_id and p.del_flag = '0'
@@ -466,16 +517,11 @@
           where r.status = 'PUBLISHED'
             and m.audit_status = 'APPROVED' and m.status = '0'
             and p.status = 'ON_SALE' and pc.status = '0'
+            <if test="productId == null">and r.recommend = '0'</if>
+            <if test="productId != null">and p.product_id = #{productId}</if>
+            <if test="categoryCode != null and categoryCode != ''">and pc.category_code = #{categoryCode}</if>
+          </if>
         ) feed
-        <where>
-          <if test="categoryCode != null and categoryCode != ''">feed.category_code = #{categoryCode}</if>
-          <if test="contentType != null and contentType != '' and contentType != 'ALL'">
-            and feed.content_type = #{contentType}
-          </if>
-          <if test="trialType != null and trialType != '' and trialType != 'ALL'">
-            and feed.content_type = 'TRIAL' and feed.trial_type = #{trialType}
-          </if>
-        </where>
         order by feed.published_at desc, feed.content_id desc
     </select>
 </mapper>

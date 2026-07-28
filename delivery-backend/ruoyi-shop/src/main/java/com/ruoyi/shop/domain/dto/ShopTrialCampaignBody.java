@@ -3,7 +3,6 @@ package com.ruoyi.shop.domain.dto;
 import java.util.Date;
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonFormat;
-import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -29,8 +28,7 @@ public class ShopTrialCampaignBody
     @Min(value = 1, message = "试用人数至少为1人")
     @Max(value = 10000, message = "试用人数不能超过10000人")
     private Integer targetCount;
-    @NotNull(message = "请选择申请截止时间")
-    @Future(message = "申请截止时间必须晚于当前时间")
+    @NotNull(message = "请选择申请截止日期")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date applicationDeadline;
 

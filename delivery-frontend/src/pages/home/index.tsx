@@ -1,16 +1,14 @@
-import { Spin, message } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { Button, Spin, message } from 'antd';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
-import { ReportCard } from '@/components/ReportCard';
+import { HomeFeedReportCard } from '@/components/HomeFeedReportCard';
 import {
   fetchHomeFeed,
   fetchProductCategories,
-  fetchPublishedReport,
   toggleReportUseful,
   type HomeFeedItemDto,
   type ProductCategoryDto,
-  type VerificationReportDto,
 } from '@/services/shopContent';
 import ReportDetailPage from '@/pages/reports/detail';
 import ProductDetailPage from '@/pages/products/detail';
@@ -18,53 +16,124 @@ import OrdersPage from '@/pages/profile/orders';
 import styles from '@/styles/commerce.less';
 
 type CategoryFilter = ProductCategoryDto['categoryCode'] | null;
+const HOME_PAGE_SIZE = 12;
 
 export default function HomePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, reports: myReports, replaceReport } = useShop();
+  const { user } = useShop();
   const [category, setCategory] = useState<CategoryFilter>(null);
   const [categories, setCategories] = useState<ProductCategoryDto[]>([]);
   const [feed, setFeed] = useState<HomeFeedItemDto[]>([]);
-  const [reports, setReports] = useState<VerificationReportDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadedPage, setLoadedPage] = useState(0);
+  const [total, setTotal] = useState(0);
+  const loadMoreTrigger = useRef<HTMLDivElement | null>(null);
+  const loadingMoreRef = useRef(false);
+  const requestVersion = useRef(0);
   const reportQuery = Number(searchParams.get('report'));
   const productQuery = Number(searchParams.get('product'));
   const paymentOrderId = Number(searchParams.get('wechatPayOrderId'));
   const isPaymentReturn = Number.isSafeInteger(paymentOrderId) && paymentOrderId > 0
     && ((searchParams.has('code') && searchParams.has('state'))
       || searchParams.get('wechatPayReturn') === '1');
+  const showingDirectContent = isPaymentReturn
+    || (Number.isSafeInteger(reportQuery) && reportQuery > 0)
+    || (Number.isSafeInteger(productQuery) && productQuery > 0);
 
   useEffect(() => {
-    if (isPaymentReturn) return;
+    if (showingDirectContent) return;
     let mounted = true;
-    setLoading(true);
-    const categoryCode = category ?? undefined;
-    Promise.all([fetchHomeFeed(categoryCode, 'ALL', 'ALL'), fetchProductCategories()])
-      .then(async ([feedResult, categoryRows]) => {
-        const rows = Array.isArray(feedResult.rows) ? feedResult.rows : [];
-        const reportIds = rows.filter((item) => item.contentType === 'REPORT').map((item) => item.contentId);
-        const reportRows = await Promise.all(reportIds.map(fetchPublishedReport));
-        if (!mounted) return;
-        setFeed(rows);
-        setCategories(categoryRows);
-        setReports(reportRows);
+    fetchProductCategories()
+      .then((rows) => {
+        if (mounted) setCategories(rows);
       })
       .catch((error) => {
-        if (mounted) message.error(error instanceof Error ? error.message : '首页内容加载失败');
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
+        if (mounted) message.error(error instanceof Error ? error.message : '商品分类加载失败');
       });
     return () => {
       mounted = false;
     };
-  }, [category, isPaymentReturn]);
+  }, [showingDirectContent]);
 
-  const reportById = useMemo(
-    () => new Map(reports.map((report) => [report.reportId, report])),
-    [reports],
-  );
+  useEffect(() => {
+    if (showingDirectContent) return;
+    const version = ++requestVersion.current;
+    setLoading(true);
+    loadingMoreRef.current = false;
+    setLoadingMore(false);
+    setFeed([]);
+    setLoadedPage(0);
+    setTotal(0);
+    fetchHomeFeed({
+      categoryCode: category ?? undefined,
+      contentType: 'ALL',
+      trialType: 'ALL',
+      pageNum: 1,
+      pageSize: HOME_PAGE_SIZE,
+    })
+      .then((result) => {
+        if (requestVersion.current !== version) return;
+        setFeed(Array.isArray(result.rows) ? result.rows : []);
+        setTotal(result.total);
+        setLoadedPage(1);
+      })
+      .catch((error) => {
+        if (requestVersion.current === version) {
+          message.error(error instanceof Error ? error.message : '首页内容加载失败');
+        }
+      })
+      .finally(() => {
+        if (requestVersion.current === version) setLoading(false);
+      });
+  }, [category, showingDirectContent]);
+
+  const loadMore = useCallback(async () => {
+    if (showingDirectContent || loading || loadingMoreRef.current || loadedPage < 1 || feed.length >= total) return;
+    const version = requestVersion.current;
+    const nextPage = loadedPage + 1;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    try {
+      const result = await fetchHomeFeed({
+        categoryCode: category ?? undefined,
+        contentType: 'ALL',
+        trialType: 'ALL',
+        pageNum: nextPage,
+        pageSize: HOME_PAGE_SIZE,
+      });
+      if (requestVersion.current !== version) return;
+      setFeed((current) => {
+        const existing = new Set(current.map((item) => `${item.contentType}-${item.contentId}`));
+        return [...current, ...result.rows.filter((item) => !existing.has(`${item.contentType}-${item.contentId}`))];
+      });
+      setTotal(result.total);
+      setLoadedPage(nextPage);
+    } catch (error) {
+      if (requestVersion.current === version) {
+        message.error(error instanceof Error ? error.message : '更多内容加载失败');
+      }
+    } finally {
+      if (requestVersion.current === version) {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      }
+    }
+  }, [category, feed.length, loadedPage, loading, showingDirectContent, total]);
+
+  useEffect(() => {
+    const target = loadMoreTrigger.current;
+    if (!target || feed.length >= total || loading || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) void loadMore();
+      },
+      { rootMargin: '240px 0px' },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [feed.length, loadMore, loading, total]);
 
   if (isPaymentReturn) {
     return <OrdersPage />;
@@ -76,21 +145,24 @@ export default function HomePage() {
     return <ProductDetailPage productId={productQuery} />;
   }
 
-  const useful = async (report: VerificationReportDto) => {
+  const useful = async (item: HomeFeedItemDto) => {
+    if (!item.report) return;
     if (!user) {
       message.info('请先登录');
       navigate('/auth');
       return;
     }
-    if (report.shopUserId === user.id) {
+    if (item.report.shopUserId === user.id) {
       message.warning('不能给自己的甄客验点有用');
       return;
     }
     try {
-      const result = await toggleReportUseful(report.reportId);
-      const updated = { ...report, ...result };
-      setReports((items) => items.map((item) => item.reportId === report.reportId ? updated : item));
-      if (myReports.some((item) => item.reportId === report.reportId)) replaceReport(updated);
+      const result = await toggleReportUseful(item.contentId);
+      setFeed((items) => items.map((current) => (
+        current.contentType === 'REPORT' && current.contentId === item.contentId && current.report
+          ? { ...current, report: { ...current.report, ...result } }
+          : current
+      )));
     } catch (error) {
       message.error(error instanceof Error ? error.message : '操作失败');
     }
@@ -115,14 +187,13 @@ export default function HomePage() {
       <div className={styles.reportGrid}>
         {feed.map((item) => {
           if (item.contentType === 'REPORT') {
-            const report = reportById.get(item.contentId);
-            if (!report) return null;
+            if (!item.report) return null;
             return (
-              <ReportCard
-                key={`report-${report.reportId}`}
-                report={report}
-                onOpen={() => navigate(`/reports/${report.reportId}`)}
-                onUseful={() => void useful(report)}
+              <HomeFeedReportCard
+                key={`report-${item.contentId}`}
+                item={item}
+                onOpen={() => navigate(`/reports/${item.contentId}`)}
+                onUseful={() => void useful(item)}
               />
             );
           }
@@ -138,7 +209,7 @@ export default function HomePage() {
               onClick={() => navigate(`/products/${item.productId}?campaign=${item.contentId}`)}
             >
               <div className={styles.reportGridImage}>
-                <img src={item.coverUrl} alt={item.title} />
+                <img loading="lazy" decoding="async" src={item.coverUrl} alt={item.title} />
               </div>
               <div className={styles.reportGridContent}>
                 <div className={styles.recruitBadge}>{item.trial.trialType === 'ONLINE' ? '线上试用' : '线下试用'}</div>
@@ -165,6 +236,13 @@ export default function HomePage() {
         })}
       </div>
       {!loading && feed.length === 0 && <p className={styles.empty}>当前分类还没有正在招募的试用或已发布的甄客验。</p>}
+      {!loading && feed.length < total && (
+        <div ref={loadMoreTrigger} className={styles.homeLoadMore}>
+          <Button loading={loadingMore} onClick={() => void loadMore()}>
+            {loadingMore ? '正在加载' : '加载更多'}
+          </Button>
+        </div>
+      )}
     </main>
   );
 }

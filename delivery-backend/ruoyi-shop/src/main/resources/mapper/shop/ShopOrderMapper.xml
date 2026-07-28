@@ -353,6 +353,20 @@
         order by oi.order_item_id
     </select>
 
+    <select id="selectOrderItemsByOrderIds" resultMap="ShopOrderItemResult">
+        select oi.order_item_id, oi.order_id, oi.product_id, oi.source_report_id,
+               published.report_id as verification_report_id, oi.product_name, oi.cover_url,
+               oi.unit_price, oi.quantity, oi.line_amount, oi.create_time
+        from shop_order_item oi
+        left join shop_verification_report published
+          on published.order_item_id = oi.order_item_id and published.status = 'PUBLISHED'
+        where oi.order_id in
+        <foreach collection="orderIds" item="orderId" open="(" separator="," close=")">
+            #{orderId}
+        </foreach>
+        order by oi.order_id, oi.order_item_id
+    </select>
+
     <select id="selectOrderForUpdate" parameterType="Long" resultMap="ShopOrderResult">
         <include refid="selectOrderForUpdateColumns" />
         where o.order_id = #{orderId} and o.del_flag = '0'
@@ -430,9 +444,15 @@
           and payment_channel = 'WECHAT' and payment_mch_id = #{mchId} and payment_app_id = #{appId}
     </update>
 
-    <select id="selectMerchantOrders" parameterType="Long" resultMap="ShopOrderResult">
+    <select id="selectMerchantOrders" resultMap="ShopOrderResult">
         <include refid="selectOrderColumns" />
         where o.merchant_id = #{merchantId} and o.del_flag = '0'
+        <if test="status != null and status != ''">and o.status = #{status}</if>
+        <if test="keyword != null and keyword != ''">
+            and (o.order_no like concat('%', #{keyword}, '%')
+                 or u.user_name like concat('%', #{keyword}, '%')
+                 or u.nick_name like concat('%', #{keyword}, '%'))
+        </if>
         order by o.order_id desc
     </select>
 
@@ -451,6 +471,13 @@
     <select id="selectAdminOrders" resultMap="ShopOrderResult">
         <include refid="selectOrderColumns" />
         where o.del_flag = '0'
+        <if test="status != null and status != ''">and o.status = #{status}</if>
+        <if test="keyword != null and keyword != ''">
+            and (o.order_no like concat('%', #{keyword}, '%')
+                 or u.user_name like concat('%', #{keyword}, '%')
+                 or u.nick_name like concat('%', #{keyword}, '%')
+                 or m.company_name like concat('%', #{keyword}, '%'))
+        </if>
         order by o.order_id desc
     </select>
 

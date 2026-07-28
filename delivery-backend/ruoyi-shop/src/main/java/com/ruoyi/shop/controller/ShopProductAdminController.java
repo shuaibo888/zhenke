@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
+import com.github.pagehelper.PageHelper;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
@@ -31,9 +33,11 @@ public class ShopProductAdminController extends BaseController
 
     @PreAuthorize("@ss.hasPermi('shop:product:list')")
     @GetMapping
-    public TableDataInfo list(ShopProduct query)
+    public TableDataInfo list(ShopProduct query,
+                              @RequestParam(defaultValue = "1") int pageNum,
+                              @RequestParam(defaultValue = "10") int pageSize)
     {
-        startPage();
+        PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(pageSize, 50)));
         List<ShopProduct> products = productService.adminProducts(query);
         return getDataTable(products);
     }

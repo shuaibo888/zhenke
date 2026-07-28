@@ -15,8 +15,12 @@ import { useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { AddressManager } from '@/components/AddressManager';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { changeShopPassword, updateShopProfile, uploadShopAvatar } from '@/services/shopAuth';
 import styles from '@/styles/commerce.less';
+
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
+const ALLOWED_AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif']);
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -28,6 +32,7 @@ export default function ProfilePage() {
   const [nameForm] = Form.useForm<{ name: string }>();
   const [passwordForm] = Form.useForm<{ oldPassword: string; newPassword: string }>();
   const avatarInput = useRef<HTMLInputElement | null>(null);
+  useBodyScrollLock(profileOpen || addressOpen);
 
   if (!user) {
     return <Navigate to="/auth" replace />;
@@ -82,6 +87,16 @@ export default function ProfilePage() {
 
   const uploadAvatar = async (file?: File) => {
     if (!file) return;
+
+    if (!ALLOWED_AVATAR_TYPES.has(file.type)) {
+      message.error('头像仅支持 JPG、PNG、GIF 格式');
+      return;
+    }
+    if (file.size > MAX_AVATAR_SIZE) {
+      message.error('头像图片不能超过 5MB');
+      return;
+    }
+
     setAvatarLoading(true);
     try {
       const updated = await uploadShopAvatar(file);

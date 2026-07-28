@@ -1,55 +1,52 @@
 import { LikeFilled } from '@ant-design/icons';
 import { Button, Tag } from 'antd';
-import type { VerificationReportDto } from '@/services/shopContent';
-import { getReportType } from '@/utils/shop';
+import type { HomeFeedItemDto } from '@/services/shopContent';
 import styles from '@/styles/commerce.less';
 
-export function ReportCard({
-  report,
+export function HomeFeedReportCard({
+  item,
   onOpen,
   onUseful,
   variant = 'grid',
 }: {
-  report: VerificationReportDto;
+  item: HomeFeedItemDto;
   onOpen: () => void;
   onUseful?: () => void;
-  variant?: 'grid' | 'detail';
+  variant?: 'grid' | 'preview';
 }) {
-  const type = getReportType(report);
-  const image = report.resources?.find((item) => item.resourceType === 'IMAGE')?.resourceUrl
-    || report.productCoverUrl;
-  const authorName = report.nickName || report.userName;
+  if (!item.report) return null;
+  const authorName = item.report.userName || '甄客';
 
-  if (variant === 'detail') {
+  if (variant === 'preview') {
     return (
       <article className={styles.reportCard}>
         <button className={styles.reportImageButton} type="button" onClick={onOpen}>
-          <img src={image} alt={`${report.productName}实拍`} />
+          <img loading="lazy" decoding="async" src={item.coverUrl} alt={`${item.title}实拍`} />
         </button>
         <div className={styles.reportMeta}>
-          <Tag color={type.color}>{type.label}</Tag>
+          <Tag color="green">甄客验</Tag>
           <strong>{authorName}</strong>
-          <em>{report.publishedAt}</em>
+          <em>{item.publishedAt.slice(0, 10)}</em>
         </div>
         <h3>
           <button className={styles.reportProductLink} type="button" onClick={onOpen}>
-            {report.title || report.productName}
+            {item.title}
           </button>
         </h3>
-        <p>{report.experience}</p>
-        <div className={styles.shortcoming}>优化建议：{report.shortcoming}</div>
+        <p>{item.summary}</p>
+        {item.report.shortcoming && <div className={styles.shortcoming}>优化建议：{item.report.shortcoming}</div>}
         <div className={styles.reportFooter}>
-          <span>查看完整真实体验</span>
+          <span>点击查看完整甄客验</span>
           <Button
             size="small"
             icon={<LikeFilled />}
-            type={report.usefulByMe ? 'primary' : 'default'}
+            type={item.report.usefulByMe ? 'primary' : 'default'}
             onClick={(event) => {
               event.stopPropagation();
               onUseful?.();
             }}
           >
-            {report.usefulCount} 有用
+            {item.report.usefulCount} 有用
           </Button>
         </div>
       </article>
@@ -70,27 +67,27 @@ export function ReportCard({
       }}
     >
       <div className={styles.reportGridImage}>
-        <img src={image} alt={`${report.productName}实拍`} />
+        <img loading="lazy" decoding="async" src={item.coverUrl} alt={`${item.title}实拍`} />
       </div>
       <div className={styles.reportGridContent}>
         <span className={styles.homeReportBadge}>甄客验</span>
-        <p className={styles.reportGridTitle}>{report.title || report.experience}</p>
+        <p className={styles.reportGridTitle}>{item.title || item.summary}</p>
         <div className={styles.reportGridFooter}>
           <span className={styles.gridAuthor}>
-            <span className={styles.gridAuthorAvatar}>{(authorName || '甄').slice(0, 1)}</span>
+            <span className={styles.gridAuthorAvatar}>{authorName.slice(0, 1)}</span>
             <span className={styles.gridAuthorName}>{authorName}</span>
           </span>
           <Button
             size="small"
             type="text"
             icon={<LikeFilled />}
-            className={`${styles.usefulButton} ${report.usefulByMe ? styles.usefulActive : ''}`}
+            className={`${styles.usefulButton} ${item.report.usefulByMe ? styles.usefulActive : ''}`}
             onClick={(event) => {
               event.stopPropagation();
               onUseful?.();
             }}
           >
-            {report.usefulCount}
+            {item.report.usefulCount}
           </Button>
         </div>
       </div>

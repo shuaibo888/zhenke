@@ -9,14 +9,26 @@ import {
   type TrialApplicationDto,
   type VerificationReportDto,
 } from '@/services/shopContent';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import styles from '@/styles/commerce.less';
 
 type PurchaseItem = ShopOrderDto['items'][number];
+type ReportResource = {
+  resourceType: 'IMAGE' | 'VIDEO';
+  resourceUrl: string;
+  durationSeconds?: number;
+};
+
+const MAX_RESOURCE_COUNT = 9;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 10 * 1024 * 1024;
+const MAX_VIDEO_SECONDS = 30;
+const IMAGE_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png']);
+
 type Values = {
   title: string;
   experience: string;
   shortcoming: string;
-  fitCrowd: string;
   recommend: boolean;
   productQuality: number;
   logisticsService: number;
@@ -37,25 +49,94 @@ export function PublishReportModal({
   onPublished: (report: VerificationReportDto) => void;
 }) {
   const [form] = Form.useForm<Values>();
-  const [resources, setResources] = useState<Array<{ resourceType: 'IMAGE' | 'VIDEO'; resourceUrl: string }>>([]);
+  const [resources, setResources] = useState<ReportResource[]>([]);
+  const [resourceError, setResourceError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const purchase = Boolean(purchaseItem);
+  useBodyScrollLock(open);
 
-  const upload = async (file: File) => {
-    if (resources.length >= 9) {
+  const close = () => {
+    form.resetFields();
+    setResources([]);
+    setResourceError('');
+    onClose();
+  };
+
+  const readVideoDuration = (file: File) => new Promise<number>((resolve, reject) => {
+    const video = document.createElement('video');
+    const objectUrl = URL.createObjectURL(file);
+    let timeoutId = 0;
+    const clear = () => {
+      window.clearTimeout(timeoutId);
+      video.onloadedmetadata = null;
+      video.onerror = null;
+      video.removeAttribute('src');
+      video.load();
+      URL.revokeObjectURL(objectUrl);
+    };
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => {
+      const { duration } = video;
+      clear();
+      if (!Number.isFinite(duration) || duration <= 0) {
+        reject(new Error('无法读取视频时长，请重新选择 MP4 视频'));
+        return;
+      }
+      resolve(duration);
+    };
+    video.onerror = () => {
+      clear();
+      reject(new Error('视频无法播放，请重新导出为 MP4 后上传'));
+    };
+    timeoutId = window.setTimeout(() => {
+      clear();
+      reject(new Error('读取视频信息超时，请重新选择视频'));
+    }, 10000);
+    video.src = objectUrl;
+  });
+
+  const upload = async (file: File, resourceType: 'IMAGE' | 'VIDEO') => {
+    if (resources.length >= MAX_RESOURCE_COUNT) {
       message.warning('最多上传 9 个资源');
       return false;
     }
-    setUploading(true);
-    try {
-      const url = await uploadShopContentFile(file);
-      const resourceType = file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE';
-      if (purchase && resourceType === 'VIDEO') {
-        message.warning('购买甄客验当前只支持图片');
+    if (resourceType === 'IMAGE') {
+      if (!IMAGE_TYPES.has(file.type)) {
+        message.warning('图片仅支持 JPG、PNG 格式');
         return false;
       }
-      setResources((items) => [...items, { resourceType, resourceUrl: url }]);
+      if (file.size > MAX_IMAGE_SIZE) {
+        message.warning('单张图片不能超过 5MB');
+        return false;
+      }
+    } else {
+      if (resources.some((item) => item.resourceType === 'VIDEO')) {
+        message.warning('最多上传一个视频');
+        return false;
+      }
+      if (file.type !== 'video/mp4' && !file.name.toLowerCase().endsWith('.mp4')) {
+        message.warning('视频仅支持 MP4 格式');
+        return false;
+      }
+      if (file.size > MAX_VIDEO_SIZE) {
+        message.warning('视频不能超过 10MB');
+        return false;
+      }
+    }
+
+    setUploading(true);
+    try {
+      const duration = resourceType === 'VIDEO' ? await readVideoDuration(file) : undefined;
+      if (duration && duration > MAX_VIDEO_SECONDS) {
+        throw new Error('视频时长不能超过 30 秒');
+      }
+      const url = await uploadShopContentFile(file);
+      setResources((items) => [
+        ...items,
+        { resourceType, resourceUrl: url, durationSeconds: duration ? Math.ceil(duration) : undefined },
+      ]);
+      if (resourceType === 'IMAGE') setResourceError('');
     } catch (error) {
       message.error(error instanceof Error ? error.message : '文件上传失败');
     } finally {
@@ -65,6 +146,12 @@ export function PublishReportModal({
   };
 
   const submit = async (values: Values) => {
+    if (!resources.some((item) => item.resourceType === 'IMAGE')) {
+      const error = '请至少上传一张图片';
+      setResourceError(error);
+      message.warning(error);
+      return;
+    }
     setSubmitting(true);
     try {
       let report: VerificationReportDto;
@@ -74,14 +161,11 @@ export function PublishReportModal({
           title: values.title.trim(),
           experience: values.experience.trim(),
           shortcoming: values.shortcoming.trim(),
-          fitCrowd: values.fitCrowd.trim(),
           recommend: values.recommend,
           productQuality: values.productQuality,
           logisticsService: values.logisticsService,
           serviceAttitude: values.serviceAttitude,
-          resources: resources
-            .filter((item) => item.resourceType === 'IMAGE')
-            .map((item) => ({ resourceType: 'IMAGE' as const, resourceUrl: item.resourceUrl })),
+          resources,
         });
       } else if (trial) {
         report = await publishVerificationReport({
@@ -89,7 +173,6 @@ export function PublishReportModal({
           title: values.title.trim(),
           experience: values.experience.trim(),
           shortcoming: values.shortcoming.trim(),
-          fitCrowd: values.fitCrowd.trim(),
           recommend: values.recommend,
           resources,
         });
@@ -98,6 +181,7 @@ export function PublishReportModal({
       }
       form.resetFields();
       setResources([]);
+      setResourceError('');
       onPublished(report);
       message.success('甄客验已发布');
     } catch (error) {
@@ -111,10 +195,11 @@ export function PublishReportModal({
     <Modal
       title={purchase ? '发布购买甄客验' : '发布试用甄客验'}
       open={open}
-      onCancel={onClose}
+      onCancel={close}
       footer={null}
       width={680}
-      rootClassName={styles.responsiveModal}
+      className={styles.scrollableFormModal}
+      rootClassName={`${styles.publishReportModal} ${styles.responsiveModal}`}
     >
       <Form
         form={form}
@@ -132,9 +217,78 @@ export function PublishReportModal({
           <strong>{purchaseItem?.productName || trial?.productName || '本次真实体验'}</strong>
           <span>{purchase ? '购买评价' : trial?.trialType === 'OFFLINE' ? '线下试用' : '线上试用'}</span>
         </div>
-        <Form.Item name="title" label="标题" rules={[{ required: true }, { max: 20 }]}>
-          <Input size="large" maxLength={20} showCount />
+        <Form.Item
+          name="title"
+          label="标题"
+          rules={[
+            { required: true, message: '请输入甄客验标题' },
+            { max: 20, message: '标题不能超过 20 字' },
+          ]}
+        >
+          <Input size="large" maxLength={20} showCount placeholder="用一句话概括这次真实体验" />
         </Form.Item>
+        <section className={`${styles.reviewUpload} ${resourceError ? styles.reviewUploadError : ''}`}>
+          <div className={styles.reviewFieldHeading}>
+            <strong><span>*</span> 真实体验图片</strong>
+            <em>{resources.length} / {MAX_RESOURCE_COUNT}</em>
+          </div>
+          <p className={styles.reviewFieldDescription}>
+            请至少上传 1 张能够真实反映体验过程或使用效果的图片。视频为选填内容，最多上传 1 个；全部素材合计不超过 9 个。
+          </p>
+          <div className={styles.reviewImages}>
+            {resources.map((resource, index) => (
+              <div
+                className={`${styles.reviewImageItem} ${resource.resourceType === 'VIDEO' ? styles.reviewVideoItem : ''}`}
+                key={`${resource.resourceUrl}-${index}`}
+              >
+                {resource.resourceType === 'IMAGE'
+                  ? <img src={resource.resourceUrl} alt={`体验资源${index + 1}`} />
+                  : <video src={resource.resourceUrl} controls playsInline preload="metadata" />}
+                <span className={styles.reviewMediaBadge}>
+                  {resource.resourceType === 'VIDEO'
+                    ? `视频${resource.durationSeconds ? ` · ${resource.durationSeconds}秒` : ''}`
+                    : '图片'}
+                </span>
+                <button
+                  className={styles.removeImageBtn}
+                  type="button"
+                  aria-label={`删除第 ${index + 1} 个资源`}
+                  onClick={() => setResources((items) => items.filter((_, itemIndex) => itemIndex !== index))}
+                >
+                  <DeleteOutlined />
+                </button>
+              </div>
+            ))}
+            {resources.length < MAX_RESOURCE_COUNT && (
+              <div className={styles.reviewUploadButtons}>
+                <Upload
+                  accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                  showUploadList={false}
+                  beforeUpload={(file) => upload(file as File, 'IMAGE')}
+                >
+                  <Button icon={<UploadOutlined />} loading={uploading} disabled={uploading}>上传图片（必传）</Button>
+                </Upload>
+                {!resources.some((item) => item.resourceType === 'VIDEO') && (
+                  <Upload
+                    accept=".mp4,video/mp4"
+                    showUploadList={false}
+                    beforeUpload={(file) => upload(file as File, 'VIDEO')}
+                  >
+                    <Button icon={<UploadOutlined />} loading={uploading} disabled={uploading}>上传视频（选传）</Button>
+                  </Upload>
+                )}
+              </div>
+            )}
+          </div>
+          {resourceError
+            ? <p className={styles.reviewFieldError}>{resourceError}</p>
+            : (
+              <div className={styles.reviewUploadRules}>
+                <p><strong>图片要求：</strong>JPG/PNG，单张不超过 5MB</p>
+                <p><strong>视频要求：</strong>MP4，不超过 10MB，时长不超过 30 秒</p>
+              </div>
+            )}
+        </section>
         {purchase && (
           <div className={styles.reviewStarsRow}>
             <Form.Item className={styles.reviewStarItem} name="productQuality" label="商品质量"><Rate /></Form.Item>
@@ -146,49 +300,49 @@ export function PublishReportModal({
           <Form.Item
             name="experience"
             label="真实体验"
-            rules={[{ required: true }, { min: 20, message: '真实体验不少于 20 字' }, { max: 500 }]}
+            rules={[
+              { required: true, message: '请填写真实体验' },
+              { min: 20, message: '真实体验不少于 20 字' },
+              { max: 500, message: '真实体验不能超过 500 字' },
+            ]}
           >
-            <Input.TextArea rows={5} maxLength={500} showCount />
+            <Input.TextArea
+              rows={5}
+              maxLength={500}
+              showCount
+              placeholder="请描述实际使用过程、感受和优点，不少于 20 字"
+            />
           </Form.Item>
-          <Form.Item name="shortcoming" label="产品不足" rules={[{ required: true }, { max: 500 }]}>
-            <Input.TextArea rows={3} maxLength={500} showCount />
+          <Form.Item
+            name="shortcoming"
+            label="优化建议"
+            rules={[
+              { required: true, message: '请填写优化建议' },
+              { max: 500, message: '优化建议不能超过 500 字' },
+            ]}
+          >
+            <Input.TextArea
+              rows={4}
+              maxLength={500}
+              showCount
+              placeholder="请客观填写产品在功能、包装、说明或服务等方面可以改进的地方"
+            />
           </Form.Item>
         </div>
-        <Form.Item name="fitCrowd" label="适合人群" rules={[{ required: true }, { max: 200 }]}>
-          <Input maxLength={200} />
-        </Form.Item>
         <div className={styles.reviewRecommendField}>
-          <span>是否推荐</span>
-          <Form.Item name="recommend" noStyle>
-            <Radio.Group options={[{ label: '推荐', value: true }, { label: '不推荐', value: false }]} />
-          </Form.Item>
-        </div>
-        <div className={styles.reviewUpload}>
-          <div className={styles.reviewImages}>
-            {resources.map((resource, index) => (
-              <div className={styles.reviewImageItem} key={`${resource.resourceUrl}-${index}`}>
-                {resource.resourceType === 'IMAGE'
-                  ? <img src={resource.resourceUrl} alt={`资源${index + 1}`} />
-                  : <video src={resource.resourceUrl} controls />}
-                <button type="button" onClick={() => setResources((items) => items.filter((_, itemIndex) => itemIndex !== index))}>
-                  <DeleteOutlined />
-                </button>
-              </div>
-            ))}
-            {resources.length < 9 && (
-              <Upload
-                accept={purchase ? 'image/*' : 'image/*,video/*'}
-                showUploadList={false}
-                beforeUpload={(file) => upload(file as File)}
-              >
-                <Button icon={<UploadOutlined />} loading={uploading}>上传图片{purchase ? '' : '或视频'}</Button>
-              </Upload>
-            )}
+          <div>
+            <strong>是否推荐到首页</strong>
+            <p>推荐后会进入首页展示；不推荐时仍会展示在商品详情的甄客验列表中。</p>
           </div>
-          <p className={styles.uploadHint}>最多上传 9 个资源，请使用真实拍摄内容。</p>
+          <Form.Item name="recommend" noStyle rules={[{ required: true, message: '请选择是否在首页推荐' }]}>
+            <Radio.Group>
+              <Radio value>推荐到首页</Radio>
+              <Radio value={false}>仅商品详情展示</Radio>
+            </Radio.Group>
+          </Form.Item>
         </div>
         <div className={styles.reviewActions}>
-          <Button size="large" onClick={onClose}>取消</Button>
+          <Button size="large" onClick={close}>取消</Button>
           <Button type="primary" size="large" htmlType="submit" loading={submitting} disabled={uploading}>
             发布甄客验
           </Button>

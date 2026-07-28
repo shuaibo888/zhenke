@@ -20,7 +20,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.shop.domain.ShopVerificationReport;
 import com.ruoyi.shop.domain.ShopVerificationReportAiScore;
@@ -127,24 +126,6 @@ public class ShopVerificationReportAiScoreService
             }
         }
         return processed;
-    }
-
-    public int queueHistoricalReports()
-    {
-        return scoreMapper.queueBackfill();
-    }
-
-    public void retryReport(long reportId)
-    {
-        ShopVerificationReport report = trialMapper.selectReportById(reportId);
-        if (report == null || !"PUBLISHED".equals(report.getStatus()))
-        {
-            throw new ServiceException("甄客验不存在");
-        }
-        if (scoreMapper.retryReport(reportId) == 0)
-        {
-            throw new ServiceException("该甄客验正在评分，请勿重复提交");
-        }
     }
 
     boolean processReport(long reportId)
@@ -301,7 +282,6 @@ public class ShopVerificationReportAiScoreService
         reportData.put("title", clip(report.getTitle()));
         reportData.put("experience", clip(report.getExperience()));
         reportData.put("shortcoming", clip(report.getShortcoming()));
-        reportData.put("fitCrowd", clip(report.getFitCrowd()));
         reportData.put("recommend", "0".equals(report.getRecommend()));
         if ("PURCHASE".equals(report.getReportSource()))
         {

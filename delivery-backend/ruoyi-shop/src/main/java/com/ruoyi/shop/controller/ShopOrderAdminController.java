@@ -5,7 +5,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.github.pagehelper.PageHelper;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.page.TableDataInfo;
@@ -25,10 +27,13 @@ public class ShopOrderAdminController extends BaseController
     }
 
     @GetMapping
-    public TableDataInfo list()
+    public TableDataInfo list(@RequestParam(required = false) String status,
+                              @RequestParam(required = false) String keyword,
+                              @RequestParam(defaultValue = "1") int pageNum,
+                              @RequestParam(defaultValue = "10") int pageSize)
     {
-        startPage();
-        List<ShopOrder> rows = orderService.adminOrders();
+        PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(pageSize, 50)));
+        List<ShopOrder> rows = orderService.adminOrders(status, keyword);
         return getDataTable(rows);
     }
 

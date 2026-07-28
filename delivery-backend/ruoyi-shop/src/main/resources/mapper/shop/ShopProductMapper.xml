@@ -43,7 +43,14 @@
         select p.product_id, p.merchant_id, m.company_name as merchant_name,
                p.category_id, c.category_code, c.category_name,
                p.product_name, p.subtitle, p.detail, p.cover_url, p.price,
-               p.stock, p.sales_count, p.status as product_status, p.del_flag,
+               p.stock, coalesce((
+                   select sum(oi.quantity)
+                   from shop_order_item oi
+                   inner join shop_order o on o.order_id = oi.order_id and o.del_flag = '0'
+                   where oi.product_id = p.product_id
+                     and o.status in ('PAID', 'SHIPPED', 'RECEIVED', 'REFUNDING')
+               ), 0) as sales_count,
+               p.status as product_status, p.del_flag,
                p.create_time as product_create_time, p.update_time as product_update_time, p.remark
         from shop_product p
         inner join shop_merchant m on m.merchant_id = p.merchant_id and m.del_flag = '0'
@@ -84,6 +91,12 @@
             </if>
             <if test="query.categoryId != null">and p.category_id = #{query.categoryId}</if>
             <if test="query.status != null and query.status != ''">and p.status = #{query.status}</if>
+            <if test="query.trialOnly != null and query.trialOnly">
+                and exists (
+                    select 1 from shop_trial_campaign active_trial
+                    where active_trial.product_id = p.product_id and active_trial.status = 'RECRUITING'
+                )
+            </if>
         </where>
         order by p.product_id desc
     </select>
@@ -105,6 +118,12 @@
             </if>
             <if test="categoryId != null">and p.category_id = #{categoryId}</if>
             <if test="status != null and status != ''">and p.status = #{status}</if>
+            <if test="trialOnly != null and trialOnly">
+                and exists (
+                    select 1 from shop_trial_campaign active_trial
+                    where active_trial.product_id = p.product_id and active_trial.status = 'RECRUITING'
+                )
+            </if>
         </where>
         order by p.product_id desc
     </select>

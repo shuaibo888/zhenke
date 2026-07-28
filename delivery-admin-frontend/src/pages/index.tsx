@@ -23,6 +23,7 @@ import {
   Button,
   Checkbox,
   ConfigProvider,
+  DatePicker,
   Drawer,
   Dropdown,
   Form,
@@ -41,9 +42,10 @@ import {
   Upload,
   App as AntApp,
 } from 'antd';
+import zhCN from 'antd/locale/zh_CN';
 import type { ColumnsType } from 'antd/es/table';
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AdminSession, ManagedLogisticsTrace, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, NavKey, ProductCategory, ProductCategoryOption, ProductStatus, ShopMemberLevel, ShopUserAccount } from '@/types';
 import {
   auditMerchantOrderRefund,
@@ -51,6 +53,8 @@ import {
   createMerchantProduct,
   createMerchantTrial,
   fetchAdminCaptcha,
+  fetchAvailableTrialTypes,
+  fetchDashboardSummary,
   fetchAdminOrder,
   fetchAdminOrders,
   auditMerchant,
@@ -81,19 +85,44 @@ import {
   shipMerchantOrder,
   uploadAdminFile,
   type CaptchaState,
+  type DashboardSummaryDto,
 } from '@/services/adminApi';
 import { filterRowsForSession, getAvailableNavKeys, hasGlobalAccess } from '@/utils/access';
-import {
-  buildOrderStatusChart,
-  buildOrderTrendChart,
-  buildProductStatusPie,
-  getDashboardStats,
-} from '@/utils/adminDashboard';
-import { filterOrders, type OrderStatusFilter } from '@/utils/orderManagement';
-import { filterProducts, type ProductCategoryFilter, type ProductStatusFilter } from '@/utils/productFilters';
+import { type OrderStatusFilter } from '@/utils/orderManagement';
+import { type ProductCategoryFilter, type ProductStatusFilter } from '@/utils/productFilters';
 import styles from './index.less';
 
 const { Header, Sider, Content } = Layout;
+const MANAGEMENT_PAGE_SIZE = 10;
+
+const emptyDashboardSummary: DashboardSummaryDto = {
+  productTotal: 0,
+  onSaleCount: 0,
+  orderTotal: 0,
+  todayOrders: 0,
+  salesAmount: 0,
+  userTotal: 0,
+  reportTotal: 0,
+  orderStatusCounts: [],
+  productStatusCounts: [],
+  orderDailyCounts: [],
+};
+
+const orderStatusLabels: Record<string, string> = {
+  PENDING_PAYMENT: '待付款',
+  PAID: '待发货',
+  SHIPPED: '待收货',
+  RECEIVED: '已完成',
+  CANCELLED: '已取消',
+  REFUNDING: '退款中',
+  REFUNDED: '已退款',
+};
+
+const productStatusLabels: Record<string, string> = {
+  ON_SALE: '在售',
+  OFF_SALE: '已下架',
+  DRAFT: '草稿',
+};
 
 type DashboardMetric = {
   key: 'productTotal' | 'onSaleCount' | 'orderTotal' | 'todayOrders' | 'salesAmount' | 'userTotal' | 'reportTotal';
@@ -141,7 +170,7 @@ type TrialFormValues = {
   campaignTitle: string;
   campaignSummary: string;
   targetCount: number;
-  deadline: string;
+  deadline: { format: (pattern: string) => string };
 };
 
 type TrialApplicationActionFormValues = {
@@ -214,6 +243,12 @@ function formatMoney(value: number) {
   return `¥${value.toFixed(2)}`;
 }
 
+function formatDateTime(value?: string, emptyText = '-') {
+  if (!value) return emptyText;
+  const match = value.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})/);
+  return match ? `${match[1]} ${match[2]}` : value;
+}
+
 function getManagedReportTypeMeta(report: ManagedReport) {
   if (report.reportSource === 'PURCHASE') return { label: '购买评价', color: 'green' };
   return report.trialType === 'OFFLINE'
@@ -241,6 +276,8 @@ function AdminWorkspace() {
   const [activeNav, setActiveNav] = useState<NavKey>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [products, setProducts] = useState<ManagedProduct[]>([]);
+  const [productPage, setProductPage] = useState(1);
+  const [productTotal, setProductTotal] = useState(0);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productSaving, setProductSaving] = useState(false);
   const [productCategories, setProductCategories] = useState<ProductCategoryOption[]>([]);
@@ -248,6 +285,8 @@ function AdminWorkspace() {
   const [categoryDrafts, setCategoryDrafts] = useState<ProductCategoryOption[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [orders, setOrders] = useState<ManagedOrder[]>([]);
+  const [orderPage, setOrderPage] = useState(1);
+  const [orderTotal, setOrderTotal] = useState(0);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [shippingOrder, setShippingOrder] = useState<ManagedOrder | null>(null);
   const [orderShipping, setOrderShipping] = useState(false);
@@ -255,15 +294,27 @@ function AdminWorkspace() {
   const [refundAuditing, setRefundAuditing] = useState(false);
   const [reports, setReports] = useState<ManagedReport[]>([]);
   const [reportsLoading, setReportsLoading] = useState(false);
+  const [reportPage, setReportPage] = useState(1);
+  const [reportTotal, setReportTotal] = useState(0);
   const [trialRecruitments, setTrialRecruitments] = useState<ManagedTrialRecruitment[]>([]);
+  const [trialPage, setTrialPage] = useState(1);
+  const [trialTotal, setTrialTotal] = useState(0);
   const [trialsLoading, setTrialsLoading] = useState(false);
   const [trialSaving, setTrialSaving] = useState(false);
+  const [trialProductOptions, setTrialProductOptions] = useState<ManagedProduct[]>([]);
+  const [selectedTrialAvailableTypes, setSelectedTrialAvailableTypes] = useState<Array<'ONLINE' | 'OFFLINE'>>(
+    ['ONLINE', 'OFFLINE'],
+  );
   const [trialApplications, setTrialApplications] = useState<ManagedTrialApplication[]>([]);
+  const [trialApplicationPage, setTrialApplicationPage] = useState(1);
+  const [trialApplicationTotal, setTrialApplicationTotal] = useState(0);
   const [trialApplicationsLoading, setTrialApplicationsLoading] = useState(false);
   const [trialApplicationAction, setTrialApplicationAction] = useState<'reject' | 'ship' | null>(null);
   const [selectedTrialApplication, setSelectedTrialApplication] = useState<ManagedTrialApplication | null>(null);
   const [merchants, setMerchants] = useState<MerchantAccount[]>([]);
   const [merchantsLoading, setMerchantsLoading] = useState(false);
+  const [merchantPage, setMerchantPage] = useState(1);
+  const [merchantTotal, setMerchantTotal] = useState(0);
   const [shopUsers, setShopUsers] = useState<ShopUserAccount[]>([]);
   const [shopUserTotal, setShopUserTotal] = useState(0);
   const [shopUsersLoading, setShopUsersLoading] = useState(false);
@@ -301,32 +352,16 @@ function AdminWorkspace() {
   const productImageUrl = Form.useWatch('imageUrl', productForm);
   const merchantAuditDecision = Form.useWatch('decision', merchantForm);
   const refundAuditDecision = Form.useWatch('decision', refundAuditForm);
+  const trialProductSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummaryDto>(emptyDashboardSummary);
   const getMerchantName = (merchantId: number) => merchants.find((merchant) => merchant.id === merchantId)?.name ?? '未知商家';
 
   const visibleProducts = useMemo(() => filterRowsForSession(products, session), [products, session]);
   const visibleOrders = useMemo(() => filterRowsForSession(orders, session), [orders, session]);
   const visibleReports = useMemo(() => filterRowsForSession(reports, session), [reports, session]);
   const visibleTrials = useMemo(() => filterRowsForSession(trialRecruitments, session), [trialRecruitments, session]);
-  const trialProductIds = useMemo(() => visibleTrials.filter((t) => t.status === 'recruiting').map((t) => t.productId), [visibleTrials]);
-  const filteredProducts = useMemo(
-    () =>
-      filterProducts(visibleProducts, {
-        category: productCategoryFilter,
-        status: productStatusFilter,
-        keyword: productKeyword,
-        getMerchantName,
-        trialProductIds,
-      }),
-    [merchants, productCategoryFilter, productKeyword, productStatusFilter, visibleProducts, trialProductIds],
-  );
-  const filteredOrders = useMemo(
-    () =>
-      filterOrders(visibleOrders, {
-        status: orderStatusFilter,
-        keyword: orderKeyword,
-      }),
-    [orderKeyword, orderStatusFilter, visibleOrders],
-  );
+  const filteredProducts = visibleProducts;
+  const filteredOrders = visibleOrders;
   const isAdmin = hasGlobalAccess(session);
   const hasPermission = (permission: string) =>
     Boolean(session?.permissions?.includes('*:*:*') || session?.permissions?.includes(permission));
@@ -335,22 +370,16 @@ function AdminWorkspace() {
       && (key !== 'merchants' || hasPermission('shop:merchant:list')),
   );
 
-  const stats = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    const userTotal = isAdmin ? shopUserTotal : new Set(visibleOrders.map((order) => order.buyerName)).size;
-
-    return getDashboardStats({
-      products: visibleProducts,
-      orders: visibleOrders,
-      reports: visibleReports,
-      userTotal,
-      today,
-    });
-  }, [isAdmin, shopUserTotal, visibleOrders, visibleProducts, visibleReports]);
-
-  const orderStatusChartData = useMemo(() => buildOrderStatusChart(visibleOrders), [visibleOrders]);
-  const orderTrendChartData = useMemo(() => buildOrderTrendChart(visibleOrders), [visibleOrders]);
-  const productStatusPieData = useMemo(() => buildProductStatusPie(visibleProducts), [visibleProducts]);
+  const stats = dashboardSummary;
+  const orderStatusChartData = dashboardSummary.orderStatusCounts.map((item) => ({
+    status: orderStatusLabels[item.code] ?? item.code,
+    count: item.count,
+  }));
+  const orderTrendChartData = dashboardSummary.orderDailyCounts;
+  const productStatusPieData = dashboardSummary.productStatusCounts.map((item) => ({
+    status: productStatusLabels[item.code] ?? item.code,
+    count: item.count,
+  }));
   const loadCaptcha = async () => {
     try {
       setCaptcha(await fetchAdminCaptcha());
@@ -379,11 +408,13 @@ function AdminWorkspace() {
     }
   };
 
-  const loadMerchants = async () => {
+  const loadMerchants = async (page = merchantPage) => {
     setMerchantsLoading(true);
     try {
-      const result = await fetchMerchants();
+      const result = await fetchMerchants({ pageNum: page, pageSize: MANAGEMENT_PAGE_SIZE });
       setMerchants(result.rows);
+      setMerchantTotal(result.total);
+      setMerchantPage(page);
     } catch (error) {
       message.error(error instanceof Error ? error.message : '商家列表加载失败');
     } finally {
@@ -391,15 +422,51 @@ function AdminWorkspace() {
     }
   };
 
-  const loadProducts = async (currentSession = session) => {
+  const loadDashboard = async (currentSession = session) => {
+    if (!currentSession) return;
+    try {
+      setDashboardSummary(await fetchDashboardSummary(currentSession));
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '数据看板加载失败');
+    }
+  };
+
+  const loadProducts = async (
+    currentSession = session,
+    page = productPage,
+    filters = {
+      keyword: productKeyword,
+      category: productCategoryFilter,
+      status: productStatusFilter,
+    },
+  ) => {
     if (!currentSession) return;
     setProductsLoading(true);
     try {
+      const categoryId = filters.category === 'all'
+        ? undefined
+        : productCategories.find((item) => item.categoryCode === filters.category)?.categoryId;
+      const status = filters.status === 'draft'
+        ? 'DRAFT'
+        : filters.status === 'onSale'
+          ? 'ON_SALE'
+          : filters.status === 'offSale'
+            ? 'OFF_SALE'
+            : undefined;
       const [productResult, categories] = await Promise.all([
-        fetchManagedProducts(currentSession),
-        fetchProductCategories(),
+        fetchManagedProducts(currentSession, {
+          pageNum: page,
+          pageSize: MANAGEMENT_PAGE_SIZE,
+          keyword: filters.keyword.trim() || undefined,
+          categoryId,
+          status,
+          trialOnly: filters.status === 'trial',
+        }),
+        productCategories.length > 0 ? Promise.resolve(productCategories) : fetchProductCategories(),
       ]);
       setProducts(productResult.rows);
+      setProductTotal(productResult.total);
+      setProductPage(page);
       setProductCategories(categories);
     } catch (error) {
       message.error(error instanceof Error ? error.message : '商品列表加载失败');
@@ -408,12 +475,17 @@ function AdminWorkspace() {
     }
   };
 
-  const loadTrials = async (currentSession = session) => {
+  const loadTrials = async (currentSession = session, page = trialPage) => {
     if (!currentSession) return;
     setTrialsLoading(true);
     try {
-      const result = await fetchManagedTrials(currentSession);
+      const result = await fetchManagedTrials(currentSession, {
+        pageNum: page,
+        pageSize: MANAGEMENT_PAGE_SIZE,
+      });
       setTrialRecruitments(result.rows);
+      setTrialTotal(result.total);
+      setTrialPage(page);
     } catch (error) {
       message.error(error instanceof Error ? error.message : '试用招募加载失败');
     } finally {
@@ -421,14 +493,50 @@ function AdminWorkspace() {
     }
   };
 
-  const loadOrders = async (currentSession = session) => {
+  const loadTrialProductOptions = async (keyword = '', currentSession = session) => {
+    if (currentSession?.loginType !== 'merchant') return;
+    try {
+      const result = await fetchManagedProducts(currentSession, {
+        pageNum: 1,
+        pageSize: 20,
+        keyword: keyword.trim() || undefined,
+        status: 'ON_SALE',
+      });
+      setTrialProductOptions(result.rows);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '可发布试用商品加载失败');
+    }
+  };
+
+  const loadOrders = async (
+    currentSession = session,
+    page = orderPage,
+    filters = { keyword: orderKeyword, status: orderStatusFilter },
+  ) => {
     if (!currentSession) return;
     setOrdersLoading(true);
     try {
+      const status = ({
+        unpaid: 'PENDING_PAYMENT',
+        paid: 'PAID',
+        shipped: 'SHIPPED',
+        completed: 'RECEIVED',
+        canceled: 'CANCELLED',
+        refunding: 'REFUNDING',
+        refunded: 'REFUNDED',
+      } as const)[filters.status as Exclude<OrderStatusFilter, 'all'>];
+      const query = {
+        pageNum: page,
+        pageSize: MANAGEMENT_PAGE_SIZE,
+        keyword: filters.keyword.trim() || undefined,
+        status,
+      };
       const result = currentSession.loginType === 'admin'
-        ? await fetchAdminOrders()
-        : await fetchMerchantOrders();
+        ? await fetchAdminOrders(query)
+        : await fetchMerchantOrders(query);
       setOrders(result.rows);
+      setOrderTotal(result.total);
+      setOrderPage(page);
     } catch (error) {
       message.error(error instanceof Error ? error.message : '订单列表加载失败');
     } finally {
@@ -436,14 +544,20 @@ function AdminWorkspace() {
     }
   };
 
-  const loadReports = async (currentSession = session) => {
+  const loadReports = async (currentSession = session, page = reportPage) => {
     if (currentSession?.loginType !== 'merchant') {
       setReports([]);
       return;
     }
     setReportsLoading(true);
     try {
-      setReports(await fetchMerchantReports());
+      const result = await fetchMerchantReports({
+        pageNum: page,
+        pageSize: MANAGEMENT_PAGE_SIZE,
+      });
+      setReports(result.rows);
+      setReportTotal(result.total);
+      setReportPage(page);
     } catch (error) {
       message.error(error instanceof Error ? error.message : '验证报告加载失败');
     } finally {
@@ -451,12 +565,17 @@ function AdminWorkspace() {
     }
   };
 
-  const loadTrialApplications = async (currentSession = session) => {
+  const loadTrialApplications = async (currentSession = session, page = trialApplicationPage) => {
     if (currentSession?.loginType !== 'merchant') return;
     setTrialApplicationsLoading(true);
     try {
-      const result = await fetchMerchantTrialApplications();
+      const result = await fetchMerchantTrialApplications({
+        pageNum: page,
+        pageSize: MANAGEMENT_PAGE_SIZE,
+      });
       setTrialApplications(result.rows);
+      setTrialApplicationTotal(result.total);
+      setTrialApplicationPage(page);
     } catch (error) {
       message.error(error instanceof Error ? error.message : '试用申请加载失败');
     } finally {
@@ -481,40 +600,47 @@ function AdminWorkspace() {
     };
   }, []);
 
+  useEffect(() => () => {
+    if (trialProductSearchTimer.current) clearTimeout(trialProductSearchTimer.current);
+  }, []);
+
   useEffect(() => {
     if (!session) return;
     const permissions = session.permissions ?? [];
-    if (permissions.includes('*:*:*') || permissions.includes('shop:product:list')) {
-      void loadProducts(session);
+    if (activeNav === 'dashboard') {
+      void loadDashboard(session);
+    } else if (activeNav === 'products'
+      && (permissions.includes('*:*:*') || permissions.includes('shop:product:list'))) {
+      void loadProducts(session, 1);
+    } else if (activeNav === 'trials'
+      && (permissions.includes('*:*:*') || permissions.includes('shop:trial:list'))) {
+      void loadTrials(session, 1);
+      if (session.loginType === 'merchant') {
+        void loadTrialApplications(session, 1);
+        void loadTrialProductOptions('', session);
+      }
+    } else if (activeNav === 'orders') {
+      void loadOrders(session, 1);
+    } else if (activeNav === 'reports' && session.loginType === 'merchant') {
+      void loadReports(session, 1);
     }
-    if (permissions.includes('*:*:*') || permissions.includes('shop:trial:list')) {
-      void loadTrials(session);
-      if (session.loginType === 'merchant') void loadTrialApplications(session);
-    }
-    if (session.loginType === 'merchant') {
-      void loadReports(session);
-    }
-    void loadOrders(session);
-  }, [session?.id]);
+  }, [activeNav, session?.id]);
 
   useEffect(() => {
     if (session?.loginType !== 'admin') return;
     const permissions = session.permissions ?? [];
-    if (!permissions.includes('*:*:*') && !permissions.includes('shop:user:list')) return;
-    fetchShopMemberLevels()
-      .then(setMemberLevels)
-      .catch((error) => message.error(error instanceof Error ? error.message : '会员等级加载失败'));
-    fetchShopUsers({ pageNum: 1, pageSize: 10 })
-      .then((result) => {
-        setShopUsers(result.rows);
-        setShopUserTotal(result.total);
-        setUserPage(1);
-      })
-      .catch((error) => message.error(error instanceof Error ? error.message : '用户列表加载失败'));
-    if (permissions.includes('*:*:*') || permissions.includes('shop:merchant:list')) {
-      void loadMerchants();
+    if (activeNav === 'users'
+      && (permissions.includes('*:*:*') || permissions.includes('shop:user:list'))) {
+      fetchShopMemberLevels()
+        .then(setMemberLevels)
+        .catch((error) => message.error(error instanceof Error ? error.message : '会员等级加载失败'));
+      void loadShopUsers(1);
     }
-  }, [session?.id]);
+    if (activeNav === 'merchants'
+      && (permissions.includes('*:*:*') || permissions.includes('shop:merchant:list'))) {
+      void loadMerchants(1);
+    }
+  }, [activeNav, session?.id]);
 
   const handleLogin = async (values: LoginFormValues) => {
     setLoginSubmitting(true);
@@ -541,23 +667,43 @@ function AdminWorkspace() {
     setEditingProductId(null);
     setDetailOrder(null);
     setShippingOrder(null);
-    resetProductFilters();
-    resetOrderFilters();
+    resetProductFilters(false);
+    resetOrderFilters(false);
     setShopUsers([]);
     setProducts([]);
     setProductCategories([]);
     setTrialRecruitments([]);
+    setTrialProductOptions([]);
+    setSelectedTrialAvailableTypes(['ONLINE', 'OFFLINE']);
     setTrialApplications([]);
     setOrders([]);
+    setReports([]);
+    setMerchants([]);
+    setProductPage(1);
+    setProductTotal(0);
+    setOrderPage(1);
+    setOrderTotal(0);
+    setTrialPage(1);
+    setTrialTotal(0);
+    setTrialApplicationPage(1);
+    setTrialApplicationTotal(0);
+    setReportPage(1);
+    setReportTotal(0);
+    setMerchantPage(1);
+    setMerchantTotal(0);
     setShopUserTotal(0);
+    setDashboardSummary(emptyDashboardSummary);
     loginForm.resetFields();
     await loadCaptcha();
   };
 
-  const resetProductFilters = () => {
+  const resetProductFilters = (reload = true) => {
     setProductCategoryFilter('all');
     setProductStatusFilter('all');
     setProductKeyword('');
+    if (reload && session) {
+      void loadProducts(session, 1, { keyword: '', category: 'all', status: 'all' });
+    }
   };
 
   const openCategorySettings = async () => {
@@ -591,9 +737,12 @@ function AdminWorkspace() {
     }
   };
 
-  const resetOrderFilters = () => {
+  const resetOrderFilters = (reload = true) => {
     setOrderStatusFilter('all');
     setOrderKeyword('');
+    if (reload && session) {
+      void loadOrders(session, 1, { keyword: '', status: 'all' });
+    }
   };
 
   const openCreateProduct = () => {
@@ -667,26 +816,41 @@ function AdminWorkspace() {
     }
   };
 
-  const openPublishTrial = (product?: ManagedProduct) => {
+  const openPublishTrial = async (product?: ManagedProduct) => {
     trialForm.resetFields();
-    if (product) {
-      const availableTypes = getAvailableTrialTypes(product.id);
-      if (availableTypes.length === 0) {
-        message.warning('该商品的线上、线下试用都已有正在招募且未满的活动，暂时不能发布新一轮');
-        return;
+    try {
+      if (product) {
+        if (!trialProductOptions.some((item) => item.id === product.id)) {
+          setTrialProductOptions((items) => [product, ...items]);
+        }
+        const availableTypes = await fetchAvailableTrialTypes(product.id);
+        setSelectedTrialAvailableTypes(availableTypes);
+        if (availableTypes.length === 0) {
+          message.warning('该商品的线上、线下试用都已有正在招募且未满的活动，暂时不能发布新一轮');
+          return;
+        }
+        trialForm.setFieldsValue({
+          productId: product.id,
+          trialTypes: [availableTypes[0]],
+          campaignTitle: `${product.title}试用招募`,
+          campaignSummary: '线上试用确认收货后可发布甄客验；线下试用审核通过后即可发布甄客验。',
+          targetCount: 5,
+        });
+      } else {
+        setSelectedTrialAvailableTypes(['ONLINE', 'OFFLINE']);
+        await loadTrialProductOptions();
       }
-      trialForm.setFieldsValue({
-        productId: product.id,
-        trialTypes: [availableTypes[0]],
-        campaignTitle: `${product.title}试用招募`,
-        campaignSummary: '线上试用确认收货后可发布甄客验；线下试用审核通过后即可发布甄客验。',
-        targetCount: 5,
-      });
+      setTrialModalOpen(true);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '试用方式加载失败');
     }
-    setTrialModalOpen(true);
   };
 
   const closeTrialModal = () => {
+    if (trialProductSearchTimer.current) {
+      clearTimeout(trialProductSearchTimer.current);
+      trialProductSearchTimer.current = null;
+    }
     setTrialModalOpen(false);
     trialForm.resetFields();
   };
@@ -695,43 +859,31 @@ function AdminWorkspace() {
     const deadline = Date.parse(trial.deadline.replace(' ', 'T'));
     return trial.status === 'recruiting'
       && trial.claimedCount < trial.targetCount
-      && (Number.isNaN(deadline) || deadline > Date.now());
+      && (Number.isNaN(deadline) || deadline >= new Date().setHours(0, 0, 0, 0));
   };
-
-  const getAvailableTrialTypes = (productId?: number): Array<'ONLINE' | 'OFFLINE'> => {
-    if (!productId) return ['ONLINE', 'OFFLINE'];
-    const blocked = new Set(
-      trialRecruitments
-        .filter((trial) => trial.productId === productId && isBlockingTrial(trial))
-        .map((trial) => trial.trialType),
-    );
-    return (['ONLINE', 'OFFLINE'] as const).filter((trialType) => !blocked.has(trialType));
-  };
-
-  const selectedTrialAvailableTypes = getAvailableTrialTypes(selectedTrialProductId);
 
   const handlePublishTrial = async (values: TrialFormValues) => {
-    const product = visibleProducts.find((p) => p.id === values.productId);
+    const product = trialProductOptions.find((p) => p.id === values.productId);
     if (!product) {
       message.error('请选择有效的商品');
       return;
     }
 
     if (!session || session.loginType !== 'merchant') return;
-    const availableTypes = getAvailableTrialTypes(values.productId);
-    if (values.trialTypes.some((trialType) => !availableTypes.includes(trialType))) {
-      message.warning('所选试用方式已有正在招募且未满的活动，请刷新后重新选择');
-      return;
-    }
     setTrialSaving(true);
     try {
+      const availableTypes = await fetchAvailableTrialTypes(values.productId);
+      if (values.trialTypes.some((trialType) => !availableTypes.includes(trialType))) {
+        message.warning('所选试用方式已有正在招募且未满的活动，请刷新后重新选择');
+        return;
+      }
       await createMerchantTrial({
         productId: values.productId,
         trialTypes: values.trialTypes,
         campaignTitle: values.campaignTitle.trim(),
         campaignSummary: values.campaignSummary.trim(),
         targetCount: values.targetCount,
-        applicationDeadline: `${values.deadline} 23:59:59`,
+        applicationDeadline: `${values.deadline.format('YYYY-MM-DD')} 00:00:00`,
       });
       await loadTrials(session);
       closeTrialModal();
@@ -1022,12 +1174,17 @@ function AdminWorkspace() {
       responsive: ['md'],
       render: (_, user) => (
         <div>
-          <div>{user.loginDate || '尚未登录'}</div>
+          <div>{formatDateTime(user.loginDate, '尚未登录')}</div>
           {user.loginIp && <div className={styles.subText}>{user.loginIp}</div>}
         </div>
       ),
     },
-    { title: '注册时间', dataIndex: 'createTime', responsive: ['md'], render: (value?: string) => value || '-' },
+    {
+      title: '注册时间',
+      dataIndex: 'createTime',
+      responsive: ['md'],
+      render: (value?: string) => formatDateTime(value),
+    },
     {
       title: '账号状态',
       dataIndex: 'status',
@@ -1101,7 +1258,7 @@ function AdminWorkspace() {
                 {product.status === 'onSale' ? '下架' : '上架'}
               </Button>
               {product.status === 'onSale' && (
-                <Button size="small" type="primary" onClick={() => openPublishTrial(product)}>
+                <Button size="small" type="primary" onClick={() => void openPublishTrial(product)}>
                   发布试用
                 </Button>
               )}
@@ -1118,29 +1275,6 @@ function AdminWorkspace() {
     { title: '商家', key: 'merchant', responsive: ['md'], render: (_, order) => order.merchantName || getMerchantName(order.merchantId) },
     { title: '商品', dataIndex: 'productTitles', responsive: ['md'], render: (titles: string[]) => titles.join('、') },
     { title: '金额', dataIndex: 'amount', render: (amount: number) => formatMoney(amount) },
-    {
-      title: '公益捐赠',
-      key: 'publicWelfare',
-      responsive: ['md'],
-      render: (_, order) => (
-        <span>
-          {formatMoney(Math.round(order.amount * 0.05 * 100) / 100)}
-          <span className={styles.feeRate}>5%</span>
-        </span>
-      ),
-    },
-    {
-      title: '甄客佣金',
-      key: 'verifierCommission',
-      responsive: ['md'],
-      render: (_, order) => (
-        <span>
-          {formatMoney(Math.round(order.amount * 0.05 * 100) / 100)}
-          <span className={styles.feeRate}>5%</span>
-          {order.fromVerifierName && <span className={styles.verifierName}>→ {order.fromVerifierName}</span>}
-        </span>
-      ),
-    },
     {
       title: '状态',
       dataIndex: 'status',
@@ -1186,7 +1320,7 @@ function AdminWorkspace() {
     { title: '商品', dataIndex: 'productTitle' },
     { title: '验证者', dataIndex: 'userName', responsive: ['md'] },
     { title: '商家', dataIndex: 'merchantId', responsive: ['md'], render: (merchantId, report) => report.merchantName || getMerchantName(merchantId) },
-    { title: '不足', dataIndex: 'shortcoming', responsive: ['md'], render: (text) => <span className={styles.shortcoming}>{text}</span> },
+    { title: '优化建议', dataIndex: 'shortcoming', responsive: ['md'], render: (text) => <span className={styles.shortcoming}>{text}</span> },
     {
       title: '类型',
       key: 'reportType',
@@ -1493,63 +1627,72 @@ function AdminWorkspace() {
           <Content className={styles.content}>
             {activeNav === 'dashboard' && (
               <div className={styles.dashboardGrid}>
-                {dashboardMetrics.map((metric) => {
-                  const value = stats[metric.key];
+                <div className={styles.dashboardMetricsGrid}>
+                  {dashboardMetrics.filter((metric) => !isAdmin || metric.key !== 'reportTotal').map((metric) => {
+                    const value = stats[metric.key];
 
-                  return (
-                    <div key={metric.key} className={`${styles.metricCard} ${styles[`metric${metric.tone}`]}`}>
-                      <div className={styles.metricIcon}>{metric.icon}</div>
-                      <div className={styles.metricBody}>
-                        <span>{metric.title}</span>
-                        <strong>{metric.money ? formatMoney(value) : value}</strong>
-                        <small>{metric.key === 'userTotal' && !isAdmin ? '当前订单买家去重' : metric.hint}</small>
+                    return (
+                      <div key={metric.key} className={`${styles.metricCard} ${styles[`metric${metric.tone}`]}`}>
+                        <div className={styles.metricIcon}>{metric.icon}</div>
+                        <div className={styles.metricBody}>
+                          <span>{metric.title}</span>
+                          <strong>{metric.money ? formatMoney(value) : value}</strong>
+                          <small>{metric.key === 'userTotal' && !isAdmin ? '当前订单买家去重' : metric.hint}</small>
+                        </div>
                       </div>
+                    );
+                  })}
+                </div>
+                <div className={styles.dashboardChartsGrid}>
+                  <section className={styles.chartPanel}>
+                    <div>
+                      <p className={styles.eyebrow}>柱状图</p>
+                      <h3>订单状态分布</h3>
                     </div>
-                  );
-                })}
-                <section className={styles.chartPanel}>
-                  <div>
-                    <p className={styles.eyebrow}>柱状图</p>
-                    <h3>订单状态分布</h3>
-                  </div>
-                  <Column
-                    data={orderStatusChartData}
-                    xField="status"
-                    yField="count"
-                    height={260}
-                    colorField="status"
-                    axis={{ y: { title: false }, x: { title: false } }}
-                    legend={false}
-                  />
-                </section>
-                <section className={styles.chartPanel}>
-                  <div>
-                    <p className={styles.eyebrow}>折线图</p>
-                    <h3>近 7 日订单趋势</h3>
-                  </div>
-                  <Line
-                    data={orderTrendChartData}
-                    xField="date"
-                    yField="count"
-                    height={260}
-                    point={{ shapeField: 'circle', sizeField: 4 }}
-                    axis={{ y: { title: false }, x: { title: false } }}
-                  />
-                </section>
-                <section className={`${styles.chartPanel} ${styles.chartPanelCompact}`}>
-                  <div>
-                    <p className={styles.eyebrow}>饼图</p>
-                    <h3>商品状态占比</h3>
-                  </div>
-                  <Pie
-                    data={productStatusPieData}
-                    angleField="count"
-                    colorField="status"
-                    height={260}
-                    legend={{ color: { position: 'bottom' } }}
-                    label={{ text: 'status', position: 'outside' }}
-                  />
-                </section>
+                    <Column
+                      data={orderStatusChartData}
+                      xField="status"
+                      yField="count"
+                      height={260}
+                      colorField="status"
+                      axis={{ y: { title: false }, x: { title: false } }}
+                      legend={false}
+                      tooltip={{ items: [{ field: 'count', name: '数量' }] }}
+                    />
+                  </section>
+                  <section className={styles.chartPanel}>
+                    <div>
+                      <p className={styles.eyebrow}>折线图</p>
+                      <h3>近 7 日订单趋势</h3>
+                    </div>
+                    <Line
+                      data={orderTrendChartData}
+                      xField="date"
+                      yField="count"
+                      height={260}
+                      point={{ shapeField: 'circle', sizeField: 4 }}
+                      axis={{ y: { title: false }, x: { title: false } }}
+                      tooltip={{ items: [{ field: 'count', name: '数量' }] }}
+                    />
+                  </section>
+                  <section className={`${styles.chartPanel} ${styles.chartPanelCompact}`}>
+                    <div>
+                      <p className={styles.eyebrow}>饼图</p>
+                      <h3>商品状态占比</h3>
+                    </div>
+                    <Pie
+                      data={productStatusPieData}
+                      angleField="count"
+                      colorField="status"
+                      height={260}
+                      radius={0.76}
+                      paddingTop={32}
+                      legend={{ color: { position: 'bottom' } }}
+                      label={{ text: 'status', position: 'outside' }}
+                      tooltip={{ items: [{ field: 'count', name: '数量' }] }}
+                    />
+                  </section>
+                </div>
               </div>
             )}
 
@@ -1645,11 +1788,19 @@ function AdminWorkspace() {
                     placeholder="搜索商品名、匠人/品牌或商家"
                     value={productKeyword}
                     onChange={(event) => setProductKeyword(event.target.value)}
+                    onPressEnter={() => void loadProducts(session, 1)}
                   />
                   <Select<ProductCategoryFilter>
                     className={styles.productFilter}
                     value={productCategoryFilter}
-                    onChange={setProductCategoryFilter}
+                    onChange={(value) => {
+                      setProductCategoryFilter(value);
+                      void loadProducts(session, 1, {
+                        keyword: productKeyword,
+                        category: value,
+                        status: productStatusFilter,
+                      });
+                    }}
                     options={[
                       { label: '全部分类', value: 'all' },
                       ...productCategories.map((item) => ({ label: item.categoryName, value: item.categoryCode })),
@@ -1658,7 +1809,14 @@ function AdminWorkspace() {
                   <Select<ProductStatusFilter>
                     className={styles.productFilter}
                     value={productStatusFilter}
-                    onChange={setProductStatusFilter}
+                    onChange={(value) => {
+                      setProductStatusFilter(value);
+                      void loadProducts(session, 1, {
+                        keyword: productKeyword,
+                        category: productCategoryFilter,
+                        status: value,
+                      });
+                    }}
                     options={[
                       { label: '全部状态', value: 'all' },
                       { label: '草稿', value: 'draft' },
@@ -1667,14 +1825,30 @@ function AdminWorkspace() {
                       { label: '试用中', value: 'trial' },
                     ]}
                   />
-                  <Button icon={<ReloadOutlined />} onClick={resetProductFilters}>
+                  <Button type="primary" icon={<SearchOutlined />} onClick={() => void loadProducts(session, 1)}>
+                    查询
+                  </Button>
+                  <Button icon={<ReloadOutlined />} onClick={() => resetProductFilters()}>
                     重置
                   </Button>
                   <span className={styles.filterSummary}>
-                    共 {filteredProducts.length} / {visibleProducts.length} 个商品
+                    共 {productTotal} 个商品
                   </span>
                 </div>
-                <Table loading={productsLoading} rowKey="id" columns={productColumns} dataSource={filteredProducts} pagination={{ pageSize: 6 }} />
+                <Table
+                  loading={productsLoading}
+                  rowKey="id"
+                  columns={productColumns}
+                  dataSource={filteredProducts}
+                  pagination={{
+                    current: productPage,
+                    pageSize: MANAGEMENT_PAGE_SIZE,
+                    total: productTotal,
+                    showSizeChanger: false,
+                    showTotal: (total) => `共 ${total} 条`,
+                    onChange: (page) => void loadProducts(session, page),
+                  }}
+                />
               </section>
             )}
 
@@ -1695,11 +1869,15 @@ function AdminWorkspace() {
                     placeholder="搜索订单号或买家"
                     value={orderKeyword}
                     onChange={(event) => setOrderKeyword(event.target.value)}
+                    onPressEnter={() => void loadOrders(session, 1)}
                   />
                   <Select<OrderStatusFilter>
                     className={styles.orderFilter}
                     value={orderStatusFilter}
-                    onChange={setOrderStatusFilter}
+                    onChange={(value) => {
+                      setOrderStatusFilter(value);
+                      void loadOrders(session, 1, { keyword: orderKeyword, status: value });
+                    }}
                     options={[
                       { label: '全部订单状态', value: 'all' },
                       { label: '待付款', value: 'unpaid' },
@@ -1711,14 +1889,30 @@ function AdminWorkspace() {
                       { label: '已退款', value: 'refunded' },
                     ]}
                   />
-                  <Button icon={<ReloadOutlined />} onClick={resetOrderFilters}>
+                  <Button type="primary" icon={<SearchOutlined />} onClick={() => void loadOrders(session, 1)}>
+                    查询
+                  </Button>
+                  <Button icon={<ReloadOutlined />} onClick={() => resetOrderFilters()}>
                     重置
                   </Button>
                   <span className={styles.filterSummary}>
-                    共 {filteredOrders.length} / {visibleOrders.length} 个订单
+                    共 {orderTotal} 个订单
                   </span>
                 </div>
-                <Table loading={ordersLoading} rowKey="id" columns={orderColumns} dataSource={filteredOrders} pagination={{ pageSize: 6 }} />
+                <Table
+                  loading={ordersLoading}
+                  rowKey="id"
+                  columns={orderColumns}
+                  dataSource={filteredOrders}
+                  pagination={{
+                    current: orderPage,
+                    pageSize: MANAGEMENT_PAGE_SIZE,
+                    total: orderTotal,
+                    showSizeChanger: false,
+                    showTotal: (total) => `共 ${total} 条`,
+                    onChange: (page) => void loadOrders(session, page),
+                  }}
+                />
               </section>
             )}
 
@@ -1730,12 +1924,25 @@ function AdminWorkspace() {
                     <h3>试用招募</h3>
                   </div>
                   {!isAdmin && (
-                    <Button type="primary" icon={<PlusOutlined />} onClick={() => openPublishTrial()}>
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => void openPublishTrial()}>
                       发布试用
                     </Button>
                   )}
                 </div>
-                <Table loading={trialsLoading} rowKey="id" columns={trialColumns} dataSource={visibleTrials} pagination={{ pageSize: 6 }} />
+                <Table
+                  loading={trialsLoading}
+                  rowKey="id"
+                  columns={trialColumns}
+                  dataSource={visibleTrials}
+                  pagination={{
+                    current: trialPage,
+                    pageSize: MANAGEMENT_PAGE_SIZE,
+                    total: trialTotal,
+                    showSizeChanger: false,
+                    showTotal: (total) => `共 ${total} 条`,
+                    onChange: (page) => void loadTrials(session, page),
+                  }}
+                />
                 {!isAdmin && (
                   <div style={{ marginTop: 28 }}>
                     <div className={styles.tableHeader}>
@@ -1751,14 +1958,21 @@ function AdminWorkspace() {
                       columns={trialApplicationColumns}
                       dataSource={trialApplications}
                       scroll={{ x: 'max-content' }}
-                      pagination={{ pageSize: 6 }}
+                      pagination={{
+                        current: trialApplicationPage,
+                        pageSize: MANAGEMENT_PAGE_SIZE,
+                        total: trialApplicationTotal,
+                        showSizeChanger: false,
+                        showTotal: (total) => `共 ${total} 条`,
+                        onChange: (page) => void loadTrialApplications(session, page),
+                      }}
                     />
                   </div>
                 )}
               </section>
             )}
 
-            {activeNav === 'reports' && (
+            {activeNav === 'reports' && !isAdmin && (
               <section className={styles.tableSurface}>
                 <div className={styles.tableHeader}>
                   <div>
@@ -1766,10 +1980,23 @@ function AdminWorkspace() {
                     <h3>验证报告</h3>
                   </div>
                   {!isAdmin && (
-                    <Button icon={<ReloadOutlined />} onClick={() => void loadReports()}>刷新报告</Button>
+                    <Button icon={<ReloadOutlined />} onClick={() => void loadReports(session, reportPage)}>刷新报告</Button>
                   )}
                 </div>
-                <Table loading={reportsLoading} rowKey="id" columns={reportColumns} dataSource={visibleReports} pagination={{ pageSize: 6 }} />
+                <Table
+                  loading={reportsLoading}
+                  rowKey="id"
+                  columns={reportColumns}
+                  dataSource={visibleReports}
+                  pagination={{
+                    current: reportPage,
+                    pageSize: MANAGEMENT_PAGE_SIZE,
+                    total: reportTotal,
+                    showSizeChanger: false,
+                    showTotal: (total) => `共 ${total} 条`,
+                    onChange: (page) => void loadReports(session, page),
+                  }}
+                />
               </section>
             )}
 
@@ -1780,7 +2007,7 @@ function AdminWorkspace() {
                     <p className={styles.eyebrow}>管理员专属</p>
                     <h3>商家管理</h3>
                   </div>
-                  <Button icon={<ReloadOutlined />} onClick={() => void loadMerchants()} loading={merchantsLoading}>
+                  <Button icon={<ReloadOutlined />} onClick={() => void loadMerchants(merchantPage)} loading={merchantsLoading}>
                     刷新
                   </Button>
                 </div>
@@ -1788,7 +2015,14 @@ function AdminWorkspace() {
                   rowKey="id"
                   dataSource={merchants}
                   loading={merchantsLoading}
-                  pagination={false}
+                  pagination={{
+                    current: merchantPage,
+                    pageSize: MANAGEMENT_PAGE_SIZE,
+                    total: merchantTotal,
+                    showSizeChanger: false,
+                    showTotal: (total) => `共 ${total} 条`,
+                    onChange: (page) => void loadMerchants(page),
+                  }}
                   scroll={{ x: 'max-content' }}
                   columns={[
                     { title: '申请商家', dataIndex: 'name', width: 120 },
@@ -1797,9 +2031,13 @@ function AdminWorkspace() {
                     { title: '负责人', dataIndex: 'ownerName', width: 80, responsive: ['md'] },
                     { title: '手机号', dataIndex: 'phone', width: 120, responsive: ['md'] },
                     { title: '公司地址', dataIndex: 'companyAddress', ellipsis: true, responsive: ['md'] },
-                    { title: '入驻时间', dataIndex: 'registeredAt', width: 100, responsive: ['md'] },
-                    { title: '商品数', dataIndex: 'productCount', width: 70, responsive: ['md'] },
-                    { title: '订单数', dataIndex: 'orderCount', width: 70, responsive: ['md'] },
+                    {
+                      title: '入驻时间',
+                      dataIndex: 'registeredAt',
+                      width: 170,
+                      responsive: ['md'],
+                      render: (value?: string) => <span className={styles.tableDateTime}>{formatDateTime(value)}</span>,
+                    },
                     {
                       title: '状态',
                       key: 'status',
@@ -2026,12 +2264,6 @@ function AdminWorkspace() {
                       ? '退款已驳回'
                       : '无退款申请'}</strong>
               </div>
-              {detailOrder.fromVerifierName && (
-                <div>
-                  <span>来源甄客</span>
-                  <strong>{detailOrder.fromVerifierName}</strong>
-                </div>
-              )}
             </div>
 
             <section>
@@ -2054,36 +2286,18 @@ function AdminWorkspace() {
             </section>
 
             <section>
-              <h4>服务费分成</h4>
+              <h4>结算金额</h4>
               <div className={styles.feeBreakdown}>
                 <div className={styles.feeRow}>
-                  <span className={styles.feeLabel}>成交额</span>
+                  <span className={styles.feeLabel}>订单成交额</span>
                   <span className={styles.feeValue}>{formatMoney(detailOrder.amount)}</span>
                 </div>
                 <div className={styles.feeRow}>
-                  <span className={styles.feeLabel}>平台服务费（成交额 × 10%）</span>
-                  <span className={styles.feeValue}>{formatMoney(Math.round(detailOrder.amount * 0.1 * 100) / 100)}</span>
-                </div>
-                <div className={styles.feeRow}>
-                  <span className={styles.feeLabel}>公益捐赠（成交额 × 5%）</span>
-                  <span className={styles.feeValue}>{formatMoney(Math.round(detailOrder.amount * 0.05 * 100) / 100)}</span>
-                </div>
-                <div className={styles.feeRow}>
-                  <span className={styles.feeLabel}>甄客佣金（成交额 × 5%）</span>
-                  <span className={styles.feeValue}>
-                    {detailOrder.fromVerifierName
-                      ? `${formatMoney(Math.round(detailOrder.amount * 0.05 * 100) / 100)} → ${detailOrder.fromVerifierName}`
-                      : formatMoney(Math.round(detailOrder.amount * 0.05 * 100) / 100)}
-                  </span>
-                </div>
-                <div className={styles.feeRow}>
                   <span className={styles.feeLabel}>商家实收</span>
-                  <span className={styles.feeValue}>{formatMoney(Math.round(detailOrder.amount * 0.9 * 100) / 100)}</span>
+                  <span className={styles.feeValue}>{formatMoney(detailOrder.amount)}</span>
                 </div>
               </div>
-              {!detailOrder.fromVerifierName && (
-                <p className={styles.feeNote}>该订单非甄客验引流，甄客佣金暂不发放</p>
-              )}
+              <p className={styles.feeNote}>当前阶段订单金额全部计入商家实收。</p>
             </section>
 
             <section>
@@ -2306,14 +2520,29 @@ function AdminWorkspace() {
             <Select
               placeholder="请选择要发布试用的商品"
               size="large"
-              onChange={(productId) => {
-                const availableTypes = getAvailableTrialTypes(productId);
-                trialForm.setFieldValue('trialTypes', availableTypes.length > 0 ? [availableTypes[0]] : []);
+              showSearch
+              filterOption={false}
+              onSearch={(keyword) => {
+                if (trialProductSearchTimer.current) clearTimeout(trialProductSearchTimer.current);
+                trialProductSearchTimer.current = setTimeout(() => {
+                  void loadTrialProductOptions(keyword);
+                }, 300);
+              }}
+              onChange={async (productId) => {
+                try {
+                  const availableTypes = await fetchAvailableTrialTypes(productId);
+                  setSelectedTrialAvailableTypes(availableTypes);
+                  trialForm.setFieldValue('trialTypes', availableTypes.length > 0 ? [availableTypes[0]] : []);
+                } catch (error) {
+                  setSelectedTrialAvailableTypes([]);
+                  trialForm.setFieldValue('trialTypes', []);
+                  message.error(error instanceof Error ? error.message : '试用方式加载失败');
+                }
               }}
             >
-              {visibleProducts.filter((product) => product.status === 'onSale').map((product) => (
-                <Select.Option key={product.id} value={product.id} disabled={getAvailableTrialTypes(product.id).length === 0}>
-                  {product.title}{getAvailableTrialTypes(product.id).length === 0 ? '（线上、线下均在招募）' : ''}
+              {trialProductOptions.map((product) => (
+                <Select.Option key={product.id} value={product.id}>
+                  {product.title}
                 </Select.Option>
               ))}
             </Select>
@@ -2353,8 +2582,21 @@ function AdminWorkspace() {
           <Form.Item name="targetCount" label="招募人数" rules={[{ required: true, message: '请输入招募人数' }]}>
             <InputNumber min={1} max={100} size="large" style={{ width: '100%' }} placeholder="请输入招募人数" />
           </Form.Item>
-          <Form.Item name="deadline" label="截止日期" rules={[{ required: true, message: '请选择截止日期' }]}>
-            <Input size="large" type="date" placeholder="请选择截止日期" />
+          <Form.Item
+            name="deadline"
+            label="截止日期"
+            extra="截止日期当天仍可申请，次日凌晨自动结束招募。"
+            rules={[{ required: true, message: '请选择截止日期' }]}
+          >
+            <DatePicker
+              size="large"
+              format="YYYY-MM-DD"
+              placeholder="请选择截止日期"
+              allowClear={false}
+              inputReadOnly
+              disabledDate={(current) => current.startOf('day').valueOf() < new Date().setHours(0, 0, 0, 0)}
+              style={{ width: '100%' }}
+            />
           </Form.Item>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', paddingTop: 8 }}>
             <Button onClick={closeTrialModal}>取消</Button>
@@ -2421,7 +2663,7 @@ function AdminWorkspace() {
               </div>
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>入驻时间</span>
-                <span>{detailMerchant.registeredAt ?? '-'}</span>
+                <span>{formatDateTime(detailMerchant.registeredAt)}</span>
               </div>
             </div>
 
@@ -2452,7 +2694,7 @@ function AdminWorkspace() {
                 </Tag>
               </div>
               <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>接受公益分成</span>
+                <span className={styles.detailLabel}>参与公益合作</span>
                 <Tag color={detailMerchant.acceptsPublicWelfare ? 'green' : 'default'}>
                   {detailMerchant.acceptsPublicWelfare ? '已接受' : '未接受'}
                 </Tag>
@@ -2477,7 +2719,7 @@ function AdminWorkspace() {
 
 export default function AdminHomePage() {
   return (
-    <ConfigProvider theme={adminTheme}>
+    <ConfigProvider theme={adminTheme} locale={zhCN}>
       <AntApp>
         <AdminWorkspace />
       </AntApp>

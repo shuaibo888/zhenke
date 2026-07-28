@@ -8,6 +8,8 @@ public class ShopHomeReportSummary
     private String userName;
     private String shortcoming;
     private String recommend;
+    private Integer usefulCount;
+    private Boolean usefulByMe;
     private BigDecimal aiScore;
     private String aiScoreStatus;
     public Long getShopUserId() { return shopUserId; }
@@ -18,6 +20,10 @@ public class ShopHomeReportSummary
     public void setShortcoming(String shortcoming) { this.shortcoming = shortcoming; }
     public String getRecommend() { return recommend; }
     public void setRecommend(String recommend) { this.recommend = recommend; }
+    public Integer getUsefulCount() { return usefulCount; }
+    public void setUsefulCount(Integer usefulCount) { this.usefulCount = usefulCount; }
+    public Boolean getUsefulByMe() { return usefulByMe; }
+    public void setUsefulByMe(Boolean usefulByMe) { this.usefulByMe = usefulByMe; }
     public BigDecimal getAiScore() { return aiScore; }
     public void setAiScore(BigDecimal aiScore) { this.aiScore = aiScore; }
     public String getAiScoreStatus() { return aiScoreStatus; }
