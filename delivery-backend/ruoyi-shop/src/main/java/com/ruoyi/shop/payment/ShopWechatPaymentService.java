@@ -359,7 +359,7 @@ public class ShopWechatPaymentService
     {
         String description = orderMapper.selectOrderItems(order.getOrderId()).stream()
                 .map(ShopOrderItem::getProductName).filter(StringUtils::isNotEmpty)
-                .findFirst().orElse("甄客商城订单");
+                .findFirst().orElse("㤫者商城订单");
         if (description.length() > 127)
         {
             description = description.substring(0, 127);

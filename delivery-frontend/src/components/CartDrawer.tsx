@@ -1,11 +1,10 @@
 import { DeleteOutlined, MinusOutlined, PlusOutlined, ShoppingCartOutlined } from '@ant-design/icons';
-import { Button, Drawer, Modal, Spin, message } from 'antd';
+import { Button, Drawer, Spin, message } from 'antd';
 import { useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { formatPrice, getCartCount, getCartTotal } from '@/utils/shop';
-import { AddressManager } from './AddressManager';
 import styles from '@/styles/commerce.less';
 
 export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -14,49 +13,26 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     user,
     cart,
     cartLoading,
-    addresses,
     changeCartQuantity,
     removeCartItem,
-    checkoutCart,
   } = useShop();
   const [mutatingId, setMutatingId] = useState<number | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [addressOpen, setAddressOpen] = useState(false);
-  useBodyScrollLock(open || addressOpen);
+  useBodyScrollLock(open);
   const count = getCartCount(cart);
   const total = getCartTotal(cart);
 
-  const checkout = async () => {
+  const checkout = () => {
     if (!user) {
       onClose();
       navigate('/auth');
       return;
     }
-    const address = addresses.find((item) => item.isDefault) ?? addresses[0];
-    if (!address) {
-      setAddressOpen(true);
-      message.info('请先添加收货地址');
-      return;
+    const merchantCount = new Set(cart.map((item) => item.merchantId)).size;
+    if (merchantCount > 1) {
+      message.info('购物车包含多个商家，优惠券仅支持单商家结算使用');
     }
-    Modal.confirm({
-      title: '确认结算',
-      content: `使用 ${address.recipient} 的地址结算 ${count} 件商品？`,
-      okText: '提交订单',
-      cancelText: '再看看',
-      onOk: async () => {
-        setSubmitting(true);
-        try {
-          await checkoutCart(address.id);
-          onClose();
-          message.success('订单已创建，请在付款期限内完成支付');
-          navigate('/profile/orders');
-        } catch (error) {
-          message.error(error instanceof Error ? error.message : '购物车结算失败');
-        } finally {
-          setSubmitting(false);
-        }
-      },
-    });
+    onClose();
+    navigate('/checkout?source=cart');
   };
 
   const changeQuantity = async (cartItemId: number, quantity: number) => {
@@ -101,8 +77,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               type="primary"
               size="large"
               disabled={cart.length === 0}
-              loading={submitting}
-              onClick={() => void checkout()}
+              onClick={checkout}
             >
               结算 {count} 件
             </Button>
@@ -156,7 +131,6 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           </div>
         )}
       </Drawer>
-      <AddressManager open={addressOpen} onClose={() => setAddressOpen(false)} />
     </>
   );
 }

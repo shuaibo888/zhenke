@@ -3,6 +3,7 @@ import {
   EditOutlined,
   EnvironmentOutlined,
   FileTextOutlined,
+  GiftOutlined,
   LockOutlined,
   LogoutOutlined,
   ProfileOutlined,
@@ -24,7 +25,7 @@ const ALLOWED_AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif']);
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { user, orders, trials, reports, privateLoading, logout, setUser } = useShop();
+  const { user, orders, trials, reports, coupons, privateLoading, logout, setUser } = useShop();
   const [profileOpen, setProfileOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
@@ -162,6 +163,17 @@ export default function ProfilePage() {
                 <small>付款、物流、收货与售后记录</small>
               </span>
               <span className={styles.profileMenuMeta}>{privateLoading ? '加载中' : `${orders.length} 笔`}</span>
+              <RightOutlined className={styles.profileMenuArrow} />
+            </button>
+            <button type="button" className={styles.profileMenuItem} onClick={() => navigate('/profile/coupons')}>
+              <span className={styles.profileMenuIcon}><GiftOutlined /></span>
+              <span className={styles.profileMenuCopy}>
+                <strong>我的优惠券</strong>
+                <small>查看可用、待生效、已使用与失效优惠券</small>
+              </span>
+              <span className={styles.profileMenuMeta}>
+                {privateLoading ? '加载中' : `${coupons.filter((coupon) => coupon.availabilityStatus === 'AVAILABLE').length} 张可用`}
+              </span>
               <RightOutlined className={styles.profileMenuArrow} />
             </button>
             <button type="button" className={styles.profileMenuItem} onClick={() => navigate('/profile/trials')}>

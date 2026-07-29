@@ -27,7 +27,7 @@ import type { ShopShippingAddress } from '@/services/shopAuth';
 import { buildProductShareLink, copyText, formatPrice } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
 
-type PendingAddressAction = 'buy' | 'trial' | null;
+type PendingAddressAction = 'trial' | null;
 const PRODUCT_REPORT_PAGE_SIZE = 6;
 
 function formatAddress(address: ShopShippingAddress) {
@@ -56,7 +56,6 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
     trials: myTrials,
     addresses,
     addToCart,
-    buyNow,
     refreshTrials,
   } = useShop();
   const productId = productIdProp ?? Number(productIdParam);
@@ -76,7 +75,6 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   const [selectedCampaign, setSelectedCampaign] = useState<HomeFeedItemDto | null>(null);
   const [addressOpen, setAddressOpen] = useState(false);
   const [pendingAddressAction, setPendingAddressAction] = useState<PendingAddressAction>(null);
-  const [buying, setBuying] = useState(false);
   const [cartSubmitting, setCartSubmitting] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [showAllReports, setShowAllReports] = useState(false);
@@ -152,31 +150,14 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
     }
   };
 
-  const submitBuy = async (address: ShopShippingAddress) => {
-    if (!product) return;
-    setBuying(true);
-    try {
-      await buyNow(address.id, product.productId, 1, validSourceReportId);
-      message.success('订单已创建，请在付款期限内完成支付');
-      navigate('/profile/orders');
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : '订单创建失败');
-    } finally {
-      setBuying(false);
-      setAddressOpen(false);
-      setPendingAddressAction(null);
-    }
-  };
-
   const startBuy = () => {
-    if (!requireLogin()) return;
-    const address = addresses.find((item) => item.isDefault) ?? addresses[0];
-    if (address) {
-      void submitBuy(address);
-      return;
-    }
-    setPendingAddressAction('buy');
-    setAddressOpen(true);
+    if (!requireLogin() || !product) return;
+    const params = new URLSearchParams({
+      productId: String(product.productId),
+      quantity: '1',
+    });
+    if (validSourceReportId) params.set('sourceReportId', String(validSourceReportId));
+    navigate(`/checkout?${params.toString()}`);
   };
 
   const startTrial = (campaign: HomeFeedItemDto) => {
@@ -390,7 +371,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
           >
             加入购物车
           </Button>
-          <Button type="primary" size="large" className={styles.reportDetailBuy} loading={buying} onClick={startBuy}>
+          <Button type="primary" size="large" className={styles.reportDetailBuy} onClick={startBuy}>
             立即购买
           </Button>
         </div>
@@ -462,7 +443,6 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
         picker
         onClose={() => setAddressOpen(false)}
         onSelect={(address) => {
-          if (pendingAddressAction === 'buy') void submitBuy(address);
           if (pendingAddressAction === 'trial') {
             void form.validateFields().then((values) => submitTrial(values, address));
           }

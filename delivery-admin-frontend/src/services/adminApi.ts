@@ -1,4 +1,4 @@
-import type { AdminSession, ManagedLogisticsTrace, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, MerchantAuditLog, ProductCategoryOption, ShopMemberLevel, ShopUserAccount } from '@/types';
+import type { AdminSession, ManagedCoupon, ManagedCouponGrant, ManagedLogisticsTrace, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, MerchantAuditLog, ProductCategoryOption, ShopMemberLevel, ShopUserAccount } from '@/types';
 
 const tokenStorageKey = 'zhenke_admin_access_token';
 
@@ -162,6 +162,16 @@ interface VerificationReportDto {
   // aiScoredAt?: string;
   usefulCount: number;
   publishedAt: string;
+}
+
+interface CouponListResponse extends ApiResponse {
+  rows: ManagedCoupon[];
+  total: number;
+}
+
+interface CouponGrantListResponse extends ApiResponse {
+  rows: ManagedCouponGrant[];
+  total: number;
 }
 
 export interface CaptchaState {
@@ -420,12 +430,20 @@ export async function updateShopUserLevel(userId: number, levelId: number) {
   );
 }
 
-export async function fetchMerchants(query: { pageNum?: number; pageSize?: number; auditStatus?: string } = {}) {
+export async function fetchMerchants(query: {
+  pageNum?: number;
+  pageSize?: number;
+  auditStatus?: string;
+  status?: '0' | '1';
+  keyword?: string;
+} = {}) {
   const params = new URLSearchParams({
     pageNum: String(query.pageNum ?? 1),
     pageSize: String(query.pageSize ?? 10),
   });
   if (query.auditStatus) params.set('auditStatus', query.auditStatus);
+  if (query.status) params.set('status', query.status);
+  if (query.keyword) params.set('companyName', query.keyword);
   const result = await requestApi<MerchantListResponse>(`/shop/admin/merchants?${params.toString()}`, {}, true);
   return { rows: result.rows.map(toMerchantAccount), total: result.total };
 }
@@ -481,6 +499,97 @@ export async function updateProductCategory(
 export interface ManagedPageQuery {
   pageNum?: number;
   pageSize?: number;
+}
+
+export interface CouponWriteBody {
+  couponName: string;
+  description?: string;
+  discountAmount: number;
+  minimumSpend: number;
+  startTime: string;
+  endTime: string;
+  status: 'ENABLED' | 'DISABLED';
+  totalStock: number;
+  merchantIds: number[];
+}
+
+export async function fetchCoupons(query: {
+  pageNum?: number;
+  pageSize?: number;
+  keyword?: string;
+  status?: 'ENABLED' | 'DISABLED';
+} = {}) {
+  const params = new URLSearchParams({
+    pageNum: String(query.pageNum ?? 1),
+    pageSize: String(query.pageSize ?? 10),
+  });
+  if (query.keyword) params.set('couponName', query.keyword);
+  if (query.status) params.set('status', query.status);
+  const result = await requestApi<CouponListResponse>(`/shop/admin/coupons?${params.toString()}`, {}, true);
+  return {
+    rows: (Array.isArray(result.rows) ? result.rows : []).map((coupon) => ({
+      ...coupon,
+      discountAmount: Number(coupon.discountAmount),
+      minimumSpend: Number(coupon.minimumSpend),
+      totalStock: Number(coupon.totalStock),
+      issuedCount: Number(coupon.issuedCount),
+      merchants: Array.isArray(coupon.merchants) ? coupon.merchants : [],
+    })),
+    total: Number(result.total ?? 0),
+  };
+}
+
+export async function createCoupon(body: CouponWriteBody) {
+  const result = await requestApi<ApiResponse<ManagedCoupon>>(
+    '/shop/admin/coupons',
+    { method: 'POST', body: JSON.stringify(body) },
+    true,
+  );
+  if (!result.data) throw new Error('优惠券创建失败');
+  return result.data;
+}
+
+export async function updateCoupon(couponId: number, body: CouponWriteBody) {
+  const result = await requestApi<ApiResponse<ManagedCoupon>>(
+    `/shop/admin/coupons/${couponId}`,
+    { method: 'PUT', body: JSON.stringify(body) },
+    true,
+  );
+  if (!result.data) throw new Error('优惠券更新失败');
+  return result.data;
+}
+
+export async function updateCouponStatus(couponId: number, status: 'ENABLED' | 'DISABLED') {
+  const result = await requestApi<ApiResponse<ManagedCoupon>>(
+    `/shop/admin/coupons/${couponId}/status`,
+    { method: 'PUT', body: JSON.stringify({ status }) },
+    true,
+  );
+  if (!result.data) throw new Error('优惠券状态更新失败');
+  return result.data;
+}
+
+export async function grantCoupon(couponId: number, body: { userIds: number[]; quantityPerUser: number }) {
+  const result = await requestApi<ApiResponse<ManagedCouponGrant>>(
+    `/shop/admin/coupons/${couponId}/grants`,
+    { method: 'POST', body: JSON.stringify(body) },
+    true,
+  );
+  if (!result.data) throw new Error('优惠券下发失败');
+  return result.data;
+}
+
+export async function fetchCouponGrants(couponId: number, pageNum = 1, pageSize = 10) {
+  const params = new URLSearchParams({ pageNum: String(pageNum), pageSize: String(pageSize) });
+  const result = await requestApi<CouponGrantListResponse>(
+    `/shop/admin/coupons/${couponId}/grants?${params.toString()}`,
+    {},
+    true,
+  );
+  return {
+    rows: Array.isArray(result.rows) ? result.rows : [],
+    total: Number(result.total ?? 0),
+  };
 }
 
 export interface ManagedProductQuery extends ManagedPageQuery {

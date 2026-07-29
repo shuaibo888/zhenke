@@ -13,7 +13,10 @@ public class ShopOrder
     private Long merchantId;
     private String merchantName;
     private String status;
+    private BigDecimal originalAmount;
+    private BigDecimal discountAmount;
     private BigDecimal totalAmount;
+    private Long userCouponId;
     private Integer itemCount;
     private String delFlag;
     private Date paymentExpireTime;
@@ -56,8 +59,14 @@ public class ShopOrder
     public void setMerchantName(String merchantName) { this.merchantName = merchantName; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public BigDecimal getOriginalAmount() { return originalAmount; }
+    public void setOriginalAmount(BigDecimal originalAmount) { this.originalAmount = originalAmount; }
+    public BigDecimal getDiscountAmount() { return discountAmount; }
+    public void setDiscountAmount(BigDecimal discountAmount) { this.discountAmount = discountAmount; }
     public BigDecimal getTotalAmount() { return totalAmount; }
     public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+    public Long getUserCouponId() { return userCouponId; }
+    public void setUserCouponId(Long userCouponId) { this.userCouponId = userCouponId; }
     public Integer getItemCount() { return itemCount; }
     public void setItemCount(Integer itemCount) { this.itemCount = itemCount; }
     public String getDelFlag() { return delFlag; }

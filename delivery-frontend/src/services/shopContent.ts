@@ -157,6 +157,30 @@ export interface ShopCartItemDto {
   productStatus: 'DRAFT' | 'ON_SALE' | 'OFF_SALE';
 }
 
+export interface ShopCouponDto {
+  userCouponId: number;
+  couponId: number;
+  shopUserId: number;
+  couponCode: string;
+  status: 'UNUSED' | 'USED';
+  usedOrderId?: number;
+  usedTime?: string;
+  createTime: string;
+  couponName: string;
+  description?: string;
+  discountAmount: number;
+  minimumSpend: number;
+  startTime: string;
+  endTime: string;
+  couponStatus: 'ENABLED' | 'DISABLED';
+  availabilityStatus: 'AVAILABLE' | 'PENDING' | 'USED' | 'EXPIRED' | 'DISABLED';
+  merchants: Array<{
+    couponId: number;
+    merchantId: number;
+    merchantName: string;
+  }>;
+}
+
 export interface ShopOrderDto {
   orderId: number;
   orderNo: string;
@@ -164,7 +188,10 @@ export interface ShopOrderDto {
   merchantId: number;
   merchantName: string;
   status: 'PENDING_PAYMENT' | 'PAID' | 'SHIPPED' | 'RECEIVED' | 'CANCELLED' | 'REFUNDING' | 'REFUNDED';
+  originalAmount: number;
+  discountAmount: number;
   totalAmount: number;
+  userCouponId?: number;
   itemCount: number;
   paymentExpireTime?: string;
   paymentChannel?: 'WECHAT' | 'MOCK';
@@ -378,9 +405,34 @@ export async function fetchShopOrders() {
   return Array.isArray(result.data) ? result.data : [];
 }
 
+export async function fetchShopOrder(orderId: number) {
+  const result = await requestApi<ApiResponse<ShopOrderDto>>(`/shop/orders/${orderId}`, {}, true);
+  if (!result.data) throw new Error('订单不存在');
+  return result.data;
+}
+
+export async function fetchMyCoupons() {
+  const result = await requestApi<ApiResponse<ShopCouponDto[]>>('/shop/coupons', {}, true);
+  return Array.isArray(result.data) ? result.data : [];
+}
+
+export async function fetchAvailableCoupons(merchantId: number, subtotal: number) {
+  const params = new URLSearchParams({
+    merchantId: String(merchantId),
+    subtotal: subtotal.toFixed(2),
+  });
+  const result = await requestApi<ApiResponse<ShopCouponDto[]>>(
+    `/shop/coupons/available?${params.toString()}`,
+    {},
+    true,
+  );
+  return Array.isArray(result.data) ? result.data : [];
+}
+
 export async function createShopOrders(body: {
   addressId: number;
   items: Array<{ productId: number; quantity: number; sourceReportId?: number }>;
+  userCouponId?: number;
 }) {
   const result = await requestApi<ApiResponse<ShopOrderDto[]>>(
     '/shop/orders',
@@ -390,10 +442,10 @@ export async function createShopOrders(body: {
   return Array.isArray(result.data) ? result.data : [];
 }
 
-export async function checkoutShopCart(addressId: number) {
+export async function checkoutShopCart(addressId: number, userCouponId?: number) {
   const result = await requestApi<ApiResponse<ShopOrderDto[]>>(
     '/shop/orders/from-cart',
-    { method: 'POST', body: JSON.stringify({ addressId }) },
+    { method: 'POST', body: JSON.stringify({ addressId, userCouponId }) },
     true,
   );
   return Array.isArray(result.data) ? result.data : [];

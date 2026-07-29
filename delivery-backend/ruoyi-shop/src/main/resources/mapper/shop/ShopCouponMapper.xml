@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.shop.mapper.ShopCouponMapper">
+    <resultMap id="ShopCouponResult" type="ShopCoupon">
+        <id property="couponId" column="coupon_id" />
+        <result property="couponName" column="coupon_name" />
+        <result property="description" column="description" />
+        <result property="discountAmount" column="discount_amount" />
+        <result property="minimumSpend" column="minimum_spend" />
+        <result property="startTime" column="start_time" />
+        <result property="endTime" column="end_time" />
+        <result property="status" column="status" />
+        <result property="totalStock" column="total_stock" />
+        <result property="issuedCount" column="issued_count" />
+        <result property="createBy" column="create_by" />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <resultMap id="ShopCouponMerchantResult" type="ShopCouponMerchant">
+        <id property="couponId" column="coupon_id" />
+        <id property="merchantId" column="merchant_id" />
+        <result property="merchantName" column="merchant_name" />
+    </resultMap>
+
+    <resultMap id="ShopCouponGrantResult" type="ShopCouponGrant">
+        <id property="grantId" column="grant_id" />
+        <result property="couponId" column="coupon_id" />
+        <result property="userCount" column="user_count" />
+        <result property="quantityPerUser" column="quantity_per_user" />
+        <result property="totalQuantity" column="total_quantity" />
+        <result property="grantType" column="grant_type" />
+        <result property="triggerCode" column="trigger_code" />
+        <result property="operatorId" column="operator_id" />
+        <result property="operatorName" column="operator_name" />
+        <result property="createTime" column="create_time" />
+    </resultMap>
+
+    <resultMap id="ShopUserCouponResult" type="ShopUserCoupon">
+        <id property="userCouponId" column="user_coupon_id" />
+        <result property="couponId" column="coupon_id" />
+        <result property="shopUserId" column="shop_user_id" />
+        <result property="grantId" column="grant_id" />
+        <result property="couponCode" column="coupon_code" />
+        <result property="status" column="user_coupon_status" />
+        <result property="usedOrderId" column="used_order_id" />
+        <result property="usedTime" column="used_time" />
+        <result property="createTime" column="user_coupon_create_time" />
+        <result property="couponName" column="coupon_name" />
+        <result property="description" column="description" />
+        <result property="discountAmount" column="discount_amount" />
+        <result property="minimumSpend" column="minimum_spend" />
+        <result property="startTime" column="start_time" />
+        <result property="endTime" column="end_time" />
+        <result property="couponStatus" column="coupon_status" />
+        <result property="availabilityStatus" column="availability_status" />
+    </resultMap>
+
+    <sql id="selectCoupon">
+        select coupon_id, coupon_name, description, discount_amount, minimum_spend,
+               start_time, end_time, status, total_stock, issued_count,
+               create_by, create_time, update_by, update_time
+        from shop_coupon
+    </sql>
+
+    <select id="selectAdminList" parameterType="ShopCoupon" resultMap="ShopCouponResult">
+        <include refid="selectCoupon" />
+        <where>
+            del_flag = '0'
+            <if test="couponName != null and couponName != ''">
+                and coupon_name like concat('%', #{couponName}, '%')
+            </if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+        </where>
+        order by coupon_id desc
+    </select>
+
+    <select id="selectById" parameterType="Long" resultMap="ShopCouponResult">
+        <include refid="selectCoupon" />
+        where coupon_id = #{couponId} and del_flag = '0'
+    </select>
+
+    <select id="selectByIdForUpdate" parameterType="Long" resultMap="ShopCouponResult">
+        <include refid="selectCoupon" />
+        where coupon_id = #{couponId} and del_flag = '0'
+        for update
+    </select>
+
+    <select id="selectMerchantScopes" resultMap="ShopCouponMerchantResult">
+        select cm.coupon_id, cm.merchant_id, m.company_name as merchant_name
+        from shop_coupon_merchant cm
+        inner join shop_merchant m on m.merchant_id = cm.merchant_id and m.del_flag = '0'
+        where cm.coupon_id in
+        <foreach collection="couponIds" item="couponId" open="(" separator="," close=")">
+            #{couponId}
+        </foreach>
+        order by cm.coupon_id, m.company_name, cm.merchant_id
+    </select>
+
+    <select id="countEnabledMerchants" resultType="int">
+        select count(1)
+        from shop_merchant
+        where merchant_id in
+        <foreach collection="merchantIds" item="merchantId" open="(" separator="," close=")">
+            #{merchantId}
+        </foreach>
+        and audit_status = 'APPROVED' and status = '0' and del_flag = '0'
+    </select>
+
+    <select id="countEnabledUsers" resultType="int">
+        select count(1)
+        from shop_user
+        where user_id in
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+        and status = '0' and del_flag = '0'
+    </select>
+
+    <select id="countEnabledMerchantScopes" parameterType="Long" resultType="int">
+        select count(1)
+        from shop_coupon_merchant cm
+        inner join shop_merchant m on m.merchant_id = cm.merchant_id
+        where cm.coupon_id = #{couponId}
+          and m.audit_status = 'APPROVED' and m.status = '0' and m.del_flag = '0'
+    </select>
+
+    <insert id="insertCoupon" parameterType="ShopCoupon" useGeneratedKeys="true" keyProperty="couponId">
+        insert into shop_coupon
+        (coupon_name, description, discount_amount, minimum_spend, start_time, end_time,
+         status, total_stock, issued_count, del_flag, create_by, create_time, update_by, update_time)
+        values
+        (#{couponName}, #{description}, #{discountAmount}, #{minimumSpend}, #{startTime}, #{endTime},
+         #{status}, #{totalStock}, 0, '0', #{createBy}, sysdate(), #{updateBy}, sysdate())
+    </insert>
+
+    <update id="updateCoupon" parameterType="ShopCoupon">
+        update shop_coupon
+        set coupon_name = #{couponName}, description = #{description},
+            discount_amount = #{discountAmount}, minimum_spend = #{minimumSpend},
+            start_time = #{startTime}, end_time = #{endTime}, status = #{status},
+            total_stock = #{totalStock}, update_by = #{updateBy}, update_time = sysdate()
+        where coupon_id = #{couponId} and issued_count = 0 and del_flag = '0'
+    </update>
+
+    <update id="updateStatus">
+        update shop_coupon
+        set status = #{status}, update_by = #{updateBy}, update_time = sysdate()
+        where coupon_id = #{couponId} and del_flag = '0'
+    </update>
+
+    <update id="reserveStock">
+        update shop_coupon
+        set issued_count = issued_count + #{quantity}, update_by = #{updateBy}, update_time = sysdate()
+        where coupon_id = #{couponId}
+          and status = 'ENABLED'
+          and end_time &gt; sysdate()
+          and issued_count + #{quantity} &lt;= total_stock
+          and del_flag = '0'
+    </update>
+
+    <delete id="deleteMerchantScopes" parameterType="Long">
+        delete from shop_coupon_merchant where coupon_id = #{couponId}
+    </delete>
+
+    <insert id="insertMerchantScopes">
+        insert into shop_coupon_merchant (coupon_id, merchant_id, create_time)
+        values
+        <foreach collection="merchantIds" item="merchantId" separator=",">
+            (#{couponId}, #{merchantId}, sysdate())
+        </foreach>
+    </insert>
+
+    <insert id="insertGrant" parameterType="ShopCouponGrant" useGeneratedKeys="true" keyProperty="grantId">
+        insert into shop_coupon_grant
+        (coupon_id, user_count, quantity_per_user, total_quantity,
+         grant_type, trigger_code, operator_id, operator_name, create_time)
+        values
+        (#{couponId}, #{userCount}, #{quantityPerUser}, #{totalQuantity},
+         #{grantType}, #{triggerCode}, #{operatorId}, #{operatorName}, sysdate())
+    </insert>
+
+    <insert id="insertUserCoupons">
+        insert into shop_user_coupon
+        (coupon_id, shop_user_id, grant_id, coupon_code, status, create_time, update_time)
+        values
+        <foreach collection="coupons" item="coupon" separator=",">
+            (#{coupon.couponId}, #{coupon.shopUserId}, #{coupon.grantId},
+             #{coupon.couponCode}, #{coupon.status}, sysdate(), sysdate())
+        </foreach>
+    </insert>
+
+    <select id="selectGrants" parameterType="Long" resultMap="ShopCouponGrantResult">
+        select grant_id, coupon_id, user_count, quantity_per_user, total_quantity,
+               grant_type, trigger_code, operator_id, operator_name, create_time
+        from shop_coupon_grant
+        where coupon_id = #{couponId}
+        order by grant_id desc
+    </select>
+
+    <sql id="selectUserCouponColumns">
+        select uc.user_coupon_id, uc.coupon_id, uc.shop_user_id, uc.grant_id,
+               uc.coupon_code, uc.status as user_coupon_status, uc.used_order_id,
+               uc.used_time, uc.create_time as user_coupon_create_time,
+               c.coupon_name, c.description, c.discount_amount, c.minimum_spend,
+               c.start_time, c.end_time, c.status as coupon_status
+    </sql>
+
+    <select id="selectUserCoupons" parameterType="Long" resultMap="ShopUserCouponResult">
+        <include refid="selectUserCouponColumns" />,
+        case
+            when uc.status = 'USED' then 'USED'
+            when c.del_flag != '0' or c.status != 'ENABLED' then 'DISABLED'
+            when c.end_time &lt;= sysdate() then 'EXPIRED'
+            when c.start_time &gt; sysdate() then 'PENDING'
+            else 'AVAILABLE'
+        end as availability_status
+        from shop_user_coupon uc
+        inner join shop_coupon c on c.coupon_id = uc.coupon_id
+        where uc.shop_user_id = #{userId}
+        order by
+            case
+                when uc.status = 'UNUSED' and c.del_flag = '0' and c.status = 'ENABLED'
+                     and c.start_time &lt;= sysdate() and c.end_time &gt; sysdate() then 0
+                when uc.status = 'UNUSED' and c.start_time &gt; sysdate() then 1
+                when uc.status = 'UNUSED' then 2
+                else 3
+            end,
+            c.end_time, uc.user_coupon_id desc
+    </select>
+
+    <select id="selectAvailableUserCoupons" resultMap="ShopUserCouponResult">
+        <include refid="selectUserCouponColumns" />,
+        'AVAILABLE' as availability_status
+        from shop_user_coupon uc
+        inner join shop_coupon c on c.coupon_id = uc.coupon_id
+        inner join shop_coupon_merchant cm
+            on cm.coupon_id = c.coupon_id and cm.merchant_id = #{merchantId}
+        inner join shop_merchant m
+            on m.merchant_id = cm.merchant_id
+           and m.audit_status = 'APPROVED' and m.status = '0' and m.del_flag = '0'
+        where uc.shop_user_id = #{userId}
+          and uc.status = 'UNUSED'
+          and c.status = 'ENABLED' and c.del_flag = '0'
+          and c.start_time &lt;= sysdate() and c.end_time &gt; sysdate()
+          and c.minimum_spend &lt;= #{subtotal}
+          and c.discount_amount &lt; #{subtotal}
+        order by c.discount_amount desc, c.end_time, uc.user_coupon_id
+    </select>
+
+    <select id="selectUserCouponForUpdate" resultMap="ShopUserCouponResult">
+        <include refid="selectUserCouponColumns" />,
+        case
+            when uc.status = 'USED' then 'USED'
+            when c.del_flag != '0' or c.status != 'ENABLED' then 'DISABLED'
+            when c.end_time &lt;= sysdate() then 'EXPIRED'
+            when c.start_time &gt; sysdate() then 'PENDING'
+            else 'AVAILABLE'
+        end as availability_status
+        from shop_user_coupon uc
+        inner join shop_coupon c on c.coupon_id = uc.coupon_id
+        where uc.user_coupon_id = #{userCouponId}
+          and uc.shop_user_id = #{userId}
+        limit 1
+        for update
+    </select>
+
+    <select id="countCouponMerchant" resultType="int">
+        select count(1)
+        from shop_coupon_merchant cm
+        inner join shop_merchant m on m.merchant_id = cm.merchant_id
+        where cm.coupon_id = #{couponId} and cm.merchant_id = #{merchantId}
+          and m.audit_status = 'APPROVED' and m.status = '0' and m.del_flag = '0'
+    </select>
+
+    <update id="markUserCouponUsed">
+        update shop_user_coupon
+        set status = 'USED', used_order_id = #{orderId}, used_time = sysdate(), update_time = sysdate()
+        where user_coupon_id = #{userCouponId} and shop_user_id = #{userId}
+          and status = 'UNUSED' and used_order_id is null
+    </update>
+
+    <update id="releaseUserCouponByOrder" parameterType="Long">
+        update shop_user_coupon
+        set status = 'UNUSED', used_order_id = null, used_time = null, update_time = sysdate()
+        where used_order_id = #{orderId} and status = 'USED'
+    </update>
+</mapper>

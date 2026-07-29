@@ -1,0 +1,542 @@
+import {
+  EnvironmentOutlined,
+  GiftOutlined,
+  RightOutlined,
+  SafetyCertificateOutlined,
+  ShopOutlined,
+} from '@ant-design/icons';
+import { Alert, Button, Drawer, Radio, Spin, Tag, message } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import { Navigate, useNavigate, useSearchParams } from 'umi';
+import { useShop } from '@/app/ShopContext';
+import { AddressManager } from '@/components/AddressManager';
+import { ProfileBackButton } from '@/components/ProfileBackButton';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import {
+  fetchAvailableCoupons,
+  fetchPublicProduct,
+  fetchShopOrder,
+  type PublicProductDto,
+  type ShopCouponDto,
+  type ShopOrderDto,
+} from '@/services/shopContent';
+import type { ShopShippingAddress } from '@/services/shopAuth';
+import { formatPrice } from '@/utils/shop';
+import styles from '@/styles/commerce.less';
+
+type CheckoutLine = {
+  productId: number;
+  sourceReportId?: number;
+  merchantId: number;
+  merchantName: string;
+  productName: string;
+  coverUrl: string;
+  price: number;
+  quantity: number;
+};
+
+function addressText(address: ShopShippingAddress) {
+  return `${address.region.join(' ')} ${address.detail}`.trim();
+}
+
+function couponValidity(coupon: ShopCouponDto) {
+  return `${coupon.startTime.slice(0, 10)} 至 ${coupon.endTime.slice(0, 10)}`;
+}
+
+export default function CheckoutPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const {
+    user,
+    cart,
+    cartLoading,
+    coupons,
+    privateLoading,
+    orders,
+    addresses,
+    checkoutCart,
+    buyNow,
+    payOrder,
+    payingOrderId,
+  } = useShop();
+  const orderIdValue = Number(searchParams.get('orderId'));
+  const orderId = Number.isSafeInteger(orderIdValue) && orderIdValue > 0 ? orderIdValue : undefined;
+  const orderMode = Boolean(orderId);
+  const contextPaymentOrder = orders.find((order) => order.orderId === orderId);
+  const source = searchParams.get('source') === 'cart' ? 'cart' : 'buy';
+  const productId = Number(searchParams.get('productId'));
+  const quantityValue = Number(searchParams.get('quantity') || 1);
+  const quantity = Number.isInteger(quantityValue) && quantityValue > 0 && quantityValue <= 99 ? quantityValue : 1;
+  const sourceReportValue = Number(searchParams.get('sourceReportId'));
+  const sourceReportId = Number.isSafeInteger(sourceReportValue) && sourceReportValue > 0
+    ? sourceReportValue
+    : undefined;
+  const [product, setProduct] = useState<PublicProductDto | null>(null);
+  const [loadedPaymentOrder, setLoadedPaymentOrder] = useState<ShopOrderDto | null>(null);
+  const [orderLoading, setOrderLoading] = useState(orderMode);
+  const [productLoading, setProductLoading] = useState(!orderMode && source === 'buy');
+  const [availableCoupons, setAvailableCoupons] = useState<ShopCouponDto[]>([]);
+  const [couponsLoading, setCouponsLoading] = useState(false);
+  const [selectedCouponId, setSelectedCouponId] = useState<number | undefined>();
+  const [draftCouponId, setDraftCouponId] = useState<number | undefined>();
+  const [couponOpen, setCouponOpen] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | undefined>();
+  const [addressOpen, setAddressOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const paymentOrder = contextPaymentOrder ?? loadedPaymentOrder ?? undefined;
+  useBodyScrollLock(addressOpen || couponOpen);
+
+  useEffect(() => {
+    if (!orderMode || !orderId || !user) {
+      setOrderLoading(false);
+      setLoadedPaymentOrder(null);
+      return;
+    }
+    if (contextPaymentOrder) {
+      setOrderLoading(false);
+      return;
+    }
+    let mounted = true;
+    setOrderLoading(true);
+    fetchShopOrder(orderId)
+      .then((order) => {
+        if (mounted) setLoadedPaymentOrder(order);
+      })
+      .catch((error) => {
+        if (mounted) message.error(error instanceof Error ? error.message : '订单加载失败');
+      })
+      .finally(() => {
+        if (mounted) setOrderLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [contextPaymentOrder, orderId, orderMode, user]);
+
+  useEffect(() => {
+    if (orderMode || source !== 'buy') {
+      setProductLoading(false);
+      return;
+    }
+    if (!Number.isSafeInteger(productId) || productId <= 0) {
+      setProductLoading(false);
+      return;
+    }
+    let mounted = true;
+    setProductLoading(true);
+    fetchPublicProduct(productId)
+      .then((nextProduct) => {
+        if (mounted) setProduct(nextProduct);
+      })
+      .catch((error) => {
+        if (mounted) message.error(error instanceof Error ? error.message : '商品加载失败');
+      })
+      .finally(() => {
+        if (mounted) setProductLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [orderMode, productId, source]);
+
+  useEffect(() => {
+    if (selectedAddressId && addresses.some((address) => address.id === selectedAddressId)) return;
+    const preferred = addresses.find((address) => address.isDefault) ?? addresses[0];
+    setSelectedAddressId(preferred?.id);
+  }, [addresses, selectedAddressId]);
+
+  const lines = useMemo<CheckoutLine[]>(() => {
+    if (paymentOrder) {
+      return paymentOrder.items.map((item) => ({
+        productId: item.productId,
+        sourceReportId: item.sourceReportId,
+        merchantId: paymentOrder.merchantId,
+        merchantName: paymentOrder.merchantName,
+        productName: item.productName,
+        coverUrl: item.coverUrl,
+        price: item.unitPrice,
+        quantity: item.quantity,
+      }));
+    }
+    if (source === 'cart') {
+      return cart.map((item) => ({
+        productId: item.productId,
+        sourceReportId: item.sourceReportId,
+        merchantId: item.merchantId,
+        merchantName: item.merchantName,
+        productName: item.productName,
+        coverUrl: item.coverUrl,
+        price: item.price,
+        quantity: item.quantity,
+      }));
+    }
+    return product ? [{
+      productId: product.productId,
+      sourceReportId,
+      merchantId: product.merchantId,
+      merchantName: product.merchantName,
+      productName: product.productName,
+      coverUrl: product.coverUrl,
+      price: product.price,
+      quantity,
+    }] : [];
+  }, [cart, paymentOrder, product, quantity, source, sourceReportId]);
+
+  const merchants = useMemo(
+    () => Array.from(new Map(lines.map((line) => [line.merchantId, line.merchantName])).entries()),
+    [lines],
+  );
+  const subtotal = paymentOrder?.originalAmount
+    ?? lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
+  const singleMerchant = merchants.length === 1;
+  const selectedCoupon = availableCoupons.find((coupon) => coupon.userCouponId === selectedCouponId);
+  const discount = paymentOrder?.discountAmount
+    ?? (singleMerchant ? selectedCoupon?.discountAmount ?? 0 : 0);
+  const payable = paymentOrder?.totalAmount ?? Math.max(0, subtotal - discount);
+  const selectedAddress = addresses.find((address) => address.id === selectedAddressId);
+  const couponUnavailableReason = useMemo(() => {
+    if (merchants.length > 1) return '购物车包含多个商家，优惠券仅支持单商家结算使用';
+    if (!singleMerchant || subtotal <= 0) return '暂无可结算商品';
+    if (coupons.length === 0) return '暂无优惠券';
+    const unused = coupons.filter((coupon) => coupon.status === 'UNUSED');
+    if (unused.length === 0) return '暂无未使用的优惠券';
+    const merchantId = merchants[0][0];
+    const applicable = unused.filter((coupon) => (
+      coupon.merchants.some((merchant) => merchant.merchantId === merchantId)
+    ));
+    if (applicable.length === 0) return '现有优惠券不适用于当前商家';
+    const now = Date.now();
+    const enabled = applicable.filter((coupon) => coupon.couponStatus === 'ENABLED');
+    if (enabled.length === 0) return '适用优惠券当前已下架';
+    const started = enabled.filter((coupon) => new Date(coupon.startTime).getTime() <= now);
+    if (started.length === 0) return '适用优惠券尚未生效';
+    const unexpired = started.filter((coupon) => new Date(coupon.endTime).getTime() > now);
+    if (unexpired.length === 0) return '适用优惠券已过期';
+    if (unexpired.every((coupon) => (
+      coupon.minimumSpend > subtotal || coupon.discountAmount >= subtotal
+    ))) {
+      return '当前商品金额未达到优惠券使用条件';
+    }
+    return '当前订单暂无可用优惠券';
+  }, [coupons, merchants, singleMerchant, subtotal]);
+
+  useEffect(() => {
+    if (orderMode || !user || !singleMerchant || subtotal <= 0) {
+      setAvailableCoupons([]);
+      setSelectedCouponId(undefined);
+      setCouponsLoading(false);
+      return;
+    }
+    let mounted = true;
+    setCouponsLoading(true);
+    fetchAvailableCoupons(merchants[0][0], subtotal)
+      .then((coupons) => {
+        if (!mounted) return;
+        setAvailableCoupons(coupons);
+        setSelectedCouponId((current) => (
+          current && coupons.some((coupon) => coupon.userCouponId === current) ? current : undefined
+        ));
+      })
+      .catch((error) => {
+        if (mounted) message.error(error instanceof Error ? error.message : '可用优惠券加载失败');
+      })
+      .finally(() => {
+        if (mounted) setCouponsLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [merchants, orderMode, singleMerchant, subtotal, user]);
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  const pageLoading = productLoading || orderLoading
+    || (!orderMode && privateLoading)
+    || (!orderMode && source === 'cart' && cartLoading);
+
+  const submit = async () => {
+    if (orderMode) {
+      if (!paymentOrder) {
+        message.warning('订单不存在或尚未加载完成');
+        return;
+      }
+      if (paymentOrder.status !== 'PENDING_PAYMENT') {
+        message.info(paymentOrder.status === 'PAID' ? '订单已经支付完成' : '当前订单不能继续支付');
+        return;
+      }
+      await payOrder(paymentOrder.orderId);
+      return;
+    }
+    if (!selectedAddress) {
+      setAddressOpen(true);
+      message.info('请先选择收货地址');
+      return;
+    }
+    if (lines.length === 0) {
+      message.warning(source === 'cart' ? '购物车为空' : '商品不存在或已下架');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const created = source === 'cart'
+        ? await checkoutCart(selectedAddress.id, singleMerchant ? selectedCouponId : undefined)
+        : await buyNow(selectedAddress.id, productId, quantity, sourceReportId, selectedCouponId);
+      if (created.length === 1) {
+        message.success(discount > 0 ? `优惠 ${formatPrice(discount)}，订单已创建` : '订单已创建');
+        navigate(`/checkout?orderId=${created[0].orderId}`);
+        await payOrder(created[0].orderId);
+        return;
+      }
+      message.success(`已按商家生成 ${created.length} 笔订单，请分别完成支付`);
+      navigate('/profile/orders');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '订单提交失败');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <>
+      <main className={`${styles.profileDetailPage} ${styles.checkoutPage}`}>
+        <div className={styles.profileDetailToolbar}>
+          <ProfileBackButton onClick={() => navigate(-1)} />
+          <span>确认商品、地址与优惠信息后提交支付</span>
+        </div>
+        <header className={styles.checkoutHeader}>
+          <div>
+            <span className={styles.eyebrow}>安全结算</span>
+            <h1>{orderMode ? '订单支付' : '确认支付'}</h1>
+            <p>{orderMode ? '微信授权或页面刷新后，仍会回到当前订单继续支付。' : '确认商品、地址与优惠信息后提交订单并完成支付。'}</p>
+          </div>
+          <SafetyCertificateOutlined />
+        </header>
+
+        <Spin spinning={pageLoading}>
+          {orderMode && !pageLoading && !paymentOrder && (
+            <Alert
+              className={styles.checkoutOrderState}
+              type="error"
+              showIcon
+              message="订单不存在或无权查看"
+              action={<Button onClick={() => navigate('/profile/orders')}>返回订单</Button>}
+            />
+          )}
+          {paymentOrder && paymentOrder.status !== 'PENDING_PAYMENT' && (
+            <Alert
+              className={styles.checkoutOrderState}
+              type={paymentOrder.status === 'PAID' ? 'success' : 'info'}
+              showIcon
+              message={paymentOrder.status === 'PAID' ? '支付已完成' : '当前订单无需继续支付'}
+              description={paymentOrder.status === 'PAID'
+                ? '支付结果已经由服务端确认，可前往我的订单查看发货进度。'
+                : '订单状态已经变化，请前往我的订单查看详情。'}
+              action={<Button onClick={() => navigate('/profile/orders')}>查看订单</Button>}
+            />
+          )}
+          <div className={styles.checkoutLayout}>
+            <div className={styles.checkoutMain}>
+              <section className={styles.checkoutSection}>
+                <div className={styles.checkoutSectionTitle}>
+                  <span><EnvironmentOutlined /></span>
+                  <div><strong>收货地址</strong><small>商品将配送至此地址</small></div>
+                </div>
+                <button
+                  type="button"
+                  className={styles.checkoutAddress}
+                  disabled={orderMode}
+                  onClick={() => !orderMode && setAddressOpen(true)}
+                >
+                  {paymentOrder?.address ? (
+                    <span>
+                      <strong>{paymentOrder.address.recipient}　{paymentOrder.address.phone}</strong>
+                      <small>
+                        {paymentOrder.address.provinceCode} {paymentOrder.address.cityCode}
+                        {' '}{paymentOrder.address.districtCode} {paymentOrder.address.detail}
+                      </small>
+                    </span>
+                  ) : selectedAddress ? (
+                    <span>
+                      <strong>{selectedAddress.recipient}　{selectedAddress.phone}</strong>
+                      <small>{addressText(selectedAddress)}</small>
+                    </span>
+                  ) : (
+                    <span><strong>请选择收货地址</strong><small>还没有可用的收货地址</small></span>
+                  )}
+                  {!orderMode && <RightOutlined />}
+                </button>
+              </section>
+
+              <section className={styles.checkoutSection}>
+                <div className={styles.checkoutSectionTitle}>
+                  <span><ShopOutlined /></span>
+                  <div><strong>商品信息</strong><small>{merchants.length || 0} 个商家 · {lines.length} 种商品</small></div>
+                </div>
+                <div className={styles.checkoutMerchantList}>
+                  {merchants.map(([merchantId, merchantName]) => (
+                    <div className={styles.checkoutMerchant} key={merchantId}>
+                      <div className={styles.checkoutMerchantName}>
+                        <ShopOutlined />
+                        <strong>{merchantName || '㤫者商城'}</strong>
+                      </div>
+                      {lines.filter((line) => line.merchantId === merchantId).map((line) => (
+                        <article className={styles.checkoutProduct} key={`${line.productId}-${line.sourceReportId || 0}`}>
+                          <img src={line.coverUrl} alt={line.productName} />
+                          <div>
+                            <strong>{line.productName}</strong>
+                            <small>数量 × {line.quantity}</small>
+                          </div>
+                          <span>{formatPrice(line.price * line.quantity)}</span>
+                        </article>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className={styles.checkoutSection}>
+                <div className={styles.checkoutSectionTitle}>
+                  <span><GiftOutlined /></span>
+                  <div><strong>优惠券</strong><small>每笔单商家订单最多使用一张</small></div>
+                </div>
+                {orderMode ? (
+                  <div className={styles.checkoutCouponTrigger}>
+                    <span className={styles.checkoutCouponTriggerIcon}><GiftOutlined /></span>
+                    <span className={styles.checkoutCouponTriggerCopy}>
+                      <strong>{discount > 0 ? `本单已优惠 ${formatPrice(discount)}` : '本订单未使用优惠券'}</strong>
+                      <small>订单提交后不能更换或补用优惠券</small>
+                    </span>
+                  </div>
+                ) : merchants.length > 1 && (
+                  <Alert
+                    className={styles.checkoutCouponAlert}
+                    type="warning"
+                    showIcon
+                    message="多商家订单无法使用优惠券"
+                    description="本次仍可按原价正常结算，系统会按商家拆分为多笔订单。"
+                  />
+                )}
+                {!orderMode && <button
+                  type="button"
+                  className={styles.checkoutCouponTrigger}
+                  disabled={couponsLoading || availableCoupons.length === 0 || merchants.length > 1}
+                  onClick={() => {
+                    setDraftCouponId(selectedCouponId);
+                    setCouponOpen(true);
+                  }}
+                >
+                  <span className={styles.checkoutCouponTriggerIcon}><GiftOutlined /></span>
+                  <span className={styles.checkoutCouponTriggerCopy}>
+                    {selectedCoupon ? (
+                      <>
+                        <strong>已选择：{selectedCoupon.couponName}</strong>
+                        <small>本单优惠 {formatPrice(selectedCoupon.discountAmount)}</small>
+                      </>
+                    ) : availableCoupons.length > 0 ? (
+                      <>
+                        <strong>有 {availableCoupons.length} 张可用优惠券</strong>
+                        <small>点击进入并选择本单要使用的优惠券</small>
+                      </>
+                    ) : (
+                      <>
+                        <strong>{couponsLoading ? '正在查询可用优惠券' : couponUnavailableReason}</strong>
+                        <small>优惠券由平台定向下发，仅限指定商家与条件使用</small>
+                      </>
+                    )}
+                  </span>
+                  {availableCoupons.length > 0 && merchants.length === 1 && <RightOutlined />}
+                </button>}
+              </section>
+            </div>
+
+            <aside className={styles.checkoutSummaryPanel}>
+              <h2>订单金额</h2>
+              <dl>
+                <div><dt>商品合计</dt><dd>{formatPrice(subtotal)}</dd></div>
+                <div><dt>优惠券</dt><dd className={discount > 0 ? styles.checkoutDiscount : ''}>
+                  {discount > 0 ? `-${formatPrice(discount)}` : formatPrice(0)}
+                </dd></div>
+                <div><dt>配送费</dt><dd>免运费</dd></div>
+              </dl>
+              <div className={styles.checkoutPayable}>
+                <span>应付金额</span>
+                <strong>{formatPrice(payable)}</strong>
+              </div>
+              <Button
+                block
+                type="primary"
+                size="large"
+                loading={submitting || payingOrderId === orderId}
+                disabled={pageLoading || lines.length === 0
+                  || (orderMode && paymentOrder?.status !== 'PENDING_PAYMENT')}
+                onClick={() => void submit()}
+              >
+                {orderMode
+                  ? paymentOrder?.status === 'PENDING_PAYMENT' ? '立即支付' : '无需支付'
+                  : merchants.length > 1 ? '提交多笔订单' : '提交订单并支付'}
+              </Button>
+              <p>{orderMode ? '微信授权返回后会继续停留在本支付页面。' : '提交即表示确认商品、地址和优惠信息。'}</p>
+            </aside>
+          </div>
+        </Spin>
+      </main>
+      <AddressManager
+        open={!orderMode && addressOpen}
+        picker
+        onClose={() => setAddressOpen(false)}
+        onSelect={(address) => {
+          setSelectedAddressId(address.id);
+          setAddressOpen(false);
+        }}
+      />
+      <Drawer
+        title="选择优惠券"
+        placement="bottom"
+        height="auto"
+        open={couponOpen}
+        onClose={() => setCouponOpen(false)}
+        rootClassName={`${styles.checkoutCouponDrawer} ${styles.responsiveDrawer}`}
+        footer={(
+          <Button
+            block
+            type="primary"
+            size="large"
+            onClick={() => {
+              setSelectedCouponId(draftCouponId);
+              setCouponOpen(false);
+            }}
+          >
+            确认选择
+          </Button>
+        )}
+      >
+        <Radio.Group
+          className={styles.checkoutCouponList}
+          value={draftCouponId ?? 0}
+          onChange={(event) => setDraftCouponId(event.target.value || undefined)}
+        >
+          <Radio className={styles.checkoutCouponNone} value={0}>不使用优惠券</Radio>
+          {availableCoupons.map((coupon) => (
+            <Radio
+              className={styles.checkoutCouponOption}
+              value={coupon.userCouponId}
+              key={coupon.userCouponId}
+            >
+              <span className={styles.checkoutCouponValue}>{formatPrice(coupon.discountAmount)}</span>
+              <span className={styles.checkoutCouponCopy}>
+                <strong>{coupon.couponName}</strong>
+                <small>
+                  {coupon.minimumSpend > 0 ? `满 ${formatPrice(coupon.minimumSpend)} 可用` : '无门槛'}
+                  {' · '}{couponValidity(coupon)}
+                </small>
+              </span>
+              <Tag color="green">可用</Tag>
+            </Radio>
+          ))}
+        </Radio.Group>
+      </Drawer>
+    </>
+  );
+}

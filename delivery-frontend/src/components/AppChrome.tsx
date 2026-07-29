@@ -33,10 +33,14 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const isPaymentReturn = Number.isSafeInteger(paymentOrderId) && paymentOrderId > 0
     && ((searchParams.has('code') && searchParams.has('state'))
       || searchParams.get('wechatPayReturn') === '1');
+  const checkoutPage = location.pathname.startsWith('/checkout');
   const detailPage = location.pathname.startsWith('/reports/')
     || location.pathname.startsWith('/products/')
+    || checkoutPage
     || (location.pathname === '/' && Boolean(reportQuery || productQuery));
-  const profileActive = location.pathname.startsWith('/profile') || isPaymentReturn;
+  const profileActive = location.pathname.startsWith('/profile')
+    || location.pathname.startsWith('/checkout')
+    || isPaymentReturn;
   const cartCount = getCartCount(cart);
 
   const openProtected = (path: string) => {
@@ -122,16 +126,18 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
         {children}
       </div>
 
-      <Badge count={cartCount} size="small" className={styles.fixedCartBadge}>
-        <Button
-          aria-label="打开购物车"
-          className={styles.fixedCartButton}
-          type="primary"
-          shape="circle"
-          icon={<ShoppingCartOutlined />}
-          onClick={() => user ? setCartOpen(true) : navigate('/auth')}
-        />
-      </Badge>
+      {!checkoutPage && (
+        <Badge count={cartCount} size="small" className={styles.fixedCartBadge}>
+          <Button
+            aria-label="打开购物车"
+            className={styles.fixedCartButton}
+            type="primary"
+            shape="circle"
+            icon={<ShoppingCartOutlined />}
+            onClick={() => user ? setCartOpen(true) : navigate('/auth')}
+          />
+        </Badge>
+      )}
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
       <AddressManager open={addressOpen} onClose={() => setAddressOpen(false)} />

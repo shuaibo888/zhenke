@@ -16,8 +16,12 @@ public class ShopOrderCreateBody
     @Size(max = 50, message = "一次最多提交50种商品")
     private List<ShopOrderItemBody> items;
 
+    private Long userCouponId;
+
     public Long getAddressId() { return addressId; }
     public void setAddressId(Long addressId) { this.addressId = addressId; }
     public List<ShopOrderItemBody> getItems() { return items; }
     public void setItems(List<ShopOrderItemBody> items) { this.items = items; }
+    public Long getUserCouponId() { return userCouponId; }
+    public void setUserCouponId(Long userCouponId) { this.userCouponId = userCouponId; }
 }

@@ -8,7 +8,7 @@ export type OrderStatus = 'unpaid' | 'paid' | 'shipped' | 'completed' | 'cancele
 
 export type ReportStatus = 'published' | 'deleted';
 
-export type NavKey = 'dashboard' | 'users' | 'products' | 'trials' | 'orders' | 'reports' | 'merchants';
+export type NavKey = 'dashboard' | 'users' | 'coupons' | 'products' | 'trials' | 'orders' | 'reports' | 'merchants';
 
 export interface AdminSession {
   id: number;
@@ -149,6 +149,43 @@ export interface ManagedOrder {
     eventTime: string;
     source: 'SYSTEM' | 'PROVIDER';
   }>;
+}
+
+export interface ManagedCouponMerchant {
+  couponId: number;
+  merchantId: number;
+  merchantName: string;
+}
+
+export interface ManagedCoupon {
+  couponId: number;
+  couponName: string;
+  description?: string;
+  discountAmount: number;
+  minimumSpend: number;
+  startTime: string;
+  endTime: string;
+  status: 'ENABLED' | 'DISABLED';
+  totalStock: number;
+  issuedCount: number;
+  merchants: ManagedCouponMerchant[];
+  createBy?: string;
+  createTime?: string;
+  updateBy?: string;
+  updateTime?: string;
+}
+
+export interface ManagedCouponGrant {
+  grantId: number;
+  couponId: number;
+  userCount: number;
+  quantityPerUser: number;
+  totalQuantity: number;
+  grantType: 'MANUAL' | 'AUTOMATIC';
+  triggerCode?: string;
+  operatorId?: number;
+  operatorName: string;
+  createTime: string;
 }
 
 export interface ManagedLogisticsTrace {

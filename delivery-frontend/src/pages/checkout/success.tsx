@@ -1,0 +1,95 @@
+import { CheckCircleFilled, SafetyCertificateOutlined } from '@ant-design/icons';
+import { Alert, Button, Spin, message } from 'antd';
+import { useEffect, useState } from 'react';
+import { Navigate, useNavigate, useSearchParams } from 'umi';
+import { useShop } from '@/app/ShopContext';
+import { fetchShopOrder, type ShopOrderDto } from '@/services/shopContent';
+import { formatPrice } from '@/utils/shop';
+import styles from '@/styles/commerce.less';
+
+export default function CheckoutSuccessPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { user, orders } = useShop();
+  const orderIdValue = Number(searchParams.get('orderId'));
+  const orderId = Number.isSafeInteger(orderIdValue) && orderIdValue > 0 ? orderIdValue : undefined;
+  const contextOrder = orders.find((order) => order.orderId === orderId);
+  const [loadedOrder, setLoadedOrder] = useState<ShopOrderDto | null>(null);
+  const [loading, setLoading] = useState(Boolean(orderId && !contextOrder));
+  const order = contextOrder ?? loadedOrder;
+
+  useEffect(() => {
+    if (!user || !orderId || contextOrder) {
+      setLoading(false);
+      return;
+    }
+    let mounted = true;
+    setLoading(true);
+    fetchShopOrder(orderId)
+      .then((nextOrder) => {
+        if (mounted) setLoadedOrder(nextOrder);
+      })
+      .catch((error) => {
+        if (mounted) message.error(error instanceof Error ? error.message : '支付订单加载失败');
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [contextOrder, orderId, user]);
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+  if (!orderId) {
+    return <Navigate to="/profile/orders" replace />;
+  }
+
+  return (
+    <main className={styles.checkoutSuccessPage}>
+      <Spin spinning={loading}>
+        {!loading && order?.status === 'PAID' ? (
+          <section className={styles.checkoutSuccessCard}>
+            <span className={styles.checkoutSuccessIcon}><CheckCircleFilled /></span>
+            <span className={styles.eyebrow}>PAYMENT SUCCESS</span>
+            <h1>支付成功</h1>
+            <p>订单已支付完成，商家将尽快为你安排发货。</p>
+            <div className={styles.checkoutSuccessAmount}>
+              <span>实付金额</span>
+              <strong>{formatPrice(order.totalAmount)}</strong>
+            </div>
+            <dl className={styles.checkoutSuccessDetails}>
+              <div><dt>订单编号</dt><dd>{order.orderNo}</dd></div>
+              <div><dt>商家</dt><dd>{order.merchantName || '㤫者商城'}</dd></div>
+              {order.discountAmount > 0 && (
+                <div><dt>优惠金额</dt><dd>-{formatPrice(order.discountAmount)}</dd></div>
+              )}
+            </dl>
+            <Button
+              block
+              type="primary"
+              size="large"
+              onClick={() => navigate('/profile/orders')}
+            >
+              返回订单列表
+            </Button>
+            <small><SafetyCertificateOutlined /> 支付结果已由服务端确认</small>
+          </section>
+        ) : !loading ? (
+          <Alert
+            className={styles.checkoutSuccessError}
+            type="warning"
+            showIcon
+            message="支付结果尚未确认"
+            description="只有服务端确认支付成功后才会展示支付成功页面，请返回订单查看最新状态。"
+            action={<Button onClick={() => navigate('/profile/orders')}>返回订单列表</Button>}
+          />
+        ) : (
+          <div className={styles.checkoutSuccessLoading}>正在确认支付结果…</div>
+        )}
+      </Spin>
+    </main>
+  );
+}

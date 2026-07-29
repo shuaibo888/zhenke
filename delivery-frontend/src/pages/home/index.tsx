@@ -1,6 +1,6 @@
 import { Button, Spin, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'umi';
+import { Navigate, useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { HomeFeedReportCard } from '@/components/HomeFeedReportCard';
 import {
@@ -12,7 +12,6 @@ import {
 } from '@/services/shopContent';
 import ReportDetailPage from '@/pages/reports/detail';
 import ProductDetailPage from '@/pages/products/detail';
-import OrdersPage from '@/pages/profile/orders';
 import styles from '@/styles/commerce.less';
 
 type CategoryFilter = ProductCategoryDto['categoryCode'] | null;
@@ -136,7 +135,9 @@ export default function HomePage() {
   }, [feed.length, loadMore, loading, total]);
 
   if (isPaymentReturn) {
-    return <OrdersPage />;
+    const paymentParams = new URLSearchParams(searchParams);
+    paymentParams.set('orderId', String(paymentOrderId));
+    return <Navigate to={`/checkout?${paymentParams.toString()}`} replace />;
   }
   if (Number.isSafeInteger(reportQuery) && reportQuery > 0) {
     return <ReportDetailPage reportId={reportQuery} />;

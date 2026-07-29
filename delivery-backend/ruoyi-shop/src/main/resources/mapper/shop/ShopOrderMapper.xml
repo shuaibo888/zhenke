@@ -34,7 +34,10 @@
         <result property="merchantId" column="merchant_id" />
         <result property="merchantName" column="merchant_name" />
         <result property="status" column="order_status" />
+        <result property="originalAmount" column="original_amount" />
+        <result property="discountAmount" column="discount_amount" />
         <result property="totalAmount" column="total_amount" />
+        <result property="userCouponId" column="user_coupon_id" />
         <result property="itemCount" column="item_count" />
         <result property="delFlag" column="del_flag" />
         <result property="paymentExpireTime" column="payment_expire_time" />
@@ -134,7 +137,8 @@
         select o.order_id, o.order_no, o.user_id,
                coalesce(u.nick_name, u.user_name) as buyer_name, o.merchant_id,
                m.company_name as merchant_name, o.status as order_status,
-               o.total_amount, o.item_count, o.del_flag,
+               o.original_amount, o.discount_amount, o.total_amount, o.user_coupon_id,
+               o.item_count, o.del_flag,
                date_add(o.create_time, interval 30 minute) as payment_expire_time,
                o.payment_channel, o.payment_trade_type, o.payment_mch_id, o.payment_app_id,
                o.wechat_transaction_id, o.pay_time,
@@ -157,7 +161,8 @@
         select o.order_id, o.order_no, o.user_id,
                coalesce(u.nick_name, u.user_name) as buyer_name, o.merchant_id,
                m.company_name as merchant_name, o.status as order_status,
-               o.total_amount, o.item_count, o.del_flag,
+               o.original_amount, o.discount_amount, o.total_amount, o.user_coupon_id,
+               o.item_count, o.del_flag,
                date_add(o.create_time, interval 30 minute) as payment_expire_time,
                o.payment_channel, o.payment_trade_type, o.payment_mch_id, o.payment_app_id,
                o.wechat_transaction_id, o.pay_time,
@@ -210,10 +215,12 @@
 
     <insert id="insertOrder" parameterType="ShopOrder" useGeneratedKeys="true" keyProperty="orderId">
         insert into shop_order
-        (order_no, user_id, merchant_id, status, total_amount, item_count,
+        (order_no, user_id, merchant_id, status, original_amount, discount_amount,
+         total_amount, user_coupon_id, item_count,
          del_flag, create_time, update_time)
         values
-        (#{orderNo}, #{userId}, #{merchantId}, #{status}, #{totalAmount}, #{itemCount},
+        (#{orderNo}, #{userId}, #{merchantId}, #{status}, #{originalAmount}, #{discountAmount},
+         #{totalAmount}, #{userCouponId}, #{itemCount},
          '0', sysdate(), sysdate())
     </insert>
 

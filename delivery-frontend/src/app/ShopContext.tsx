@@ -6,6 +6,7 @@ import {
   checkoutShopCart,
   createShopOrders,
   deleteShopCartItem,
+  fetchMyCoupons,
   fetchMyTrialApplications,
   fetchMyVerificationReports,
   fetchShopCart,
@@ -14,6 +15,7 @@ import {
   reconcileWechatPayment,
   updateShopCartItem,
   type ShopCartItemDto,
+  type ShopCouponDto,
   type ShopOrderDto,
   type TrialApplicationDto,
   type VerificationReportDto,
@@ -48,6 +50,7 @@ interface ShopContextValue {
   captchaError: string;
   cart: ShopCartItemDto[];
   cartLoading: boolean;
+  coupons: ShopCouponDto[];
   orders: ShopOrderDto[];
   ordersLoading: boolean;
   trials: TrialApplicationDto[];
@@ -61,6 +64,7 @@ interface ShopContextValue {
   register: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshCart: () => Promise<void>;
+  refreshCoupons: () => Promise<void>;
   refreshOrders: () => Promise<void>;
   refreshTrials: () => Promise<void>;
   refreshReports: () => Promise<void>;
@@ -69,8 +73,8 @@ interface ShopContextValue {
   addToCart: (productId: number, quantity?: number, sourceReportId?: number) => Promise<void>;
   changeCartQuantity: (cartItemId: number, quantity: number) => Promise<void>;
   removeCartItem: (cartItemId: number) => Promise<void>;
-  checkoutCart: (addressId: number) => Promise<ShopOrderDto[]>;
-  buyNow: (addressId: number, productId: number, quantity?: number, sourceReportId?: number) => Promise<ShopOrderDto[]>;
+  checkoutCart: (addressId: number, userCouponId?: number) => Promise<ShopOrderDto[]>;
+  buyNow: (addressId: number, productId: number, quantity?: number, sourceReportId?: number, userCouponId?: number) => Promise<ShopOrderDto[]>;
   payOrder: (orderId: number, authorization?: { code?: string; state?: string }) => Promise<void>;
   saveAddress: (body: ShopShippingAddressBody, addressId?: number) => Promise<void>;
   makeDefaultAddress: (addressId: number) => Promise<void>;
@@ -94,6 +98,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [captchaError, setCaptchaError] = useState('');
   const [cart, setCart] = useState<ShopCartItemDto[]>([]);
   const [cartLoading, setCartLoading] = useState(false);
+  const [coupons, setCoupons] = useState<ShopCouponDto[]>([]);
   const [orders, setOrders] = useState<ShopOrderDto[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [trials, setTrials] = useState<TrialApplicationDto[]>([]);
@@ -163,6 +168,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
+  const refreshCoupons = useCallback(async () => {
+    setCoupons(user ? await fetchMyCoupons() : []);
+  }, [user]);
+
   const refreshTrials = useCallback(async () => {
     setTrials(user ? await fetchMyTrialApplications() : []);
   }, [user]);
@@ -178,6 +187,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const refreshPrivateData = useCallback(async () => {
     if (!user) {
       setCart([]);
+      setCoupons([]);
       setOrders([]);
       setTrials([]);
       setReports([]);
@@ -188,18 +198,20 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setCartLoading(true);
     setOrdersLoading(true);
     try {
-      const [nextCart, nextOrders, nextTrials, nextReports, nextAddresses] = await Promise.all([
+      const [nextCart, nextOrders, nextTrials, nextReports, nextAddresses, nextCoupons] = await Promise.all([
         fetchShopCart(),
         fetchShopOrders(),
         fetchMyTrialApplications(),
         fetchMyVerificationReports(),
         fetchShopShippingAddresses(),
+        fetchMyCoupons(),
       ]);
       setCart(nextCart);
       setOrders(nextOrders);
       setTrials(nextTrials);
       setReports(nextReports);
       setAddresses(nextAddresses);
+      setCoupons(nextCoupons);
     } catch (error) {
       message.error(error instanceof Error ? error.message : '个人数据加载失败');
     } finally {
@@ -242,6 +254,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setUser(null);
       setCart([]);
+      setCoupons([]);
       setOrders([]);
       setTrials([]);
       setReports([]);
@@ -272,26 +285,35 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setCart((items) => items.filter((item) => item.cartItemId !== cartItemId));
   }, []);
 
-  const checkoutCart = useCallback(async (addressId: number) => {
-    const created = await checkoutShopCart(addressId);
+  const checkoutCart = useCallback(async (addressId: number, userCouponId?: number) => {
+    const created = await checkoutShopCart(addressId, userCouponId);
     setCart([]);
     setOrders((items) => [...created, ...items]);
+    if (userCouponId) void fetchMyCoupons().then(setCoupons).catch(() => undefined);
     return created;
   }, []);
 
-  const buyNow = useCallback(async (addressId: number, productId: number, quantity = 1, sourceReportId?: number) => {
+  const buyNow = useCallback(async (
+    addressId: number,
+    productId: number,
+    quantity = 1,
+    sourceReportId?: number,
+    userCouponId?: number,
+  ) => {
     const created = await createShopOrders({
       addressId,
       items: [{ productId, quantity, sourceReportId }],
+      userCouponId,
     });
     setOrders((items) => [...created, ...items]);
+    if (userCouponId) void fetchMyCoupons().then(setCoupons).catch(() => undefined);
     return created;
   }, []);
 
   const payOrder = useCallback(async (orderId: number, authorization: { code?: string; state?: string } = {}) => {
     setPayingOrderId(orderId);
     try {
-      const returnUrl = new URL('/', window.location.origin).toString();
+      const returnUrl = new URL(`/checkout?orderId=${orderId}`, window.location.origin).toString();
       const prepared = await prepareWechatPayment(orderId, { ...authorization, returnUrl });
       if (prepared.type === 'OAUTH') {
         if (!prepared.oauthUrl) throw new Error('微信网页授权地址缺失');
@@ -304,7 +326,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       }
       clearWechatPaymentQuery();
       if (authorization.code || authorization.state) {
-        history.replace('/profile/orders');
+        history.replace(`/checkout?orderId=${orderId}`);
       }
       const result = await invokeWechatJsapi({
         appId: prepared.appId,
@@ -322,8 +344,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         throw new Error('微信支付未完成，请重试');
       }
       const refreshed = await reconcileWechatPayment(orderId);
-      setOrders((items) => items.map((item) => item.orderId === orderId ? refreshed : item));
+      setOrders((items) => items.some((item) => item.orderId === orderId)
+        ? items.map((item) => item.orderId === orderId ? refreshed : item)
+        : [refreshed, ...items]);
       message.success(refreshed.status === 'PAID' ? '微信支付成功，等待商家发货' : '微信正在确认支付结果，请稍后刷新');
+      if (refreshed.status === 'PAID') {
+        history.replace(`/checkout/success?orderId=${orderId}`);
+      }
     } catch (error) {
       if (authorization.code || authorization.state) clearWechatPaymentQuery();
       message.error(error instanceof Error ? error.message : '微信支付失败');
@@ -333,25 +360,27 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!user || paymentReturnHandled.current || orders.length === 0) return;
+    if (!user || paymentReturnHandled.current) return;
     const params = new URLSearchParams(window.location.search);
     const orderId = Number(params.get('wechatPayOrderId'));
     if (!Number.isSafeInteger(orderId) || orderId <= 0) return;
-    const order = orders.find((item) => item.orderId === orderId);
-    if (!order) return;
     if (params.get('wechatPayReturn') === '1') {
       paymentReturnHandled.current = true;
       setPayingOrderId(orderId);
       reconcileWechatPayment(orderId)
         .then((refreshed) => {
-          setOrders((items) => items.map((item) => item.orderId === orderId ? refreshed : item));
+          setOrders((items) => items.some((item) => item.orderId === orderId)
+            ? items.map((item) => item.orderId === orderId ? refreshed : item)
+            : [refreshed, ...items]);
           message.success(refreshed.status === 'PAID' ? '微信支付成功，等待商家发货' : '支付结果尚未确认，请稍后刷新订单');
+          if (refreshed.status === 'PAID') {
+            history.replace(`/checkout/success?orderId=${orderId}`);
+          }
         })
         .catch((error) => message.error(error instanceof Error ? error.message : '微信支付结果确认失败'))
         .finally(() => {
           setPayingOrderId(null);
           clearWechatPaymentQuery();
-          history.replace('/profile/orders');
         });
       return;
     }
@@ -359,12 +388,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const state = params.get('state') ?? undefined;
     if (code && state) {
       paymentReturnHandled.current = true;
-      if (order.status === 'PENDING_PAYMENT') {
-        void payOrder(orderId, { code, state }).finally(() => history.replace('/profile/orders'));
-      }
-      else clearWechatPaymentQuery();
+      void payOrder(orderId, { code, state });
     }
-  }, [orders, payOrder, user]);
+  }, [payOrder, user]);
 
   const saveAddress = useCallback(async (body: ShopShippingAddressBody, addressId?: number) => {
     if (addressId) await updateShopShippingAddress(addressId, body);
@@ -392,6 +418,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     captchaError,
     cart,
     cartLoading,
+    coupons,
     orders,
     ordersLoading,
     trials,
@@ -405,6 +432,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     register,
     logout,
     refreshCart,
+    refreshCoupons,
     refreshOrders,
     refreshTrials,
     refreshReports,
@@ -428,8 +456,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setUser,
   }), [
     user, authLoading, authSubmitting, authMode, captcha, captchaLoading, captchaError,
-    cart, cartLoading, orders, ordersLoading, trials, reports, addresses, privateLoading, payingOrderId,
-    loadCaptcha, login, register, logout, refreshCart, refreshOrders, refreshTrials,
+    cart, cartLoading, coupons, orders, ordersLoading, trials, reports, addresses, privateLoading, payingOrderId,
+    loadCaptcha, login, register, logout, refreshCart, refreshCoupons, refreshOrders, refreshTrials,
     refreshReports, refreshAddresses, refreshPrivateData, addToCart, changeCartQuantity,
     removeCartItem, checkoutCart, buyNow, payOrder, saveAddress, makeDefaultAddress, removeAddress,
   ]);

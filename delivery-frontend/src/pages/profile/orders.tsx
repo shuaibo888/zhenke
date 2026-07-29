@@ -36,10 +36,9 @@ export default function OrdersPage() {
     user,
     orders,
     ordersLoading,
-    payingOrderId,
-    payOrder,
     replaceOrder,
     replaceReport,
+    refreshCoupons,
     refreshOrders,
     refreshReports,
   } = useShop();
@@ -84,6 +83,7 @@ export default function OrdersPage() {
         setMutatingId(order.orderId);
         try {
           replaceOrder(await cancelShopOrder(order.orderId));
+          if (order.userCouponId) await refreshCoupons().catch(() => undefined);
           message.success('订单已取消');
         } catch (error) {
           message.error(error instanceof Error ? error.message : '订单取消失败');
@@ -194,7 +194,7 @@ export default function OrdersPage() {
                 <div className={styles.orderCardHead}>
                   <span className={styles.orderShop}>
                     <span className={styles.orderShopAvatar}>{(order.merchantName || '店').slice(0, 1)}</span>
-                    <strong>{order.merchantName || '甄客商城'}</strong>
+                    <strong>{order.merchantName || '㤫者商城'}</strong>
                   </span>
                   <span className={styles.orderStatusText}>{orderStatusMeta[order.status].label}</span>
                 </div>
@@ -208,7 +208,9 @@ export default function OrdersPage() {
                     {order.refundStatus === 'REJECTED' && <Tag color="red">退款已驳回</Tag>}
                   </div>
                   <div className={styles.orderPriceCol}>
+                    {order.discountAmount > 0 && <del>{formatPrice(order.originalAmount)}</del>}
                     <strong>{formatPrice(order.totalAmount)}</strong>
+                    {order.discountAmount > 0 && <small>已优惠 {formatPrice(order.discountAmount)}</small>}
                     <span>共{order.itemCount}件</span>
                   </div>
                 </div>
@@ -241,9 +243,8 @@ export default function OrdersPage() {
                       <Button
                         size="small"
                         type="primary"
-                        loading={payingOrderId === order.orderId}
                         disabled={paymentRemainingSeconds(order.paymentExpireTime) <= 0}
-                        onClick={() => void payOrder(order.orderId)}
+                        onClick={() => navigate(`/checkout?orderId=${order.orderId}`)}
                       >
                         立即支付
                       </Button>

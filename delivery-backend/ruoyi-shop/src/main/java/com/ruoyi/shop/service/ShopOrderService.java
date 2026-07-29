@@ -25,6 +25,7 @@ import com.ruoyi.shop.domain.ShopOrderRefund;
 import com.ruoyi.shop.domain.ShopOrderStatusLog;
 import com.ruoyi.shop.domain.ShopProduct;
 import com.ruoyi.shop.domain.ShopUserAddress;
+import com.ruoyi.shop.domain.ShopUserCoupon;
 import com.ruoyi.shop.domain.dto.ShopOrderCreateBody;
 import com.ruoyi.shop.domain.dto.ShopOrderItemBody;
 import com.ruoyi.shop.domain.dto.ShopOrderRefundBody;
@@ -57,13 +58,15 @@ public class ShopOrderService
     private final ShopOrderMapper orderMapper;
     private final ShopCartMapper cartMapper;
     private final AliyunLogisticsService logisticsService;
+    private final ShopCouponService couponService;
 
     public ShopOrderService(ShopOrderMapper orderMapper, ShopCartMapper cartMapper,
-            AliyunLogisticsService logisticsService)
+            AliyunLogisticsService logisticsService, ShopCouponService couponService)
     {
         this.orderMapper = orderMapper;
         this.cartMapper = cartMapper;
         this.logisticsService = logisticsService;
+        this.couponService = couponService;
     }
 
     public List<ShopOrder> myOrders()
@@ -83,11 +86,11 @@ public class ShopOrderService
     {
         long userId = ShopAccountIdentity.requireShopUserId();
         lockUser(userId);
-        return createForUser(userId, body.getAddressId(), body.getItems());
+        return createForUser(userId, body.getAddressId(), body.getItems(), body.getUserCouponId());
     }
 
     @Transactional
-    public List<ShopOrder> createFromCart(long addressId)
+    public List<ShopOrder> createFromCart(long addressId, Long userCouponId)
     {
         long userId = ShopAccountIdentity.requireShopUserId();
         lockUser(userId);
@@ -103,7 +106,7 @@ public class ShopOrderService
             body.setSourceReportId(item.getSourceReportId());
             return body;
         }).toList();
-        List<ShopOrder> orders = createForUser(userId, addressId, items);
+        List<ShopOrder> orders = createForUser(userId, addressId, items, userCouponId);
         List<Long> productIds = items.stream().map(ShopOrderItemBody::getProductId).distinct().toList();
         cartMapper.deleteUserProducts(userId, productIds);
         return orders;
@@ -129,6 +132,7 @@ public class ShopOrderService
                 throw new ServiceException("订单库存恢复失败");
             }
         }
+        couponService.releaseByOrder(orderId);
         insertStatusLog(orderId, PENDING_PAYMENT, CANCELLED, userId, "用户取消待付款订单");
         return hydrate(requireUserOrder(userId, orderId, false));
     }
@@ -152,6 +156,7 @@ public class ShopOrderService
                 throw new ServiceException("超时订单库存恢复失败");
             }
         }
+        couponService.releaseByOrder(orderId);
         insertStatusLog(orderId, PENDING_PAYMENT, CANCELLED, 0L,
                 "订单超过30分钟未支付，系统自动取消", "SYSTEM");
         return true;
@@ -317,7 +322,8 @@ public class ShopOrderService
         return hydrate(orderMapper.selectUserOrder(order.getUserId(), orderId));
     }
 
-    private List<ShopOrder> createForUser(long userId, long addressId, List<ShopOrderItemBody> requestedItems)
+    private List<ShopOrder> createForUser(long userId, long addressId,
+            List<ShopOrderItemBody> requestedItems, Long userCouponId)
     {
         ShopUserAddress address = orderMapper.selectUserAddress(userId, addressId);
         if (address == null)
@@ -350,21 +356,47 @@ public class ShopOrderService
                     .add(new OrderLine(product, quantity, sourceReportId));
         }
 
+        if (userCouponId != null && userCouponId <= 0)
+        {
+            throw new ServiceException("优惠券参数无效");
+        }
+        if (userCouponId != null && linesByMerchant.size() != 1)
+        {
+            throw new ServiceException("购物车包含多个商家，优惠券仅支持单商家结算使用");
+        }
+
         List<ShopOrder> created = new ArrayList<>();
         for (Map.Entry<Long, List<OrderLine>> merchantEntry : linesByMerchant.entrySet())
         {
+            BigDecimal originalAmount = merchantEntry.getValue().stream()
+                    .map(line -> line.product().getPrice().multiply(BigDecimal.valueOf(line.quantity())))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal discountAmount = BigDecimal.ZERO;
+            ShopUserCoupon selectedCoupon = null;
+            if (userCouponId != null)
+            {
+                selectedCoupon = couponService.lockUsableCoupon(
+                        userId, userCouponId, merchantEntry.getKey(), originalAmount);
+                discountAmount = selectedCoupon.getDiscountAmount();
+            }
+
             ShopOrder order = new ShopOrder();
             order.setOrderNo(newOrderNo());
             order.setUserId(userId);
             order.setMerchantId(merchantEntry.getKey());
             order.setStatus(PENDING_PAYMENT);
             order.setItemCount(merchantEntry.getValue().stream().mapToInt(OrderLine::quantity).sum());
-            order.setTotalAmount(merchantEntry.getValue().stream()
-                    .map(line -> line.product().getPrice().multiply(BigDecimal.valueOf(line.quantity())))
-                    .reduce(BigDecimal.ZERO, BigDecimal::add));
+            order.setOriginalAmount(originalAmount);
+            order.setDiscountAmount(discountAmount);
+            order.setTotalAmount(originalAmount.subtract(discountAmount));
+            order.setUserCouponId(selectedCoupon == null ? null : selectedCoupon.getUserCouponId());
             if (orderMapper.insertOrder(order) == 0)
             {
                 throw new ServiceException("订单创建失败");
+            }
+            if (selectedCoupon != null)
+            {
+                couponService.markUsed(userId, selectedCoupon.getUserCouponId(), order.getOrderId());
             }
 
             for (OrderLine line : merchantEntry.getValue())
