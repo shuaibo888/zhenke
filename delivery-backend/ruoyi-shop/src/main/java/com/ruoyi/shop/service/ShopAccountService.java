@@ -69,6 +69,7 @@ public class ShopAccountService
     public void register(ShopRegisterBody body)
     {
         String username = body.getUsername().trim();
+        validateCaptcha(body.getCode(), body.getUuid());
         if (userMapper.countByUsername(username) > 0)
         {
             throw new ServiceException("用户名已存在");

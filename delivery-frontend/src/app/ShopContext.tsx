@@ -61,7 +61,7 @@ interface ShopContextValue {
   setAuthMode: (mode: AuthMode) => void;
   loadCaptcha: () => Promise<void>;
   login: (username: string, password: string, code?: string) => Promise<void>;
-  register: (username: string, password: string) => Promise<void>;
+  register: (username: string, password: string, code?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshCart: () => Promise<void>;
   refreshCoupons: () => Promise<void>;
@@ -236,17 +236,17 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }
   }, [captcha.uuid]);
 
-  const register = useCallback(async (username: string, password: string) => {
+  const register = useCallback(async (username: string, password: string, code?: string) => {
     setAuthSubmitting(true);
     try {
-      await registerShopUser(username, password);
+      await registerShopUser(username, password, code, captcha.uuid);
       setAuthMode('login');
       await loadCaptcha();
       message.success('注册成功，请登录');
     } finally {
       setAuthSubmitting(false);
     }
-  }, [loadCaptcha]);
+  }, [captcha.uuid, loadCaptcha]);
 
   const logout = useCallback(async () => {
     try {

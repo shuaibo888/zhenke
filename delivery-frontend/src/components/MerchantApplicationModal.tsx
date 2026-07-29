@@ -1,5 +1,5 @@
 import { SafetyCertificateOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
-import { Alert, Button, Divider, Form, Input, Modal, Switch, Upload, message } from 'antd';
+import { Alert, Button, Form, Input, Modal, Switch, Upload, message } from 'antd';
 import type { UploadProps } from 'antd';
 import { useEffect, useState } from 'react';
 import { useShop } from '@/app/ShopContext';
@@ -135,19 +135,34 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
 
   return (
     <Modal
-      title="商家入驻"
+      title={(
+        <div className={styles.merchantModalTitle}>
+          <span><SafetyCertificateOutlined /></span>
+          <div>
+            <strong>商家入驻申请</strong>
+            <small>提交真实资料，平台审核通过后开通商家后台</small>
+          </div>
+        </div>
+      )}
       open={open}
       onCancel={onClose}
       footer={null}
-      width={720}
+      width={780}
+      centered
       className={styles.merchantModal}
       rootClassName={styles.responsiveModal}
     >
       <div className={styles.merchantIntro}>
-        <p>提交公司资质、联系人、产品介绍和产地溯源材料，平台审核通过后会创建商家后台账号。</p>
+        <div className={styles.merchantProcess} aria-label="商家入驻流程">
+          <div><span>1</span><strong>填写资料</strong></div>
+          <i />
+          <div><span>2</span><strong>平台审核</strong></div>
+          <i />
+          <div><span>3</span><strong>开通后台</strong></div>
+        </div>
         <p className={styles.merchantWarning}>
           <SafetyCertificateOutlined />
-          平台将保存申请与审核记录，请保证材料真实、完整且资源地址可访问。
+          申请与审核记录将由平台留存，请保证资料真实、完整且相关资源可以访问。
         </p>
       </div>
       {showStatus ? (
@@ -212,8 +227,16 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
               )}
             </div>
           )}
-          <Form form={form} layout="vertical" onFinish={submit}>
-            <div className={styles.merchantFormGrid}>
+          <Form form={form} layout="vertical" requiredMark={false} className={styles.merchantForm} onFinish={submit}>
+            <section className={styles.merchantFormSection}>
+              <header className={styles.merchantSectionHeader}>
+                <span>01</span>
+                <div>
+                  <h3>账号与企业信息</h3>
+                  <p>用于创建商家后台账号并核验企业主体。</p>
+                </div>
+              </header>
+              <div className={styles.merchantFormGrid}>
               <Form.Item
                 name="accountUsername"
                 label="商家登录账号"
@@ -261,7 +284,16 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
               >
                 <Input size="large" />
               </Form.Item>
-            </div>
+              </div>
+            </section>
+            <section className={styles.merchantFormSection}>
+              <header className={styles.merchantSectionHeader}>
+                <span>02</span>
+                <div>
+                  <h3>企业资质</h3>
+                  <p>验证码用于保护匿名上传，营业执照仅用于平台审核。</p>
+                </div>
+              </header>
             {captcha.enabled && (
               <Form.Item name="code" label="验证码" rules={[{ required: true }]}>
                 <div className={styles.captchaRow}>
@@ -292,40 +324,65 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
                 <img src={businessLicense} alt="营业执照预览" className={styles.merchantLicensePreview} />
               )}
             </div>
-            <Form.Item name="productIntro" label="主营产品" rules={[{ required: true }]}>
-              <Input.TextArea rows={3} />
-            </Form.Item>
-            <Form.Item name="originTraceability" label="产地与溯源说明" rules={[{ required: true }]}>
-              <Input.TextArea rows={3} />
-            </Form.Item>
-            <Form.Item
-              name="acceptsVerificationRecruitment"
-              label="接受甄客试用招募"
-              valuePropName="checked"
-              rules={[{ validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('请确认接受甄客试用招募')) }]}
-            >
-              <Switch />
-            </Form.Item>
-            <Form.Item
-              name="acceptsPublicWelfare"
-              label="愿意参与平台公益合作（当前订单不扣款）"
-              valuePropName="checked"
-              rules={[{ validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('请确认公益合作约定')) }]}
-            >
-              <Switch />
-            </Form.Item>
-            <Form.Item
-              name="agreeProtocol"
-              label="同意平台入驻协议"
-              valuePropName="checked"
-              rules={[{ validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('请同意平台入驻协议')) }]}
-            >
-              <Switch />
-            </Form.Item>
-            <Divider />
-            <Button block type="primary" size="large" htmlType="submit" loading={loading}>
-              {application?.auditStatus === 'REJECTED' ? '重新提交入驻申请' : '提交入驻申请'}
-            </Button>
+            </section>
+            <section className={styles.merchantFormSection}>
+              <header className={styles.merchantSectionHeader}>
+                <span>03</span>
+                <div>
+                  <h3>经营与溯源信息</h3>
+                  <p>帮助平台了解主营方向、产地信息与供应链真实性。</p>
+                </div>
+              </header>
+              <div className={styles.merchantFormGrid}>
+                <Form.Item name="productIntro" label="主营产品" rules={[{ required: true }]}>
+                  <Input.TextArea rows={3} placeholder="请简要介绍主营品类、产品特点与供货能力" />
+                </Form.Item>
+                <Form.Item name="originTraceability" label="产地与溯源说明" rules={[{ required: true }]}>
+                  <Input.TextArea rows={3} placeholder="请说明产地、生产主体及可提供的溯源材料" />
+                </Form.Item>
+              </div>
+            </section>
+            <section className={styles.merchantFormSection}>
+              <header className={styles.merchantSectionHeader}>
+                <span>04</span>
+                <div>
+                  <h3>平台合作确认</h3>
+                  <p>请确认以下合作约定后提交审核。</p>
+                </div>
+              </header>
+              <div className={styles.merchantConsentGrid}>
+                <Form.Item
+                  name="acceptsVerificationRecruitment"
+                  label="接受甄客试用招募"
+                  valuePropName="checked"
+                  rules={[{ validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('请确认接受甄客试用招募')) }]}
+                >
+                  <Switch />
+                </Form.Item>
+                <Form.Item
+                  name="acceptsPublicWelfare"
+                  label="参与平台公益合作（当前订单不扣款）"
+                  valuePropName="checked"
+                  rules={[{ validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('请确认公益合作约定')) }]}
+                >
+                  <Switch />
+                </Form.Item>
+                <Form.Item
+                  name="agreeProtocol"
+                  label="同意平台入驻协议"
+                  valuePropName="checked"
+                  rules={[{ validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('请同意平台入驻协议')) }]}
+                >
+                  <Switch />
+                </Form.Item>
+              </div>
+            </section>
+            <div className={styles.merchantSubmitBar}>
+              <p>提交后可使用申请手机号查询审核进度。</p>
+              <Button type="primary" size="large" htmlType="submit" loading={loading}>
+                {application?.auditStatus === 'REJECTED' ? '重新提交入驻申请' : '提交入驻申请'}
+              </Button>
+            </div>
           </Form>
         </>
       )}

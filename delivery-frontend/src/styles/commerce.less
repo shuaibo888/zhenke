@@ -9,8 +9,15 @@
 
 .authPage {
   display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
   place-items: center;
-  padding: 36px 28px;
+  padding: clamp(18px, 3vw, 42px);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(61, 137, 111, 0.2), transparent 30%),
+    radial-gradient(circle at 92% 88%, rgba(190, 155, 80, 0.13), transparent 26%),
+    linear-gradient(145deg, #edf5f0 0%, #f8faf7 48%, #eef3ef 100%);
 }
 
 .wechatOnlyPage {
@@ -6934,5 +6941,783 @@
   .trialFlowNote {
     min-height: 0;
     padding-inline: 3px;
+  }
+}
+
+/* Authentication page: isolated full-screen layout with no shared commerce chrome. */
+.authLayout {
+  position: relative;
+  width: min(100%, 1040px);
+  max-width: 1040px;
+  min-height: min(680px, calc(100dvh - 48px));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(390px, 430px);
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid rgba(22, 75, 61, 0.12);
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 30px 90px rgba(22, 63, 51, 0.18);
+}
+
+.authLayout .authIntro,
+.authLayout .authCard {
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.authLayout .authIntro {
+  position: relative;
+  justify-content: space-between;
+  padding: 50px;
+  overflow: hidden;
+  color: #ffffff;
+  background:
+    radial-gradient(circle at 88% 10%, rgba(255, 255, 255, 0.16), transparent 28%),
+    radial-gradient(circle at 8% 92%, rgba(221, 190, 117, 0.18), transparent 32%),
+    linear-gradient(145deg, #123d33 0%, #195948 58%, #27735d 100%);
+}
+
+.authLayout .authIntro::after {
+  position: absolute;
+  right: -80px;
+  bottom: -110px;
+  width: 310px;
+  height: 310px;
+  content: '';
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 38px rgba(255, 255, 255, 0.035),
+    0 0 0 82px rgba(255, 255, 255, 0.025);
+}
+
+.authBrandRow,
+.authIntroCopy,
+.authLayout .authRules {
+  position: relative;
+  z-index: 1;
+}
+
+.authBrandRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.authBrandRow .brandMark {
+  width: 54px;
+  height: 54px;
+  color: #174b3e;
+  background: #f5f1e4;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  box-shadow: 0 10px 28px rgba(4, 27, 21, 0.22);
+  font-size: 25px;
+}
+
+.authBrandRow strong,
+.authBrandRow span {
+  display: block;
+}
+
+.authBrandRow strong {
+  font-size: 22px;
+  letter-spacing: 1px;
+}
+
+.authBrandRow span {
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.authIntroCopy {
+  margin: auto 0;
+  padding: 44px 0;
+}
+
+.authLayout .authIntroCopy .eyebrow {
+  color: #d7c18d;
+  font-size: 11px;
+  letter-spacing: 1.8px;
+}
+
+.authLayout .authIntroCopy h1 {
+  margin: 20px 0 18px;
+  color: #ffffff;
+  font-size: clamp(44px, 5vw, 62px);
+  line-height: 1.02;
+  letter-spacing: -2px;
+}
+
+.authLayout .authIntroCopy p {
+  max-width: 420px;
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.authLayout .authRules {
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
+  gap: 16px;
+  margin: 0;
+}
+
+.authLayout .authRules span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.72);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.authLayout .authRules svg {
+  color: #d7c18d;
+}
+
+.authLayout .authCard {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 42px;
+  background: #ffffff;
+}
+
+.authModeTabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 28px;
+  padding: 4px;
+  border: 1px solid #e4ebe7;
+  border-radius: 12px;
+  background: #f4f7f5;
+}
+
+.authModeTabs button {
+  min-height: 38px;
+  color: #6c7872;
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.authModeTabs button.authModeActive {
+  color: #174b3e;
+  background: #ffffff;
+  box-shadow: 0 3px 12px rgba(29, 73, 60, 0.1);
+}
+
+.authLayout .authHeader {
+  margin-bottom: 22px;
+}
+
+.authLayout .authHeader h2 {
+  margin-bottom: 7px;
+  color: #17241f;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.authLayout .authHeader p {
+  color: #78847e;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.authForm :global(.ant-form-item) {
+  margin-bottom: 17px;
+}
+
+.authForm :global(.ant-form-item-label) {
+  padding-bottom: 6px;
+}
+
+.authForm :global(.ant-form-item-label > label) {
+  color: #33463f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.authForm :global(.ant-input-affix-wrapper),
+.authForm :global(.ant-input) {
+  min-height: 48px;
+  border-color: #d9e2dd;
+  border-radius: 12px;
+}
+
+.authForm :global(.ant-input-affix-wrapper-focused),
+.authForm :global(.ant-input-affix-wrapper:focus-within) {
+  border-color: #28705c;
+  box-shadow: 0 0 0 3px rgba(31, 111, 91, 0.1);
+}
+
+.authForm :global(.ant-input-prefix) {
+  margin-right: 10px;
+  color: #6c7c75;
+}
+
+.authLayout .captchaRow {
+  grid-template-columns: minmax(0, 1fr) 118px;
+}
+
+.authLayout .captchaButton {
+  width: 118px;
+  height: 48px;
+  border-color: #d9e2dd;
+  border-radius: 12px;
+}
+
+.authSubmit {
+  min-height: 48px;
+  margin-top: 2px;
+  border-radius: 12px;
+  background: #1f6f5b;
+  box-shadow: 0 8px 22px rgba(31, 111, 91, 0.2);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.authAlternative {
+  margin-top: 14px;
+}
+
+.authLayout .authSwitch {
+  margin-top: 0;
+  padding: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.authDivider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  color: #9aa49f;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.authDivider::before,
+.authDivider::after {
+  height: 1px;
+  flex: 1;
+  content: '';
+  background: #e8eeeb;
+}
+
+.authLayout .merchantButton {
+  min-height: 44px;
+  margin-top: 0;
+  color: #245f50;
+  background: #f2f7f4;
+  border-color: #d4e4dc;
+  border-radius: 12px;
+  font-weight: 800;
+  box-shadow: none;
+}
+
+.authLayout .merchantButton:hover {
+  color: #174b3e;
+  background: #e9f3ee;
+  border-color: #b9d4c8;
+}
+
+.authLayout .authBackButton {
+  top: 18px;
+  left: 18px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.authLayout .authBackButton:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Merchant onboarding: sectioned application form with internal-only scrolling. */
+.merchantModal :global(.ant-modal-content) {
+  border: 1px solid rgba(31, 111, 91, 0.14);
+  border-radius: 22px;
+  box-shadow: 0 28px 90px rgba(20, 58, 47, 0.24);
+}
+
+.merchantModal :global(.ant-modal-header) {
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #edf1ef;
+}
+
+.merchantModalTitle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-right: 34px;
+}
+
+.merchantModalTitle > span {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: #ffffff;
+  background: linear-gradient(145deg, #174b3e, #28735e);
+  border-radius: 12px;
+  font-size: 18px;
+}
+
+.merchantModalTitle strong,
+.merchantModalTitle small {
+  display: block;
+}
+
+.merchantModalTitle strong {
+  color: #17241f;
+  font-size: 18px;
+}
+
+.merchantModalTitle small {
+  margin-top: 3px;
+  color: #7d8983;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.merchantModal .merchantIntro {
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border: 1px solid #e1ebe6;
+  border-radius: 16px;
+  background: #f6faf7;
+}
+
+.merchantProcess {
+  display: grid;
+  grid-template-columns: max-content minmax(24px, 1fr) max-content minmax(24px, 1fr) max-content;
+  align-items: center;
+  gap: 10px;
+}
+
+.merchantProcess > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #31584d;
+  font-size: 13px;
+}
+
+.merchantProcess span {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: #2c735f;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.merchantProcess i {
+  height: 1px;
+  background: #cddfd6;
+}
+
+.merchantModal .merchantWarning {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  color: #796126 !important;
+  background: #fffaf0;
+  border: 1px solid #f1e3bb;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.merchantForm {
+  display: grid;
+  gap: 14px;
+}
+
+.merchantFormSection {
+  padding: 18px;
+  border: 1px solid #e4ebe7;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.merchantSectionHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.merchantSectionHeader > span {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: #24634f;
+  background: #eaf4ef;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.merchantSectionHeader h3 {
+  margin: 0;
+  color: #1d3029;
+  font-size: 16px;
+}
+
+.merchantSectionHeader p {
+  margin: 3px 0 0;
+  color: #85908b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.merchantForm .merchantFormGrid {
+  gap: 0 16px;
+}
+
+.merchantForm :global(.ant-form-item) {
+  margin-bottom: 16px;
+}
+
+.merchantFormSection > :global(.ant-form-item:last-child),
+.merchantFormGrid > :global(.ant-form-item:nth-last-child(-n + 2)) {
+  margin-bottom: 0;
+}
+
+.merchantForm :global(.ant-form-item-label > label),
+.merchantLicenseField > label {
+  color: #354740;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.merchantForm :global(.ant-input),
+.merchantForm :global(.ant-input-affix-wrapper) {
+  border-color: #dce4e0;
+  border-radius: 10px;
+}
+
+.merchantConsentGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.merchantConsentGrid :global(.ant-form-item) {
+  margin: 0;
+  padding: 13px;
+  border: 1px solid #e4ebe7;
+  border-radius: 12px;
+  background: #f8faf9;
+}
+
+.merchantConsentGrid :global(.ant-form-item-label) {
+  min-height: 42px;
+  white-space: normal;
+}
+
+.merchantSubmitBar {
+  position: sticky;
+  z-index: 5;
+  bottom: -1px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 -2px -2px;
+  padding: 14px 16px;
+  border: 1px solid #dfe8e3;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 -10px 30px rgba(30, 65, 54, 0.09);
+  backdrop-filter: blur(12px);
+}
+
+.merchantSubmitBar p {
+  margin: 0;
+  color: #78847e;
+  font-size: 12px;
+}
+
+.merchantSubmitBar :global(.ant-btn) {
+  min-width: 190px;
+  border-radius: 10px;
+  font-weight: 800;
+}
+
+@media (max-width: 720px) {
+  .authPage {
+    min-height: 100dvh;
+    padding: max(8px, env(safe-area-inset-top)) 10px max(8px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+    background: #edf4ef;
+  }
+
+  .authLayout {
+    width: 100%;
+    min-height: calc(100dvh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)));
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    border-radius: 22px;
+    box-shadow: 0 18px 48px rgba(22, 63, 51, 0.16);
+  }
+
+  .authLayout .authIntro {
+    display: block;
+    min-height: 0;
+    padding: 17px 18px 15px;
+  }
+
+  .authBrandRow {
+    min-height: 44px;
+    padding-left: 42px;
+  }
+
+  .authBrandRow .brandMark {
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
+  }
+
+  .authBrandRow strong {
+    font-size: 17px;
+  }
+
+  .authBrandRow span {
+    font-size: 10px;
+  }
+
+  .authIntroCopy {
+    margin-top: 12px;
+    padding: 0;
+  }
+
+  .authLayout .authIntroCopy .eyebrow,
+  .authLayout .authIntroCopy p,
+  .authLayout .authRules {
+    display: none;
+  }
+
+  .authLayout .authIntroCopy h1 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.2;
+    letter-spacing: 0;
+  }
+
+  .authLayout .authIntroCopy h1 br {
+    display: none;
+  }
+
+  .authLayout .authCard {
+    justify-content: center;
+    padding: 18px 20px 20px;
+  }
+
+  .authModeTabs {
+    margin-bottom: 14px;
+  }
+
+  .authModeTabs button {
+    min-height: 34px;
+    font-size: 13px;
+  }
+
+  .authLayout .authHeader {
+    margin-bottom: 13px;
+  }
+
+  .authLayout .authHeader h2 {
+    margin-bottom: 3px;
+    font-size: 22px;
+  }
+
+  .authLayout .authHeader p {
+    font-size: 12px;
+  }
+
+  .authForm :global(.ant-form-item) {
+    margin-bottom: 12px;
+  }
+
+  .authForm :global(.ant-form-item-label) {
+    padding-bottom: 4px;
+  }
+
+  .authForm :global(.ant-input-affix-wrapper),
+  .authForm :global(.ant-input) {
+    min-height: 44px;
+  }
+
+  .authLayout .captchaRow {
+    grid-template-columns: minmax(0, 1fr) 108px;
+    gap: 8px;
+  }
+
+  .authLayout .captchaButton {
+    width: 108px;
+    height: 44px;
+  }
+
+  .authSubmit {
+    min-height: 44px;
+  }
+
+  .authAlternative {
+    margin-top: 8px;
+  }
+
+  .authLayout .authSwitch {
+    padding: 5px;
+  }
+
+  .authDivider {
+    margin: 7px 0;
+  }
+
+  .authLayout .merchantButton {
+    min-height: 42px;
+  }
+
+  .authLayout .authBackButton {
+    top: 14px;
+    left: 12px;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    overflow: hidden;
+    font-size: 0;
+  }
+
+  .authLayout .authBackButton svg {
+    font-size: 15px;
+  }
+
+  .merchantModal :global(.ant-modal-content) {
+    border-radius: 18px;
+  }
+
+  .merchantModal :global(.ant-modal-header) {
+    margin: -2px 0 14px;
+    padding-bottom: 14px;
+  }
+
+  .merchantModalTitle > span {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+  }
+
+  .merchantModalTitle strong {
+    font-size: 16px;
+  }
+
+  .merchantModalTitle small {
+    display: none;
+  }
+
+  .merchantModal .merchantIntro {
+    padding: 13px;
+  }
+
+  .merchantProcess {
+    gap: 6px;
+  }
+
+  .merchantProcess > div {
+    display: grid;
+    justify-items: center;
+    gap: 4px;
+    font-size: 11px;
+    text-align: center;
+  }
+
+  .merchantProcess span {
+    width: 24px;
+    height: 24px;
+  }
+
+  .merchantFormSection {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .merchantSectionHeader {
+    margin-bottom: 14px;
+  }
+
+  .merchantConsentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .merchantConsentGrid :global(.ant-form-item-label) {
+    min-height: 0;
+  }
+
+  .merchantSubmitBar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .merchantSubmitBar p {
+    text-align: center;
+  }
+
+  .merchantSubmitBar :global(.ant-btn) {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) and (max-height: 720px) {
+  .authLayout .authIntro {
+    padding-block: 10px;
+  }
+
+  .authIntroCopy {
+    display: none;
+  }
+
+  .authLayout .authCard {
+    padding-block: 12px;
+  }
+
+  .authModeTabs,
+  .authLayout .authHeader {
+    margin-bottom: 8px;
+  }
+
+  .authLayout .authHeader p {
+    display: none;
+  }
+
+  .authForm :global(.ant-form-item) {
+    margin-bottom: 8px;
+  }
+
+  .authAlternative {
+    margin-top: 4px;
   }
 }

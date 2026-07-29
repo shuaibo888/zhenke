@@ -21,10 +21,15 @@ interface LoginResponse extends ApiResponse {
   user: AuthUser;
 }
 
-export async function registerShopUser(username: string, password: string) {
+export async function registerShopUser(
+  username: string,
+  password: string,
+  code?: string,
+  uuid?: string,
+) {
   return requestApi<ApiResponse>('/shop/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ username: username.trim(), password }),
+    body: JSON.stringify({ username: username.trim(), password, code, uuid }),
   });
 }
 

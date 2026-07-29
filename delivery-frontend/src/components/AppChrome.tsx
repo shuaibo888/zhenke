@@ -33,6 +33,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const isPaymentReturn = Number.isSafeInteger(paymentOrderId) && paymentOrderId > 0
     && ((searchParams.has('code') && searchParams.has('state'))
       || searchParams.get('wechatPayReturn') === '1');
+  const authPage = location.pathname.startsWith('/auth');
   const checkoutPage = location.pathname.startsWith('/checkout');
   const detailPage = location.pathname.startsWith('/reports/')
     || location.pathname.startsWith('/products/')
@@ -54,8 +55,8 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <div className={styles.appShell}>
-        {!detailPage && (
+      <div className={`${styles.appShell} ${authPage ? styles.authPage : ''}`}>
+        {!detailPage && !authPage && (
           <header className={styles.masthead}>
             <button type="button" className={styles.brandLockup} onClick={() => navigate('/')}>
               <h1>㤫者商城</h1>
@@ -102,31 +103,33 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           </header>
         )}
 
-        <nav className={styles.navBar} aria-label="主导航">
-          <div className={styles.topNav}>
-            <button
-              type="button"
-              className={!profileActive ? styles.activeTab : ''}
-              onClick={() => navigate('/')}
-            >
-              <HomeOutlined />
-              <span>首页</span>
-            </button>
-            <button
-              type="button"
-              className={profileActive ? styles.activeTab : ''}
-              onClick={() => openProtected('/profile')}
-            >
-              <UserOutlined />
-              <span>我的</span>
-            </button>
-          </div>
-        </nav>
+        {!authPage && (
+          <nav className={styles.navBar} aria-label="主导航">
+            <div className={styles.topNav}>
+              <button
+                type="button"
+                className={!profileActive ? styles.activeTab : ''}
+                onClick={() => navigate('/')}
+              >
+                <HomeOutlined />
+                <span>首页</span>
+              </button>
+              <button
+                type="button"
+                className={profileActive ? styles.activeTab : ''}
+                onClick={() => openProtected('/profile')}
+              >
+                <UserOutlined />
+                <span>我的</span>
+              </button>
+            </div>
+          </nav>
+        )}
 
         {children}
       </div>
 
-      {!checkoutPage && (
+      {!checkoutPage && !authPage && (
         <Badge count={cartCount} size="small" className={styles.fixedCartBadge}>
           <Button
             aria-label="打开购物车"
