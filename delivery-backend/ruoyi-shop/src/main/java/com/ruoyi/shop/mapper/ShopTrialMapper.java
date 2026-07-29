@@ -97,5 +97,6 @@ public interface ShopTrialMapper {
     List<ShopHomeFeedItem> selectHomeFeed(@Param("productId") Long productId,
                                           @Param("categoryCode") String categoryCode,
                                           @Param("contentType") String contentType, @Param("trialType") String trialType,
-                                          @Param("viewerShopUserId") Long viewerShopUserId);
+                                          @Param("viewerShopUserId") Long viewerShopUserId,
+                                          @Param("keyword") String keyword);
 }

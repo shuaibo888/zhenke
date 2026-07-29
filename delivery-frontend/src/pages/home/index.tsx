@@ -6,6 +6,7 @@ import { HomeFeedReportCard } from '@/components/HomeFeedReportCard';
 import {
   fetchHomeFeed,
   fetchProductCategories,
+  searchHomeFeed,
   toggleReportUseful,
   type HomeFeedItemDto,
   type ProductCategoryDto,
@@ -34,6 +35,10 @@ export default function HomePage() {
   const reportQuery = Number(searchParams.get('report'));
   const productQuery = Number(searchParams.get('product'));
   const paymentOrderId = Number(searchParams.get('wechatPayOrderId'));
+  const keyword = (searchParams.get('keyword') ?? '').trim();
+  const contentParam = searchParams.get('content')?.toUpperCase();
+  const contentType = contentParam === 'REPORT' || contentParam === 'TRIAL' ? contentParam : 'ALL';
+  const searchMode = keyword.length > 0;
   const isPaymentReturn = Number.isSafeInteger(paymentOrderId) && paymentOrderId > 0
     && ((searchParams.has('code') && searchParams.has('state'))
       || searchParams.get('wechatPayReturn') === '1');
@@ -65,13 +70,16 @@ export default function HomePage() {
     setFeed([]);
     setLoadedPage(0);
     setTotal(0);
-    fetchHomeFeed({
-      categoryCode: category ?? undefined,
-      contentType: 'ALL',
-      trialType: 'ALL',
-      pageNum: 1,
-      pageSize: HOME_PAGE_SIZE,
-    })
+    const firstPageRequest = searchMode
+      ? searchHomeFeed({ keyword, pageNum: 1, pageSize: HOME_PAGE_SIZE })
+      : fetchHomeFeed({
+        categoryCode: category ?? undefined,
+        contentType,
+        trialType: 'ALL',
+        pageNum: 1,
+        pageSize: HOME_PAGE_SIZE,
+      });
+    firstPageRequest
       .then((result) => {
         if (requestVersion.current !== version) return;
         setFeed(Array.isArray(result.rows) ? result.rows : []);
@@ -86,7 +94,7 @@ export default function HomePage() {
       .finally(() => {
         if (requestVersion.current === version) setLoading(false);
       });
-  }, [category, showingDirectContent]);
+  }, [category, contentType, keyword, searchMode, showingDirectContent]);
 
   const loadMore = useCallback(async () => {
     if (showingDirectContent || loading || loadingMoreRef.current || loadedPage < 1 || feed.length >= total) return;
@@ -95,13 +103,15 @@ export default function HomePage() {
     loadingMoreRef.current = true;
     setLoadingMore(true);
     try {
-      const result = await fetchHomeFeed({
-        categoryCode: category ?? undefined,
-        contentType: 'ALL',
-        trialType: 'ALL',
-        pageNum: nextPage,
-        pageSize: HOME_PAGE_SIZE,
-      });
+      const result = searchMode
+        ? await searchHomeFeed({ keyword, pageNum: nextPage, pageSize: HOME_PAGE_SIZE })
+        : await fetchHomeFeed({
+          categoryCode: category ?? undefined,
+          contentType,
+          trialType: 'ALL',
+          pageNum: nextPage,
+          pageSize: HOME_PAGE_SIZE,
+        });
       if (requestVersion.current !== version) return;
       setFeed((current) => {
         const existing = new Set(current.map((item) => `${item.contentType}-${item.contentId}`));
@@ -119,7 +129,7 @@ export default function HomePage() {
         setLoadingMore(false);
       }
     }
-  }, [category, feed.length, loadedPage, loading, showingDirectContent, total]);
+  }, [category, contentType, feed.length, keyword, loadedPage, loading, searchMode, showingDirectContent, total]);
 
   useEffect(() => {
     const target = loadMoreTrigger.current;
@@ -171,19 +181,28 @@ export default function HomePage() {
 
   return (
     <main className={`${styles.singleColumn} ${styles.homeFeedPage}`}>
-      <div className={styles.homeCategoryNav} aria-label="商品分类">
-        {categories.map((item) => (
-          <button
-            key={item.categoryCode}
-            type="button"
-            className={category === item.categoryCode ? styles.homeCategoryActive : ''}
-            aria-pressed={category === item.categoryCode}
-            onClick={() => setCategory((current) => current === item.categoryCode ? null : item.categoryCode)}
-          >
-            {item.categoryName}
-          </button>
-        ))}
-      </div>
+      {searchMode ? (
+        <div className={styles.homeSearchSummary}>
+          <span>全局搜索</span>
+          <strong>“{keyword}”</strong>
+          {!loading && <em>共 {total} 条</em>}
+          <button type="button" onClick={() => navigate('/')}>清除搜索</button>
+        </div>
+      ) : (
+        <div className={styles.homeCategoryNav} aria-label="商品分类">
+          {categories.map((item) => (
+            <button
+              key={item.categoryCode}
+              type="button"
+              className={category === item.categoryCode ? styles.homeCategoryActive : ''}
+              aria-pressed={category === item.categoryCode}
+              onClick={() => setCategory((current) => current === item.categoryCode ? null : item.categoryCode)}
+            >
+              {item.categoryName}
+            </button>
+          ))}
+        </div>
+      )}
       {loading && <div className={styles.sessionLoading}><Spin /></div>}
       <div className={styles.reportGrid}>
         {feed.map((item) => {
@@ -236,7 +255,17 @@ export default function HomePage() {
           );
         })}
       </div>
-      {!loading && feed.length === 0 && <p className={styles.empty}>当前分类还没有正在招募的试用或已发布的甄客验。</p>}
+      {!loading && feed.length === 0 && (
+        <p className={styles.empty}>
+          {searchMode
+            ? `没有找到与“${keyword}”相关的试用或甄客验。`
+            : contentType === 'REPORT'
+              ? '当前分类还没有推荐到首页的甄客验。'
+              : contentType === 'TRIAL'
+                ? '当前分类还没有正在招募的试用。'
+                : '当前分类还没有正在招募的试用或已发布的甄客验。'}
+        </p>
+      )}
       {!loading && feed.length < total && (
         <div ref={loadMoreTrigger} className={styles.homeLoadMore}>
           <Button loading={loadingMore} onClick={() => void loadMore()}>

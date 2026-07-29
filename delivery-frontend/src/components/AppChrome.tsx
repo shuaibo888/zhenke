@@ -3,11 +3,13 @@ import {
   EnvironmentOutlined,
   HomeOutlined,
   LogoutOutlined,
+  CloseOutlined,
+  SearchOutlined,
   ShoppingCartOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { Badge, Button, Dropdown, message } from 'antd';
-import { useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { getCartCount } from '@/utils/shop';
@@ -27,6 +29,8 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const { user, cart, logout } = useShop();
   const [cartOpen, setCartOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
+  const [homeSearchOpen, setHomeSearchOpen] = useState(false);
+  const [homeSearchValue, setHomeSearchValue] = useState('');
   const reportQuery = searchParams.get('report');
   const productQuery = searchParams.get('product');
   const paymentOrderId = Number(searchParams.get('wechatPayOrderId'));
@@ -39,10 +43,18 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     || location.pathname.startsWith('/products/')
     || checkoutPage
     || (location.pathname === '/' && Boolean(reportQuery || productQuery));
+  const homePage = location.pathname === '/' && !detailPage;
+  const homeContent = searchParams.get('content')?.toUpperCase();
+  const homeKeyword = (searchParams.get('keyword') ?? '').trim();
   const profileActive = location.pathname.startsWith('/profile')
     || location.pathname.startsWith('/checkout')
     || isPaymentReturn;
   const cartCount = getCartCount(cart);
+
+  useEffect(() => {
+    setHomeSearchValue(homeKeyword);
+    setHomeSearchOpen(Boolean(homeKeyword));
+  }, [homeKeyword]);
 
   const openProtected = (path: string) => {
     if (!user) {
@@ -53,14 +65,87 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     navigate(path);
   };
 
+  const selectHomeContent = (content: 'REPORT' | 'TRIAL') => {
+    if (homeContent === content && !homeKeyword) {
+      navigate('/');
+    } else {
+      navigate(`/?content=${content}`);
+    }
+    setHomeSearchOpen(false);
+  };
+
+  const submitHomeSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const keyword = homeSearchValue.trim();
+    if (!keyword) {
+      message.info('请输入搜索关键词');
+      return;
+    }
+    navigate(`/?keyword=${encodeURIComponent(keyword)}`);
+  };
+
+  const closeHomeSearch = () => {
+    setHomeSearchOpen(false);
+    setHomeSearchValue('');
+    if (homeKeyword) navigate('/');
+  };
+
   return (
     <>
       <div className={`${styles.appShell} ${authPage ? styles.authPage : ''}`}>
         {!detailPage && !authPage && (
-          <header className={styles.masthead}>
-            <button type="button" className={styles.brandLockup} onClick={() => navigate('/')}>
-              <h1>㤫者商城</h1>
-            </button>
+          <header className={`${styles.masthead} ${homePage ? styles.homeMasthead : ''}`}>
+            {homePage && homeSearchOpen ? (
+              <form className={styles.homeGlobalSearchForm} role="search" onSubmit={submitHomeSearch}>
+                <SearchOutlined aria-hidden="true" />
+                <input
+                  autoFocus
+                  maxLength={50}
+                  value={homeSearchValue}
+                  aria-label="全局搜索"
+                  placeholder="搜索试用、甄客验、商品或商家"
+                  onChange={(event) => setHomeSearchValue(event.target.value)}
+                />
+                <button type="submit">搜索</button>
+                <button type="button" className={styles.homeSearchClose} aria-label="关闭搜索" onClick={closeHomeSearch}>
+                  <CloseOutlined />
+                </button>
+              </form>
+            ) : homePage ? (
+              <div className={styles.homeDiscoveryNav} aria-label="首页内容分类">
+                <button
+                  type="button"
+                  className={`${styles.homeContentButton} ${homeContent === 'REPORT' ? styles.homeContentActive : ''}`}
+                  aria-pressed={homeContent === 'REPORT'}
+                  onClick={() => selectHomeContent('REPORT')}
+                >
+                  甄客验
+                </button>
+                <button type="button" className={styles.homeTitleButton} onClick={() => navigate('/')}>
+                  <span>㤫者商城</span>
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.homeContentButton} ${homeContent === 'TRIAL' ? styles.homeContentActive : ''}`}
+                  aria-pressed={homeContent === 'TRIAL'}
+                  onClick={() => selectHomeContent('TRIAL')}
+                >
+                  试用
+                </button>
+                <button
+                  type="button"
+                  className={styles.homeSearchButton}
+                  aria-label="打开全局搜索"
+                  onClick={() => setHomeSearchOpen(true)}
+                >
+                  <SearchOutlined />
+                </button>
+              </div>
+            ) : (
+              <button type="button" className={styles.brandLockup} onClick={() => navigate('/')}>
+                <h1>㤫者商城</h1>
+              </button>
+            )}
             <div className={styles.headerActions}>
               {user ? (
                 <>

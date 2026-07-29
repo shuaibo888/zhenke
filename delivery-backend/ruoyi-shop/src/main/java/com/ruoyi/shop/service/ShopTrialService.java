@@ -447,7 +447,31 @@ public class ShopTrialService
                 category,
                 type,
                 normalizedTrialType,
-                ShopAccountIdentity.currentShopUserIdOrNull());
+                ShopAccountIdentity.currentShopUserIdOrNull(),
+                null);
+    }
+
+    public List<ShopHomeFeedItem> searchHomeFeed(String keyword, int pageNum, int pageSize)
+    {
+        String normalizedKeyword = StringUtils.trim(keyword);
+        if (StringUtils.isEmpty(normalizedKeyword))
+        {
+            throw new ServiceException("请输入搜索关键词");
+        }
+        if (normalizedKeyword.length() > 50)
+        {
+            throw new ServiceException("搜索关键词不能超过50个字符");
+        }
+        int safePageNum = Math.max(pageNum, 1);
+        int safePageSize = Math.max(1, Math.min(pageSize, 24));
+        PageHelper.startPage(safePageNum, safePageSize);
+        return trialMapper.selectHomeFeed(
+                null,
+                null,
+                "ALL",
+                "ALL",
+                ShopAccountIdentity.currentShopUserIdOrNull(),
+                normalizedKeyword);
     }
 
     private ShopVerificationReport reportWithResources(long reportId, Long viewerShopUserId)

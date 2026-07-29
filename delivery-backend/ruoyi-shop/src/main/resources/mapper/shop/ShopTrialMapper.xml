@@ -483,6 +483,15 @@
             <if test="trialType != null and trialType != '' and trialType != 'ALL'">
               and c.trial_type = #{trialType}
             </if>
+            <if test="keyword != null and keyword != ''">
+              and (
+                instr(c.campaign_title, #{keyword}) &gt; 0
+                or instr(coalesce(c.campaign_summary, ''), #{keyword}) &gt; 0
+                or instr(p.product_name, #{keyword}) &gt; 0
+                or instr(coalesce(p.subtitle, ''), #{keyword}) &gt; 0
+                or instr(m.company_name, #{keyword}) &gt; 0
+              )
+            </if>
           </if>
           <if test="contentType == 'ALL'">union all</if>
           <if test="contentType == 'ALL' or contentType == 'REPORT'">
@@ -517,9 +526,21 @@
           where r.status = 'PUBLISHED'
             and m.audit_status = 'APPROVED' and m.status = '0'
             and p.status = 'ON_SALE' and pc.status = '0'
-            <if test="productId == null">and r.recommend = '0'</if>
+            <if test="productId == null and (keyword == null or keyword == '')">and r.recommend = '0'</if>
             <if test="productId != null">and p.product_id = #{productId}</if>
             <if test="categoryCode != null and categoryCode != ''">and pc.category_code = #{categoryCode}</if>
+            <if test="keyword != null and keyword != ''">
+              and (
+                instr(coalesce(r.report_title, ''), #{keyword}) &gt; 0
+                or instr(coalesce(r.experience, ''), #{keyword}) &gt; 0
+                or instr(coalesce(r.shortcoming, ''), #{keyword}) &gt; 0
+                or instr(p.product_name, #{keyword}) &gt; 0
+                or instr(coalesce(p.subtitle, ''), #{keyword}) &gt; 0
+                or instr(m.company_name, #{keyword}) &gt; 0
+                or instr(coalesce(u.nick_name, ''), #{keyword}) &gt; 0
+                or instr(u.user_name, #{keyword}) &gt; 0
+              )
+            </if>
           </if>
         ) feed
         order by feed.published_at desc, feed.content_id desc

@@ -272,6 +272,12 @@ export interface HomeFeedQuery {
   pageSize?: number;
 }
 
+export interface HomeSearchQuery {
+  keyword: string;
+  pageNum?: number;
+  pageSize?: number;
+}
+
 export async function fetchHomeFeed(query: HomeFeedQuery = {}) {
   const pageNum = Math.max(1, Math.trunc(query.pageNum ?? 1));
   const pageSize = Math.max(1, Math.min(24, Math.trunc(query.pageSize ?? 12)));
@@ -287,6 +293,27 @@ export async function fetchHomeFeed(query: HomeFeedQuery = {}) {
   if (trialType !== 'ALL') params.set('trialType', trialType);
   const result = await requestApi<TableResponse<HomeFeedItemDto>>(
     `/shop/home/feed?${params.toString()}`,
+    {},
+    Boolean(getToken()),
+  );
+  return {
+    ...result,
+    rows: Array.isArray(result.rows) ? result.rows : [],
+    total: typeof result.total === 'number' ? result.total : 0,
+  };
+}
+
+export async function searchHomeFeed(query: HomeSearchQuery) {
+  const keyword = query.keyword.trim();
+  const pageNum = Math.max(1, Math.trunc(query.pageNum ?? 1));
+  const pageSize = Math.max(1, Math.min(24, Math.trunc(query.pageSize ?? 12)));
+  const params = new URLSearchParams({
+    keyword,
+    pageNum: String(pageNum),
+    pageSize: String(pageSize),
+  });
+  const result = await requestApi<TableResponse<HomeFeedItemDto>>(
+    `/shop/home/search?${params.toString()}`,
     {},
     Boolean(getToken()),
   );

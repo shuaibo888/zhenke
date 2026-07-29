@@ -33,4 +33,12 @@ public class ShopHomeController extends BaseController {
                 productId, categoryCode, contentType, trialType, pageNum, pageSize);
         return getDataTable(rows);
     }
+
+    @GetMapping("/search")
+    public TableDataInfo search(@RequestParam String keyword,
+                                @RequestParam(defaultValue = "1") int pageNum,
+                                @RequestParam(defaultValue = "12") int pageSize) {
+        List<ShopHomeFeedItem> rows = trialService.searchHomeFeed(keyword, pageNum, pageSize);
+        return getDataTable(rows);
+    }
 }
