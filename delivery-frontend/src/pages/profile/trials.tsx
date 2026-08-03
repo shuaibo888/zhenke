@@ -5,6 +5,7 @@ import { useShop } from '@/app/ShopContext';
 import { LogisticsModal } from '@/components/LogisticsModal';
 import { ProfileBackButton } from '@/components/ProfileBackButton';
 import { PublishReportModal } from '@/components/PublishReportModal';
+import { TrialRedeemCodeModal } from '@/components/TrialRedeemCodeModal';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import {
   confirmTrialReceived,
@@ -22,6 +23,8 @@ const statusMeta: Record<TrialApplicationDto['status'], { label: string; color: 
   REJECTED: { label: '未通过', color: 'error' },
   SHIPPED: { label: '已发货', color: 'cyan' },
   RECEIVED: { label: '待发布', color: 'gold' },
+  PENDING_REDEMPTION: { label: '待核销', color: 'processing' },
+  REDEEMED: { label: '已核销', color: 'success' },
   COMPLETED: { label: '已完成', color: 'default' },
   EXPIRED: { label: '已过期', color: 'default' },
 };
@@ -42,7 +45,8 @@ export default function TrialsPage() {
   const [logistics, setLogistics] = useState<LogisticsTraceDto | null>(null);
   const [logisticsLoading, setLogisticsLoading] = useState(false);
   const [publishTrial, setPublishTrial] = useState<TrialApplicationDto | null>(null);
-  useBodyScrollLock(Boolean(logisticsTrial) || Boolean(publishTrial));
+  const [redeemTrial, setRedeemTrial] = useState<TrialApplicationDto | null>(null);
+  useBodyScrollLock(Boolean(logisticsTrial) || Boolean(publishTrial) || Boolean(redeemTrial));
 
   if (!user) {
     return <Navigate to="/auth" replace />;
@@ -97,7 +101,7 @@ export default function TrialsPage() {
           <Spin spinning={privateLoading}>
             <div className={styles.trialList}>
               {trials.map((trial) => {
-                const publishable = (trial.trialType === 'OFFLINE' && trial.status === 'APPROVED')
+                const publishable = (trial.trialType === 'OFFLINE' && trial.status === 'REDEEMED')
                   || (trial.trialType === 'ONLINE' && trial.status === 'RECEIVED');
                 return (
                   <article className={`${styles.orderCard} ${styles.trialCard}`} key={trial.applicationId}>
@@ -135,6 +139,9 @@ export default function TrialsPage() {
                           确认收货
                         </Button>
                       )}
+                      {trial.trialType === 'OFFLINE' && trial.status === 'PENDING_REDEMPTION' && (
+                        <Button size="small" onClick={() => setRedeemTrial(trial)}>出示核销码</Button>
+                      )}
                       {publishable && (
                         <Button size="small" type="primary" onClick={() => setPublishTrial(trial)}>发布甄客验</Button>
                       )}
@@ -162,6 +169,16 @@ export default function TrialsPage() {
         trial={publishTrial}
         onClose={() => setPublishTrial(null)}
         onPublished={(report) => void reportPublished(report)}
+      />
+
+      <TrialRedeemCodeModal
+        open={Boolean(redeemTrial)}
+        trial={redeemTrial}
+        onClose={() => setRedeemTrial(null)}
+        onRedeemed={() => {
+          setRedeemTrial(null);
+          void refreshTrials();
+        }}
       />
     </>
   );

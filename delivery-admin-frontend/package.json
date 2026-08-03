@@ -13,6 +13,7 @@
     "@ant-design/charts": "^2.6.7",
     "@ant-design/icons": "^6.2.5",
     "antd": "^6.4.4",
+    "html5-qrcode": "^2.3.8",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "umi": "^4.6.65"

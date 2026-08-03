@@ -252,9 +252,12 @@ export interface ManagedTrialApplication {
   recipientName?: string;
   recipientPhone?: string;
   shippingAddress?: string;
-  status: 'APPLIED' | 'APPROVED' | 'REJECTED' | 'SHIPPED' | 'RECEIVED' | 'COMPLETED' | 'EXPIRED';
+  status: 'APPLIED' | 'APPROVED' | 'REJECTED' | 'SHIPPED' | 'RECEIVED' | 'COMPLETED' | 'EXPIRED'
+    | 'PENDING_REDEMPTION' | 'REDEEMED';
   auditRemark?: string;
   carrier?: string;
   trackingNo?: string;
+  redeemCode?: string;
+  redeemedAt?: string;
   createTime?: string;
 }

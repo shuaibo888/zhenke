@@ -876,6 +876,14 @@ export async function shipMerchantTrialApplication(applicationId: number, tracki
   );
 }
 
+export async function redeemMerchantTrialApplication(redeemCode: string) {
+  return requestApi<ApiResponse<ManagedTrialApplication>>(
+    '/shop/merchant/trials/applications/redeem',
+    { method: 'POST', body: JSON.stringify({ redeemCode }) },
+    true,
+  );
+}
+
 export async function uploadAdminFile(file: File) {
   const token = getToken();
   if (!token) throw new Error('请先登录后再上传文件');

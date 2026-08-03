@@ -66,6 +66,14 @@ public interface ShopTrialMapper {
     int completeApplication(@Param("shopUserId") Long shopUserId, @Param("applicationId") Long applicationId,
                             @Param("expectedStatus") String expectedStatus);
 
+    int updateRedeemCode(@Param("shopUserId") Long shopUserId, @Param("applicationId") Long applicationId,
+                         @Param("redeemCode") String redeemCode);
+
+    int redeemApplication(@Param("merchantId") Long merchantId, @Param("redeemCode") String redeemCode);
+
+    ShopTrialApplication selectMerchantApplicationByRedeemCode(@Param("merchantId") Long merchantId,
+                                                               @Param("redeemCode") String redeemCode);
+
     int countReportByApplication(Long trialApplicationId);
 
     int countReportByOrderItem(Long orderItemId);

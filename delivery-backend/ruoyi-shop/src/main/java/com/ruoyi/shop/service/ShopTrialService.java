@@ -3,6 +3,7 @@ package com.ruoyi.shop.service;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.UUID;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import com.github.pagehelper.PageHelper;
@@ -40,6 +41,8 @@ public class ShopTrialService
     public static final String FINISHED = "FINISHED";
     public static final String ONLINE = "ONLINE";
     public static final String OFFLINE = "OFFLINE";
+    public static final String PENDING_REDEMPTION = "PENDING_REDEMPTION";
+    public static final String REDEEMED = "REDEEMED";
 
     private final ShopTrialMapper trialMapper;
     private final ShopUserMapper userMapper;
@@ -313,6 +316,55 @@ public class ShopTrialService
     }
 
     @Transactional
+    public ShopTrialApplication getOrCreateRedeemCode(long applicationId)
+    {
+        long shopUserId = ShopAccountIdentity.requireShopUserId();
+        ShopTrialApplication application = requireApplication(
+                trialMapper.selectUserApplication(shopUserId, applicationId));
+        if (!OFFLINE.equals(application.getTrialType()))
+        {
+            throw new ServiceException("线下试用才能出示核销码");
+        }
+        if (PENDING_REDEMPTION.equals(application.getStatus()))
+        {
+            if (StringUtils.isEmpty(application.getRedeemCode()))
+            {
+                String redeemCode = UUID.randomUUID().toString().replace("-", "");
+                trialMapper.updateRedeemCode(shopUserId, applicationId, redeemCode);
+                application = requireApplication(trialMapper.selectUserApplication(shopUserId, applicationId));
+                if (StringUtils.isEmpty(application.getRedeemCode()))
+                {
+                    throw new ServiceException("当前状态不能出示核销码");
+                }
+            }
+            return application;
+        }
+        if (REDEEMED.equals(application.getStatus()) || "COMPLETED".equals(application.getStatus()))
+        {
+            // 已核销/已完成后返回最新状态，供用户端轮询识别核销成功并结束出示流程
+            return application;
+        }
+        throw new ServiceException("当前状态不能出示核销码");
+    }
+
+    @Transactional
+    public ShopTrialApplication redeemApplication(String redeemCode)
+    {
+        ShopMerchant merchant = merchantService.currentMerchantAccount();
+        String normalized = StringUtils.trim(redeemCode);
+        if (StringUtils.isEmpty(normalized))
+        {
+            throw new ServiceException("核销码不能为空");
+        }
+        if (trialMapper.redeemApplication(merchant.getMerchantId(), normalized) == 0)
+        {
+            throw new ServiceException("核销码无效或不属于当前商家");
+        }
+        return requireApplication(
+                trialMapper.selectMerchantApplicationByRedeemCode(merchant.getMerchantId(), normalized));
+    }
+
+    @Transactional
     public ShopVerificationReport publishReport(ShopVerificationReportBody body)
     {
         long shopUserId = ShopAccountIdentity.requireShopUserId();
@@ -327,11 +379,11 @@ public class ShopTrialService
         }
         ShopTrialApplication application = requireApplication(
                 trialMapper.selectUserApplication(shopUserId, body.getTrialApplicationId()));
-        String reportReadyStatus = OFFLINE.equals(application.getTrialType()) ? "APPROVED" : "RECEIVED";
+        String reportReadyStatus = OFFLINE.equals(application.getTrialType()) ? REDEEMED : "RECEIVED";
         if (!reportReadyStatus.equals(application.getStatus()))
         {
             throw new ServiceException(OFFLINE.equals(application.getTrialType())
-                    ? "线下试用审核通过后才能发布验证报告"
+                    ? "线下试用核销后才能发布验证报告"
                     : "确认收到线上试用商品后才能发布验证报告");
         }
         if (trialMapper.countReportByApplication(application.getApplicationId()) > 0)

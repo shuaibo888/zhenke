@@ -65,6 +65,7 @@ import {
   updateMerchantTrialStatus,
   updateProductCategory,
   shipMerchantTrialApplication,
+  redeemMerchantTrialApplication,
   shipMerchantOrder,
   type CaptchaState,
   type DashboardSummaryDto,
@@ -90,6 +91,7 @@ import TrialDialogs, {
   type TrialApplicationActionFormValues,
   type TrialFormValues,
 } from '@/modules/trials/TrialDialogs';
+import RedeemScanModal from '@/modules/trials/RedeemScanModal';
 import UsersModule from '@/modules/users';
 import { filterRowsForSession, getAvailableNavKeys, hasGlobalAccess } from '@/utils/access';
 import { type OrderStatusFilter } from '@/utils/orderManagement';
@@ -234,6 +236,8 @@ function AdminWorkspace() {
   const [trialApplicationsLoading, setTrialApplicationsLoading] = useState(false);
   const [trialApplicationAction, setTrialApplicationAction] = useState<'reject' | 'ship' | null>(null);
   const [selectedTrialApplication, setSelectedTrialApplication] = useState<ManagedTrialApplication | null>(null);
+  const [redeemScanOpen, setRedeemScanOpen] = useState(false);
+  const [redeeming, setRedeeming] = useState(false);
   const [merchants, setMerchants] = useState<MerchantAccount[]>([]);
   const [merchantsLoading, setMerchantsLoading] = useState(false);
   const [merchantPage, setMerchantPage] = useState(1);
@@ -828,7 +832,7 @@ function AdminWorkspace() {
       title: '确认通过试用申请？',
       content: application.trialType === 'ONLINE'
         ? `通过后可为 ${application.recipientName} 安排寄送。`
-        : `通过后 ${application.nickName || application.userName} 即可发布本次线下试用的甄客验。`,
+        : `通过后进入待核销，用户出示核销码，商家扫码核销后即可发布甄客验。`,
       okText: '通过申请',
       cancelText: '取消',
       onOk: async () => {
@@ -872,6 +876,21 @@ function AdminWorkspace() {
       await loadTrialApplications();
     } catch (error) {
       message.error(error instanceof Error ? error.message : '试用申请处理失败');
+    }
+  };
+
+  const handleRedeem = async (redeemCode: string) => {
+    setRedeeming(true);
+    try {
+      await redeemMerchantTrialApplication(redeemCode);
+      message.success('核销成功，用户现在可以发布甄客验');
+      setRedeemScanOpen(false);
+      await loadTrialApplications();
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '核销失败');
+      throw error;
+    } finally {
+      setRedeeming(false);
     }
   };
 
@@ -1328,6 +1347,8 @@ function AdminWorkspace() {
     REJECTED: { label: '已驳回', color: 'red' },
     SHIPPED: { label: '待收货', color: 'cyan' },
     RECEIVED: { label: '可发布报告', color: 'green' },
+    PENDING_REDEMPTION: { label: '待核销', color: 'blue' },
+    REDEEMED: { label: '已核销', color: 'green' },
     COMPLETED: { label: '已发布报告', color: 'purple' },
     EXPIRED: { label: '已过期', color: 'default' },
   };
@@ -1360,10 +1381,8 @@ function AdminWorkspace() {
     {
       title: '状态',
       dataIndex: 'status',
-      render: (status: ManagedTrialApplication['status'], item) => (
-        <Tag color={trialApplicationStatusMeta[status].color}>
-          {status === 'APPROVED' && item.trialType === 'OFFLINE' ? '可发布报告' : trialApplicationStatusMeta[status].label}
-        </Tag>
+      render: (status: ManagedTrialApplication['status']) => (
+        <Tag color={trialApplicationStatusMeta[status].color}>{trialApplicationStatusMeta[status].label}</Tag>
       ),
     },
     {
@@ -1389,8 +1408,13 @@ function AdminWorkspace() {
               发货
             </Button>
           )}
-          {(item.status === 'APPROVED' && item.trialType === 'OFFLINE') && <span className={styles.subText}>等待用户发布报告</span>}
-          {!['APPLIED', 'APPROVED'].includes(item.status) && <span className={styles.subText}>等待用户流程</span>}
+          {item.status === 'PENDING_REDEMPTION' && item.trialType === 'OFFLINE' && (
+            <span className={styles.subText}>等待用户到店出示核销码</span>
+          )}
+          {item.status === 'REDEEMED' && item.trialType === 'OFFLINE' && <span className={styles.subText}>等待用户发布报告</span>}
+          {!['APPLIED', 'APPROVED', 'PENDING_REDEMPTION', 'REDEEMED'].includes(item.status) && (
+            <span className={styles.subText}>等待用户流程</span>
+          )}
         </Space>
       ),
     },
@@ -1633,6 +1657,7 @@ function AdminWorkspace() {
                 applicationPage={trialApplicationPage}
                 applicationTotal={trialApplicationTotal}
                 onPublish={() => void openPublishTrial()}
+                onOpenRedeem={() => setRedeemScanOpen(true)}
                 onLoadTrials={(page) => void loadTrials(session, page)}
                 onLoadApplications={(page) => void loadTrialApplications(session, page)}
               />
@@ -1742,6 +1767,13 @@ function AdminWorkspace() {
         }}
         onApplicationActionClose={closeTrialApplicationAction}
         onApplicationActionSubmit={(values) => void submitTrialApplicationAction(values)}
+      />
+
+      <RedeemScanModal
+        open={redeemScanOpen}
+        redeeming={redeeming}
+        onClose={() => setRedeemScanOpen(false)}
+        onRedeemed={(code) => handleRedeem(code)}
       />
 
       <MerchantDetailDialog

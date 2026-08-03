@@ -27,6 +27,8 @@ public class ShopTrialApplication
     private Date shippedAt;
     private Date receivedAt;
     private Date completedAt;
+    private String redeemCode;
+    private Date redeemedAt;
     private Date createTime;
     private Date applicationDeadline;
 
@@ -74,6 +76,10 @@ public class ShopTrialApplication
     public void setReceivedAt(Date receivedAt) { this.receivedAt = receivedAt; }
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") public Date getCompletedAt() { return completedAt; }
     public void setCompletedAt(Date completedAt) { this.completedAt = completedAt; }
+    public String getRedeemCode() { return redeemCode; }
+    public void setRedeemCode(String redeemCode) { this.redeemCode = redeemCode; }
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") public Date getRedeemedAt() { return redeemedAt; }
+    public void setRedeemedAt(Date redeemedAt) { this.redeemedAt = redeemedAt; }
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") public Date getCreateTime() { return createTime; }
     public void setCreateTime(Date createTime) { this.createTime = createTime; }
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") public Date getApplicationDeadline() { return applicationDeadline; }

@@ -22,6 +22,7 @@ import com.ruoyi.shop.domain.ShopTrialCampaign;
 import com.ruoyi.shop.domain.dto.ShopTrialAuditBody;
 import com.ruoyi.shop.domain.dto.ShopTrialCampaignBody;
 import com.ruoyi.shop.domain.dto.ShopTrialCampaignStatusBody;
+import com.ruoyi.shop.domain.dto.ShopTrialRedeemBody;
 import com.ruoyi.shop.domain.dto.ShopTrialShipBody;
 import com.ruoyi.shop.service.ShopMerchantService;
 import com.ruoyi.shop.service.ShopTrialService;
@@ -108,5 +109,14 @@ public class ShopMerchantTrialController extends BaseController
     public AjaxResult ship(@PathVariable long applicationId, @Valid @RequestBody ShopTrialShipBody body)
     {
         return AjaxResult.success(trialService.shipApplication(applicationId, body));
+    }
+
+    @Log(title = "线下试用核销", businessType = BusinessType.UPDATE)
+    @PreAuthorize("@ss.hasPermi('shop:trial:audit')")
+    @PostMapping("/applications/redeem")
+    public AjaxResult redeem(@Valid @RequestBody ShopTrialRedeemBody body)
+    {
+        return AjaxResult.success("线下试用已核销，用户现在可以发布甄客验",
+                trialService.redeemApplication(body.getRedeemCode()));
     }
 }
