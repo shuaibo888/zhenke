@@ -10,9 +10,9 @@ export default defineConfig({
   publicPath: "/admin/",
   proxy: {
     '/api': {
-      // target: 'http://127.0.0.1:8080',
-      // pathRewrite: { '^/api': '' },
-      target: 'https://miniats.cboo.cloud',
+      target: 'http://127.0.0.1:8080',
+      pathRewrite: { '^/api': '' },
+      // target: 'https://miniats.cboo.cloud',
       changeOrigin: true,
     },
   },

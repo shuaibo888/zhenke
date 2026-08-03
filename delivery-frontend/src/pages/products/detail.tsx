@@ -37,13 +37,20 @@ function formatAddress(address: ShopShippingAddress) {
 function trialTypeDescription(trialType: 'ONLINE' | 'OFFLINE') {
   return trialType === 'ONLINE'
     ? '审核通过后由商家发货，确认收货并完成体验后发布甄客验。'
-    : '审核通过后直接参与线下体验，无需商家发货，体验完成后发布甄客验。';
+    : '审核通过后到店出示核销码，商家扫码核销后即可参与线下体验，体验完成后发布甄客验。';
 }
 
 const trialFlowSteps = [
   { label: '申请' },
   { label: '商家审核' },
-  { label: '商家发货', note: '线下试用无需发货' },
+  { label: '商家发货', note: '线上试用审核通过后商家发货' },
+  { label: '发布甄客验' },
+];
+
+const offlineTrialFlowSteps = [
+  { label: '申请' },
+  { label: '商家审核' },
+  { label: '商家核销', note: '到店出示核销码' },
   { label: '发布甄客验' },
 ];
 
@@ -310,7 +317,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
           <section className={styles.trialPanel}>
             <h2 className={styles.trialPanelTitle}>申请流程</h2>
             <ol className={styles.trialFlow}>
-              {trialFlowSteps.map((step, index) => (
+              {(primaryCampaign?.trial?.trialType === 'OFFLINE' ? offlineTrialFlowSteps : trialFlowSteps).map((step, index) => (
                   <li key={step.label}>
                     <span className={styles.trialFlowDot}>{index + 1}</span>
                     <span className={styles.trialFlowLabel}>{step.label}</span>

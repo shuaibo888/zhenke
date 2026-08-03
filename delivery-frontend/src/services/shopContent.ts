@@ -129,13 +129,16 @@ export interface TrialApplicationDto {
   recipientName?: string;
   recipientPhone?: string;
   shippingAddress?: string;
-  status: 'APPLIED' | 'APPROVED' | 'REJECTED' | 'SHIPPED' | 'RECEIVED' | 'COMPLETED' | 'EXPIRED';
+  status: 'APPLIED' | 'APPROVED' | 'REJECTED' | 'SHIPPED' | 'RECEIVED' | 'COMPLETED' | 'EXPIRED'
+    | 'PENDING_REDEMPTION' | 'REDEEMED';
   auditRemark?: string;
   carrier?: string;
   trackingNo?: string;
   shippedAt?: string;
   receivedAt?: string;
   completedAt?: string;
+  redeemCode?: string;
+  redeemedAt?: string;
   createTime?: string;
   applicationDeadline?: string;
 }
@@ -396,6 +399,16 @@ export async function applyForTrial(campaignId: number, body: {
 export async function fetchMyTrialApplications() {
   const result = await requestApi<ApiResponse<TrialApplicationDto[]>>('/shop/trials/me/applications', {}, true);
   return result.data ?? [];
+}
+
+export async function fetchTrialRedeemCode(applicationId: number) {
+  const result = await requestApi<ApiResponse<TrialApplicationDto>>(
+    `/shop/trials/me/applications/${applicationId}/redeem-code`,
+    {},
+    true,
+  );
+  if (!result.data?.redeemCode) throw new Error('获取核销码失败');
+  return result.data;
 }
 
 export async function fetchShopCart() {

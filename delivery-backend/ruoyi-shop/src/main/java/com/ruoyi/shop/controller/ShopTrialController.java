@@ -51,4 +51,10 @@ public class ShopTrialController
         return AjaxResult.success("已确认收货，现在可以自愿发布验证报告",
                 trialService.confirmReceived(applicationId));
     }
+
+    @GetMapping("/me/applications/{applicationId}/redeem-code")
+    public AjaxResult redeemCode(@PathVariable long applicationId)
+    {
+        return AjaxResult.success(trialService.getOrCreateRedeemCode(applicationId));
+    }
 }

@@ -80,7 +80,7 @@ export default function TrialDialogs(props: TrialDialogsProps) {
                   disabled: !props.selectedTrialAvailableTypes.includes('ONLINE'),
                 },
                 {
-                  label: '线下试用（审核通过 → 发布甄客验）',
+                  label: '线下试用（审核通过 → 扫码核销 → 发布甄客验）',
                   value: 'OFFLINE',
                   disabled: !props.selectedTrialAvailableTypes.includes('OFFLINE'),
                 },
