@@ -35,6 +35,7 @@ import com.ruoyi.shop.domain.dto.ShopPasswordBody;
 import com.ruoyi.shop.domain.dto.ShopProfileBody;
 import com.ruoyi.shop.domain.dto.ShopRegisterBody;
 import com.ruoyi.shop.domain.vo.ShopUserProfile;
+import com.ruoyi.shop.mapper.ShopPointMapper;
 import com.ruoyi.shop.mapper.ShopUserMapper;
 import com.ruoyi.shop.mapper.ShopTrialMapper;
 import com.ruoyi.shop.security.ShopAccountIdentity;
@@ -49,16 +50,19 @@ public class ShopAccountService
             MimeTypeUtils.IMAGE_GIF, MimeTypeUtils.IMAGE_JPG, MimeTypeUtils.IMAGE_JPEG, MimeTypeUtils.IMAGE_PNG);
 
     private final ShopUserMapper userMapper;
+    private final ShopPointMapper pointMapper;
     private final ShopTrialMapper trialMapper;
     private final TokenService tokenService;
     private final RedisCache redisCache;
     private final ISysConfigService configService;
 
-    public ShopAccountService(ShopUserMapper userMapper, ShopTrialMapper trialMapper,
+    public ShopAccountService(ShopUserMapper userMapper, ShopPointMapper pointMapper,
+            ShopTrialMapper trialMapper,
             TokenService tokenService, RedisCache redisCache,
             ISysConfigService configService)
     {
         this.userMapper = userMapper;
+        this.pointMapper = pointMapper;
         this.trialMapper = trialMapper;
         this.tokenService = tokenService;
         this.redisCache = redisCache;
@@ -84,7 +88,14 @@ public class ShopAccountService
         user.setStatus("0");
         user.setDelFlag("0");
         user.setCreateBy(username);
-        userMapper.insert(user);
+        if (userMapper.insert(user) <= 0 || user.getUserId() == null)
+        {
+            throw new ServiceException("商城用户注册失败");
+        }
+        if (pointMapper.insertDefaultAccount(user.getUserId(), username) <= 0)
+        {
+            throw new ServiceException("积分账户初始化失败");
+        }
         recordLogin(username, Constants.REGISTER, "商城用户注册成功");
     }
 

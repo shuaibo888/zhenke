@@ -23,6 +23,7 @@ import {
 import {
   createShopShippingAddress,
   deleteShopShippingAddress,
+  fetchMyPointBalance,
   fetchShopCaptcha,
   fetchShopShippingAddresses,
   loginShopUser,
@@ -32,6 +33,7 @@ import {
   setDefaultShopShippingAddress,
   updateShopShippingAddress,
   type CaptchaState,
+  type ShopPointBalance,
   type ShopShippingAddress,
   type ShopShippingAddressBody,
 } from '@/services/shopAuth';
@@ -60,6 +62,8 @@ interface ShopContextValue {
   reportsLoading: boolean;
   addresses: ShopShippingAddress[];
   addressesLoading: boolean;
+  points: ShopPointBalance;
+  pointsLoading: boolean;
   privateLoading: boolean;
   payingOrderId: number | null;
   setAuthMode: (mode: AuthMode) => void;
@@ -73,6 +77,7 @@ interface ShopContextValue {
   refreshTrials: () => Promise<void>;
   refreshReports: () => Promise<void>;
   refreshAddresses: () => Promise<void>;
+  refreshPoints: () => Promise<void>;
   addToCart: (productId: number, quantity?: number, sourceReportId?: number) => Promise<void>;
   changeCartQuantity: (cartItemId: number, quantity: number) => Promise<void>;
   removeCartItem: (cartItemId: number) => Promise<void>;
@@ -90,6 +95,12 @@ interface ShopContextValue {
 
 const ShopContext = createContext<ShopContextValue | null>(null);
 const emptyCaptcha: CaptchaState = { enabled: false, image: '', uuid: '' };
+const emptyPoints: ShopPointBalance = {
+  balance: 0,
+  totalTransferredIn: 0,
+  totalConsumed: 0,
+  lastTransferTime: null,
+};
 
 export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -111,6 +122,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [reportsLoading, setReportsLoading] = useState(false);
   const [addresses, setAddresses] = useState<ShopShippingAddress[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
+  const [points, setPoints] = useState<ShopPointBalance>(emptyPoints);
+  const [pointsLoading, setPointsLoading] = useState(false);
   const [payingOrderId, setPayingOrderId] = useState<number | null>(null);
   const paymentReturnHandled = useRef(false);
   const userRef = useRef<AuthUser | null>(null);
@@ -120,9 +133,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const trialRefreshRef = useRef<Promise<void> | null>(null);
   const reportRefreshRef = useRef<Promise<void> | null>(null);
   const addressRefreshRef = useRef<Promise<void> | null>(null);
+  const pointRefreshRef = useRef<Promise<void> | null>(null);
   const privateLoading = couponsLoading || ordersLoading || trialsLoading || reportsLoading || addressesLoading;
 
   useEffect(() => {
+    const previousUserId = userRef.current?.id;
     userRef.current = user;
     cartRefreshRef.current = null;
     orderRefreshRef.current = null;
@@ -130,12 +145,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     trialRefreshRef.current = null;
     reportRefreshRef.current = null;
     addressRefreshRef.current = null;
+    pointRefreshRef.current = null;
     setCartLoading(false);
     setOrdersLoading(false);
     setCouponsLoading(false);
     setTrialsLoading(false);
     setReportsLoading(false);
     setAddressesLoading(false);
+    setPointsLoading(false);
+    if (previousUserId !== user?.id) setPoints(emptyPoints);
   }, [user]);
 
   const loadCaptcha = useCallback(async () => {
@@ -304,6 +322,28 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return request;
   }, [user]);
 
+  const refreshPoints = useCallback(async () => {
+    if (!user) {
+      setPoints(emptyPoints);
+      return;
+    }
+    if (pointRefreshRef.current) return pointRefreshRef.current;
+    const currentUserId = user.id;
+    setPointsLoading(true);
+    const request: Promise<void> = fetchMyPointBalance()
+      .then((balance) => {
+        if (userRef.current?.id === currentUserId) setPoints(balance);
+      })
+      .finally(() => {
+        if (pointRefreshRef.current === request) {
+          pointRefreshRef.current = null;
+          setPointsLoading(false);
+        }
+      });
+    pointRefreshRef.current = request;
+    return request;
+  }, [user]);
+
   useEffect(() => {
     void refreshCart().catch(() => undefined);
   }, [refreshCart]);
@@ -342,6 +382,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setTrials([]);
       setReports([]);
       setAddresses([]);
+      setPoints(emptyPoints);
     }
   }, []);
 
@@ -511,6 +552,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     reportsLoading,
     addresses,
     addressesLoading,
+    points,
+    pointsLoading,
     privateLoading,
     payingOrderId,
     setAuthMode,
@@ -524,6 +567,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     refreshTrials,
     refreshReports,
     refreshAddresses,
+    refreshPoints,
     addToCart,
     changeCartQuantity,
     removeCartItem,
@@ -543,9 +587,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }), [
     user, authLoading, authSubmitting, authMode, captcha, captchaLoading, captchaError,
     cart, cartLoading, coupons, couponsLoading, orders, ordersLoading, trials, trialsLoading,
-    reports, reportsLoading, addresses, addressesLoading, privateLoading, payingOrderId,
+    reports, reportsLoading, addresses, addressesLoading, points, pointsLoading, privateLoading, payingOrderId,
     loadCaptcha, login, register, logout, refreshCart, refreshCoupons, refreshOrders, refreshTrials,
-    refreshReports, refreshAddresses, addToCart, changeCartQuantity,
+    refreshReports, refreshAddresses, refreshPoints, addToCart, changeCartQuantity,
     removeCartItem, checkoutCart, buyNow, payOrder, saveAddress, makeDefaultAddress, removeAddress,
   ]);
 

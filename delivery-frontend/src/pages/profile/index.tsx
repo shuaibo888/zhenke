@@ -9,6 +9,7 @@ import {
   ProfileOutlined,
   RightOutlined,
   ShoppingCartOutlined,
+  TrophyOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
 import { Button, Form, Input, Modal, message } from 'antd';
@@ -32,6 +33,8 @@ export default function ProfilePage() {
     trials,
     reports,
     coupons,
+    points,
+    pointsLoading,
     privateLoading,
     logout,
     setUser,
@@ -39,6 +42,7 @@ export default function ProfilePage() {
     refreshTrials,
     refreshReports,
     refreshCoupons,
+    refreshPoints,
   } = useShop();
   const [profileOpen, setProfileOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
@@ -52,6 +56,7 @@ export default function ProfilePage() {
   useRefreshOnRoute('/profile', refreshTrials, '试用概览刷新失败');
   useRefreshOnRoute('/profile', refreshReports, '甄客验概览刷新失败');
   useRefreshOnRoute('/profile', refreshCoupons, '优惠券概览刷新失败');
+  useRefreshOnRoute('/profile', refreshPoints, '积分刷新失败');
 
   if (!user) {
     return <Navigate to="/auth" replace />;
@@ -144,6 +149,16 @@ export default function ProfilePage() {
               <h2>{user.name}</h2>
               <p>@{user.username} · {user.roleName || '甄客'}</p>
             </div>
+            <button
+              type="button"
+              className={styles.profilePointsButton}
+              aria-label={pointsLoading ? '积分加载中' : `我的积分 ${points.balance}`}
+              onClick={() => navigate('/profile/points')}
+            >
+              <TrophyOutlined className={styles.profilePointsIcon} />
+              <span>积分</span>
+              <strong>{pointsLoading ? '--' : points.balance}</strong>
+            </button>
             <button
               type="button"
               className={styles.mobileLogoutButton}

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.shop.mapper.ShopPointMapper">
+    <resultMap id="ShopPointBalanceResult" type="ShopPointBalance">
+        <result property="balance" column="balance" />
+        <result property="totalTransferredIn" column="total_transferred_in" />
+        <result property="totalConsumed" column="total_consumed" />
+        <result property="lastTransferTime" column="last_transfer_time" />
+    </resultMap>
+
+    <resultMap id="ShopPointRecordResult" type="ShopPointRecord">
+        <id property="pointRecordId" column="point_record_id" />
+        <result property="changeAmount" column="change_amount" />
+        <result property="balanceAfter" column="balance_after" />
+        <result property="changeReason" column="change_reason" />
+        <result property="createTime" column="create_time" />
+    </resultMap>
+
+    <select id="selectUserSummary" parameterType="Long" resultMap="ShopPointBalanceResult">
+        select coalesce(point_account.balance, 0) as balance,
+               coalesce(point_account.total_transferred_in, 0) as total_transferred_in,
+               coalesce(point_account.total_consumed, 0) as total_consumed,
+               point_account.last_transfer_time
+        from shop_user shop_user
+        left join shop_user_point_account point_account
+          on point_account.shop_user_id = shop_user.user_id
+        where shop_user.user_id = #{shopUserId}
+          and shop_user.status = '0'
+          and shop_user.del_flag = '0'
+        limit 1
+    </select>
+
+    <select id="selectUserRecords" parameterType="Long" resultMap="ShopPointRecordResult">
+        select point_record_id, change_amount, balance_after,
+               change_reason, create_time
+        from shop_user_point_record
+        where shop_user_id = #{shopUserId}
+          and status = 'SUCCESS'
+          and balance_after is not null
+        order by create_time desc, point_record_id desc
+    </select>
+
+    <insert id="insertDefaultAccount">
+        insert into shop_user_point_account
+        (shop_user_id, balance, total_transferred_in, total_consumed, create_by, create_time, update_time)
+        values
+        (#{shopUserId}, 0, 0, 0, #{createBy}, sysdate(), sysdate())
+    </insert>
+</mapper>

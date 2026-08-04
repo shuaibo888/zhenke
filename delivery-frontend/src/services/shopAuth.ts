@@ -1,6 +1,6 @@
 import type { Merchant } from '@/types';
 import type { AuthUser } from '@/utils/authRules';
-import { getToken, storeToken, requestApi, type ApiResponse } from './apiClient';
+import { getToken, storeToken, requestApi, type ApiResponse, type TableResponse } from './apiClient';
 
 const merchantApplicationStorageKey = 'zhenke_merchant_application_phone';
 
@@ -101,6 +101,59 @@ export async function changeShopPassword(oldPassword: string, newPassword: strin
     { method: 'PUT', body: JSON.stringify({ oldPassword, newPassword }) },
     true,
   );
+}
+
+export interface ShopPointBalance {
+  balance: number;
+  totalTransferredIn: number;
+  totalConsumed: number;
+  lastTransferTime: string | null;
+}
+
+export async function fetchMyPointBalance() {
+  const result = await requestApi<ApiResponse<ShopPointBalance>>('/shop/users/me/points', {}, true);
+  const summary = result.data;
+  const lastTransferTime = summary?.lastTransferTime ?? null;
+  if (!summary
+    || !Number.isSafeInteger(summary.balance) || summary.balance < 0
+    || !Number.isSafeInteger(summary.totalTransferredIn) || summary.totalTransferredIn < 0
+    || !Number.isSafeInteger(summary.totalConsumed) || summary.totalConsumed < 0
+    || (lastTransferTime !== null && typeof lastTransferTime !== 'string')) {
+    throw new Error('积分账户数据异常');
+  }
+  return { ...summary, lastTransferTime };
+}
+
+export interface ShopPointRecord {
+  pointRecordId: number;
+  changeAmount: number;
+  balanceAfter: number;
+  changeReason: string;
+  createTime: string;
+}
+
+export async function fetchMyPointRecords(pageNum = 1, pageSize = 20) {
+  const result = await requestApi<TableResponse<ShopPointRecord>>(
+    `/shop/users/me/points/records?pageNum=${pageNum}&pageSize=${pageSize}`,
+    {},
+    true,
+  );
+  const rows = Array.isArray(result.rows) ? result.rows : [];
+  if (rows.some((record) => (
+    !Number.isSafeInteger(record.pointRecordId)
+    || !Number.isSafeInteger(record.changeAmount)
+    || record.changeAmount === 0
+    || !Number.isSafeInteger(record.balanceAfter)
+    || record.balanceAfter < 0
+    || typeof record.changeReason !== 'string'
+    || typeof record.createTime !== 'string'
+  ))) {
+    throw new Error('积分变更记录数据异常');
+  }
+  return {
+    rows,
+    total: Number.isSafeInteger(result.total) && result.total >= 0 ? result.total : rows.length,
+  };
 }
 
 export interface ShopShippingAddress {
