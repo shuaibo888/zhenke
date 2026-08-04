@@ -2,6 +2,7 @@ package com.ruoyi.shop.domain;
 
 import java.math.BigDecimal;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.ruoyi.common.core.domain.BaseEntity;
 
 public class ShopProduct extends BaseEntity
@@ -13,6 +14,7 @@ public class ShopProduct extends BaseEntity
     private Long categoryId;
     private String categoryCode;
     private String categoryName;
+    private String brandName;
     private String productName;
     private String subtitle;
     private String detail;
@@ -23,6 +25,7 @@ public class ShopProduct extends BaseEntity
     private String status;
     private String delFlag;
     private Boolean trialOnly;
+    private String keyword;
     private List<ShopProductImage> images;
 
     public Long getProductId() { return productId; }
@@ -37,6 +40,8 @@ public class ShopProduct extends BaseEntity
     public void setCategoryCode(String categoryCode) { this.categoryCode = categoryCode; }
     public String getCategoryName() { return categoryName; }
     public void setCategoryName(String categoryName) { this.categoryName = categoryName; }
+    public String getBrandName() { return brandName; }
+    public void setBrandName(String brandName) { this.brandName = brandName; }
     public String getProductName() { return productName; }
     public void setProductName(String productName) { this.productName = productName; }
     public String getSubtitle() { return subtitle; }
@@ -57,6 +62,8 @@ public class ShopProduct extends BaseEntity
     public void setDelFlag(String delFlag) { this.delFlag = delFlag; }
     public Boolean getTrialOnly() { return trialOnly; }
     public void setTrialOnly(Boolean trialOnly) { this.trialOnly = trialOnly; }
+    @JsonIgnore public String getKeyword() { return keyword; }
+    public void setKeyword(String keyword) { this.keyword = keyword; }
     public List<ShopProductImage> getImages() { return images; }
     public void setImages(List<ShopProductImage> images) { this.images = images; }
 }

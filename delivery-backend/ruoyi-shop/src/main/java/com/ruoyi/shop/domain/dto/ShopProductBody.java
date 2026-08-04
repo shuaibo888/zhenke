@@ -15,6 +15,10 @@ public class ShopProductBody
     @NotNull(message = "请选择商品分类")
     private Long categoryId;
 
+    @NotBlank(message = "请输入商品品牌")
+    @Size(max = 100, message = "商品品牌不能超过100个字符")
+    private String brandName;
+
     @NotBlank(message = "请输入商品名称")
     @Size(max = 120, message = "商品名称不能超过120个字符")
     private String productName;
@@ -44,6 +48,8 @@ public class ShopProductBody
 
     public Long getCategoryId() { return categoryId; }
     public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
+    public String getBrandName() { return brandName; }
+    public void setBrandName(String brandName) { this.brandName = brandName; }
     public String getProductName() { return productName; }
     public void setProductName(String productName) { this.productName = productName; }
     public String getSubtitle() { return subtitle; }

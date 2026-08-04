@@ -18,6 +18,7 @@ public interface ShopProductMapper
             @Param("productId") Long productId);
     List<ShopProduct> selectAdminProducts(ShopProduct query);
     ShopProduct selectAdminProduct(Long productId);
+    List<ShopProduct> selectPublicProducts(ShopProduct query);
     ShopProduct selectPublicProduct(Long productId);
     List<ShopProductImage> selectImages(Long productId);
     int insertProduct(ShopProduct product);

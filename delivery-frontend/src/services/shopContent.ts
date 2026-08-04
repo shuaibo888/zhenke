@@ -15,6 +15,7 @@ export interface PublicProductDto {
   categoryId: number;
   categoryCode: ProductCategoryDto['categoryCode'];
   categoryName: string;
+  brandName: string;
   productName: string;
   subtitle?: string;
   detail: string;
@@ -25,6 +26,22 @@ export interface PublicProductDto {
   status: 'ON_SALE';
   images?: Array<{ imageId: number; imageUrl: string; imageSort: number }>;
 }
+
+export type MallProductDto = Pick<PublicProductDto,
+  | 'productId'
+  | 'merchantId'
+  | 'merchantName'
+  | 'categoryId'
+  | 'categoryCode'
+  | 'categoryName'
+  | 'brandName'
+  | 'productName'
+  | 'subtitle'
+  | 'coverUrl'
+  | 'price'
+  | 'stock'
+  | 'salesCount'
+  | 'status'>;
 
 export interface HomeFeedItemDto {
   contentType: 'TRIAL' | 'REPORT';
@@ -281,6 +298,13 @@ export interface HomeSearchQuery {
   pageSize?: number;
 }
 
+export interface MallProductsQuery {
+  categoryId?: number;
+  keyword?: string;
+  pageNum?: number;
+  pageSize?: number;
+}
+
 export async function fetchHomeFeed(query: HomeFeedQuery = {}) {
   const pageNum = Math.max(1, Math.trunc(query.pageNum ?? 1));
   const pageSize = Math.max(1, Math.min(24, Math.trunc(query.pageSize ?? 12)));
@@ -330,6 +354,26 @@ export async function searchHomeFeed(query: HomeSearchQuery) {
 export async function fetchProductCategories() {
   const result = await requestApi<ApiResponse<ProductCategoryDto[]>>('/shop/products/categories');
   return result.data ?? [];
+}
+
+export async function fetchMallProducts(query: MallProductsQuery = {}) {
+  const pageNum = Math.max(1, Math.trunc(query.pageNum ?? 1));
+  const pageSize = Math.max(1, Math.min(24, Math.trunc(query.pageSize ?? 12)));
+  const params = new URLSearchParams({
+    pageNum: String(pageNum),
+    pageSize: String(pageSize),
+  });
+  if (query.categoryId) params.set('categoryId', String(query.categoryId));
+  const keyword = query.keyword?.trim();
+  if (keyword) params.set('keyword', keyword);
+  const result = await requestApi<TableResponse<MallProductDto>>(
+    `/shop/mall/products?${params.toString()}`,
+  );
+  return {
+    ...result,
+    rows: Array.isArray(result.rows) ? result.rows : [],
+    total: typeof result.total === 'number' ? result.total : 0,
+  };
 }
 
 export async function fetchPublicProduct(productId: number) {

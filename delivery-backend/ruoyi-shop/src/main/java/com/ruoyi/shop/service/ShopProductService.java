@@ -80,6 +80,17 @@ public class ShopProductService
         return requireVisibleProduct(productMapper.selectAdminProduct(productId));
     }
 
+    public List<ShopProduct> publicProducts(ShopProduct query)
+    {
+        String keyword = StringUtils.trim(query.getKeyword());
+        if (StringUtils.isNotEmpty(keyword) && keyword.length() > 50)
+        {
+            throw new ServiceException("搜索关键词不能超过50个字符");
+        }
+        query.setKeyword(StringUtils.isEmpty(keyword) ? null : keyword);
+        return productMapper.selectPublicProducts(query);
+    }
+
     public ShopProduct publicProduct(long productId)
     {
         return requireVisibleProduct(productMapper.selectPublicProduct(productId));
@@ -148,6 +159,7 @@ public class ShopProductService
     {
         ShopProduct product = new ShopProduct();
         product.setCategoryId(body.getCategoryId());
+        product.setBrandName(StringUtils.trim(body.getBrandName()));
         product.setProductName(StringUtils.trim(body.getProductName()));
         product.setSubtitle(StringUtils.trim(body.getSubtitle()));
         product.setDetail(StringUtils.trim(body.getDetail()));

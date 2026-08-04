@@ -25,6 +25,7 @@
         <result property="categoryId" column="category_id" />
         <result property="categoryCode" column="category_code" />
         <result property="categoryName" column="category_name" />
+        <result property="brandName" column="brand_name" />
         <result property="productName" column="product_name" />
         <result property="subtitle" column="subtitle" />
         <result property="detail" column="detail" />
@@ -42,7 +43,7 @@
     <sql id="selectProduct">
         select p.product_id, p.merchant_id, m.company_name as merchant_name,
                p.category_id, c.category_code, c.category_name,
-               p.product_name, p.subtitle, p.detail, p.cover_url, p.price,
+               p.brand_name, p.product_name, p.subtitle, p.detail, p.cover_url, p.price,
                p.stock, coalesce((
                    select sum(oi.quantity)
                    from shop_order_item oi
@@ -87,7 +88,8 @@
             p.merchant_id = #{merchantId} and p.del_flag = '0'
             <if test="query.productName != null and query.productName != ''">
                 and (p.product_name like concat('%', #{query.productName}, '%')
-                     or p.subtitle like concat('%', #{query.productName}, '%'))
+                     or p.subtitle like concat('%', #{query.productName}, '%')
+                     or p.brand_name like concat('%', #{query.productName}, '%'))
             </if>
             <if test="query.categoryId != null">and p.category_id = #{query.categoryId}</if>
             <if test="query.status != null and query.status != ''">and p.status = #{query.status}</if>
@@ -114,6 +116,7 @@
             <if test="productName != null and productName != ''">
                 and (p.product_name like concat('%', #{productName}, '%')
                      or p.subtitle like concat('%', #{productName}, '%')
+                     or p.brand_name like concat('%', #{productName}, '%')
                      or m.company_name like concat('%', #{productName}, '%'))
             </if>
             <if test="categoryId != null">and p.category_id = #{categoryId}</if>
@@ -133,6 +136,40 @@
         where p.product_id = #{productId} and p.del_flag = '0'
     </select>
 
+    <select id="selectPublicProducts" parameterType="ShopProduct" resultMap="ShopProductResult">
+        select p.product_id, p.merchant_id, m.company_name as merchant_name,
+               p.category_id, c.category_code, c.category_name,
+               p.brand_name, p.product_name, p.subtitle, p.cover_url, p.price, p.stock,
+               coalesce((
+                   select sum(oi.quantity)
+                   from shop_order_item oi
+                   inner join shop_order o on o.order_id = oi.order_id and o.del_flag = '0'
+                   where oi.product_id = p.product_id
+                     and o.status in ('PAID', 'SHIPPED', 'RECEIVED', 'REFUNDING')
+               ), 0) as sales_count,
+               p.status as product_status
+        from shop_product p
+        inner join shop_merchant m on m.merchant_id = p.merchant_id and m.del_flag = '0'
+        inner join shop_product_category c on c.category_id = p.category_id
+        <where>
+            p.status = 'ON_SALE' and p.del_flag = '0'
+            and m.audit_status = 'APPROVED' and m.status = '0'
+            and c.status = '0'
+            <if test="categoryId != null">and p.category_id = #{categoryId}</if>
+            <if test="keyword != null and keyword != ''">
+                and (
+                    p.product_name like concat('%', #{keyword}, '%')
+                    or p.subtitle like concat('%', #{keyword}, '%')
+                    or p.brand_name like concat('%', #{keyword}, '%')
+                    or m.company_name like concat('%', #{keyword}, '%')
+                    or c.category_name like concat('%', #{keyword}, '%')
+                    or cast(p.product_id as char) = #{keyword}
+                )
+            </if>
+        </where>
+        order by p.product_id desc
+    </select>
+
     <select id="selectPublicProduct" parameterType="Long" resultMap="ShopProductResult">
         <include refid="selectProduct" />
         where p.product_id = #{productId} and p.status = 'ON_SALE' and p.del_flag = '0'
@@ -147,16 +184,16 @@
 
     <insert id="insertProduct" parameterType="ShopProduct" useGeneratedKeys="true" keyProperty="productId">
         insert into shop_product
-        (merchant_id, category_id, product_name, subtitle, detail, cover_url,
+        (merchant_id, category_id, brand_name, product_name, subtitle, detail, cover_url,
          price, stock, sales_count, status, del_flag, create_by, create_time, update_by, update_time)
         values
-        (#{merchantId}, #{categoryId}, #{productName}, #{subtitle}, #{detail}, #{coverUrl},
+        (#{merchantId}, #{categoryId}, #{brandName}, #{productName}, #{subtitle}, #{detail}, #{coverUrl},
          #{price}, #{stock}, 0, 'DRAFT', '0', #{createBy}, sysdate(), #{updateBy}, sysdate())
     </insert>
 
     <update id="updateMerchantProduct" parameterType="ShopProduct">
         update shop_product
-        set category_id = #{categoryId}, product_name = #{productName}, subtitle = #{subtitle},
+        set category_id = #{categoryId}, brand_name = #{brandName}, product_name = #{productName}, subtitle = #{subtitle},
             detail = #{detail}, cover_url = #{coverUrl}, price = #{price}, stock = #{stock},
             update_by = #{updateBy}, update_time = sysdate()
         where product_id = #{productId} and merchant_id = #{merchantId} and del_flag = '0'

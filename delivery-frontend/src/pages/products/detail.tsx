@@ -288,8 +288,13 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
         <section className={styles.trialHero}>
           <div className={styles.trialHeroImage}><img src={product.coverUrl} alt={product.productName} /></div>
           <div className={styles.trialHeroBody}>
-            <Tag color="green">{product.categoryName}</Tag>
-            <h1>{product.productName}</h1>
+            <div className={styles.productTagRow}>
+              <Tag color="green">{product.categoryName}</Tag>
+            </div>
+            <div className={styles.productDetailTitleRow}>
+              <Tag color="gold">{product.brandName}</Tag>
+              <h1>{product.productName}</h1>
+            </div>
             <p>{product.subtitle}</p>
             <strong className={styles.linkedProductPrice}>{formatPrice(product.price)}</strong>
           </div>

@@ -3,6 +3,7 @@ import { defineConfig } from 'umi';
 export default defineConfig({
   routes: [
     { path: '/', component: '@/pages/home' },
+    { path: '/mall', component: '@/pages/mall' },
     { path: '/products/:productId', component: '@/pages/products/detail' },
     { path: '/reports/:reportId', component: '@/pages/reports/detail' },
     { path: '/profile', component: '@/pages/profile' },

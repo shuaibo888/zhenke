@@ -88,6 +88,7 @@ export interface ManagedProduct {
   merchantId: number;
   title: string;
   subtitle?: string;
+  brandName: string;
   artisanName: string;
   category: ProductCategory;
   categoryId?: number;

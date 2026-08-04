@@ -68,6 +68,7 @@ interface ProductDto {
   categoryId: number;
   categoryCode: ProductCategoryOption['categoryCode'];
   categoryName: string;
+  brandName: string;
   productName: string;
   subtitle?: string;
   detail: string;
@@ -267,6 +268,7 @@ function toManagedProduct(dto: ProductDto): ManagedProduct {
     merchantId: dto.merchantId,
     title: dto.productName,
     subtitle: dto.subtitle,
+    brandName: dto.brandName,
     artisanName: dto.merchantName,
     category: dto.categoryCode,
     categoryId: dto.categoryId,
@@ -620,6 +622,7 @@ export async function fetchManagedProducts(session: AdminSession, query: Managed
 
 export interface ProductWriteBody {
   categoryId: number;
+  brandName: string;
   productName: string;
   subtitle?: string;
   detail: string;

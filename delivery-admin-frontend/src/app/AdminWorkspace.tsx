@@ -667,6 +667,7 @@ function AdminWorkspace() {
     productForm.resetFields();
     productForm.setFieldsValue({
       categoryId: productCategories[0]?.categoryId,
+      brandName: '',
       imageUrl: '',
       detail: '',
       price: 99,
@@ -680,6 +681,7 @@ function AdminWorkspace() {
     productForm.setFieldsValue({
       title: product.title,
       subtitle: product.subtitle,
+      brandName: product.brandName,
       categoryId: product.categoryId,
       imageUrl: product.imageUrl,
       detail: product.detail,
@@ -701,6 +703,7 @@ function AdminWorkspace() {
     try {
       const body = {
         categoryId: values.categoryId,
+        brandName: values.brandName.trim(),
         productName: values.title.trim(),
         subtitle: values.subtitle?.trim(),
         detail: values.detail.trim(),
@@ -1142,6 +1145,7 @@ function AdminWorkspace() {
           <div className={styles.productThumb} style={{ backgroundImage: `url(${product.imageUrl})` }} />
           <div>
             <div className={styles.strongText}>{product.title}</div>
+            <div className={styles.subText}>品牌：{product.brandName}</div>
             <div className={styles.subText}>{product.artisanName}</div>
           </div>
         </div>

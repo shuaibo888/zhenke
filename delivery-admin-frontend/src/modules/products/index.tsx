@@ -32,7 +32,7 @@ export default function ProductsModule(props: ProductsModuleProps) {
     <section className={styles.tableSurface}>
       <div className={styles.tableHeader}>
         <div>
-          <p className={styles.eyebrow}>商品上架、库存、成本</p>
+          <p className={styles.eyebrow}>商品上架、分类与库存</p>
           <h3>商品管理</h3>
         </div>
         {props.isAdmin && props.canEditCategory && (
@@ -47,7 +47,7 @@ export default function ProductsModule(props: ProductsModuleProps) {
           className={styles.productSearch}
           prefix={<SearchOutlined />}
           allowClear
-          placeholder="搜索商品名、匠人/品牌或商家"
+          placeholder="搜索商品名、副标题、品牌或商家"
           value={props.keyword}
           onChange={(event) => props.onKeywordChange(event.target.value)}
           onPressEnter={() => props.onSearch(1)}

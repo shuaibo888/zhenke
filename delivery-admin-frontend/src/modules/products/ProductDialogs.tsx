@@ -21,6 +21,7 @@ import styles from '@/pages/index.less';
 export interface ProductFormValues {
   title: string;
   subtitle?: string;
+  brandName: string;
   categoryId: number;
   imageUrl: string;
   detail: string;
@@ -135,8 +136,20 @@ export default function ProductDialogs(props: ProductDialogsProps) {
         destroyOnHidden
       >
         <Form form={props.productForm} layout="vertical" onFinish={props.onSaveProduct}>
-          <Form.Item name="title" label="商品名" rules={[{ required: true, message: '请输入商品名' }]}>
-            <Input />
+          <Form.Item
+            name="title"
+            label="商品名（请包含规格）"
+            extra="不同容量、颜色或包装作为独立商品创建，例如“矿泉水 550ml×24瓶”。"
+            rules={[{ required: true, message: '请输入包含完整规格的商品名' }, { max: 120, message: '商品名不能超过 120 个字' }]}
+          >
+            <Input placeholder="例如：矿泉水 550ml×24瓶" />
+          </Form.Item>
+          <Form.Item
+            name="brandName"
+            label="品牌"
+            rules={[{ required: true, message: '请输入商品品牌' }, { max: 100, message: '商品品牌不能超过 100 个字' }]}
+          >
+            <Input maxLength={100} placeholder="例如：农夫山泉；没有品牌可填写“无品牌”" />
           </Form.Item>
           <Form.Item name="subtitle" label="商品副标题" rules={[{ max: 200, message: '副标题不能超过 200 个字' }]}>
             <Input placeholder="一句话说明商品特点（选填）" />

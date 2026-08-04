@@ -1,4 +1,5 @@
 import {
+  AppstoreOutlined,
   DownOutlined,
   EnvironmentOutlined,
   HomeOutlined,
@@ -46,6 +47,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const homePage = location.pathname === '/' && !detailPage;
   const homeContent = searchParams.get('content')?.toUpperCase();
   const homeKeyword = (searchParams.get('keyword') ?? '').trim();
+  const mallActive = location.pathname.startsWith('/mall');
   const profileActive = location.pathname.startsWith('/profile')
     || location.pathname.startsWith('/checkout')
     || isPaymentReturn;
@@ -193,11 +195,19 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
             <div className={styles.topNav}>
               <button
                 type="button"
-                className={!profileActive ? styles.activeTab : ''}
+                className={!mallActive && !profileActive ? styles.activeTab : ''}
                 onClick={() => navigate('/')}
               >
                 <HomeOutlined />
                 <span>首页</span>
+              </button>
+              <button
+                type="button"
+                className={mallActive ? styles.activeTab : ''}
+                onClick={() => navigate('/mall')}
+              >
+                <AppstoreOutlined />
+                <span>商城</span>
               </button>
               <button
                 type="button"
