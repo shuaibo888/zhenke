@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { ProfileBackButton } from '@/components/ProfileBackButton';
+import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import type { ShopCouponDto } from '@/services/shopContent';
 import { formatPrice } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
@@ -27,8 +28,9 @@ function formatDate(value: string) {
 
 export default function CouponsPage() {
   const navigate = useNavigate();
-  const { user, coupons, privateLoading } = useShop();
+  const { user, coupons, couponsLoading, refreshCoupons } = useShop();
   const [filter, setFilter] = useState<CouponFilter>('all');
+  useRefreshOnRoute('/profile/coupons', refreshCoupons, '优惠券刷新失败');
 
   const filtered = useMemo(() => coupons.filter((coupon) => {
     if (filter === 'all') return true;
@@ -72,7 +74,7 @@ export default function CouponsPage() {
             </button>
           ))}
         </div>
-        <Spin spinning={privateLoading}>
+        <Spin spinning={couponsLoading}>
           <div className={styles.couponWalletList}>
             {filtered.map((coupon) => {
               const meta = availabilityMeta[coupon.availabilityStatus];
@@ -104,7 +106,7 @@ export default function CouponsPage() {
               );
             })}
           </div>
-          {!privateLoading && filtered.length === 0 && (
+          {!couponsLoading && filtered.length === 0 && (
             <div className={styles.couponWalletEmpty}>
               <GiftOutlined />
               <strong>暂无此类优惠券</strong>

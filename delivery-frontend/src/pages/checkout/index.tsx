@@ -51,9 +51,13 @@ export default function CheckoutPage() {
     cart,
     cartLoading,
     coupons,
-    privateLoading,
+    couponsLoading: myCouponsLoading,
     orders,
     addresses,
+    addressesLoading,
+    refreshCart,
+    refreshCoupons,
+    refreshAddresses,
     checkoutCart,
     buyNow,
     payOrder,
@@ -85,6 +89,15 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const paymentOrder = contextPaymentOrder ?? loadedPaymentOrder ?? undefined;
   useBodyScrollLock(addressOpen || couponOpen);
+
+  useEffect(() => {
+    if (!user || orderMode) return;
+    const requests = [refreshAddresses(), refreshCoupons()];
+    if (source === 'cart') requests.push(refreshCart());
+    void Promise.all(requests).catch((error) => {
+      message.error(error instanceof Error ? error.message : '结算信息刷新失败');
+    });
+  }, [orderMode, refreshAddresses, refreshCart, refreshCoupons, source, user]);
 
   useEffect(() => {
     if (!orderMode || !orderId || !user) {
@@ -253,7 +266,7 @@ export default function CheckoutPage() {
   }
 
   const pageLoading = productLoading || orderLoading
-    || (!orderMode && privateLoading)
+    || (!orderMode && (addressesLoading || myCouponsLoading))
     || (!orderMode && source === 'cart' && cartLoading);
 
   const submit = async () => {

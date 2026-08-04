@@ -7,6 +7,7 @@ import { ProfileBackButton } from '@/components/ProfileBackButton';
 import { PublishReportModal } from '@/components/PublishReportModal';
 import { TrialRedeemCodeModal } from '@/components/TrialRedeemCodeModal';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import {
   confirmTrialReceived,
   fetchTrialApplicationLogistics,
@@ -34,7 +35,7 @@ export default function TrialsPage() {
   const {
     user,
     trials,
-    privateLoading,
+    trialsLoading,
     replaceTrial,
     replaceReport,
     refreshTrials,
@@ -47,6 +48,7 @@ export default function TrialsPage() {
   const [publishTrial, setPublishTrial] = useState<TrialApplicationDto | null>(null);
   const [redeemTrial, setRedeemTrial] = useState<TrialApplicationDto | null>(null);
   useBodyScrollLock(Boolean(logisticsTrial) || Boolean(publishTrial) || Boolean(redeemTrial));
+  useRefreshOnRoute('/profile/trials', refreshTrials, '试用记录刷新失败');
 
   if (!user) {
     return <Navigate to="/auth" replace />;
@@ -98,7 +100,7 @@ export default function TrialsPage() {
             </div>
             <span>共 {trials.length} 项</span>
           </div>
-          <Spin spinning={privateLoading}>
+          <Spin spinning={trialsLoading}>
             <div className={styles.trialList}>
               {trials.map((trial) => {
                 const publishable = (trial.trialType === 'OFFLINE' && trial.status === 'REDEEMED')
@@ -150,7 +152,7 @@ export default function TrialsPage() {
                 );
               })}
             </div>
-            {!privateLoading && trials.length === 0 && <p className={styles.empty}>还没有试用申请。</p>}
+            {!trialsLoading && trials.length === 0 && <p className={styles.empty}>还没有试用申请。</p>}
           </Spin>
         </section>
       </main>

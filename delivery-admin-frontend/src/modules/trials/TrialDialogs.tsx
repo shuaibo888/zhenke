@@ -1,5 +1,6 @@
-import { Button, Checkbox, DatePicker, Form, Input, InputNumber, Modal, Select, Space } from 'antd';
+import { Button, Checkbox, DatePicker, Form, Input, InputNumber, Modal, Select, Space, Tag } from 'antd';
 import type { FormInstance } from 'antd';
+import { useState } from 'react';
 import type { ManagedProduct, ManagedTrialApplication } from '@/types';
 import styles from '@/pages/index.less';
 
@@ -13,7 +14,6 @@ export interface TrialFormValues {
 }
 
 export interface TrialApplicationActionFormValues {
-  auditRemark?: string;
   trackingNo?: string;
 }
 
@@ -24,18 +24,111 @@ export interface TrialDialogsProps {
   selectedTrialAvailableTypes: Array<'ONLINE' | 'OFFLINE'>;
   selectedTrialProductId?: number;
   trialSaving: boolean;
-  applicationAction: 'reject' | 'ship' | null;
+  applicationAction: 'ship' | null;
   selectedApplication: ManagedTrialApplication | null;
   applicationActionForm: FormInstance<TrialApplicationActionFormValues>;
+  reviewApplication: ManagedTrialApplication | null;
+  reviewSubmitting: boolean;
   onTrialClose: () => void;
   onTrialSubmit: (values: TrialFormValues) => void;
   onProductSearch: (keyword: string) => void;
   onProductChange: (productId: number) => void;
   onApplicationActionClose: () => void;
   onApplicationActionSubmit: (values: TrialApplicationActionFormValues) => void;
+  onReviewClose: () => void;
+  onReviewApprove: () => void;
+  onReviewReject: (remark: string) => void;
 }
 
 const responsiveModalProps = { rootClassName: styles.responsiveModal } as const;
+
+function ReviewTrialDialog(props: TrialDialogsProps) {
+  const application = props.reviewApplication;
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+
+  const close = () => {
+    setRejecting(false);
+    setRejectReason('');
+    props.onReviewClose();
+  };
+
+  return (
+    <Modal
+      {...responsiveModalProps}
+      title="审核试用申请"
+      open={Boolean(application)}
+      onCancel={close}
+      footer={null}
+      destroyOnHidden
+    >
+      {application && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <div style={{ fontWeight: 700 }}>{application.productName}</div>
+            <div className={styles.subText}>{application.campaignTitle}</div>
+          </div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <span className={styles.reviewLabel}>申请用户</span>
+            <span>{application.nickName || application.userName}</span>
+          </div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <span className={styles.reviewLabel}>试用方式</span>
+            <Tag color={application.trialType === 'ONLINE' ? 'blue' : 'purple'}>
+              {application.trialType === 'ONLINE' ? '线上试用' : '线下试用'}
+            </Tag>
+          </div>
+          {application.trialType === 'ONLINE' && (
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <span className={styles.reviewLabel}>收货信息</span>
+              <span>
+                {application.recipientName} · {application.recipientPhone}
+                <br />
+                {application.shippingAddress}
+              </span>
+            </div>
+          )}
+          <div className={styles.reviewReason}>
+            <p className={styles.reviewLabel}>申请理由</p>
+            <p className={styles.reviewReasonText}>{application.applyReason}</p>
+          </div>
+          {rejecting && (
+            <div>
+              <Input.TextArea
+                rows={3}
+                showCount
+                maxLength={500}
+                placeholder="请输入驳回原因（必填）"
+                value={rejectReason}
+                onChange={(event) => setRejectReason(event.target.value)}
+              />
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', paddingTop: 8 }}>
+            {rejecting ? (
+              <>
+                <Button onClick={() => setRejecting(false)} disabled={props.reviewSubmitting}>返回</Button>
+                <Button
+                  danger
+                  loading={props.reviewSubmitting}
+                  disabled={!rejectReason.trim()}
+                  onClick={() => props.onReviewReject(rejectReason.trim())}
+                >
+                  确认驳回
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button danger onClick={() => setRejecting(true)}>驳回</Button>
+                <Button type="primary" loading={props.reviewSubmitting} onClick={props.onReviewApprove}>通过申请</Button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
 
 export default function TrialDialogs(props: TrialDialogsProps) {
   return (
@@ -126,7 +219,7 @@ export default function TrialDialogs(props: TrialDialogsProps) {
 
       <Modal
         {...responsiveModalProps}
-        title={props.applicationAction === 'ship' ? '填写线上试用物流' : '驳回试用申请'}
+        title="填写线上试用物流"
         open={Boolean(props.applicationAction && props.selectedApplication)}
         onCancel={props.onApplicationActionClose}
         footer={null}
@@ -137,21 +230,17 @@ export default function TrialDialogs(props: TrialDialogsProps) {
           layout="vertical"
           onFinish={props.onApplicationActionSubmit}
         >
-          {props.applicationAction === 'reject' ? (
-            <Form.Item name="auditRemark" label="驳回原因" rules={[{ required: true, message: '请输入驳回原因' }, { max: 500 }]}>
-              <Input.TextArea rows={4} showCount maxLength={500} />
-            </Form.Item>
-          ) : (
-            <Form.Item name="trackingNo" label="物流单号" rules={[{ required: true, message: '请输入物流单号' }, { max: 100 }]}>
-              <Input placeholder="只需填写物流单号，系统会自动识别快递公司" />
-            </Form.Item>
-          )}
+          <Form.Item name="trackingNo" label="物流单号" rules={[{ required: true, message: '请输入物流单号' }, { max: 100 }]}>
+            <Input placeholder="只需填写物流单号，系统会自动识别快递公司" />
+          </Form.Item>
           <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
             <Button onClick={props.onApplicationActionClose}>取消</Button>
             <Button type="primary" htmlType="submit">确认</Button>
           </Space>
         </Form>
       </Modal>
+
+      <ReviewTrialDialog {...props} />
     </>
   );
 }

@@ -17,6 +17,7 @@ import { Navigate, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { AddressManager } from '@/components/AddressManager';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import { changeShopPassword, updateShopProfile, uploadShopAvatar } from '@/services/shopAuth';
 import styles from '@/styles/commerce.less';
 
@@ -25,7 +26,20 @@ const ALLOWED_AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif']);
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { user, orders, trials, reports, coupons, privateLoading, logout, setUser } = useShop();
+  const {
+    user,
+    orders,
+    trials,
+    reports,
+    coupons,
+    privateLoading,
+    logout,
+    setUser,
+    refreshOrders,
+    refreshTrials,
+    refreshReports,
+    refreshCoupons,
+  } = useShop();
   const [profileOpen, setProfileOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
@@ -34,6 +48,10 @@ export default function ProfilePage() {
   const [passwordForm] = Form.useForm<{ oldPassword: string; newPassword: string }>();
   const avatarInput = useRef<HTMLInputElement | null>(null);
   useBodyScrollLock(profileOpen || addressOpen);
+  useRefreshOnRoute('/profile', refreshOrders, '订单概览刷新失败');
+  useRefreshOnRoute('/profile', refreshTrials, '试用概览刷新失败');
+  useRefreshOnRoute('/profile', refreshReports, '甄客验概览刷新失败');
+  useRefreshOnRoute('/profile', refreshCoupons, '优惠券概览刷新失败');
 
   if (!user) {
     return <Navigate to="/auth" replace />;

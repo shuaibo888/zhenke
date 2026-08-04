@@ -4398,46 +4398,143 @@
   z-index: 60;
 }
 
-.productReportsHeader {
+.productContentPanel {
+  overflow: hidden;
+  border: 1px solid rgba(31, 111, 91, 0.14);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 12px 34px rgba(28, 66, 52, 0.075);
+}
+
+.productContentTabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px;
+  border-bottom: 1px solid rgba(31, 111, 91, 0.1);
+  background: linear-gradient(180deg, #f7faf8 0%, #f1f6f3 100%);
+}
+
+.productContentTabs button {
+  position: relative;
   display: flex;
-  width: 100%;
+  min-width: 0;
   align-items: center;
-  gap: 12px;
-  padding: 0;
-  color: inherit;
+  justify-content: center;
+  flex-direction: column;
+  gap: 3px;
+  padding: 13px 12px 14px;
+  color: #67766f;
+  font: inherit;
+  text-align: center;
   background: transparent;
   border: 0;
+  border-radius: 13px;
   cursor: pointer;
-  font: inherit;
-  text-align: left;
-  border-radius: 12px;
-  transition: background 0.2s ease;
+  transition: color 180ms ease, background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
-.productReportsHeader:hover {
-  background: rgba(31, 111, 91, 0.05);
+.productContentTabs button::after {
+  position: absolute;
+  right: 26%;
+  bottom: 5px;
+  left: 26%;
+  height: 3px;
+  background: linear-gradient(90deg, #2d8066, #c69c3c);
+  border-radius: 999px;
+  content: '';
+  opacity: 0;
+  transform: scaleX(0.45);
+  transition: opacity 180ms ease, transform 180ms ease;
 }
 
-.productReportsHeader .sectionHeader {
-  flex: 1;
-  margin: 0;
+.productContentTabs button:hover {
+  color: #234c40;
+  background: rgba(255, 255, 255, 0.62);
 }
 
-.productReportsArrow {
-  color: #7a8780;
-  font-size: 14px;
-  transition: transform 0.25s ease;
-  flex-shrink: 0;
+.productContentTabs button:focus-visible {
+  outline: 2px solid rgba(31, 111, 91, 0.42);
+  outline-offset: -2px;
 }
 
-.productReportsArrowOpen {
-  transform: rotate(180deg);
+.productContentTabs button span {
+  font-size: 18px;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.productContentTabs button small {
+  overflow: hidden;
+  max-width: 100%;
+  color: #8b9791;
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 180ms ease;
+}
+
+.productContentTabs .productContentTabActive {
+  color: #174f40;
+  background: #fff;
+  box-shadow: 0 5px 16px rgba(28, 66, 52, 0.11);
+}
+
+.productContentTabs .productContentTabActive::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.productContentTabs .productContentTabActive small {
+  color: #4c786a;
+}
+
+.productContentBody {
+  min-height: 180px;
+  background: #fff;
+}
+
+.productReportsBody {
+  padding: 18px;
+  background: #f6f9f7;
 }
 
 .productReportsList {
-  margin-top: 16px;
   display: grid;
   gap: 14px;
+}
+
+.productReportsBody .reportCard {
+  border-color: rgba(31, 111, 91, 0.13);
+  border-radius: 14px;
+  box-shadow: 0 5px 18px rgba(28, 66, 52, 0.055);
+}
+
+.productColumnEmpty {
+  display: grid;
+  min-height: 220px;
+  margin: 0;
+  padding: 48px 20px;
+  place-items: center;
+  color: #87938d;
+  font-size: 14px;
+  text-align: center;
+}
+
+.productReportLoadMore {
+  display: grid;
+  min-height: 64px;
+  place-items: center;
+  color: #6e7e76;
+  font-size: 13px;
+}
+
+.productReportsEnd {
+  margin: 4px 0 0;
+  color: #99a49e;
+  font-size: 12px;
+  text-align: center;
 }
 
 /* 试用招募详情页（对齐确认版样图 03） */
@@ -4461,17 +4558,182 @@
 }
 
 .trialHeroImage {
+  position: relative;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1;
   overflow: hidden;
   border-radius: 14px;
   background: #f5f5f5;
+  touch-action: pan-y;
 }
 
 .trialHeroImage img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.productImageGallery {
+  display: grid;
+  gap: 10px;
+}
+
+.productGalleryImage {
+  animation: productGalleryFade 260ms ease-out;
+}
+
+@keyframes productGalleryFade {
+  from {
+    opacity: 0.4;
+    transform: scale(1.015);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.productGalleryArrow {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(17, 37, 30, 0.56);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity 160ms ease, background 160ms ease;
+}
+
+.trialHeroImage:hover .productGalleryArrow,
+.productGalleryArrow:focus-visible {
+  opacity: 1;
+}
+
+.productGalleryArrow:hover {
+  background: rgba(23, 87, 67, 0.88);
+}
+
+.productGalleryArrow:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -4px;
+}
+
+.productGalleryArrowLeft {
+  left: 12px;
+}
+
+.productGalleryArrowRight {
+  right: 12px;
+}
+
+@media (hover: none) {
+  .productGalleryArrow {
+    width: 30px;
+    height: 40px;
+    opacity: 0.82;
+  }
+}
+
+.productGalleryDots {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: rgba(17, 37, 30, 0.42);
+  transform: translateX(-50%);
+  backdrop-filter: blur(6px);
+}
+
+.productGalleryDots button {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.62);
+  cursor: pointer;
+  transition: width 160ms ease, background 160ms ease;
+}
+
+.productGalleryDots .productGalleryDotActive {
+  width: 20px;
+  background: #fff;
+}
+
+.productGalleryDots button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.productGalleryThumbs {
+  display: flex;
+  gap: 9px;
+  overflow-x: auto;
+  padding: 2px 2px 5px;
+  scrollbar-width: thin;
+}
+
+.productGalleryThumb {
+  width: 62px;
+  height: 62px;
+  flex: 0 0 62px;
+  overflow: hidden;
+  padding: 2px;
+  border: 1px solid #dce7e1;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.productGalleryThumb:hover {
+  transform: translateY(-1px);
+  border-color: #65a28f;
+}
+
+.productGalleryThumbActive {
+  border-color: #236d58;
+  box-shadow: 0 0 0 2px rgba(35, 109, 88, 0.14);
+}
+
+.productGalleryThumb:focus-visible {
+  outline: 2px solid #236d58;
+  outline-offset: 2px;
+}
+
+.productGalleryThumb img {
+  width: 100%;
+  height: 100%;
+  border-radius: 7px;
+  object-fit: cover;
+}
+
+.productDetailImages {
+  display: grid;
+  width: 100%;
+  gap: 0;
+  overflow: hidden;
+  background: #f5f7f6;
+}
+
+.productDetailImages img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .productTagRow {
@@ -4601,6 +4863,10 @@
     border-color 0.2s ease,
     box-shadow 0.2s ease,
     transform 0.2s ease;
+}
+
+.journeyPage > .trialChoiceTrigger {
+  width: 100%;
 }
 
 .trialChoiceTrigger:hover,
@@ -6795,18 +7061,46 @@
     gap: 10px;
   }
 
-  .productReportsHeader .sectionHeader {
-    align-items: flex-start;
-    flex-direction: column;
+  .productContentPanel {
+    border-radius: 15px;
+    box-shadow: 0 7px 22px rgba(28, 66, 52, 0.065);
+  }
+
+  .productContentTabs {
     gap: 4px;
+    padding: 5px;
   }
 
-  .productReportsHeader .sectionHeader h2 {
-    font-size: 22px;
+  .productContentTabs button {
+    gap: 2px;
+    padding: 11px 6px 13px;
+    border-radius: 11px;
   }
 
-  .productReportsArrow {
-    font-size: 12px;
+  .productContentTabs button span {
+    font-size: 16px;
+  }
+
+  .productContentTabs button small {
+    font-size: 11px;
+  }
+
+  .productReportsBody {
+    padding: 10px;
+  }
+
+  .productReportsList {
+    gap: 10px;
+  }
+
+  .productReportsBody .reportCard {
+    padding: 13px;
+    border-radius: 12px;
+  }
+
+  .productColumnEmpty {
+    min-height: 180px;
+    padding: 38px 16px;
   }
 
   .productHero,
@@ -8521,5 +8815,255 @@
   .mallLoading,
   .mallEmpty {
     min-height: 300px;
+  }
+}
+
+/* Visual polish: keep the existing structure and business interactions unchanged. */
+.appShell {
+  --shop-ink: #17241f;
+  --shop-muted: #697870;
+  --shop-primary: #1f6f5b;
+  --shop-primary-dark: #174b3e;
+  --shop-line: rgba(31, 111, 91, 0.14);
+  --shop-soft: #f3f7f5;
+  --shop-shadow: 0 14px 38px rgba(28, 66, 52, 0.085);
+  color: var(--shop-ink);
+  background:
+    radial-gradient(circle at 8% 2%, rgba(67, 146, 116, 0.12), transparent 27%),
+    radial-gradient(circle at 92% 18%, rgba(195, 159, 80, 0.08), transparent 24%),
+    linear-gradient(180deg, #f8fbf8 0%, #eef4f0 100%);
+}
+
+.appShell :global(.ant-btn) {
+  border-radius: 10px;
+  font-weight: 700;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.appShell :global(.ant-btn-primary) {
+  box-shadow: 0 6px 16px rgba(31, 111, 91, 0.2);
+}
+
+.appShell :global(.ant-btn:not(:disabled):active) {
+  transform: translateY(1px);
+}
+
+.appShell :global(.ant-input-affix-wrapper),
+.appShell :global(.ant-input),
+.appShell :global(.ant-input-number),
+.appShell :global(.ant-select-selector) {
+  border-radius: 10px !important;
+}
+
+.reportGridCard,
+.recruitGridCard,
+.mallProductCard,
+.orderCard,
+.trialPanel {
+  border-color: var(--shop-line);
+  box-shadow: 0 5px 18px rgba(26, 62, 49, 0.065);
+}
+
+.reportGridImage img,
+.mallProductImage img,
+.orderThumb,
+.trialHeroImage img {
+  transition: transform 280ms ease, filter 280ms ease;
+}
+
+.reportGridCard:hover .reportGridImage img,
+.recruitGridCard:hover .reportGridImage img,
+.mallProductCard:hover .mallProductImage img {
+  transform: scale(1.025);
+  filter: saturate(1.04);
+}
+
+.recruitGridCard:focus-visible,
+.mallProductCard:focus-visible,
+.orderCard:focus-within {
+  outline: 3px solid rgba(31, 111, 91, 0.2);
+  outline-offset: 3px;
+}
+
+.topNav button:focus-visible,
+.mallCategoryRail button:focus-visible {
+  outline: 2px solid rgba(31, 111, 91, 0.34);
+  outline-offset: -3px;
+}
+
+.orderCard {
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.orderCard:hover {
+  transform: translateY(-1px);
+  border-color: rgba(31, 111, 91, 0.24);
+  box-shadow: 0 10px 28px rgba(26, 62, 49, 0.09);
+}
+
+.mallSearchControl {
+  background: rgba(246, 249, 247, 0.96);
+  border-color: rgba(31, 111, 91, 0.16);
+}
+
+.mallSearchSubmit {
+  background: linear-gradient(135deg, #2f7b63, #1f6f5b);
+  box-shadow: 0 6px 15px rgba(31, 111, 91, 0.2);
+}
+
+.mallCategoryRail {
+  background: linear-gradient(180deg, #f4f7f5 0%, #edf3ef 100%);
+}
+
+.mallCategoryRail button {
+  border-bottom: 1px solid rgba(31, 111, 91, 0.045);
+}
+
+.mallCategoryRail .mallCategoryActive {
+  box-shadow: inset -1px 0 0 rgba(31, 111, 91, 0.08);
+}
+
+@media (min-width: 641px) {
+  .masthead {
+    border-color: var(--shop-line);
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 12px 34px rgba(28, 66, 52, 0.075);
+  }
+
+  .navBar {
+    border-color: var(--shop-line);
+    border-radius: 0 0 18px 18px;
+    box-shadow: var(--shop-shadow);
+  }
+
+  .topNav button {
+    position: relative;
+    border-bottom: 0;
+  }
+
+  .topNav button::after {
+    position: absolute;
+    right: 28px;
+    bottom: 0;
+    left: 28px;
+    height: 3px;
+    background: var(--shop-primary);
+    border-radius: 3px 3px 0 0;
+    content: '';
+    opacity: 0;
+    transform: scaleX(0.35);
+    transition: opacity 160ms ease, transform 160ms ease;
+  }
+
+  .topNav button:hover,
+  .topNav .activeTab {
+    border-bottom-color: transparent;
+  }
+
+  .topNav button:hover::after,
+  .topNav .activeTab::after {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+
+  .catalog,
+  .trustPanel,
+  .singleColumn,
+  .profileHero,
+  .orderPanel,
+  .productHero,
+  .purchasePage,
+  .recruitmentHero,
+  .productReportFlow,
+  .evidencePanel,
+  .reportDetail {
+    border-color: var(--shop-line);
+    border-radius: 18px;
+    box-shadow: var(--shop-shadow);
+  }
+
+  .reportGridCard,
+  .recruitGridCard,
+  .mallProductCard {
+    border-radius: 16px;
+  }
+
+  .mallPage {
+    border-color: var(--shop-line);
+    border-radius: 18px;
+    box-shadow: var(--shop-shadow);
+  }
+
+  .trialPanel {
+    border-radius: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .appShell {
+    background: #ffffff;
+  }
+
+  .navBar {
+    background: rgba(255, 255, 255, 0.96);
+    border-top-color: rgba(31, 111, 91, 0.12);
+    box-shadow: 0 -8px 28px rgba(23, 61, 52, 0.1);
+    backdrop-filter: blur(16px);
+  }
+
+  .topNav button {
+    position: relative;
+    color: #627169;
+    border-top: 0;
+  }
+
+  .topNav button::before {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 28px;
+    height: 3px;
+    background: var(--shop-primary);
+    border-radius: 0 0 4px 4px;
+    content: '';
+    opacity: 0;
+    transform: translateX(-50%) scaleX(0.4);
+    transition: opacity 160ms ease, transform 160ms ease;
+  }
+
+  .topNav button:hover,
+  .topNav .activeTab {
+    color: var(--shop-primary-dark);
+    border-top-color: transparent;
+  }
+
+  .topNav button:hover::before,
+  .topNav .activeTab::before {
+    opacity: 1;
+    transform: translateX(-50%) scaleX(1);
+  }
+
+  .homeFeedPage .reportGridCard,
+  .homeFeedPage .recruitGridCard,
+  .mallProductCard,
+  .orderCard,
+  .trialPanel {
+    border-radius: 13px;
+    box-shadow: 0 5px 16px rgba(26, 62, 49, 0.065);
+  }
+
+  .mallCategoryRail {
+    box-shadow: inset -1px 0 0 rgba(31, 111, 91, 0.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .appShell *,
+  .appShell *::before,
+  .appShell *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

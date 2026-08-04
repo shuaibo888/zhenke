@@ -22,6 +22,8 @@ public class ShopProductService
     public static final String DRAFT = "DRAFT";
     public static final String ON_SALE = "ON_SALE";
     public static final String OFF_SALE = "OFF_SALE";
+    private static final String MAIN_IMAGE = "MAIN";
+    private static final String DETAIL_IMAGE = "DETAIL";
 
     private final ShopProductMapper productMapper;
     private final ShopMerchantService merchantService;
@@ -108,7 +110,7 @@ public class ShopProductService
         product.setCreateBy(operator);
         product.setUpdateBy(operator);
         productMapper.insertProduct(product);
-        replaceImages(product.getProductId(), normalizedImageUrls(body));
+        replaceImages(product.getProductId(), body.getMainImageUrls(), body.getDetailImageUrls());
         return merchantProduct(product.getProductId());
     }
 
@@ -126,7 +128,7 @@ public class ShopProductService
         {
             throw new ServiceException("商品不存在");
         }
-        replaceImages(productId, normalizedImageUrls(body));
+        replaceImages(productId, body.getMainImageUrls(), body.getDetailImageUrls());
         return merchantProduct(productId);
     }
 
@@ -162,20 +164,19 @@ public class ShopProductService
         product.setBrandName(StringUtils.trim(body.getBrandName()));
         product.setProductName(StringUtils.trim(body.getProductName()));
         product.setSubtitle(StringUtils.trim(body.getSubtitle()));
-        product.setDetail(StringUtils.trim(body.getDetail()));
+        product.setDetail("");
         product.setCoverUrl(StringUtils.trim(body.getCoverUrl()));
         product.setPrice(body.getPrice());
         product.setStock(body.getStock());
         return product;
     }
 
-    private List<String> normalizedImageUrls(ShopProductBody body)
+    private List<String> normalizedImageUrls(List<String> imageUrls)
     {
         Set<String> unique = new LinkedHashSet<>();
-        unique.add(StringUtils.trim(body.getCoverUrl()));
-        if (body.getImageUrls() != null)
+        if (imageUrls != null)
         {
-            for (String imageUrl : body.getImageUrls())
+            for (String imageUrl : imageUrls)
             {
                 String value = StringUtils.trim(imageUrl);
                 if (StringUtils.isNotEmpty(value))
@@ -187,14 +188,25 @@ public class ShopProductService
         return new ArrayList<>(unique);
     }
 
-    private void replaceImages(Long productId, List<String> imageUrls)
+    private void replaceImages(Long productId, List<String> mainImageUrls, List<String> detailImageUrls)
     {
         productMapper.deleteImages(productId);
         int sort = 1;
-        for (String imageUrl : imageUrls)
+        for (String imageUrl : normalizedImageUrls(mainImageUrls))
         {
             ShopProductImage image = new ShopProductImage();
             image.setProductId(productId);
+            image.setImageType(MAIN_IMAGE);
+            image.setImageUrl(imageUrl);
+            image.setImageSort(sort++);
+            productMapper.insertImage(image);
+        }
+        sort = 1;
+        for (String imageUrl : normalizedImageUrls(detailImageUrls))
+        {
+            ShopProductImage image = new ShopProductImage();
+            image.setProductId(productId);
+            image.setImageType(DETAIL_IMAGE);
             image.setImageUrl(imageUrl);
             image.setImageSort(sort++);
             productMapper.insertImage(image);
@@ -214,7 +226,28 @@ public class ShopProductService
     {
         if (product != null)
         {
-            product.setImages(productMapper.selectImages(product.getProductId()));
+            List<ShopProductImage> images = productMapper.selectImages(product.getProductId());
+            product.setImages(images);
+            Set<String> mainImages = new LinkedHashSet<>();
+            Set<String> detailImages = new LinkedHashSet<>();
+            for (ShopProductImage image : images)
+            {
+                String imageUrl = StringUtils.trim(image.getImageUrl());
+                if (StringUtils.isEmpty(imageUrl))
+                {
+                    continue;
+                }
+                if (DETAIL_IMAGE.equals(image.getImageType()))
+                {
+                    detailImages.add(imageUrl);
+                }
+                else if (!imageUrl.equals(StringUtils.trim(product.getCoverUrl())))
+                {
+                    mainImages.add(imageUrl);
+                }
+            }
+            product.setMainImageUrls(new ArrayList<>(mainImages));
+            product.setDetailImageUrls(new ArrayList<>(detailImages));
         }
         return product;
     }

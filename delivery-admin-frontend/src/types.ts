@@ -95,7 +95,8 @@ export interface ManagedProduct {
   categoryName?: string;
   status: ProductStatus;
   imageUrl: string;
-  detail: string;
+  mainImageUrls: string[];
+  detailImageUrls: string[];
   price: number;
   cost: number;
   stock: number;

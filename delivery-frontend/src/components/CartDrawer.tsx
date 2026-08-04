@@ -1,6 +1,6 @@
 import { DeleteOutlined, MinusOutlined, PlusOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { Button, Drawer, Spin, message } from 'antd';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
@@ -13,11 +13,18 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     user,
     cart,
     cartLoading,
+    refreshCart,
     changeCartQuantity,
     removeCartItem,
   } = useShop();
   const [mutatingId, setMutatingId] = useState<number | null>(null);
   useBodyScrollLock(open);
+  useEffect(() => {
+    if (!open || !user) return;
+    void refreshCart().catch((error) => {
+      message.error(error instanceof Error ? error.message : '购物车刷新失败');
+    });
+  }, [open, refreshCart, user]);
   const count = getCartCount(cart);
   const total = getCartTotal(cart);
 

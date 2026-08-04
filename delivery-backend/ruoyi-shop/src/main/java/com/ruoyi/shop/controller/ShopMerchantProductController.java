@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import com.github.pagehelper.PageHelper;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
@@ -23,16 +24,23 @@ import com.ruoyi.shop.domain.dto.ShopProductBody;
 import com.ruoyi.shop.domain.dto.ShopProductStatusBody;
 import com.ruoyi.shop.service.ShopMerchantService;
 import com.ruoyi.shop.service.ShopProductService;
+import com.ruoyi.shop.service.ShopProductImageResourceService;
+import com.ruoyi.framework.config.ServerConfig;
 
 @RestController
 @RequestMapping("/shop/merchant/products")
 public class ShopMerchantProductController extends BaseController {
     private final ShopProductService productService;
     private final ShopMerchantService merchantService;
+    private final ShopProductImageResourceService imageResourceService;
+    private final ServerConfig serverConfig;
 
-    public ShopMerchantProductController(ShopProductService productService, ShopMerchantService merchantService) {
+    public ShopMerchantProductController(ShopProductService productService, ShopMerchantService merchantService,
+            ShopProductImageResourceService imageResourceService, ServerConfig serverConfig) {
         this.productService = productService;
         this.merchantService = merchantService;
+        this.imageResourceService = imageResourceService;
+        this.serverConfig = serverConfig;
     }
 
     @PreAuthorize("@ss.hasPermi('shop:product:list')")
@@ -57,6 +65,17 @@ public class ShopMerchantProductController extends BaseController {
     @PostMapping
     public AjaxResult create(@Valid @RequestBody ShopProductBody body) {
         return AjaxResult.success("商品已保存为草稿", productService.create(body, getUsername()));
+    }
+
+    @PreAuthorize("@ss.hasAnyPermi('shop:product:add,shop:product:edit')")
+    @PostMapping("/images")
+    public AjaxResult uploadImage(@RequestParam("file") MultipartFile file,
+                                  @RequestParam("kind") String kind) {
+        long merchantId = merchantService.currentMerchantAccount().getMerchantId();
+        String fileName = imageResourceService.upload(file, kind, merchantId);
+        AjaxResult result = AjaxResult.success("商品图片上传成功");
+        result.put("url", serverConfig.getUrl() + fileName);
+        return result;
     }
 
     @Log(title = "商家商品", businessType = BusinessType.UPDATE)

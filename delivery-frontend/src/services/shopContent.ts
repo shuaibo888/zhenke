@@ -18,13 +18,14 @@ export interface PublicProductDto {
   brandName: string;
   productName: string;
   subtitle?: string;
-  detail: string;
   coverUrl: string;
   price: number;
   stock: number;
   salesCount: number;
   status: 'ON_SALE';
-  images?: Array<{ imageId: number; imageUrl: string; imageSort: number }>;
+  images?: Array<{ imageId: number; imageType: 'MAIN' | 'DETAIL'; imageUrl: string; imageSort: number }>;
+  mainImageUrls?: string[];
+  detailImageUrls?: string[];
 }
 
 export type MallProductDto = Pick<PublicProductDto,

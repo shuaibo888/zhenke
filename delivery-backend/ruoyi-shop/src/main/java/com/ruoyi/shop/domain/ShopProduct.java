@@ -27,6 +27,8 @@ public class ShopProduct extends BaseEntity
     private Boolean trialOnly;
     private String keyword;
     private List<ShopProductImage> images;
+    private List<String> mainImageUrls;
+    private List<String> detailImageUrls;
 
     public Long getProductId() { return productId; }
     public void setProductId(Long productId) { this.productId = productId; }
@@ -66,4 +68,8 @@ public class ShopProduct extends BaseEntity
     public void setKeyword(String keyword) { this.keyword = keyword; }
     public List<ShopProductImage> getImages() { return images; }
     public void setImages(List<ShopProductImage> images) { this.images = images; }
+    public List<String> getMainImageUrls() { return mainImageUrls; }
+    public void setMainImageUrls(List<String> mainImageUrls) { this.mainImageUrls = mainImageUrls; }
+    public List<String> getDetailImageUrls() { return detailImageUrls; }
+    public void setDetailImageUrls(List<String> detailImageUrls) { this.detailImageUrls = detailImageUrls; }
 }

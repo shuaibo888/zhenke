@@ -78,6 +78,8 @@ interface ProductDto {
   salesCount: number;
   status: 'DRAFT' | 'ON_SALE' | 'OFF_SALE';
   images?: Array<{ imageId: number; imageUrl: string; imageSort: number }>;
+  mainImageUrls?: string[];
+  detailImageUrls?: string[];
 }
 
 interface TrialCampaignDto {
@@ -275,7 +277,8 @@ function toManagedProduct(dto: ProductDto): ManagedProduct {
     categoryName: dto.categoryName,
     status: ({ DRAFT: 'draft', ON_SALE: 'onSale', OFF_SALE: 'offSale' } as const)[dto.status],
     imageUrl: dto.coverUrl,
-    detail: dto.detail,
+    mainImageUrls: dto.mainImageUrls ?? [],
+    detailImageUrls: dto.detailImageUrls ?? [],
     price: Number(dto.price),
     cost: 0,
     stock: dto.stock,
@@ -620,16 +623,26 @@ export async function fetchManagedProducts(session: AdminSession, query: Managed
   return { rows: rows.map(toManagedProduct), total: Number(result.total ?? 0) };
 }
 
+export async function fetchMerchantProduct(productId: number) {
+  const result = await requestApi<ApiResponse<ProductDto>>(
+    `/shop/merchant/products/${productId}`,
+    {},
+    true,
+  );
+  if (!result.data) throw new Error('商品详情加载失败');
+  return toManagedProduct(result.data);
+}
+
 export interface ProductWriteBody {
   categoryId: number;
   brandName: string;
   productName: string;
   subtitle?: string;
-  detail: string;
   coverUrl: string;
   price: number;
   stock: number;
-  imageUrls?: string[];
+  mainImageUrls?: string[];
+  detailImageUrls?: string[];
 }
 
 export async function createMerchantProduct(body: ProductWriteBody) {
@@ -887,12 +900,13 @@ export async function redeemMerchantTrialApplication(redeemCode: string) {
   );
 }
 
-export async function uploadAdminFile(file: File) {
+export async function uploadAdminFile(file: File, kind: 'COVER' | 'MAIN' | 'DETAIL') {
   const token = getToken();
   if (!token) throw new Error('请先登录后再上传文件');
   const body = new FormData();
   body.append('file', file);
-  const response = await fetch('/api/common/upload', {
+  body.append('kind', kind);
+  const response = await fetch('/api/shop/merchant/products/images', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body,

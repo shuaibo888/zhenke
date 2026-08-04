@@ -44,6 +44,7 @@ import {
   fetchAllProductCategories,
   fetchManagedProducts,
   fetchManagedTrials,
+  fetchMerchantProduct,
   fetchMerchantDetail,
   fetchMerchantOrder,
   fetchMerchantOrderLogistics,
@@ -234,8 +235,10 @@ function AdminWorkspace() {
   const [trialApplicationPage, setTrialApplicationPage] = useState(1);
   const [trialApplicationTotal, setTrialApplicationTotal] = useState(0);
   const [trialApplicationsLoading, setTrialApplicationsLoading] = useState(false);
-  const [trialApplicationAction, setTrialApplicationAction] = useState<'reject' | 'ship' | null>(null);
+  const [trialApplicationAction, setTrialApplicationAction] = useState<'ship' | null>(null);
   const [selectedTrialApplication, setSelectedTrialApplication] = useState<ManagedTrialApplication | null>(null);
+  const [reviewApplication, setReviewApplication] = useState<ManagedTrialApplication | null>(null);
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [redeemScanOpen, setRedeemScanOpen] = useState(false);
   const [redeeming, setRedeeming] = useState(false);
   const [merchants, setMerchants] = useState<MerchantAccount[]>([]);
@@ -276,7 +279,6 @@ function AdminWorkspace() {
   const [refundAuditForm] = Form.useForm<RefundAuditFormValues>();
   const [loginForm] = Form.useForm<LoginFormValues>();
   const { message, modal } = AntApp.useApp();
-  const productImageUrl = Form.useWatch('imageUrl', productForm);
   const merchantAuditDecision = Form.useWatch('decision', merchantForm);
   const refundAuditDecision = Form.useWatch('decision', refundAuditForm);
   const trialProductSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -669,26 +671,33 @@ function AdminWorkspace() {
       categoryId: productCategories[0]?.categoryId,
       brandName: '',
       imageUrl: '',
-      detail: '',
+      mainImageUrls: [],
+      detailImageUrls: [],
       price: 99,
       stock: 20,
     });
     setProductDrawerOpen(true);
   };
 
-  const openEditProduct = (product: ManagedProduct) => {
-    setEditingProductId(product.id);
-    productForm.setFieldsValue({
-      title: product.title,
-      subtitle: product.subtitle,
-      brandName: product.brandName,
-      categoryId: product.categoryId,
-      imageUrl: product.imageUrl,
-      detail: product.detail,
-      price: product.price,
-      stock: product.stock,
-    });
-    setProductDrawerOpen(true);
+  const openEditProduct = async (product: ManagedProduct) => {
+    try {
+      const detail = await fetchMerchantProduct(product.id);
+      setEditingProductId(detail.id);
+      productForm.setFieldsValue({
+        title: detail.title,
+        subtitle: detail.subtitle,
+        brandName: detail.brandName,
+        categoryId: detail.categoryId,
+        imageUrl: detail.imageUrl,
+        mainImageUrls: detail.mainImageUrls,
+        detailImageUrls: detail.detailImageUrls,
+        price: detail.price,
+        stock: detail.stock,
+      });
+      setProductDrawerOpen(true);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '商品详情加载失败');
+    }
   };
 
   const closeProductDrawer = () => {
@@ -706,11 +715,11 @@ function AdminWorkspace() {
         brandName: values.brandName.trim(),
         productName: values.title.trim(),
         subtitle: values.subtitle?.trim(),
-        detail: values.detail.trim(),
         coverUrl: values.imageUrl.trim(),
         price: values.price,
         stock: values.stock,
-        imageUrls: [values.imageUrl.trim()],
+        mainImageUrls: values.mainImageUrls ?? [],
+        detailImageUrls: values.detailImageUrls ?? [],
       };
       if (editingProductId) await updateMerchantProduct(editingProductId, body);
       else await createMerchantProduct(body);
@@ -830,23 +839,45 @@ function AdminWorkspace() {
     });
   };
 
-  const approveTrialApplication = (application: ManagedTrialApplication) => {
-    modal.confirm({
-      title: '确认通过试用申请？',
-      content: application.trialType === 'ONLINE'
-        ? `通过后可为 ${application.recipientName} 安排寄送。`
-        : `通过后进入待核销，用户出示核销码，商家扫码核销后即可发布甄客验。`,
-      okText: '通过申请',
-      cancelText: '取消',
-      onOk: async () => {
-        await auditMerchantTrialApplication(application.applicationId, 'APPROVED');
-        await Promise.all([loadTrialApplications(), loadTrials()]);
-        message.success('试用申请已通过');
-      },
-    });
+  const openReviewApplication = (application: ManagedTrialApplication) => {
+    setReviewApplication(application);
   };
 
-  const openTrialApplicationAction = (application: ManagedTrialApplication, action: 'reject' | 'ship') => {
+  const closeReviewApplication = () => {
+    setReviewApplication(null);
+  };
+
+  const approveReviewApplication = async () => {
+    if (!reviewApplication) return;
+    setReviewSubmitting(true);
+    try {
+      await auditMerchantTrialApplication(reviewApplication.applicationId, 'APPROVED');
+      message.success('试用申请已通过');
+      setReviewApplication(null);
+      await Promise.all([loadTrialApplications(), loadTrials()]);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '试用申请通过失败');
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  const rejectReviewApplication = async (remark: string) => {
+    if (!reviewApplication) return;
+    setReviewSubmitting(true);
+    try {
+      await auditMerchantTrialApplication(reviewApplication.applicationId, 'REJECTED', remark);
+      message.success('试用申请已驳回');
+      setReviewApplication(null);
+      await Promise.all([loadTrialApplications(), loadTrials()]);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '试用申请驳回失败');
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  const openTrialApplicationAction = (application: ManagedTrialApplication, action: 'ship') => {
     setSelectedTrialApplication(application);
     setTrialApplicationAction(action);
     trialApplicationActionForm.resetFields();
@@ -861,20 +892,11 @@ function AdminWorkspace() {
   const submitTrialApplicationAction = async (values: TrialApplicationActionFormValues) => {
     if (!selectedTrialApplication || !trialApplicationAction) return;
     try {
-      if (trialApplicationAction === 'reject') {
-        await auditMerchantTrialApplication(
-          selectedTrialApplication.applicationId,
-          'REJECTED',
-          values.auditRemark?.trim(),
-        );
-        message.success('试用申请已驳回');
-      } else {
-        await shipMerchantTrialApplication(
-          selectedTrialApplication.applicationId,
-          values.trackingNo?.trim() ?? '',
-        );
-        message.success('试用商品已发货');
-      }
+      await shipMerchantTrialApplication(
+        selectedTrialApplication.applicationId,
+        values.trackingNo?.trim() ?? '',
+      );
+      message.success('试用商品已发货');
       closeTrialApplicationAction();
       await loadTrialApplications();
     } catch (error) {
@@ -1187,7 +1209,7 @@ function AdminWorkspace() {
         <Space wrap size={6}>
           {isAdmin ? <span className={styles.subText}>仅查看</span> : (
             <>
-              <Button size="small" icon={<EditOutlined />} onClick={() => openEditProduct(product)}>
+              <Button size="small" icon={<EditOutlined />} onClick={() => void openEditProduct(product)}>
                 编辑商品
               </Button>
               <Button size="small" onClick={() => void toggleProductStatus(product)}>
@@ -1402,10 +1424,7 @@ function AdminWorkspace() {
       render: (_, item) => (
         <Space wrap size={6}>
           {item.status === 'APPLIED' && (
-            <>
-              <Button size="small" type="primary" onClick={() => approveTrialApplication(item)}>通过</Button>
-              <Button size="small" danger onClick={() => openTrialApplicationAction(item, 'reject')}>驳回</Button>
-            </>
+            <Button size="small" type="primary" onClick={() => openReviewApplication(item)}>审核</Button>
           )}
           {item.status === 'APPROVED' && item.trialType === 'ONLINE' && (
             <Button size="small" type="primary" icon={<TruckOutlined />} onClick={() => openTrialApplicationAction(item, 'ship')}>
@@ -1459,15 +1478,15 @@ function AdminWorkspace() {
               className={styles.loginForm}
             >
               <Form.Item name="username" label="账号" rules={[{ required: true, message: '请输入账号' }]}>
-                <Input size="large" />
+                <Input size="large" placeholder="请输入管理员或商家账号" autoComplete="username" />
               </Form.Item>
               <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入密码' }]}>
-                <Input.Password size="large" />
+                <Input.Password size="large" placeholder="请输入登录密码" autoComplete="current-password" />
               </Form.Item>
               {captcha.enabled && (
                 <Form.Item name="code" label="验证码" rules={[{ required: true, message: '请输入验证码结果' }]}>
                   <div className={styles.captchaRow}>
-                    <Input size="large" autoComplete="off" />
+                    <Input size="large" placeholder="请输入验证码结果" autoComplete="off" />
                     <button type="button" className={styles.captchaButton} onClick={loadCaptcha} title="刷新验证码">
                       <img src={captcha.image} alt="验证码" />
                     </button>
@@ -1704,7 +1723,6 @@ function AdminWorkspace() {
         editingProductId={editingProductId}
         productDrawerOpen={productDrawerOpen}
         productForm={productForm}
-        productImageUrl={productImageUrl}
         productCategories={productCategories}
         productSaving={productSaving}
         onProductDrawerClose={closeProductDrawer}
@@ -1771,6 +1789,11 @@ function AdminWorkspace() {
         }}
         onApplicationActionClose={closeTrialApplicationAction}
         onApplicationActionSubmit={(values) => void submitTrialApplicationAction(values)}
+        reviewApplication={reviewApplication}
+        reviewSubmitting={reviewSubmitting}
+        onReviewClose={closeReviewApplication}
+        onReviewApprove={() => void approveReviewApplication()}
+        onReviewReject={(remark) => void rejectReviewApplication(remark)}
       />
 
       <RedeemScanModal

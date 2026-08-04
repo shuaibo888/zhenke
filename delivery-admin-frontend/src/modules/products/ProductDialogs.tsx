@@ -13,7 +13,8 @@ import {
   Table,
   Upload,
 } from 'antd';
-import type { FormInstance } from 'antd';
+import type { FormInstance, UploadFile } from 'antd';
+import { useState } from 'react';
 import type { ProductCategory, ProductCategoryOption } from '@/types';
 import { uploadAdminFile } from '@/services/adminApi';
 import styles from '@/pages/index.less';
@@ -24,7 +25,8 @@ export interface ProductFormValues {
   brandName: string;
   categoryId: number;
   imageUrl: string;
-  detail: string;
+  mainImageUrls: string[];
+  detailImageUrls: string[];
   price: number;
   stock: number;
 }
@@ -41,7 +43,6 @@ export interface ProductDialogsProps {
   editingProductId: number | null;
   productDrawerOpen: boolean;
   productForm: FormInstance<ProductFormValues>;
-  productImageUrl?: string;
   productCategories: ProductCategory[];
   productSaving: boolean;
   onProductDrawerClose: () => void;
@@ -51,9 +52,91 @@ export interface ProductDialogsProps {
 const responsiveModalProps = { rootClassName: styles.responsiveModal } as const;
 const responsiveDrawerProps = { rootClassName: styles.responsiveDrawer } as const;
 
-export default function ProductDialogs(props: ProductDialogsProps) {
-  const { message } = AntApp.useApp();
+type ProductImageKind = 'COVER' | 'MAIN' | 'DETAIL';
 
+interface ProductImageUploaderProps {
+  kind: ProductImageKind;
+  maxCount: number;
+  value?: string | string[];
+  onChange?: (value: string | string[]) => void;
+}
+
+function validateProductImage(file: File) {
+  if (!['image/jpeg', 'image/png'].includes(file.type)) {
+    throw new Error('仅支持 JPG、PNG 图片');
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error('单张图片不能超过 5MB');
+  }
+}
+
+function ProductImageUploader({ kind, maxCount, value, onChange }: ProductImageUploaderProps) {
+  const { message } = AntApp.useApp();
+  const [uploading, setUploading] = useState(false);
+  const urls = Array.isArray(value) ? value : value ? [value] : [];
+  const label = kind === 'COVER' ? '商品封面' : kind === 'MAIN' ? '商品主图' : '商品详情图';
+  const fileList: UploadFile[] = urls.map((url, index) => ({
+    uid: `${kind}-${index}-${url}`,
+    name: `${label}${index + 1}`,
+    status: 'done',
+    url,
+    thumbUrl: url,
+  }));
+
+  const updateUrls = (nextUrls: string[]) => {
+    onChange?.(kind === 'COVER' ? (nextUrls[0] ?? '') : nextUrls);
+  };
+
+  return (
+    <div className={styles.productImageUploader}>
+      <Upload
+        accept="image/jpeg,image/png"
+        listType="picture-card"
+        fileList={fileList}
+        maxCount={maxCount}
+        multiple={false}
+        disabled={uploading}
+        showUploadList={{ showPreviewIcon: false, showDownloadIcon: false, showRemoveIcon: true }}
+        beforeUpload={(file) => {
+          try {
+            validateProductImage(file as File);
+            return true;
+          } catch (error) {
+            message.error(error instanceof Error ? error.message : '图片格式不符合要求');
+            return Upload.LIST_IGNORE;
+          }
+        }}
+        onRemove={(file) => {
+          updateUrls(urls.filter((url) => url !== file.url));
+          return true;
+        }}
+        customRequest={async (options) => {
+          setUploading(true);
+          try {
+            const url = await uploadAdminFile(options.file as File, kind);
+            updateUrls(kind === 'COVER' ? [url] : [...urls.filter((item) => item !== url), url]);
+            options.onSuccess?.({ url });
+            message.success(`${label}上传成功`);
+          } catch (error) {
+            options.onError?.(error as Error);
+            message.error(error instanceof Error ? error.message : `${label}上传失败`);
+          } finally {
+            setUploading(false);
+          }
+        }}
+      >
+        {urls.length < maxCount && (
+          <div className={styles.productImageUploadButton}>
+            <UploadOutlined />
+            <span>{uploading ? '上传中' : '上传图片'}</span>
+          </div>
+        )}
+      </Upload>
+    </div>
+  );
+}
+
+export default function ProductDialogs(props: ProductDialogsProps) {
   return (
     <>
       <Modal
@@ -154,38 +237,27 @@ export default function ProductDialogs(props: ProductDialogsProps) {
           <Form.Item name="subtitle" label="商品副标题" rules={[{ max: 200, message: '副标题不能超过 200 个字' }]}>
             <Input placeholder="一句话说明商品特点（选填）" />
           </Form.Item>
-          <Form.Item label="商品封面" required>
-            <div className={styles.uploadBlock}>
-              <div
-                className={styles.uploadPreview}
-                style={{ backgroundImage: props.productImageUrl ? `url(${props.productImageUrl})` : undefined }}
-              >
-                {!props.productImageUrl && <span>暂无图片</span>}
-              </div>
-              <div className={styles.uploadActions}>
-                <Upload
-                  accept="image/*"
-                  showUploadList={false}
-                  customRequest={async (options) => {
-                    try {
-                      const url = await uploadAdminFile(options.file as File);
-                      props.productForm.setFieldValue('imageUrl', url);
-                      options.onSuccess?.({ url });
-                      message.success('商品封面上传成功');
-                    } catch (error) {
-                      options.onError?.(error as Error);
-                      message.error(error instanceof Error ? error.message : '商品封面上传失败');
-                    }
-                  }}
-                >
-                  <Button icon={<UploadOutlined />}>上传商品封面</Button>
-                </Upload>
-                <p>上传成功后会自动填写资源地址，也可以手动输入已有图片地址。</p>
-              </div>
-            </div>
-            <Form.Item name="imageUrl" noStyle rules={[{ required: true, message: '请输入商品封面地址' }, { max: 500 }]}>
-              <Input placeholder="例如 /profile/upload/2026/07/product.jpg" />
-            </Form.Item>
+          <Form.Item
+            name="imageUrl"
+            label="商品封面"
+            extra="1 张；支持 JPG/PNG，单张不超过 5MB。建议使用清晰方图，系统会自动适配展示。"
+            rules={[{ required: true, message: '请上传商品封面' }, { max: 500 }]}
+          >
+            <ProductImageUploader kind="COVER" maxCount={1} />
+          </Form.Item>
+          <Form.Item
+            name="mainImageUrls"
+            label="商品主图"
+            extra="最多 6 张；用于商品详情页轮播。支持 JPG/PNG，单张不超过 5MB，系统会自动适配展示。"
+          >
+            <ProductImageUploader kind="MAIN" maxCount={6} />
+          </Form.Item>
+          <Form.Item
+            name="detailImageUrls"
+            label="商品详情图"
+            extra="最多 6 张；普通图片和长图均可。支持 JPG/PNG，单张不超过 5MB。"
+          >
+            <ProductImageUploader kind="DETAIL" maxCount={6} />
           </Form.Item>
           <Form.Item name="categoryId" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
             <Select
@@ -203,16 +275,6 @@ export default function ProductDialogs(props: ProductDialogsProps) {
               <InputNumber min={0} precision={0} />
             </Form.Item>
           </Space>
-          <Form.Item
-            name="detail"
-            label="商品详细介绍"
-            rules={[
-              { required: true, message: '请输入商品详细介绍' },
-              { min: 10, message: '商品详细介绍至少 10 个字' },
-            ]}
-          >
-            <Input.TextArea rows={5} showCount maxLength={500} placeholder="介绍产地、工艺、规格、适合人群和使用建议" />
-          </Form.Item>
           <Button loading={props.productSaving} type="primary" htmlType="submit" block icon={<CheckCircleOutlined />}>
             {props.editingProductId ? '保存修改' : '保存商品'}
           </Button>

@@ -3,12 +3,14 @@ import { Spin, Tag } from 'antd';
 import { Navigate, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { ProfileBackButton } from '@/components/ProfileBackButton';
+import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import { getReportType } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
 
 export default function MyReportsPage() {
   const navigate = useNavigate();
-  const { user, reports, privateLoading } = useShop();
+  const { user, reports, reportsLoading, refreshReports } = useShop();
+  useRefreshOnRoute('/profile/reports', refreshReports, '甄客验记录刷新失败');
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
@@ -26,7 +28,7 @@ export default function MyReportsPage() {
           </div>
           <span>共 {reports.length} 篇</span>
         </div>
-        <Spin spinning={privateLoading}>
+        <Spin spinning={reportsLoading}>
           <div className={styles.reportList}>
             {reports.map((report) => {
               const type = getReportType(report);
@@ -53,7 +55,7 @@ export default function MyReportsPage() {
               );
             })}
           </div>
-          {!privateLoading && reports.length === 0 && <p className={styles.empty}>还没有发布甄客验。</p>}
+          {!reportsLoading && reports.length === 0 && <p className={styles.empty}>还没有发布甄客验。</p>}
         </Spin>
       </section>
     </main>

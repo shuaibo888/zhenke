@@ -1,6 +1,6 @@
 import { CheckCircleFilled, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Cascader, Form, Input, Modal, Radio, Spin, Tag, message } from 'antd';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import pcaCode from 'china-division/dist/pca-code.json';
 import { useShop } from '@/app/ShopContext';
 import type { ShopShippingAddress, ShopShippingAddressBody } from '@/services/shopAuth';
@@ -27,13 +27,27 @@ export function AddressManager({
   picker?: boolean;
   onSelect?: (address: ShopShippingAddress) => void;
 }) {
-  const { addresses, privateLoading, saveAddress, makeDefaultAddress, removeAddress } = useShop();
+  const {
+    user,
+    addresses,
+    addressesLoading,
+    refreshAddresses,
+    saveAddress,
+    makeDefaultAddress,
+    removeAddress,
+  } = useShop();
   const [form] = Form.useForm<ShopShippingAddressBody>();
   const [editing, setEditing] = useState<ShopShippingAddress | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [mutatingId, setMutatingId] = useState<number | null>(null);
   useBodyScrollLock(open || editorOpen);
+  useEffect(() => {
+    if (!open || !user) return;
+    void refreshAddresses().catch((error) => {
+      message.error(error instanceof Error ? error.message : '收货地址刷新失败');
+    });
+  }, [open, refreshAddresses, user]);
   const options = useMemo<RegionOption[]>(() => (pcaCode as RegionNode[]).map((province) => ({
     value: province.code,
     label: province.name,
@@ -117,7 +131,7 @@ export function AddressManager({
             <Button type="primary" icon={<PlusOutlined />} onClick={startCreate}>新增地址</Button>
           </div>
         )}
-        <Spin spinning={privateLoading}>
+        <Spin spinning={addressesLoading}>
           <div className={picker ? styles.addressPickerList : styles.addressList}>
             {addresses.length === 0 ? (
               <div className={styles.empty}>

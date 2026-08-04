@@ -6,6 +6,7 @@ import { LogisticsModal } from '@/components/LogisticsModal';
 import { ProfileBackButton } from '@/components/ProfileBackButton';
 import { PublishReportModal } from '@/components/PublishReportModal';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import {
   cancelShopOrder,
   confirmShopOrderReceived,
@@ -54,6 +55,7 @@ export default function OrdersPage() {
   const [refundSubmitting, setRefundSubmitting] = useState(false);
   const [reportItem, setReportItem] = useState<PurchaseItem | null>(null);
   useBodyScrollLock(logisticsOpen || Boolean(refundOrder) || Boolean(reportItem));
+  useRefreshOnRoute('/profile/orders', refreshOrders, '订单记录刷新失败');
 
   useEffect(() => {
     const timer = window.setInterval(() => setClock(Date.now()), 1000);

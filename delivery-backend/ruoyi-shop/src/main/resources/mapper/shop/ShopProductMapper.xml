@@ -14,6 +14,7 @@
     <resultMap id="ShopProductImageResult" type="ShopProductImage">
         <id property="imageId" column="image_id" />
         <result property="productId" column="product_id" />
+        <result property="imageType" column="image_type" />
         <result property="imageUrl" column="image_url" />
         <result property="imageSort" column="image_sort" />
     </resultMap>
@@ -177,9 +178,9 @@
     </select>
 
     <select id="selectImages" parameterType="Long" resultMap="ShopProductImageResult">
-        select image_id, product_id, image_url, image_sort
+        select image_id, product_id, image_type, image_url, image_sort
         from shop_product_image where product_id = #{productId}
-        order by image_sort, image_id
+        order by image_type, image_sort, image_id
     </select>
 
     <insert id="insertProduct" parameterType="ShopProduct" useGeneratedKeys="true" keyProperty="productId">
@@ -210,7 +211,7 @@
     </delete>
 
     <insert id="insertImage" parameterType="ShopProductImage" useGeneratedKeys="true" keyProperty="imageId">
-        insert into shop_product_image (product_id, image_url, image_sort, create_time)
-        values (#{productId}, #{imageUrl}, #{imageSort}, sysdate())
+        insert into shop_product_image (product_id, image_type, image_url, image_sort, create_time)
+        values (#{productId}, #{imageType}, #{imageUrl}, #{imageSort}, sysdate())
     </insert>
 </mapper>

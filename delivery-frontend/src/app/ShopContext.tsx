@@ -51,11 +51,15 @@ interface ShopContextValue {
   cart: ShopCartItemDto[];
   cartLoading: boolean;
   coupons: ShopCouponDto[];
+  couponsLoading: boolean;
   orders: ShopOrderDto[];
   ordersLoading: boolean;
   trials: TrialApplicationDto[];
+  trialsLoading: boolean;
   reports: VerificationReportDto[];
+  reportsLoading: boolean;
   addresses: ShopShippingAddress[];
+  addressesLoading: boolean;
   privateLoading: boolean;
   payingOrderId: number | null;
   setAuthMode: (mode: AuthMode) => void;
@@ -69,7 +73,6 @@ interface ShopContextValue {
   refreshTrials: () => Promise<void>;
   refreshReports: () => Promise<void>;
   refreshAddresses: () => Promise<void>;
-  refreshPrivateData: () => Promise<void>;
   addToCart: (productId: number, quantity?: number, sourceReportId?: number) => Promise<void>;
   changeCartQuantity: (cartItemId: number, quantity: number) => Promise<void>;
   removeCartItem: (cartItemId: number) => Promise<void>;
@@ -99,14 +102,41 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<ShopCartItemDto[]>([]);
   const [cartLoading, setCartLoading] = useState(false);
   const [coupons, setCoupons] = useState<ShopCouponDto[]>([]);
+  const [couponsLoading, setCouponsLoading] = useState(false);
   const [orders, setOrders] = useState<ShopOrderDto[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [trials, setTrials] = useState<TrialApplicationDto[]>([]);
+  const [trialsLoading, setTrialsLoading] = useState(false);
   const [reports, setReports] = useState<VerificationReportDto[]>([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
   const [addresses, setAddresses] = useState<ShopShippingAddress[]>([]);
-  const [privateLoading, setPrivateLoading] = useState(false);
+  const [addressesLoading, setAddressesLoading] = useState(false);
   const [payingOrderId, setPayingOrderId] = useState<number | null>(null);
   const paymentReturnHandled = useRef(false);
+  const userRef = useRef<AuthUser | null>(null);
+  const cartRefreshRef = useRef<Promise<void> | null>(null);
+  const orderRefreshRef = useRef<Promise<void> | null>(null);
+  const couponRefreshRef = useRef<Promise<void> | null>(null);
+  const trialRefreshRef = useRef<Promise<void> | null>(null);
+  const reportRefreshRef = useRef<Promise<void> | null>(null);
+  const addressRefreshRef = useRef<Promise<void> | null>(null);
+  const privateLoading = couponsLoading || ordersLoading || trialsLoading || reportsLoading || addressesLoading;
+
+  useEffect(() => {
+    userRef.current = user;
+    cartRefreshRef.current = null;
+    orderRefreshRef.current = null;
+    couponRefreshRef.current = null;
+    trialRefreshRef.current = null;
+    reportRefreshRef.current = null;
+    addressRefreshRef.current = null;
+    setCartLoading(false);
+    setOrdersLoading(false);
+    setCouponsLoading(false);
+    setTrialsLoading(false);
+    setReportsLoading(false);
+    setAddressesLoading(false);
+  }, [user]);
 
   const loadCaptcha = useCallback(async () => {
     setCaptchaLoading(true);
@@ -147,12 +177,21 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setCart([]);
       return;
     }
+    if (cartRefreshRef.current) return cartRefreshRef.current;
+    const currentUserId = user.id;
     setCartLoading(true);
-    try {
-      setCart(await fetchShopCart());
-    } finally {
-      setCartLoading(false);
-    }
+    const request: Promise<void> = fetchShopCart()
+      .then((items) => {
+        if (userRef.current?.id === currentUserId) setCart(items);
+      })
+      .finally(() => {
+        if (cartRefreshRef.current === request) {
+          cartRefreshRef.current = null;
+          setCartLoading(false);
+        }
+      });
+    cartRefreshRef.current = request;
+    return request;
   }, [user]);
 
   const refreshOrders = useCallback(async () => {
@@ -160,70 +199,114 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setOrders([]);
       return;
     }
+    if (orderRefreshRef.current) return orderRefreshRef.current;
+    const currentUserId = user.id;
     setOrdersLoading(true);
-    try {
-      setOrders(await fetchShopOrders());
-    } finally {
-      setOrdersLoading(false);
-    }
+    const request: Promise<void> = fetchShopOrders()
+      .then((items) => {
+        if (userRef.current?.id === currentUserId) setOrders(items);
+      })
+      .finally(() => {
+        if (orderRefreshRef.current === request) {
+          orderRefreshRef.current = null;
+          setOrdersLoading(false);
+        }
+      });
+    orderRefreshRef.current = request;
+    return request;
   }, [user]);
 
   const refreshCoupons = useCallback(async () => {
-    setCoupons(user ? await fetchMyCoupons() : []);
+    if (!user) {
+      setCoupons([]);
+      return;
+    }
+    if (couponRefreshRef.current) return couponRefreshRef.current;
+    const currentUserId = user.id;
+    setCouponsLoading(true);
+    const request: Promise<void> = fetchMyCoupons()
+      .then((items) => {
+        if (userRef.current?.id === currentUserId) setCoupons(items);
+      })
+      .finally(() => {
+        if (couponRefreshRef.current === request) {
+          couponRefreshRef.current = null;
+          setCouponsLoading(false);
+        }
+      });
+    couponRefreshRef.current = request;
+    return request;
   }, [user]);
 
   const refreshTrials = useCallback(async () => {
-    setTrials(user ? await fetchMyTrialApplications() : []);
+    if (!user) {
+      setTrials([]);
+      return;
+    }
+    if (trialRefreshRef.current) return trialRefreshRef.current;
+    const currentUserId = user.id;
+    setTrialsLoading(true);
+    const request: Promise<void> = fetchMyTrialApplications()
+      .then((items) => {
+        if (userRef.current?.id === currentUserId) setTrials(items);
+      })
+      .finally(() => {
+        if (trialRefreshRef.current === request) {
+          trialRefreshRef.current = null;
+          setTrialsLoading(false);
+        }
+      });
+    trialRefreshRef.current = request;
+    return request;
   }, [user]);
 
   const refreshReports = useCallback(async () => {
-    setReports(user ? await fetchMyVerificationReports() : []);
+    if (!user) {
+      setReports([]);
+      return;
+    }
+    if (reportRefreshRef.current) return reportRefreshRef.current;
+    const currentUserId = user.id;
+    setReportsLoading(true);
+    const request: Promise<void> = fetchMyVerificationReports()
+      .then((items) => {
+        if (userRef.current?.id === currentUserId) setReports(items);
+      })
+      .finally(() => {
+        if (reportRefreshRef.current === request) {
+          reportRefreshRef.current = null;
+          setReportsLoading(false);
+        }
+      });
+    reportRefreshRef.current = request;
+    return request;
   }, [user]);
 
   const refreshAddresses = useCallback(async () => {
-    setAddresses(user ? await fetchShopShippingAddresses() : []);
-  }, [user]);
-
-  const refreshPrivateData = useCallback(async () => {
     if (!user) {
-      setCart([]);
-      setCoupons([]);
-      setOrders([]);
-      setTrials([]);
-      setReports([]);
       setAddresses([]);
       return;
     }
-    setPrivateLoading(true);
-    setCartLoading(true);
-    setOrdersLoading(true);
-    try {
-      const [nextCart, nextOrders, nextTrials, nextReports, nextAddresses, nextCoupons] = await Promise.all([
-        fetchShopCart(),
-        fetchShopOrders(),
-        fetchMyTrialApplications(),
-        fetchMyVerificationReports(),
-        fetchShopShippingAddresses(),
-        fetchMyCoupons(),
-      ]);
-      setCart(nextCart);
-      setOrders(nextOrders);
-      setTrials(nextTrials);
-      setReports(nextReports);
-      setAddresses(nextAddresses);
-      setCoupons(nextCoupons);
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : '个人数据加载失败');
-    } finally {
-      setCartLoading(false);
-      setOrdersLoading(false);
-      setPrivateLoading(false);
-    }
+    if (addressRefreshRef.current) return addressRefreshRef.current;
+    const currentUserId = user.id;
+    setAddressesLoading(true);
+    const request: Promise<void> = fetchShopShippingAddresses()
+      .then((items) => {
+        if (userRef.current?.id === currentUserId) setAddresses(items);
+      })
+      .finally(() => {
+        if (addressRefreshRef.current === request) {
+          addressRefreshRef.current = null;
+          setAddressesLoading(false);
+        }
+      });
+    addressRefreshRef.current = request;
+    return request;
   }, [user]);
 
   useEffect(() => {
-    void refreshPrivateData();
-  }, [refreshPrivateData]);
+    void refreshCart().catch(() => undefined);
+  }, [refreshCart]);
 
   const login = useCallback(async (username: string, password: string, code?: string) => {
     setAuthSubmitting(true);
@@ -419,11 +502,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     cart,
     cartLoading,
     coupons,
+    couponsLoading,
     orders,
     ordersLoading,
     trials,
+    trialsLoading,
     reports,
+    reportsLoading,
     addresses,
+    addressesLoading,
     privateLoading,
     payingOrderId,
     setAuthMode,
@@ -437,7 +524,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     refreshTrials,
     refreshReports,
     refreshAddresses,
-    refreshPrivateData,
     addToCart,
     changeCartQuantity,
     removeCartItem,
@@ -456,9 +542,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setUser,
   }), [
     user, authLoading, authSubmitting, authMode, captcha, captchaLoading, captchaError,
-    cart, cartLoading, coupons, orders, ordersLoading, trials, reports, addresses, privateLoading, payingOrderId,
+    cart, cartLoading, coupons, couponsLoading, orders, ordersLoading, trials, trialsLoading,
+    reports, reportsLoading, addresses, addressesLoading, privateLoading, payingOrderId,
     loadCaptcha, login, register, logout, refreshCart, refreshCoupons, refreshOrders, refreshTrials,
-    refreshReports, refreshAddresses, refreshPrivateData, addToCart, changeCartQuantity,
+    refreshReports, refreshAddresses, addToCart, changeCartQuantity,
     removeCartItem, checkoutCart, buyNow, payOrder, saveAddress, makeDefaultAddress, removeAddress,
   ]);
 

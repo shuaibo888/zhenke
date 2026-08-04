@@ -1,15 +1,15 @@
 import {
   ArrowLeftOutlined,
   CloudOutlined,
-  DownOutlined,
   EnvironmentOutlined,
+  LeftOutlined,
   LinkOutlined,
   RightOutlined,
   ShareAltOutlined,
   ShoppingCartOutlined,
 } from '@ant-design/icons';
 import { Button, Drawer, Form, Input, Modal, Spin, Tag, message } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { AddressManager } from '@/components/AddressManager';
@@ -28,7 +28,7 @@ import { buildProductShareLink, copyText, formatPrice } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
 
 type PendingAddressAction = 'trial' | null;
-const PRODUCT_REPORT_PAGE_SIZE = 6;
+const PRODUCT_REPORT_PAGE_SIZE = 5;
 
 function formatAddress(address: ShopShippingAddress) {
   return `${address.region.join(' ')} ${address.detail}`.trim();
@@ -75,6 +75,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   const [reportTotal, setReportTotal] = useState(0);
   const [reportPage, setReportPage] = useState(1);
   const [reportsLoadingMore, setReportsLoadingMore] = useState(false);
+  const [reportLoadFailed, setReportLoadFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [trialChoiceOpen, setTrialChoiceOpen] = useState(false);
   const [trialOpen, setTrialOpen] = useState(false);
@@ -84,9 +85,21 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   const [pendingAddressAction, setPendingAddressAction] = useState<PendingAddressAction>(null);
   const [cartSubmitting, setCartSubmitting] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [showAllReports, setShowAllReports] = useState(false);
+  const [productContentTab, setProductContentTab] = useState<'DETAIL' | 'REPORT'>('DETAIL');
+  const [activeProductImage, setActiveProductImage] = useState('');
+  const [carouselResetKey, setCarouselResetKey] = useState(0);
+  const carouselTouchStartX = useRef<number | null>(null);
+  const reportLoadMoreRef = useRef<HTMLDivElement | null>(null);
+  const reportLoadRequestRef = useRef<Promise<void> | null>(null);
+  const reportProductIdRef = useRef(productId);
+  reportProductIdRef.current = productId;
   const [form] = Form.useForm<{ applyReason: string }>();
   useBodyScrollLock(trialChoiceOpen || trialOpen || addressOpen || shareOpen);
+
+  useEffect(() => {
+    if (!user) return;
+    void refreshTrials().catch(() => undefined);
+  }, [productId, refreshTrials, user]);
 
   useEffect(() => {
     if (!Number.isSafeInteger(productId) || productId <= 0) {
@@ -95,6 +108,10 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
     }
     let mounted = true;
     setLoading(true);
+    setProductContentTab('DETAIL');
+    reportLoadRequestRef.current = null;
+    setReportsLoadingMore(false);
+    setReportLoadFailed(false);
     Promise.all([
       fetchPublicProduct(productId),
       fetchHomeFeed({ productId, contentType: 'TRIAL', pageNum: 1, pageSize: 4 }),
@@ -108,6 +125,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
       .then(([nextProduct, trialResult, reportResult]) => {
         if (!mounted) return;
         setProduct(nextProduct);
+        setActiveProductImage(nextProduct.coverUrl);
         setFeed(trialResult.rows);
         setReports(reportResult.rows);
         setReportTotal(reportResult.total);
@@ -125,6 +143,38 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   }, [productId]);
 
   const campaigns = useMemo(() => feed.filter((item) => item.contentType === 'TRIAL' && item.trial), [feed]);
+  const productGallery = useMemo(() => {
+    if (!product) return [];
+    return Array.from(new Set([product.coverUrl, ...(product.mainImageUrls ?? [])].filter(Boolean)));
+  }, [product]);
+  const displayedProductImage = productGallery.includes(activeProductImage)
+    ? activeProductImage
+    : productGallery[0];
+  const displayedProductImageIndex = Math.max(0, productGallery.indexOf(displayedProductImage));
+
+  useEffect(() => {
+    if (productGallery.length <= 1 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return undefined;
+    }
+    const timer = window.setInterval(() => {
+      setActiveProductImage((current) => {
+        const currentIndex = productGallery.indexOf(current);
+        return productGallery[(currentIndex + 1 + productGallery.length) % productGallery.length];
+      });
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [carouselResetKey, productGallery]);
+
+  const selectProductImage = (imageUrl: string) => {
+    setActiveProductImage(imageUrl);
+    setCarouselResetKey((current) => current + 1);
+  };
+
+  const stepProductImage = (offset: number) => {
+    if (productGallery.length <= 1) return;
+    const nextIndex = (displayedProductImageIndex + offset + productGallery.length) % productGallery.length;
+    selectProductImage(productGallery[nextIndex]);
+  };
   const primaryCampaign = campaigns.find((item) => item.contentId === campaignId) ?? campaigns[0];
   const orderedCampaigns = useMemo(() => (
     primaryCampaign
@@ -234,28 +284,54 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   };
 
   const loadMoreReports = async () => {
-    if (reportsLoadingMore || reports.length >= reportTotal) return;
+    if (reportLoadRequestRef.current || reports.length >= reportTotal) return;
     const nextPage = reportPage + 1;
+    const requestedProductId = productId;
     setReportsLoadingMore(true);
-    try {
-      const result = await fetchHomeFeed({
-        productId,
-        contentType: 'REPORT',
-        pageNum: nextPage,
-        pageSize: PRODUCT_REPORT_PAGE_SIZE,
+    setReportLoadFailed(false);
+    const request: Promise<void> = fetchHomeFeed({
+      productId: requestedProductId,
+      contentType: 'REPORT',
+      pageNum: nextPage,
+      pageSize: PRODUCT_REPORT_PAGE_SIZE,
+    })
+      .then((result) => {
+        if (reportProductIdRef.current !== requestedProductId) return;
+        setReports((current) => {
+          const existing = new Set(current.map((item) => item.contentId));
+          return [...current, ...result.rows.filter((item) => !existing.has(item.contentId))];
+        });
+        setReportTotal(result.total);
+        setReportPage(nextPage);
+      })
+      .catch((error) => {
+        if (reportProductIdRef.current === requestedProductId) {
+          setReportLoadFailed(true);
+          message.error(error instanceof Error ? error.message : '更多甄客验加载失败');
+        }
+      })
+      .finally(() => {
+        if (reportLoadRequestRef.current === request) {
+          reportLoadRequestRef.current = null;
+          setReportsLoadingMore(false);
+        }
       });
-      setReports((current) => {
-        const existing = new Set(current.map((item) => item.contentId));
-        return [...current, ...result.rows.filter((item) => !existing.has(item.contentId))];
-      });
-      setReportTotal(result.total);
-      setReportPage(nextPage);
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : '更多甄客验加载失败');
-    } finally {
-      setReportsLoadingMore(false);
-    }
+    reportLoadRequestRef.current = request;
+    return request;
   };
+
+  useEffect(() => {
+    const target = reportLoadMoreRef.current;
+    if (productContentTab !== 'REPORT' || !target || reportLoadFailed || reports.length >= reportTotal
+      || typeof IntersectionObserver === 'undefined') {
+      return undefined;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) void loadMoreReports();
+    }, { rootMargin: '240px 0px', threshold: 0.01 });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [productContentTab, reportLoadFailed, reportPage, reportTotal, reports.length, reportsLoadingMore]);
 
   const copyShareLink = async () => {
     try {
@@ -286,7 +362,76 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
         </header>
 
         <section className={styles.trialHero}>
-          <div className={styles.trialHeroImage}><img src={product.coverUrl} alt={product.productName} /></div>
+          <div className={styles.productImageGallery}>
+            <div
+              className={styles.trialHeroImage}
+              onTouchStart={(event) => {
+                carouselTouchStartX.current = event.touches[0]?.clientX ?? null;
+              }}
+              onTouchEnd={(event) => {
+                const startX = carouselTouchStartX.current;
+                const endX = event.changedTouches[0]?.clientX;
+                carouselTouchStartX.current = null;
+                if (startX == null || endX == null || Math.abs(endX - startX) < 40) return;
+                stepProductImage(endX < startX ? 1 : -1);
+              }}
+            >
+              <img
+                key={displayedProductImage}
+                className={styles.productGalleryImage}
+                src={displayedProductImage}
+                alt={product.productName}
+              />
+              {productGallery.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className={`${styles.productGalleryArrow} ${styles.productGalleryArrowLeft}`}
+                    aria-label="上一张商品图片"
+                    onClick={() => stepProductImage(-1)}
+                  >
+                    <LeftOutlined />
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.productGalleryArrow} ${styles.productGalleryArrowRight}`}
+                    aria-label="下一张商品图片"
+                    onClick={() => stepProductImage(1)}
+                  >
+                    <RightOutlined />
+                  </button>
+                  <div className={styles.productGalleryDots} aria-label="商品轮播图分页">
+                    {productGallery.map((imageUrl, index) => (
+                      <button
+                        key={imageUrl}
+                        type="button"
+                        className={index === displayedProductImageIndex ? styles.productGalleryDotActive : ''}
+                        aria-label={`查看第 ${index + 1} 张商品图片`}
+                        aria-current={index === displayedProductImageIndex ? 'true' : undefined}
+                        onClick={() => selectProductImage(imageUrl)}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            {productGallery.length > 1 && (
+              <div className={styles.productGalleryThumbs} aria-label="商品图片">
+                {productGallery.map((imageUrl, index) => (
+                  <button
+                    key={imageUrl}
+                    type="button"
+                    className={`${styles.productGalleryThumb} ${displayedProductImage === imageUrl ? styles.productGalleryThumbActive : ''}`}
+                    aria-label={`查看商品图片 ${index + 1}`}
+                    aria-pressed={displayedProductImage === imageUrl}
+                    onClick={() => selectProductImage(imageUrl)}
+                  >
+                    <img src={imageUrl} alt="" loading="lazy" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <div className={styles.trialHeroBody}>
             <div className={styles.productTagRow}>
               <Tag color="green">{product.categoryName}</Tag>
@@ -334,44 +479,96 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
           </section>
         )}
 
-        <section className={styles.trialPanel}>
-          <h2 className={styles.trialPanelTitle}>商品详情</h2>
-          <p className={styles.productDetail}>{product.detail}</p>
-        </section>
-
-        {reportTotal > 0 && (
-          <section className={styles.productReportFlow}>
+        <section className={styles.productContentPanel}>
+          <div className={styles.productContentTabs} role="tablist" aria-label="商品内容">
             <button
+              id="product-detail-tab"
               type="button"
-              className={styles.productReportsHeader}
-              onClick={() => setShowAllReports(!showAllReports)}
+              role="tab"
+              aria-selected={productContentTab === 'DETAIL'}
+              aria-controls="product-detail-panel"
+              className={productContentTab === 'DETAIL' ? styles.productContentTabActive : ''}
+              onClick={() => setProductContentTab('DETAIL')}
             >
-              <div className={styles.sectionHeader}>
-                <div><span className={styles.eyebrow}>真实体验参考</span><h2>先看这件商品的甄客验</h2></div>
-                <span>{reportTotal} 份真实评价</span>
-              </div>
-              <DownOutlined className={`${styles.productReportsArrow} ${showAllReports ? styles.productReportsArrowOpen : ''}`} />
+              <span>商品详情</span>
+              <small>详情图片</small>
             </button>
-            {showAllReports && (
-              <div className={styles.productReportsList}>
-                {reports.map((report) => (
-                  <HomeFeedReportCard
-                    key={report.contentId}
-                    item={report}
-                    variant="preview"
-                    onOpen={() => navigate(`/reports/${report.contentId}`)}
-                    onUseful={() => void useful(report)}
-                  />
-                ))}
-                {reports.length < reportTotal && (
-                  <Button block loading={reportsLoadingMore} onClick={() => void loadMoreReports()}>
-                    加载更多甄客验
-                  </Button>
-                )}
-              </div>
-            )}
-          </section>
-        )}
+            <button
+              id="product-report-tab"
+              type="button"
+              role="tab"
+              aria-selected={productContentTab === 'REPORT'}
+              aria-controls="product-report-panel"
+              className={productContentTab === 'REPORT' ? styles.productContentTabActive : ''}
+              onClick={() => setProductContentTab('REPORT')}
+            >
+              <span>甄客验</span>
+              <small>{reportTotal} 份真实体验</small>
+            </button>
+          </div>
+
+          {productContentTab === 'DETAIL' ? (
+            <div
+              id="product-detail-panel"
+              role="tabpanel"
+              aria-labelledby="product-detail-tab"
+              className={styles.productContentBody}
+            >
+              {(product.detailImageUrls?.length ?? 0) > 0 ? (
+                <div className={styles.productDetailImages}>
+                  {product.detailImageUrls?.map((imageUrl, index) => (
+                    <img
+                      key={imageUrl}
+                      src={imageUrl}
+                      alt={`${product.productName} 商品详情图 ${index + 1}`}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className={styles.productColumnEmpty}>商家暂未上传商品详情图。</p>
+              )}
+            </div>
+          ) : (
+            <div
+              id="product-report-panel"
+              role="tabpanel"
+              aria-labelledby="product-report-tab"
+              className={`${styles.productContentBody} ${styles.productReportsBody}`}
+            >
+              {reports.length > 0 ? (
+                <div className={styles.productReportsList}>
+                  {reports.map((report) => (
+                    <HomeFeedReportCard
+                      key={report.contentId}
+                      item={report}
+                      variant="preview"
+                      onOpen={() => navigate(`/reports/${report.contentId}`)}
+                      onUseful={() => void useful(report)}
+                    />
+                  ))}
+                  {reports.length < reportTotal && (
+                    <div ref={reportLoadMoreRef} className={styles.productReportLoadMore}>
+                      {reportLoadFailed ? (
+                        <Button size="small" onClick={() => void loadMoreReports()}>加载失败，点击重试</Button>
+                      ) : reportsLoadingMore ? (
+                        <Spin size="small" />
+                      ) : (
+                        <span>继续下滑加载更多</span>
+                      )}
+                    </div>
+                  )}
+                  {reports.length >= reportTotal && reportTotal > PRODUCT_REPORT_PAGE_SIZE && (
+                    <p className={styles.productReportsEnd}>已经到底了</p>
+                  )}
+                </div>
+              ) : (
+                <p className={styles.productColumnEmpty}>暂时还没有甄客验。</p>
+              )}
+            </div>
+          )}
+        </section>
 
         <div className={`${styles.reportDetailBottomBar} ${styles.productFixedBar}`}>
           <Button
@@ -473,7 +670,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
             <img src={product.coverUrl} alt={product.productName} />
             <div className={styles.sharePreviewText}>
               <strong>{product.productName}</strong>
-              <p>{product.subtitle || product.detail.slice(0, 40)}</p>
+              <p>{product.subtitle || `${product.brandName} · ${product.categoryName}`}</p>
             </div>
           </div>
           <div className={styles.shareLinkBox}>
