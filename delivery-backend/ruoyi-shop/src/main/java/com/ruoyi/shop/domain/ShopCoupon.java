@@ -11,6 +11,7 @@ public class ShopCoupon extends BaseEntity
     private static final long serialVersionUID = 1L;
 
     private Long couponId;
+    private Long ownerMerchantId;
     private String couponName;
     private String description;
     private BigDecimal discountAmount;
@@ -24,6 +25,8 @@ public class ShopCoupon extends BaseEntity
 
     public Long getCouponId() { return couponId; }
     public void setCouponId(Long couponId) { this.couponId = couponId; }
+    public Long getOwnerMerchantId() { return ownerMerchantId; }
+    public void setOwnerMerchantId(Long ownerMerchantId) { this.ownerMerchantId = ownerMerchantId; }
     public String getCouponName() { return couponName; }
     public void setCouponName(String couponName) { this.couponName = couponName; }
     public String getDescription() { return description; }

@@ -515,10 +515,23 @@ export interface CouponWriteBody {
   endTime: string;
   status: 'ENABLED' | 'DISABLED';
   totalStock: number;
-  merchantIds: number[];
+  merchantIds?: number[];
 }
 
-export async function fetchCoupons(query: {
+export async function fetchCouponUserOptions(session: AdminSession, keyword?: string) {
+  if (session.loginType === 'admin') {
+    return fetchShopUsers({ pageNum: 1, pageSize: 50, keyword, status: '0' });
+  }
+  const params = new URLSearchParams({ pageNum: '1', pageSize: '50' });
+  if (keyword) params.set('keyword', keyword);
+  return requestApi<UserListResponse>('/shop/merchant/coupon-users?' + params.toString(), {}, true);
+}
+
+function couponApiPath(session: AdminSession) {
+  return session.loginType === 'merchant' ? '/shop/merchant/coupons' : '/shop/admin/coupons';
+}
+
+export async function fetchCoupons(session: AdminSession, query: {
   pageNum?: number;
   pageSize?: number;
   keyword?: string;
@@ -530,7 +543,7 @@ export async function fetchCoupons(query: {
   });
   if (query.keyword) params.set('couponName', query.keyword);
   if (query.status) params.set('status', query.status);
-  const result = await requestApi<CouponListResponse>(`/shop/admin/coupons?${params.toString()}`, {}, true);
+  const result = await requestApi<CouponListResponse>(`${couponApiPath(session)}?${params.toString()}`, {}, true);
   return {
     rows: (Array.isArray(result.rows) ? result.rows : []).map((coupon) => ({
       ...coupon,
@@ -544,9 +557,9 @@ export async function fetchCoupons(query: {
   };
 }
 
-export async function createCoupon(body: CouponWriteBody) {
+export async function createCoupon(session: AdminSession, body: CouponWriteBody) {
   const result = await requestApi<ApiResponse<ManagedCoupon>>(
-    '/shop/admin/coupons',
+    couponApiPath(session),
     { method: 'POST', body: JSON.stringify(body) },
     true,
   );
@@ -554,9 +567,9 @@ export async function createCoupon(body: CouponWriteBody) {
   return result.data;
 }
 
-export async function updateCoupon(couponId: number, body: CouponWriteBody) {
+export async function updateCoupon(session: AdminSession, couponId: number, body: CouponWriteBody) {
   const result = await requestApi<ApiResponse<ManagedCoupon>>(
-    `/shop/admin/coupons/${couponId}`,
+    `${couponApiPath(session)}/${couponId}`,
     { method: 'PUT', body: JSON.stringify(body) },
     true,
   );
@@ -564,9 +577,9 @@ export async function updateCoupon(couponId: number, body: CouponWriteBody) {
   return result.data;
 }
 
-export async function updateCouponStatus(couponId: number, status: 'ENABLED' | 'DISABLED') {
+export async function updateCouponStatus(session: AdminSession, couponId: number, status: 'ENABLED' | 'DISABLED') {
   const result = await requestApi<ApiResponse<ManagedCoupon>>(
-    `/shop/admin/coupons/${couponId}/status`,
+    `${couponApiPath(session)}/${couponId}/status`,
     { method: 'PUT', body: JSON.stringify({ status }) },
     true,
   );
@@ -574,9 +587,9 @@ export async function updateCouponStatus(couponId: number, status: 'ENABLED' | '
   return result.data;
 }
 
-export async function grantCoupon(couponId: number, body: { userIds: number[]; quantityPerUser: number }) {
+export async function grantCoupon(session: AdminSession, couponId: number, body: { userIds: number[]; quantityPerUser: number }) {
   const result = await requestApi<ApiResponse<ManagedCouponGrant>>(
-    `/shop/admin/coupons/${couponId}/grants`,
+    `${couponApiPath(session)}/${couponId}/grants`,
     { method: 'POST', body: JSON.stringify(body) },
     true,
   );
@@ -584,10 +597,10 @@ export async function grantCoupon(couponId: number, body: { userIds: number[]; q
   return result.data;
 }
 
-export async function fetchCouponGrants(couponId: number, pageNum = 1, pageSize = 10) {
+export async function fetchCouponGrants(session: AdminSession, couponId: number, pageNum = 1, pageSize = 10) {
   const params = new URLSearchParams({ pageNum: String(pageNum), pageSize: String(pageSize) });
   const result = await requestApi<CouponGrantListResponse>(
-    `/shop/admin/coupons/${couponId}/grants?${params.toString()}`,
+    `${couponApiPath(session)}/${couponId}/grants?${params.toString()}`,
     {},
     true,
   );
@@ -623,9 +636,10 @@ export async function fetchManagedProducts(session: AdminSession, query: Managed
   return { rows: rows.map(toManagedProduct), total: Number(result.total ?? 0) };
 }
 
-export async function fetchMerchantProduct(productId: number) {
+export async function fetchMerchantProduct(session: AdminSession, productId: number) {
+  const path = session.loginType === 'merchant' ? '/shop/merchant/products' : '/shop/admin/products';
   const result = await requestApi<ApiResponse<ProductDto>>(
-    `/shop/merchant/products/${productId}`,
+    `${path}/${productId}`,
     {},
     true,
   );
@@ -655,9 +669,10 @@ export async function createMerchantProduct(body: ProductWriteBody) {
   return toManagedProduct(result.data);
 }
 
-export async function updateMerchantProduct(productId: number, body: ProductWriteBody) {
+export async function updateMerchantProduct(session: AdminSession, productId: number, body: ProductWriteBody) {
+  const path = session.loginType === 'merchant' ? '/shop/merchant/products' : '/shop/admin/products';
   const result = await requestApi<ApiResponse<ProductDto>>(
-    `/shop/merchant/products/${productId}`,
+    `${path}/${productId}`,
     { method: 'PUT', body: JSON.stringify(body) },
     true,
   );
@@ -665,9 +680,10 @@ export async function updateMerchantProduct(productId: number, body: ProductWrit
   return toManagedProduct(result.data);
 }
 
-export async function updateMerchantProductSaleStatus(productId: number, status: 'ON_SALE' | 'OFF_SALE') {
+export async function updateMerchantProductSaleStatus(session: AdminSession, productId: number, status: 'ON_SALE' | 'OFF_SALE') {
+  const path = session.loginType === 'merchant' ? '/shop/merchant/products' : '/shop/admin/products';
   const result = await requestApi<ApiResponse<ProductDto>>(
-    `/shop/merchant/products/${productId}/status`,
+    `${path}/${productId}/status`,
     { method: 'PUT', body: JSON.stringify({ status }) },
     true,
   );
@@ -710,9 +726,10 @@ export async function fetchMerchantOrder(orderId: number) {
   return toManagedOrder(result.data);
 }
 
-export async function fetchMerchantOrderLogistics(orderId: number) {
+export async function fetchMerchantOrderLogistics(session: AdminSession, orderId: number) {
+  const path = session.loginType === 'merchant' ? '/shop/merchant/orders' : '/shop/admin/orders';
   const result = await requestApi<ApiResponse<ManagedLogisticsTrace>>(
-    `/shop/merchant/orders/${orderId}/logistics`,
+    `${path}/${orderId}/logistics`,
     {},
     true,
   );
@@ -726,9 +743,10 @@ export async function fetchAdminOrder(orderId: number) {
   return toManagedOrder(result.data);
 }
 
-export async function shipMerchantOrder(orderId: number, trackingNo: string) {
+export async function shipMerchantOrder(session: AdminSession, orderId: number, trackingNo: string) {
+  const path = session.loginType === 'merchant' ? '/shop/merchant/orders' : '/shop/admin/orders';
   const result = await requestApi<ApiResponse<ShopOrderDto>>(
-    `/shop/merchant/orders/${orderId}/ship`,
+    `${path}/${orderId}/ship`,
     { method: 'PUT', body: JSON.stringify({ trackingNo }) },
     true,
   );
@@ -754,12 +772,13 @@ function toManagedTrial(dto: TrialCampaignDto): ManagedTrialRecruitment {
 }
 
 export async function auditMerchantOrderRefund(
+  session: AdminSession,
   orderId: number,
   decision: 'APPROVED' | 'REJECTED',
   auditRemark?: string,
 ) {
   const result = await requestApi<ApiResponse<ShopOrderDto>>(
-    `/shop/merchant/orders/${orderId}/refund/audit`,
+    `${session.loginType === 'merchant' ? '/shop/merchant/orders' : '/shop/admin/orders'}/${orderId}/refund/audit`,
     { method: 'PUT', body: JSON.stringify({ decision, auditRemark }) },
     true,
   );
@@ -803,18 +822,26 @@ export async function fetchManagedTrials(session: AdminSession, query: ManagedPa
   return { rows: rows.map(toManagedTrial), total: Number(result.total ?? 0) };
 }
 
-export async function fetchMerchantReports(query: ManagedPageQuery = {}) {
+export async function fetchMerchantReports(session: AdminSession, query: ManagedPageQuery = {}) {
   const params = new URLSearchParams({
     pageNum: String(query.pageNum ?? 1),
     pageSize: String(query.pageSize ?? 10),
   });
   const result = await requestApi<ApiResponse & { rows?: VerificationReportDto[]; total: number }>(
-    `/shop/merchant/reports?${params.toString()}`,
+    `${session.loginType === 'merchant' ? '/shop/merchant/reports' : '/shop/admin/reports'}?${params.toString()}`,
     {},
     true,
   );
   const rows = Array.isArray(result.rows) ? result.rows : [];
   return { rows: rows.map(toManagedReport), total: Number(result.total ?? 0) };
+}
+
+export async function deleteAdminReport(reportId: number) {
+  return requestApi<ApiResponse<VerificationReportDto>>(
+    `/shop/admin/reports/${reportId}`,
+    { method: 'DELETE' },
+    true,
+  );
 }
 
 export async function createMerchantTrial(body: {
@@ -844,11 +871,12 @@ export async function fetchAvailableTrialTypes(productId: number) {
 }
 
 export async function updateMerchantTrialStatus(
+  session: AdminSession,
   campaignId: number,
   status: 'RECRUITING' | 'CLOSED' | 'FINISHED',
 ) {
   const result = await requestApi<ApiResponse<TrialCampaignDto>>(
-    `/shop/merchant/trials/${campaignId}/status`,
+    `${session.loginType === 'merchant' ? '/shop/merchant/trials' : '/shop/admin/trials'}/${campaignId}/status`,
     { method: 'PUT', body: JSON.stringify({ status }) },
     true,
   );
@@ -856,13 +884,13 @@ export async function updateMerchantTrialStatus(
   return result.data;
 }
 
-export async function fetchMerchantTrialApplications(query: ManagedPageQuery = {}) {
+export async function fetchMerchantTrialApplications(session: AdminSession, query: ManagedPageQuery = {}) {
   const params = new URLSearchParams({
     pageNum: String(query.pageNum ?? 1),
     pageSize: String(query.pageSize ?? 10),
   });
   const result = await requestApi<ApiResponse & { rows?: ManagedTrialApplication[]; total: number }>(
-    `/shop/merchant/trials/applications?${params.toString()}`,
+    `${session.loginType === 'merchant' ? '/shop/merchant/trials' : '/shop/admin/trials'}/applications?${params.toString()}`,
     {},
     true,
   );
@@ -873,40 +901,50 @@ export async function fetchMerchantTrialApplications(query: ManagedPageQuery = {
 }
 
 export async function auditMerchantTrialApplication(
+  session: AdminSession,
   applicationId: number,
   decision: 'APPROVED' | 'REJECTED',
   auditRemark?: string,
 ) {
   return requestApi<ApiResponse<ManagedTrialApplication>>(
-    `/shop/merchant/trials/applications/${applicationId}/audit`,
+    `${session.loginType === 'merchant' ? '/shop/merchant/trials' : '/shop/admin/trials'}/applications/${applicationId}/audit`,
     { method: 'PUT', body: JSON.stringify({ decision, auditRemark }) },
     true,
   );
 }
 
-export async function shipMerchantTrialApplication(applicationId: number, trackingNo: string) {
+export async function shipMerchantTrialApplication(session: AdminSession, applicationId: number, trackingNo: string) {
   return requestApi<ApiResponse<ManagedTrialApplication>>(
-    `/shop/merchant/trials/applications/${applicationId}/ship`,
+    `${session.loginType === 'merchant' ? '/shop/merchant/trials' : '/shop/admin/trials'}/applications/${applicationId}/ship`,
     { method: 'PUT', body: JSON.stringify({ trackingNo }) },
     true,
   );
 }
 
-export async function redeemMerchantTrialApplication(redeemCode: string) {
+export async function redeemMerchantTrialApplication(session: AdminSession, redeemCode: string) {
   return requestApi<ApiResponse<ManagedTrialApplication>>(
-    '/shop/merchant/trials/applications/redeem',
+    `${session.loginType === 'merchant' ? '/shop/merchant/trials' : '/shop/admin/trials'}/applications/redeem`,
     { method: 'POST', body: JSON.stringify({ redeemCode }) },
     true,
   );
 }
 
-export async function uploadAdminFile(file: File, kind: 'COVER' | 'MAIN' | 'DETAIL') {
+export async function uploadAdminFile(
+  session: AdminSession,
+  productId: number | null,
+  file: File,
+  kind: 'COVER' | 'MAIN' | 'DETAIL',
+) {
   const token = getToken();
   if (!token) throw new Error('请先登录后再上传文件');
   const body = new FormData();
   body.append('file', file);
   body.append('kind', kind);
-  const response = await fetch('/api/shop/merchant/products/images', {
+  if (session.loginType === 'admin' && !productId) throw new Error('管理员只能编辑已有商品');
+  const path = session.loginType === 'merchant'
+    ? '/api/shop/merchant/products/images'
+    : `/api/shop/admin/products/${productId}/images`;
+  const response = await fetch(path, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body,

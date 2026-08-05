@@ -28,6 +28,8 @@ import {
 } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import type { ColumnsType } from 'antd/es/table';
+import dayjs from 'dayjs';
+import 'dayjs/locale/zh-cn';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AdminSession, ManagedLogisticsTrace, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, NavKey, ProductCategory, ProductCategoryOption, ProductStatus, ShopMemberLevel, ShopUserAccount } from '@/types';
 import {
@@ -35,6 +37,7 @@ import {
   auditMerchantTrialApplication,
   createMerchantProduct,
   createMerchantTrial,
+  deleteAdminReport,
   fetchAdminCaptcha,
   fetchAvailableTrialTypes,
   fetchDashboardSummary,
@@ -71,6 +74,7 @@ import {
   type CaptchaState,
   type DashboardSummaryDto,
 } from '@/services/adminApi';
+
 import CouponModule from '@/modules/coupons';
 import DashboardModule from '@/modules/dashboard';
 import MerchantsModule from '@/modules/merchants';
@@ -98,6 +102,8 @@ import { filterRowsForSession, getAvailableNavKeys, hasGlobalAccess } from '@/ut
 import { type OrderStatusFilter } from '@/utils/orderManagement';
 import { type ProductCategoryFilter, type ProductStatusFilter } from '@/utils/productFilters';
 import styles from '@/pages/index.less';
+
+dayjs.locale('zh-cn');
 
 const { Header, Sider, Content } = Layout;
 const MANAGEMENT_PAGE_SIZE = 10;
@@ -139,7 +145,7 @@ const navMeta: Record<NavKey, { label: string; icon: React.ReactNode }> = {
   products: { label: '商品管理', icon: <ShoppingOutlined /> },
   trials: { label: '试用招募', icon: <SafetyCertificateOutlined /> },
   orders: { label: '订单管理', icon: <TruckOutlined /> },
-  reports: { label: '验证报告', icon: <FileSearchOutlined /> },
+  reports: { label: '甄客验管理', icon: <FileSearchOutlined /> },
   merchants: { label: '商家管理', icon: <TeamOutlined /> },
 };
 
@@ -464,13 +470,10 @@ function AdminWorkspace() {
   };
 
   const loadReports = async (currentSession = session, page = reportPage) => {
-    if (currentSession?.loginType !== 'merchant') {
-      setReports([]);
-      return;
-    }
+    if (!currentSession) return;
     setReportsLoading(true);
     try {
-      const result = await fetchMerchantReports({
+      const result = await fetchMerchantReports(currentSession, {
         pageNum: page,
         pageSize: MANAGEMENT_PAGE_SIZE,
       });
@@ -485,10 +488,10 @@ function AdminWorkspace() {
   };
 
   const loadTrialApplications = async (currentSession = session, page = trialApplicationPage) => {
-    if (currentSession?.loginType !== 'merchant') return;
+    if (!currentSession) return;
     setTrialApplicationsLoading(true);
     try {
-      const result = await fetchMerchantTrialApplications({
+      const result = await fetchMerchantTrialApplications(currentSession, {
         pageNum: page,
         pageSize: MANAGEMENT_PAGE_SIZE,
       });
@@ -534,13 +537,13 @@ function AdminWorkspace() {
     } else if (activeNav === 'trials'
       && (permissions.includes('*:*:*') || permissions.includes('shop:trial:list'))) {
       void loadTrials(session, 1);
+      void loadTrialApplications(session, 1);
       if (session.loginType === 'merchant') {
-        void loadTrialApplications(session, 1);
         void loadTrialProductOptions('', session);
       }
     } else if (activeNav === 'orders') {
       void loadOrders(session, 1);
-    } else if (activeNav === 'reports' && session.loginType === 'merchant') {
+    } else if (activeNav === 'reports') {
       void loadReports(session, 1);
     }
   }, [activeNav, session?.id]);
@@ -681,7 +684,8 @@ function AdminWorkspace() {
 
   const openEditProduct = async (product: ManagedProduct) => {
     try {
-      const detail = await fetchMerchantProduct(product.id);
+      if (!session) return;
+      const detail = await fetchMerchantProduct(session, product.id);
       setEditingProductId(detail.id);
       productForm.setFieldsValue({
         title: detail.title,
@@ -707,7 +711,7 @@ function AdminWorkspace() {
   };
 
   const handleSaveProduct = async (values: ProductFormValues) => {
-    if (session?.loginType !== 'merchant') return;
+    if (!session) return;
     setProductSaving(true);
     try {
       const body = {
@@ -721,8 +725,9 @@ function AdminWorkspace() {
         mainImageUrls: values.mainImageUrls ?? [],
         detailImageUrls: values.detailImageUrls ?? [],
       };
-      if (editingProductId) await updateMerchantProduct(editingProductId, body);
-      else await createMerchantProduct(body);
+      if (editingProductId) await updateMerchantProduct(session, editingProductId, body);
+      else if (session.loginType === 'merchant') await createMerchantProduct(body);
+      else throw new Error('管理员只能编辑已有商品');
       await loadProducts(session);
       closeProductDrawer();
       message.success(editingProductId ? '商品已更新' : '商品已保存为草稿');
@@ -734,10 +739,10 @@ function AdminWorkspace() {
   };
 
   const toggleProductStatus = async (product: ManagedProduct) => {
-    if (session?.loginType !== 'merchant') return;
+    if (!session) return;
     const nextStatus = product.status === 'onSale' ? 'OFF_SALE' : 'ON_SALE';
     try {
-      await updateMerchantProductSaleStatus(product.id, nextStatus);
+      await updateMerchantProductSaleStatus(session, product.id, nextStatus);
       await loadProducts(session);
       message.success(nextStatus === 'ON_SALE' ? '商品已上架' : '商品已下架');
     } catch (error) {
@@ -831,8 +836,8 @@ function AdminWorkspace() {
       okText: '结束招募',
       cancelText: '再想想',
       onOk: async () => {
-        if (!session || session.loginType !== 'merchant') return;
-        await updateMerchantTrialStatus(trial.id, 'CLOSED');
+        if (!session) return;
+        await updateMerchantTrialStatus(session, trial.id, 'CLOSED');
         await loadTrials(session);
         message.success('招募已结束');
       },
@@ -851,7 +856,8 @@ function AdminWorkspace() {
     if (!reviewApplication) return;
     setReviewSubmitting(true);
     try {
-      await auditMerchantTrialApplication(reviewApplication.applicationId, 'APPROVED');
+      if (!session) return;
+      await auditMerchantTrialApplication(session, reviewApplication.applicationId, 'APPROVED');
       message.success('试用申请已通过');
       setReviewApplication(null);
       await Promise.all([loadTrialApplications(), loadTrials()]);
@@ -866,7 +872,8 @@ function AdminWorkspace() {
     if (!reviewApplication) return;
     setReviewSubmitting(true);
     try {
-      await auditMerchantTrialApplication(reviewApplication.applicationId, 'REJECTED', remark);
+      if (!session) return;
+      await auditMerchantTrialApplication(session, reviewApplication.applicationId, 'REJECTED', remark);
       message.success('试用申请已驳回');
       setReviewApplication(null);
       await Promise.all([loadTrialApplications(), loadTrials()]);
@@ -892,7 +899,9 @@ function AdminWorkspace() {
   const submitTrialApplicationAction = async (values: TrialApplicationActionFormValues) => {
     if (!selectedTrialApplication || !trialApplicationAction) return;
     try {
+      if (!session) return;
       await shipMerchantTrialApplication(
+        session,
         selectedTrialApplication.applicationId,
         values.trackingNo?.trim() ?? '',
       );
@@ -907,7 +916,8 @@ function AdminWorkspace() {
   const handleRedeem = async (redeemCode: string) => {
     setRedeeming(true);
     try {
-      await redeemMerchantTrialApplication(redeemCode);
+      if (!session) return;
+      await redeemMerchantTrialApplication(session, redeemCode);
       message.success('核销成功，用户现在可以发布甄客验');
       setRedeemScanOpen(false);
       await loadTrialApplications();
@@ -949,7 +959,9 @@ function AdminWorkspace() {
     if (!shippingOrder || orderShipping) return;
     setOrderShipping(true);
     try {
+      if (!session) return;
       const shipped = await shipMerchantOrder(
+        session,
         shippingOrder.id,
         values.trackingNo.trim(),
       );
@@ -966,10 +978,10 @@ function AdminWorkspace() {
   };
 
   const openOrderLogistics = async (order: ManagedOrder) => {
-    if (isAdmin || !order.trackingNo || orderLogisticsLoading) return;
+    if (!session || !order.trackingNo || orderLogisticsLoading) return;
     setOrderLogisticsLoading(true);
     try {
-      const trace = await fetchMerchantOrderLogistics(order.id);
+      const trace = await fetchMerchantOrderLogistics(session, order.id);
       setOrderLogisticsDialog({ orderNo: order.orderNo, trace });
     } catch (error) {
       message.error(error instanceof Error ? error.message : '物流查询失败，请稍后重试');
@@ -997,7 +1009,9 @@ function AdminWorkspace() {
     if (!refundAuditOrder || refundAuditing) return;
     setRefundAuditing(true);
     try {
+      if (!session) return;
       const updated = await auditMerchantOrderRefund(
+        session,
         refundAuditOrder.id,
         values.decision,
         values.auditRemark?.trim(),
@@ -1014,6 +1028,22 @@ function AdminWorkspace() {
     } finally {
       setRefundAuditing(false);
     }
+  };
+
+  const handleDeleteReport = (report: ManagedReport) => {
+    if (!isAdmin || report.status !== 'published') return;
+    modal.confirm({
+      title: '确认删除这条甄客验？',
+      content: '删除后用户端和商家端将不再展示。',
+      okText: '逻辑删除',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      onOk: async () => {
+        await deleteAdminReport(report.id);
+        await loadReports(session, reportPage);
+        message.success('甄客验已逻辑删除');
+      },
+    });
   };
 
   const handleToggleMerchantStatus = async (merchant: MerchantAccount) => {
@@ -1207,20 +1237,16 @@ function AdminWorkspace() {
       key: 'actions',
       render: (_, product) => (
         <Space wrap size={6}>
-          {isAdmin ? <span className={styles.subText}>仅查看</span> : (
-            <>
-              <Button size="small" icon={<EditOutlined />} onClick={() => void openEditProduct(product)}>
-                编辑商品
-              </Button>
-              <Button size="small" onClick={() => void toggleProductStatus(product)}>
-                {product.status === 'onSale' ? '下架' : '上架'}
-              </Button>
-              {product.status === 'onSale' && (
-                <Button size="small" type="primary" onClick={() => void openPublishTrial(product)}>
-                  发布试用
-                </Button>
-              )}
-            </>
+          <Button size="small" icon={<EditOutlined />} onClick={() => void openEditProduct(product)}>
+            编辑商品
+          </Button>
+          <Button size="small" onClick={() => void toggleProductStatus(product)}>
+            {product.status === 'onSale' ? '下架' : '上架'}
+          </Button>
+          {!isAdmin && product.status === 'onSale' && (
+            <Button size="small" type="primary" onClick={() => void openPublishTrial(product)}>
+              发布试用
+            </Button>
           )}
         </Space>
       ),
@@ -1256,15 +1282,13 @@ function AdminWorkspace() {
       key: 'actions',
       render: (_, order) => (
         <Space wrap size={6}>
-          {!isAdmin && (
-            <Button size="small" icon={<TruckOutlined />} disabled={order.status !== 'paid'} onClick={() => openOrderShipment(order)}>
-              发货
-            </Button>
-          )}
+          <Button size="small" icon={<TruckOutlined />} disabled={order.status !== 'paid'} onClick={() => openOrderShipment(order)}>
+            发货
+          </Button>
           <Button size="small" icon={<FileSearchOutlined />} onClick={() => void openOrderDetail(order)}>
             订单详情
           </Button>
-          {!isAdmin && order.refundStatus === 'PENDING' && (
+          {order.refundStatus === 'PENDING' && (
             <Button size="small" danger onClick={() => openRefundAudit(order)}>
               审核退款
             </Button>
@@ -1308,10 +1332,16 @@ function AdminWorkspace() {
       title: '状态',
       dataIndex: 'status',
       render: (status: ManagedReport['status']) => (
-        <Tag color={status === 'published' ? 'green' : 'default'}>{status === 'published' ? '展示中' : '已下架'}</Tag>
+        <Tag color={status === 'published' ? 'green' : 'default'}>{status === 'published' ? '展示中' : '已删除'}</Tag>
       ),
     },
-    { title: '操作', key: 'actions', responsive: ['md'], render: () => <span className={styles.subText}>仅查看</span> },
+    {
+      title: '操作',
+      key: 'actions',
+      render: (_, report) => isAdmin && report.status === 'published'
+        ? <Button size="small" danger onClick={() => handleDeleteReport(report)}>删除</Button>
+        : <span className={styles.subText}>仅查看</span>,
+    },
   ];
 
   const trialColumns: ColumnsType<ManagedTrialRecruitment> = [
@@ -1355,13 +1385,12 @@ function AdminWorkspace() {
       title: '操作',
       key: 'actions',
       render: (_, trial) => (
-        isAdmin ? <span className={styles.subText}>仅查看</span>
-          : isBlockingTrial(trial) ? (
+        isBlockingTrial(trial) ? (
             <Button size="small" danger onClick={() => handleEndTrial(trial)}>提前终止</Button>
           ) : trial.status === 'recruiting' && trial.claimedCount >= trial.targetCount ? (
-            <span className={styles.subText}>已满，可发布新一轮</span>
+            <span className={styles.subText}>{isAdmin ? '名额已满' : '已满，可发布新一轮'}</span>
           ) : trial.status === 'recruiting' ? (
-            <span className={styles.subText}>已截止，可发布新一轮</span>
+            <span className={styles.subText}>{isAdmin ? '已截止' : '已截止，可发布新一轮'}</span>
           ) : <span className={styles.subText}>历史活动</span>
       ),
     },
@@ -1606,7 +1635,7 @@ function AdminWorkspace() {
               />
             )}
 
-            {activeNav === 'coupons' && isAdmin && <CouponModule />}
+            {activeNav === 'coupons' && <CouponModule session={session} />}
 
             {activeNav === 'products' && (
               <ProductsModule
@@ -1686,7 +1715,7 @@ function AdminWorkspace() {
               />
             )}
 
-            {activeNav === 'reports' && !isAdmin && (
+            {activeNav === 'reports' && (
               <ReportsModule
                 reports={visibleReports}
                 columns={reportColumns}
@@ -1725,6 +1754,7 @@ function AdminWorkspace() {
         productForm={productForm}
         productCategories={productCategories}
         productSaving={productSaving}
+        session={session}
         onProductDrawerClose={closeProductDrawer}
         onSaveProduct={(values) => void handleSaveProduct(values)}
       />

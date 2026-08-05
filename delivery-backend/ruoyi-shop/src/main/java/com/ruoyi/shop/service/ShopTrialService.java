@@ -71,6 +71,11 @@ public class ShopTrialService
         return trialMapper.selectAdminCampaigns(query);
     }
 
+    public ShopTrialCampaign adminCampaign(long campaignId)
+    {
+        return requireCampaign(trialMapper.selectAdminCampaign(campaignId));
+    }
+
     public ShopTrialCampaign merchantCampaign(long campaignId)
     {
         ShopMerchant merchant = merchantService.currentMerchantAccount();
@@ -143,13 +148,30 @@ public class ShopTrialService
     public ShopTrialCampaign updateCampaignStatus(long campaignId, String toStatus, String operator)
     {
         ShopMerchant merchant = merchantService.currentMerchantAccount();
+        return updateCampaignStatusForMerchant(merchant.getMerchantId(), campaignId, toStatus, operator, false);
+    }
+
+    @Transactional
+    public ShopTrialCampaign adminUpdateCampaignStatus(long campaignId, String toStatus, String operator)
+    {
+        if (RECRUITING.equals(toStatus))
+        {
+            throw new ServiceException("管理员不能代商家发布试用招募");
+        }
+        ShopTrialCampaign campaign = adminCampaign(campaignId);
+        return updateCampaignStatusForMerchant(campaign.getMerchantId(), campaignId, toStatus, operator, true);
+    }
+
+    private ShopTrialCampaign updateCampaignStatusForMerchant(long merchantId, long campaignId,
+            String toStatus, String operator, boolean adminOperation)
+    {
         ShopTrialCampaign campaign = requireCampaign(
-                trialMapper.selectMerchantCampaign(merchant.getMerchantId(), campaignId));
+                trialMapper.selectMerchantCampaign(merchantId, campaignId));
         String expectedFrom;
         if (RECRUITING.equals(toStatus))
         {
             expectedFrom = DRAFT;
-            if (trialMapper.lockProductForCampaign(merchant.getMerchantId(), campaignId) == null)
+            if (trialMapper.lockProductForCampaign(merchantId, campaignId) == null)
             {
                 throw new ServiceException("试用招募不存在");
             }
@@ -157,7 +179,8 @@ public class ShopTrialService
             {
                 throw new ServiceException("申请截止日期已过，不能发布招募");
             }
-            ShopProduct product = productService.merchantProduct(campaign.getProductId());
+            ShopProduct product = adminOperation ? productService.adminProduct(campaign.getProductId())
+                    : productService.merchantProduct(campaign.getProductId());
             if (!ShopProductService.ON_SALE.equals(product.getStatus()))
             {
                 throw new ServiceException("商品已上架时才能发布试用招募");
@@ -176,17 +199,23 @@ public class ShopTrialService
         {
             throw new ServiceException("活动状态无效");
         }
-        if (trialMapper.updateCampaignStatus(merchant.getMerchantId(), campaignId,
+        if (trialMapper.updateCampaignStatus(merchantId, campaignId,
                 expectedFrom, toStatus, operator) == 0)
         {
             throw new ServiceException("当前活动状态不能执行该操作");
         }
-        return merchantCampaign(campaignId);
+        return adminOperation ? adminCampaign(campaignId)
+                : requireCampaign(trialMapper.selectMerchantCampaign(merchantId, campaignId));
     }
 
     public List<ShopTrialApplication> merchantApplications(long merchantId, Long campaignId, String status)
     {
         return trialMapper.selectMerchantApplications(merchantId, campaignId, status);
+    }
+
+    public List<ShopTrialApplication> adminApplications(Long campaignId, String status)
+    {
+        return trialMapper.selectAdminApplications(campaignId, status);
     }
 
     @Transactional
@@ -251,16 +280,29 @@ public class ShopTrialService
     public ShopTrialApplication auditApplication(long applicationId, ShopTrialAuditBody body)
     {
         ShopMerchant merchant = merchantService.currentMerchantAccount();
-        if (trialMapper.lockCampaignForApplication(merchant.getMerchantId(), applicationId) == null)
+        return auditApplicationForMerchant(merchant.getMerchantId(), applicationId, body);
+    }
+
+    @Transactional
+    public ShopTrialApplication adminAuditApplication(long applicationId, ShopTrialAuditBody body)
+    {
+        ShopTrialApplication application = requireApplication(trialMapper.selectAdminApplication(applicationId));
+        return auditApplicationForMerchant(application.getMerchantId(), applicationId, body);
+    }
+
+    private ShopTrialApplication auditApplicationForMerchant(long merchantId, long applicationId,
+            ShopTrialAuditBody body)
+    {
+        if (trialMapper.lockCampaignForApplication(merchantId, applicationId) == null)
         {
             throw new ServiceException("试用申请不存在");
         }
-        requireApplication(trialMapper.selectMerchantApplication(merchant.getMerchantId(), applicationId));
+        requireApplication(trialMapper.selectMerchantApplication(merchantId, applicationId));
         if ("REJECTED".equals(body.getDecision()) && StringUtils.isEmpty(StringUtils.trim(body.getAuditRemark())))
         {
             throw new ServiceException("驳回试用申请时必须填写原因");
         }
-        if (trialMapper.auditApplication(merchant.getMerchantId(), applicationId,
+        if (trialMapper.auditApplication(merchantId, applicationId,
                 body.getDecision(), StringUtils.trim(body.getAuditRemark())) == 0)
         {
             throw new ServiceException("申请状态已变化或试用名额已满");
@@ -269,7 +311,7 @@ public class ShopTrialService
         {
             closeEndedRecruitingCampaigns();
         }
-        return requireApplication(trialMapper.selectMerchantApplication(merchant.getMerchantId(), applicationId));
+        return requireApplication(trialMapper.selectMerchantApplication(merchantId, applicationId));
     }
 
     @Transactional
@@ -284,18 +326,31 @@ public class ShopTrialService
     public ShopTrialApplication shipApplication(long applicationId, ShopTrialShipBody body)
     {
         ShopMerchant merchant = merchantService.currentMerchantAccount();
+        return shipApplicationForMerchant(merchant.getMerchantId(), applicationId, body);
+    }
+
+    @Transactional
+    public ShopTrialApplication adminShipApplication(long applicationId, ShopTrialShipBody body)
+    {
+        ShopTrialApplication application = requireApplication(trialMapper.selectAdminApplication(applicationId));
+        return shipApplicationForMerchant(application.getMerchantId(), applicationId, body);
+    }
+
+    private ShopTrialApplication shipApplicationForMerchant(long merchantId, long applicationId,
+            ShopTrialShipBody body)
+    {
         ShopTrialApplication application = requireApplication(
-                trialMapper.selectMerchantApplication(merchant.getMerchantId(), applicationId));
+                trialMapper.selectMerchantApplication(merchantId, applicationId));
         if (!ONLINE.equals(application.getTrialType()))
         {
             throw new ServiceException("线下试用审核通过后即可发布报告，不需要发货");
         }
-        if (trialMapper.shipApplication(merchant.getMerchantId(), applicationId,
+        if (trialMapper.shipApplication(merchantId, applicationId,
                 StringUtils.trim(body.getTrackingNo())) == 0)
         {
             throw new ServiceException("只有已通过的试用申请可以发货");
         }
-        return requireApplication(trialMapper.selectMerchantApplication(merchant.getMerchantId(), applicationId));
+        return requireApplication(trialMapper.selectMerchantApplication(merchantId, applicationId));
     }
 
     @Transactional
@@ -351,17 +406,31 @@ public class ShopTrialService
     public ShopTrialApplication redeemApplication(String redeemCode)
     {
         ShopMerchant merchant = merchantService.currentMerchantAccount();
+        return redeemApplicationForMerchant(merchant.getMerchantId(), redeemCode);
+    }
+
+    @Transactional
+    public ShopTrialApplication adminRedeemApplication(String redeemCode)
+    {
+        String normalized = StringUtils.trim(redeemCode);
+        ShopTrialApplication application = requireApplication(
+                trialMapper.selectAdminApplicationByRedeemCode(normalized));
+        return redeemApplicationForMerchant(application.getMerchantId(), normalized);
+    }
+
+    private ShopTrialApplication redeemApplicationForMerchant(long merchantId, String redeemCode)
+    {
         String normalized = StringUtils.trim(redeemCode);
         if (StringUtils.isEmpty(normalized))
         {
             throw new ServiceException("核销码不能为空");
         }
-        if (trialMapper.redeemApplication(merchant.getMerchantId(), normalized) == 0)
+        if (trialMapper.redeemApplication(merchantId, normalized) == 0)
         {
             throw new ServiceException("核销码无效或不属于当前商家");
         }
         return requireApplication(
-                trialMapper.selectMerchantApplicationByRedeemCode(merchant.getMerchantId(), normalized));
+                trialMapper.selectMerchantApplicationByRedeemCode(merchantId, normalized));
     }
 
     @Transactional
@@ -431,6 +500,26 @@ public class ShopTrialService
     public List<ShopVerificationReport> merchantReports(long merchantId)
     {
         return withResources(trialMapper.selectMerchantReports(merchantId), null);
+    }
+
+    public List<ShopVerificationReport> adminReports()
+    {
+        return withResources(trialMapper.selectAdminReports(), null);
+    }
+
+    @Transactional
+    public ShopVerificationReport adminDeleteReport(long reportId, long adminUserId, String operator)
+    {
+        ShopVerificationReport report = reportWithResources(reportId, null);
+        if (!"PUBLISHED".equals(report.getStatus()))
+        {
+            throw new ServiceException("甄客验已经删除");
+        }
+        if (trialMapper.logicalDeleteReport(reportId, adminUserId, operator) == 0)
+        {
+            throw new ServiceException("甄客验状态已变化，请刷新后重试");
+        }
+        return reportWithResources(reportId, null);
     }
 
     public ShopVerificationReport publishedReport(long reportId)

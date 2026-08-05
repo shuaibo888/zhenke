@@ -15,6 +15,8 @@ public interface ShopTrialMapper {
 
     List<ShopTrialCampaign> selectAdminCampaigns(ShopTrialCampaign query);
 
+    ShopTrialCampaign selectAdminCampaign(Long campaignId);
+
     ShopTrialCampaign selectMerchantCampaign(@Param("merchantId") Long merchantId,
                                              @Param("campaignId") Long campaignId);
 
@@ -39,6 +41,11 @@ public interface ShopTrialMapper {
 
     List<ShopTrialApplication> selectMerchantApplications(@Param("merchantId") Long merchantId,
                                                           @Param("campaignId") Long campaignId, @Param("status") String status);
+
+    List<ShopTrialApplication> selectAdminApplications(@Param("campaignId") Long campaignId,
+                                                        @Param("status") String status);
+
+    ShopTrialApplication selectAdminApplication(Long applicationId);
 
     ShopTrialApplication selectMerchantApplication(@Param("merchantId") Long merchantId,
                                                    @Param("applicationId") Long applicationId);
@@ -74,6 +81,8 @@ public interface ShopTrialMapper {
     ShopTrialApplication selectMerchantApplicationByRedeemCode(@Param("merchantId") Long merchantId,
                                                                @Param("redeemCode") String redeemCode);
 
+    ShopTrialApplication selectAdminApplicationByRedeemCode(String redeemCode);
+
     int countReportByApplication(Long trialApplicationId);
 
     int countReportByOrderItem(Long orderItemId);
@@ -89,6 +98,11 @@ public interface ShopTrialMapper {
     List<ShopVerificationReport> selectUserReports(Long shopUserId);
 
     List<ShopVerificationReport> selectMerchantReports(Long merchantId);
+
+    List<ShopVerificationReport> selectAdminReports();
+
+    int logicalDeleteReport(@Param("reportId") Long reportId, @Param("deletedBy") Long deletedBy,
+                            @Param("deletedByName") String deletedByName);
 
     int countReportUseful(Long reportId);
 

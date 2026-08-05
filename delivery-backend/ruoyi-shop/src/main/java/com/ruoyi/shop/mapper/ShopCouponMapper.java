@@ -7,15 +7,23 @@ import com.ruoyi.shop.domain.ShopCoupon;
 import com.ruoyi.shop.domain.ShopCouponGrant;
 import com.ruoyi.shop.domain.ShopCouponMerchant;
 import com.ruoyi.shop.domain.ShopUserCoupon;
+import com.ruoyi.shop.domain.vo.ShopCouponUserOption;
 
 public interface ShopCouponMapper
 {
     List<ShopCoupon> selectAdminList(ShopCoupon query);
+    List<ShopCoupon> selectMerchantList(@Param("merchantId") Long merchantId,
+                                        @Param("query") ShopCoupon query);
     ShopCoupon selectById(Long couponId);
     ShopCoupon selectByIdForUpdate(Long couponId);
+    ShopCoupon selectMerchantOwnedById(@Param("merchantId") Long merchantId,
+                                       @Param("couponId") Long couponId);
+    ShopCoupon selectMerchantOwnedByIdForUpdate(@Param("merchantId") Long merchantId,
+                                                @Param("couponId") Long couponId);
     List<ShopCouponMerchant> selectMerchantScopes(@Param("couponIds") List<Long> couponIds);
     int countEnabledMerchants(@Param("merchantIds") List<Long> merchantIds);
     int countEnabledUsers(@Param("userIds") List<Long> userIds);
+    List<ShopCouponUserOption> selectEnabledUserOptions(@Param("keyword") String keyword);
     int countEnabledMerchantScopes(Long couponId);
     int insertCoupon(ShopCoupon coupon);
     int updateCoupon(ShopCoupon coupon);

@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.shop.domain.ShopMerchant;
 import com.ruoyi.shop.domain.ShopOrder;
@@ -53,11 +54,32 @@ public class ShopMerchantOrderService
         return logisticsService.query(order.getCarrier(), order.getTrackingNo(), List.of());
     }
 
+    public ShopLogisticsTrace adminOrderLogistics(long orderId)
+    {
+        ShopOrder adminOrder = requireAdminOrder(orderId);
+        ShopOrder order = requireMerchantOrder(adminOrder.getMerchantId(), orderId, false);
+        return logisticsService.query(order.getCarrier(), order.getTrackingNo(), List.of());
+    }
+
     @Transactional
     public ShopOrder ship(long orderId, ShopOrderShipBody body)
     {
         ShopMerchant merchant = merchantService.currentMerchantAccount();
-        long merchantId = merchant.getMerchantId();
+        return shipForMerchant(merchant.getMerchantId(), orderId, body,
+                "MERCHANT", merchant.getMerchantId(), "商家发货");
+    }
+
+    @Transactional
+    public ShopOrder adminShip(long orderId, ShopOrderShipBody body)
+    {
+        ShopOrder adminOrder = requireAdminOrder(orderId);
+        return shipForMerchant(adminOrder.getMerchantId(), orderId, body,
+                "ADMIN", SecurityUtils.getUserId(), "平台管理员发货");
+    }
+
+    private ShopOrder shipForMerchant(long merchantId, long orderId, ShopOrderShipBody body,
+            String operatorType, long operatorId, String remark)
+    {
         ShopOrder order = requireMerchantOrder(merchantId, orderId, true);
         if (!ShopOrderService.PAID.equals(order.getStatus()))
         {
@@ -77,8 +99,9 @@ public class ShopMerchantOrderService
         {
             throw new ServiceException("订单状态已变化，请刷新后重试");
         }
-        insertStatusLog(orderId, ShopOrderService.PAID, ShopOrderService.SHIPPED, merchantId, "商家发货");
-        insertLogisticsEvent(orderId);
+        insertStatusLog(orderId, ShopOrderService.PAID, ShopOrderService.SHIPPED,
+                operatorType, operatorId, remark);
+        insertLogisticsEvent(orderId, operatorType);
         return hydrate(requireMerchantOrder(merchantId, orderId, false));
     }
 
@@ -86,7 +109,25 @@ public class ShopMerchantOrderService
     public ShopOrder auditRefund(long orderId, ShopOrderRefundAuditBody body)
     {
         ShopMerchant merchant = merchantService.currentMerchantAccount();
-        long merchantId = merchant.getMerchantId();
+        return auditRefundForMerchant(merchant.getMerchantId(), orderId, body,
+                merchant.getAdminUserId(), "MERCHANT", merchant.getMerchantId(),
+                "商家审核通过退款申请，等待支付渠道退款结果");
+    }
+
+    @Transactional
+    public ShopOrder adminAuditRefund(long orderId, ShopOrderRefundAuditBody body)
+    {
+        ShopOrder adminOrder = requireAdminOrder(orderId);
+        Long adminUserId = SecurityUtils.getUserId();
+        return auditRefundForMerchant(adminOrder.getMerchantId(), orderId, body,
+                adminUserId, "ADMIN", adminUserId,
+                "平台管理员审核通过退款申请，等待支付渠道退款结果");
+    }
+
+    private ShopOrder auditRefundForMerchant(long merchantId, long orderId,
+            ShopOrderRefundAuditBody body, Long auditBy, String operatorType,
+            long operatorId, String approvedRemark)
+    {
         ShopOrder order = requireMerchantOrder(merchantId, orderId, true);
         ShopOrderRefund refund = orderMapper.selectLatestRefund(orderId);
         if (refund == null || !ShopOrderService.REFUND_PENDING.equals(refund.getRefundStatus())
@@ -113,7 +154,6 @@ public class ShopMerchantOrderService
         {
             throw new ServiceException("驳回退款时必须填写审核说明");
         }
-        Long auditBy = merchant.getAdminUserId();
         String refundStatus = ShopOrderService.REFUND_AUDIT_APPROVED.equals(decision)
                 ? ShopOrderService.REFUND_STATUS_REFUNDING : ShopOrderService.REFUND_REJECTED;
         if (orderMapper.updateRefundAudit(refund.getRefundId(), merchantId,
@@ -129,7 +169,7 @@ public class ShopMerchantOrderService
                 throw new ServiceException("订单状态已变化，请刷新后重试");
             }
             insertStatusLog(orderId, ShopOrderService.RECEIVED, ShopOrderService.REFUNDING,
-                    merchantId, "商家审核通过退款申请，等待支付渠道退款结果");
+                    operatorType, operatorId, approvedRemark);
         }
         return hydrate(requireMerchantOrder(merchantId, orderId, false));
     }
@@ -155,6 +195,16 @@ public class ShopMerchantOrderService
         return order;
     }
 
+    private ShopOrder requireAdminOrder(long orderId)
+    {
+        ShopOrder order = orderMapper.selectAdminOrder(orderId);
+        if (order == null)
+        {
+            throw new ServiceException("订单不存在");
+        }
+        return order;
+    }
+
     private List<ShopOrder> hydrateList(List<ShopOrder> orders)
     {
         if (orders == null || orders.isEmpty())
@@ -169,28 +219,30 @@ public class ShopMerchantOrderService
         return orders;
     }
 
-    private void insertLogisticsEvent(long orderId)
+    private void insertLogisticsEvent(long orderId, String operatorType)
     {
+        boolean adminOperation = "ADMIN".equals(operatorType);
         ShopOrderLogisticsEvent event = new ShopOrderLogisticsEvent();
         event.setOrderId(orderId);
-        event.setEventCode("MERCHANT_SHIPPED");
-        event.setDescription("商家已发货，等待承运商揽收");
+        event.setEventCode(adminOperation ? "ADMIN_SHIPPED" : "MERCHANT_SHIPPED");
+        event.setDescription(adminOperation ? "平台管理员已发货，等待承运商揽收" : "商家已发货，等待承运商揽收");
         event.setSource("SYSTEM");
-        event.setSourceEventId("MERCHANT_SHIPPED");
+        event.setSourceEventId(adminOperation ? "ADMIN_SHIPPED" : "MERCHANT_SHIPPED");
         if (orderMapper.insertLogisticsEvent(event) == 0)
         {
             throw new ServiceException("订单物流事件创建失败");
         }
     }
 
-    private void insertStatusLog(long orderId, String fromStatus, String toStatus, long merchantId, String remark)
+    private void insertStatusLog(long orderId, String fromStatus, String toStatus,
+            String operatorType, long operatorId, String remark)
     {
         ShopOrderStatusLog log = new ShopOrderStatusLog();
         log.setOrderId(orderId);
         log.setFromStatus(fromStatus);
         log.setToStatus(toStatus);
-        log.setOperatorType("MERCHANT");
-        log.setOperatorId(merchantId);
+        log.setOperatorType(operatorType);
+        log.setOperatorId(operatorId);
         log.setRemark(remark);
         if (orderMapper.insertStatusLog(log) == 0)
         {

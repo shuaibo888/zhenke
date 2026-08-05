@@ -93,6 +93,9 @@
         <result property="aiScoredAt" column="ai_scored_at" />
         <result property="status" column="report_status" />
         <result property="publishedAt" column="published_at" />
+        <result property="deletedBy" column="deleted_by" />
+        <result property="deletedByName" column="deleted_by_name" />
+        <result property="deletedAt" column="deleted_at" />
     </resultMap>
 
     <resultMap id="ShopHomeFeedResult" type="ShopHomeFeedItem">
@@ -167,6 +170,11 @@
     <select id="selectMerchantCampaign" resultMap="ShopTrialCampaignResult">
         <include refid="selectCampaign" />
         where c.merchant_id = #{merchantId} and c.campaign_id = #{campaignId}
+    </select>
+
+    <select id="selectAdminCampaign" parameterType="Long" resultMap="ShopTrialCampaignResult">
+        <include refid="selectCampaign" />
+        where c.campaign_id = #{campaignId}
     </select>
 
     <select id="selectPublicCampaign" parameterType="Long" resultMap="ShopTrialCampaignResult">
@@ -274,6 +282,20 @@
         order by a.application_id desc
     </select>
 
+    <select id="selectAdminApplications" resultMap="ShopTrialApplicationResult">
+        <include refid="selectApplication" />
+        <where>
+            <if test="campaignId != null">a.campaign_id = #{campaignId}</if>
+            <if test="status != null and status != ''">and a.status = #{status}</if>
+        </where>
+        order by a.application_id desc
+    </select>
+
+    <select id="selectAdminApplication" parameterType="Long" resultMap="ShopTrialApplicationResult">
+        <include refid="selectApplication" />
+        where a.application_id = #{applicationId}
+    </select>
+
     <select id="selectMerchantApplication" resultMap="ShopTrialApplicationResult">
         <include refid="selectApplication" />
         where c.merchant_id = #{merchantId} and a.application_id = #{applicationId}
@@ -375,6 +397,11 @@
         where c.merchant_id = #{merchantId} and a.redeem_code = #{redeemCode}
     </select>
 
+    <select id="selectAdminApplicationByRedeemCode" parameterType="String" resultMap="ShopTrialApplicationResult">
+        <include refid="selectApplication" />
+        where a.redeem_code = #{redeemCode}
+    </select>
+
     <select id="countReportByApplication" parameterType="Long" resultType="int">
         select count(1) from shop_verification_report where trial_application_id = #{trialApplicationId}
     </select>
@@ -420,7 +447,8 @@
                 r.report_title, r.experience, r.shortcoming, r.fit_crowd, r.recommend,
                 r.product_quality, r.logistics_service, r.service_attitude,
                 r.ai_score, r.ai_score_status, current_score.reason as ai_score_reason, r.ai_scored_at,
-                r.status as report_status, r.published_at
+                r.status as report_status, r.published_at,
+                r.deleted_by, r.deleted_by_name, r.deleted_at
         from shop_verification_report r
         inner join shop_product p on p.product_id = r.product_id
         inner join shop_merchant m on m.merchant_id = p.merchant_id
@@ -437,14 +465,26 @@
     </select>
 
     <select id="selectUserReports" parameterType="Long" resultMap="ShopVerificationReportResult">
-        <include refid="selectReport" /> where r.shop_user_id = #{shopUserId}
+        <include refid="selectReport" /> where r.shop_user_id = #{shopUserId} and r.status = 'PUBLISHED'
         order by r.report_id desc
     </select>
 
     <select id="selectMerchantReports" parameterType="Long" resultMap="ShopVerificationReportResult">
-        <include refid="selectReport" /> where p.merchant_id = #{merchantId}
+        <include refid="selectReport" /> where p.merchant_id = #{merchantId} and r.status = 'PUBLISHED'
         order by r.report_id desc
     </select>
+
+    <select id="selectAdminReports" resultMap="ShopVerificationReportResult">
+        <include refid="selectReport" />
+        order by r.report_id desc
+    </select>
+
+    <update id="logicalDeleteReport">
+        update shop_verification_report
+        set status = 'DELETED', deleted_by = #{deletedBy}, deleted_by_name = #{deletedByName},
+            deleted_at = sysdate(), update_time = sysdate()
+        where report_id = #{reportId} and status = 'PUBLISHED'
+    </update>
 
     <select id="countReportUseful" parameterType="Long" resultType="int">
         select count(1) from shop_verification_report_useful where report_id = #{reportId}

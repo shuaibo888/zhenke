@@ -118,26 +118,53 @@ public class ShopProductService
     public ShopProduct update(long productId, ShopProductBody body, String operator)
     {
         ShopMerchant merchant = merchantService.currentMerchantAccount();
-        requireVisibleProduct(productMapper.selectMerchantProduct(merchant.getMerchantId(), productId));
+        return updateForMerchant(merchant.getMerchantId(), productId, body, operator, false);
+    }
+
+    @Transactional
+    public ShopProduct adminUpdate(long productId, ShopProductBody body, String operator)
+    {
+        ShopProduct existing = adminProduct(productId);
+        return updateForMerchant(existing.getMerchantId(), productId, body, operator, true);
+    }
+
+    private ShopProduct updateForMerchant(long merchantId, long productId, ShopProductBody body,
+            String operator, boolean adminResult)
+    {
+        requireVisibleProduct(productMapper.selectMerchantProduct(merchantId, productId));
         requireEnabledCategory(body.getCategoryId());
         ShopProduct product = fromBody(body);
         product.setProductId(productId);
-        product.setMerchantId(merchant.getMerchantId());
+        product.setMerchantId(merchantId);
         product.setUpdateBy(operator);
         if (productMapper.updateMerchantProduct(product) == 0)
         {
             throw new ServiceException("商品不存在");
         }
         replaceImages(productId, body.getMainImageUrls(), body.getDetailImageUrls());
-        return merchantProduct(productId);
+        return adminResult ? adminProduct(productId)
+                : requireVisibleProduct(productMapper.selectMerchantProduct(merchantId, productId));
     }
 
     @Transactional
     public ShopProduct updateStatus(long productId, String status, String operator)
     {
         ShopMerchant merchant = merchantService.currentMerchantAccount();
+        return updateStatusForMerchant(merchant.getMerchantId(), productId, status, operator, false);
+    }
+
+    @Transactional
+    public ShopProduct adminUpdateStatus(long productId, String status, String operator)
+    {
+        ShopProduct existing = adminProduct(productId);
+        return updateStatusForMerchant(existing.getMerchantId(), productId, status, operator, true);
+    }
+
+    private ShopProduct updateStatusForMerchant(long merchantId, long productId, String status,
+            String operator, boolean adminResult)
+    {
         ShopProduct product = requireVisibleProduct(
-                productMapper.selectMerchantProduct(merchant.getMerchantId(), productId));
+                productMapper.selectMerchantProduct(merchantId, productId));
         if (ON_SALE.equals(status))
         {
             if (product.getStock() == null || product.getStock() <= 0)
@@ -150,11 +177,12 @@ public class ShopProductService
         {
             throw new ServiceException("商品状态无效");
         }
-        if (productMapper.updateMerchantProductStatus(merchant.getMerchantId(), productId, status, operator) == 0)
+        if (productMapper.updateMerchantProductStatus(merchantId, productId, status, operator) == 0)
         {
             throw new ServiceException("商品不存在");
         }
-        return merchantProduct(productId);
+        return adminResult ? adminProduct(productId)
+                : requireVisibleProduct(productMapper.selectMerchantProduct(merchantId, productId));
     }
 
     private ShopProduct fromBody(ShopProductBody body)

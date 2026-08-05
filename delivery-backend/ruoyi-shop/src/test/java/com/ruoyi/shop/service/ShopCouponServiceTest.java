@@ -14,13 +14,14 @@ import com.ruoyi.shop.mapper.ShopCouponMapper;
 class ShopCouponServiceTest
 {
     private final ShopCouponMapper couponMapper = mock(ShopCouponMapper.class);
-    private final ShopCouponService couponService = new ShopCouponService(couponMapper);
+    private final ShopMerchantService merchantService = mock(ShopMerchantService.class);
+    private final ShopCouponService couponService = new ShopCouponService(couponMapper, merchantService);
 
     @Test
-    void rejectsEndTimeThatIsNotAfterStartTime()
+    void rejectsEndDateBeforeStartDate()
     {
         ShopCouponBody body = validBody();
-        body.setEndTime(body.getStartTime());
+        body.setEndTime(Date.from(Instant.parse("2026-07-31T00:00:00Z")));
 
         assertThrows(ServiceException.class, () -> couponService.create(body, "admin"));
     }

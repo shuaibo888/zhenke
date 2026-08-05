@@ -26,7 +26,7 @@ export default function OrdersModule(props: OrdersModuleProps) {
       <div className={styles.tableHeader}>
         <div>
           <p className={styles.eyebrow}>
-            {props.isAdmin ? '平台全部真实订单，仅提供查询视角' : '真实订单、发货与收货地址'}
+            {props.isAdmin ? '平台全部真实订单、发货、物流与退款审核' : '真实订单、发货与收货地址'}
           </p>
           <h3>订单管理</h3>
         </div>

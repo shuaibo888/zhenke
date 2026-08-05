@@ -171,8 +171,7 @@ export default function OrderDialogs(props: OrderDialogsProps) {
                     <span>物流单号</span>
                     <strong>{props.detailOrder.trackingNo}</strong>
                   </div>
-                  {!props.isAdmin && (
-                    <Button
+                  <Button
                       type="primary"
                       ghost
                       icon={<TruckOutlined />}
@@ -180,8 +179,7 @@ export default function OrderDialogs(props: OrderDialogsProps) {
                       onClick={() => props.onOpenLogistics(props.detailOrder!)}
                     >
                       查看物流
-                    </Button>
-                  )}
+                  </Button>
                 </div>
               </section>
             )}
@@ -215,7 +213,7 @@ export default function OrderDialogs(props: OrderDialogsProps) {
                   {props.detailOrder.refundAuditRemark && <p>审核说明：{props.detailOrder.refundAuditRemark}</p>}
                   {props.detailOrder.refundCompletedAt && <p>退款完成时间：{props.detailOrder.refundCompletedAt}</p>}
                 </div>
-                {!props.isAdmin && props.detailOrder.refundStatus === 'PENDING' && (
+                {props.detailOrder.refundStatus === 'PENDING' && (
                   <Button type="primary" danger onClick={() => props.onOpenRefundAudit(props.detailOrder!)}>
                     审核退款
                   </Button>

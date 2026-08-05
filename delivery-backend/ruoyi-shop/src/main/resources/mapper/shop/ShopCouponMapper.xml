@@ -3,6 +3,7 @@
 <mapper namespace="com.ruoyi.shop.mapper.ShopCouponMapper">
     <resultMap id="ShopCouponResult" type="ShopCoupon">
         <id property="couponId" column="coupon_id" />
+        <result property="ownerMerchantId" column="owner_merchant_id" />
         <result property="couponName" column="coupon_name" />
         <result property="description" column="description" />
         <result property="discountAmount" column="discount_amount" />
@@ -58,7 +59,7 @@
     </resultMap>
 
     <sql id="selectCoupon">
-        select coupon_id, coupon_name, description, discount_amount, minimum_spend,
+        select coupon_id, owner_merchant_id, coupon_name, description, discount_amount, minimum_spend,
                start_time, end_time, status, total_stock, issued_count,
                create_by, create_time, update_by, update_time
         from shop_coupon
@@ -76,6 +77,18 @@
         order by coupon_id desc
     </select>
 
+    <select id="selectMerchantList" resultMap="ShopCouponResult">
+        <include refid="selectCoupon" />
+        <where>
+            owner_merchant_id = #{merchantId} and del_flag = '0'
+            <if test="query.couponName != null and query.couponName != ''">
+                and coupon_name like concat('%', #{query.couponName}, '%')
+            </if>
+            <if test="query.status != null and query.status != ''">and status = #{query.status}</if>
+        </where>
+        order by coupon_id desc
+    </select>
+
     <select id="selectById" parameterType="Long" resultMap="ShopCouponResult">
         <include refid="selectCoupon" />
         where coupon_id = #{couponId} and del_flag = '0'
@@ -84,6 +97,17 @@
     <select id="selectByIdForUpdate" parameterType="Long" resultMap="ShopCouponResult">
         <include refid="selectCoupon" />
         where coupon_id = #{couponId} and del_flag = '0'
+        for update
+    </select>
+
+    <select id="selectMerchantOwnedById" resultMap="ShopCouponResult">
+        <include refid="selectCoupon" />
+        where coupon_id = #{couponId} and owner_merchant_id = #{merchantId} and del_flag = '0'
+    </select>
+
+    <select id="selectMerchantOwnedByIdForUpdate" resultMap="ShopCouponResult">
+        <include refid="selectCoupon" />
+        where coupon_id = #{couponId} and owner_merchant_id = #{merchantId} and del_flag = '0'
         for update
     </select>
 
@@ -118,6 +142,17 @@
         and status = '0' and del_flag = '0'
     </select>
 
+    <select id="selectEnabledUserOptions" resultType="com.ruoyi.shop.domain.vo.ShopCouponUserOption">
+        select user_id as userId, user_name as userName, nick_name as nickName
+        from shop_user
+        where status = '0' and del_flag = '0'
+        <if test="keyword != null and keyword != ''">
+            and (user_name like concat('%', #{keyword}, '%')
+                 or nick_name like concat('%', #{keyword}, '%'))
+        </if>
+        order by user_id desc
+    </select>
+
     <select id="countEnabledMerchantScopes" parameterType="Long" resultType="int">
         select count(1)
         from shop_coupon_merchant cm
@@ -128,10 +163,10 @@
 
     <insert id="insertCoupon" parameterType="ShopCoupon" useGeneratedKeys="true" keyProperty="couponId">
         insert into shop_coupon
-        (coupon_name, description, discount_amount, minimum_spend, start_time, end_time,
+        (owner_merchant_id, coupon_name, description, discount_amount, minimum_spend, start_time, end_time,
          status, total_stock, issued_count, del_flag, create_by, create_time, update_by, update_time)
         values
-        (#{couponName}, #{description}, #{discountAmount}, #{minimumSpend}, #{startTime}, #{endTime},
+        (#{ownerMerchantId}, #{couponName}, #{description}, #{discountAmount}, #{minimumSpend}, #{startTime}, #{endTime},
          #{status}, #{totalStock}, 0, '0', #{createBy}, sysdate(), #{updateBy}, sysdate())
     </insert>
 

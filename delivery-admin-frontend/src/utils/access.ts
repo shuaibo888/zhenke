@@ -16,10 +16,10 @@ export function filterRowsForSession<T extends MerchantOwnedRow>(rows: T[], sess
 }
 
 export function getAvailableNavKeys(session: AdminSession | null): NavKey[] {
-  const baseKeys: NavKey[] = ['dashboard', 'products', 'trials', 'orders', 'reports'];
+  const baseKeys: NavKey[] = ['dashboard', 'coupons', 'products', 'trials', 'orders', 'reports'];
 
   if (hasGlobalAccess(session)) {
-    return ['dashboard', 'users', 'coupons', 'products', 'trials', 'orders', 'merchants'];
+    return ['dashboard', 'users', 'coupons', 'products', 'trials', 'orders', 'reports', 'merchants'];
   }
 
   return baseKeys;

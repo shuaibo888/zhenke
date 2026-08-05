@@ -15,7 +15,7 @@ import {
 } from 'antd';
 import type { FormInstance, UploadFile } from 'antd';
 import { useState } from 'react';
-import type { ProductCategory, ProductCategoryOption } from '@/types';
+import type { AdminSession, ProductCategory, ProductCategoryOption } from '@/types';
 import { uploadAdminFile } from '@/services/adminApi';
 import styles from '@/pages/index.less';
 
@@ -45,6 +45,7 @@ export interface ProductDialogsProps {
   productForm: FormInstance<ProductFormValues>;
   productCategories: ProductCategory[];
   productSaving: boolean;
+  session: AdminSession;
   onProductDrawerClose: () => void;
   onSaveProduct: (values: ProductFormValues) => void;
 }
@@ -59,6 +60,8 @@ interface ProductImageUploaderProps {
   maxCount: number;
   value?: string | string[];
   onChange?: (value: string | string[]) => void;
+  session: AdminSession;
+  productId: number | null;
 }
 
 function validateProductImage(file: File) {
@@ -70,7 +73,7 @@ function validateProductImage(file: File) {
   }
 }
 
-function ProductImageUploader({ kind, maxCount, value, onChange }: ProductImageUploaderProps) {
+function ProductImageUploader({ kind, maxCount, value, onChange, session, productId }: ProductImageUploaderProps) {
   const { message } = AntApp.useApp();
   const [uploading, setUploading] = useState(false);
   const urls = Array.isArray(value) ? value : value ? [value] : [];
@@ -113,7 +116,7 @@ function ProductImageUploader({ kind, maxCount, value, onChange }: ProductImageU
         customRequest={async (options) => {
           setUploading(true);
           try {
-            const url = await uploadAdminFile(options.file as File, kind);
+            const url = await uploadAdminFile(session, productId, options.file as File, kind);
             updateUrls(kind === 'COVER' ? [url] : [...urls.filter((item) => item !== url), url]);
             options.onSuccess?.({ url });
             message.success(`${label}上传成功`);
@@ -243,21 +246,21 @@ export default function ProductDialogs(props: ProductDialogsProps) {
             extra="1 张；支持 JPG/PNG，单张不超过 5MB。建议使用清晰方图，系统会自动适配展示。"
             rules={[{ required: true, message: '请上传商品封面' }, { max: 500 }]}
           >
-            <ProductImageUploader kind="COVER" maxCount={1} />
+            <ProductImageUploader kind="COVER" maxCount={1} session={props.session} productId={props.editingProductId} />
           </Form.Item>
           <Form.Item
             name="mainImageUrls"
             label="商品主图"
             extra="最多 6 张；用于商品详情页轮播。支持 JPG/PNG，单张不超过 5MB，系统会自动适配展示。"
           >
-            <ProductImageUploader kind="MAIN" maxCount={6} />
+            <ProductImageUploader kind="MAIN" maxCount={6} session={props.session} productId={props.editingProductId} />
           </Form.Item>
           <Form.Item
             name="detailImageUrls"
             label="商品详情图"
             extra="最多 6 张；普通图片和长图均可。支持 JPG/PNG，单张不超过 5MB。"
           >
-            <ProductImageUploader kind="DETAIL" maxCount={6} />
+            <ProductImageUploader kind="DETAIL" maxCount={6} session={props.session} productId={props.editingProductId} />
           </Form.Item>
           <Form.Item name="categoryId" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
             <Select

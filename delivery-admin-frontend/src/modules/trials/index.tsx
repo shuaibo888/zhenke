@@ -52,8 +52,7 @@ export default function TrialsModule(props: TrialsModuleProps) {
           onChange: props.onLoadTrials,
         }}
       />
-      {!props.isAdmin && (
-        <div style={{ marginTop: 28 }}>
+      <div style={{ marginTop: 28 }}>
           <div className={styles.tableHeader}>
             <div>
               <p className={styles.eyebrow}>线上审核后寄送，线下审核后到店出示核销码，扫码核销后获得报告资格</p>
@@ -83,8 +82,7 @@ export default function TrialsModule(props: TrialsModuleProps) {
               onChange: props.onLoadApplications,
             }}
           />
-        </div>
-      )}
+      </div>
     </section>
   );
 }

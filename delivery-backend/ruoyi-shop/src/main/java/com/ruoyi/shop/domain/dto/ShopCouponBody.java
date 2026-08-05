@@ -9,7 +9,6 @@ import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -33,11 +32,11 @@ public class ShopCouponBody
     @Digits(integer = 8, fraction = 2, message = "最低消费金额最多8位整数和2位小数")
     private BigDecimal minimumSpend;
 
-    @NotNull(message = "请选择开始时间")
+    @NotNull(message = "请选择开始日期")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date startTime;
 
-    @NotNull(message = "请选择结束时间")
+    @NotNull(message = "请选择结束日期")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date endTime;
 
@@ -50,7 +49,6 @@ public class ShopCouponBody
     @Max(value = 100000000, message = "优惠券库存过大")
     private Integer totalStock;
 
-    @NotEmpty(message = "请至少选择一个适用商家")
     @Size(max = 200, message = "单张优惠券最多指定200个商家")
     private List<@NotNull(message = "适用商家不能为空") Long> merchantIds;
 

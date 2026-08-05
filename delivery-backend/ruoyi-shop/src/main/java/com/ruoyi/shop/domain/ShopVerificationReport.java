@@ -42,6 +42,9 @@ public class ShopVerificationReport
     private boolean usefulByMe;
     private String status;
     private Date publishedAt;
+    private Long deletedBy;
+    private String deletedByName;
+    private Date deletedAt;
     private List<ShopVerificationReportResource> resources;
 
     public Long getReportId() { return reportId; }
@@ -112,6 +115,12 @@ public class ShopVerificationReport
     public void setStatus(String status) { this.status = status; }
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") public Date getPublishedAt() { return publishedAt; }
     public void setPublishedAt(Date publishedAt) { this.publishedAt = publishedAt; }
+    public Long getDeletedBy() { return deletedBy; }
+    public void setDeletedBy(Long deletedBy) { this.deletedBy = deletedBy; }
+    public String getDeletedByName() { return deletedByName; }
+    public void setDeletedByName(String deletedByName) { this.deletedByName = deletedByName; }
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") public Date getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(Date deletedAt) { this.deletedAt = deletedAt; }
     public List<ShopVerificationReportResource> getResources() { return resources; }
     public void setResources(List<ShopVerificationReportResource> resources) { this.resources = resources; }
 }

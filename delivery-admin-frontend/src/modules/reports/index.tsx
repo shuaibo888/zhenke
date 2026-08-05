@@ -19,7 +19,7 @@ export default function ReportsModule(props: ReportsModuleProps) {
       <div className={styles.tableHeader}>
         <div>
           <p className={styles.eyebrow}>真实体验和必须展示的不足</p>
-          <h3>验证报告</h3>
+          <h3>甄客验管理</h3>
         </div>
         <Button icon={<ReloadOutlined />} onClick={() => props.onLoad(props.page)}>刷新报告</Button>
       </div>

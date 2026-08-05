@@ -8,6 +8,7 @@ import {
 import {
   App as AntApp,
   Button,
+  DatePicker,
   Drawer,
   Form,
   Input,
@@ -19,19 +20,21 @@ import {
   Tag,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
 import {
   createCoupon,
   fetchCouponGrants,
+  fetchCouponUserOptions,
   fetchCoupons,
   fetchMerchants,
-  fetchShopUsers,
   grantCoupon,
   updateCoupon,
   updateCouponStatus,
   type CouponWriteBody,
 } from '@/services/adminApi';
 import type {
+  AdminSession,
   ManagedCoupon,
   ManagedCouponGrant,
   MerchantAccount,
@@ -68,14 +71,16 @@ function formatDateTime(value?: string, emptyText = '-') {
   return match ? `${match[1]} ${match[2]}` : value;
 }
 
-function toDateTimeLocal(value?: string) {
-  if (!value) return '';
-  return value.replace(' ', 'T').slice(0, 16);
+function formatDate(value?: string, emptyText = '-') {
+  return value ? value.slice(0, 10) : emptyText;
 }
 
-function toApiDateTime(value: string) {
-  const normalized = value.trim().replace('T', ' ');
-  return normalized.length === 16 ? `${normalized}:00` : normalized;
+function toDateInput(value?: string) {
+  return value?.slice(0, 10) ?? '';
+}
+
+function toApiDate(value: string, endOfDay = false) {
+  return `${value.trim()} ${endOfDay ? '23:59:59' : '00:00:00'}`;
 }
 
 function getCouponStatusMeta(coupon: ManagedCoupon) {
@@ -86,8 +91,13 @@ function getCouponStatusMeta(coupon: ManagedCoupon) {
   return { label: '生效中', color: 'green' };
 }
 
-export default function CouponModule() {
+export interface CouponModuleProps {
+  session: AdminSession;
+}
+
+export default function CouponModule({ session }: CouponModuleProps) {
   const { message, modal } = AntApp.useApp();
+  const isAdmin = session.loginType === 'admin';
   const [couponForm] = Form.useForm<CouponFormValues>();
   const [couponGrantForm] = Form.useForm<CouponGrantFormValues>();
   const [coupons, setCoupons] = useState<ManagedCoupon[]>([]);
@@ -115,7 +125,7 @@ export default function CouponModule() {
   ) => {
     setLoading(true);
     try {
-      const result = await fetchCoupons({
+      const result = await fetchCoupons(session, {
         pageNum: nextPage,
         pageSize: PAGE_SIZE,
         keyword: filters.keyword.trim() || undefined,
@@ -152,12 +162,7 @@ export default function CouponModule() {
 
   const loadUserOptions = async (search = '') => {
     try {
-      const result = await fetchShopUsers({
-        pageNum: 1,
-        pageSize: 50,
-        keyword: search.trim() || undefined,
-        status: '0',
-      });
+      const result = await fetchCouponUserOptions(session, search.trim() || undefined);
       setUserOptions((current) => {
         const merged = new Map(current.map((user) => [user.userId, user]));
         result.rows.forEach((user) => merged.set(user.userId, user));
@@ -171,7 +176,7 @@ export default function CouponModule() {
   const loadHistory = async (coupon: ManagedCoupon, nextPage = historyPage) => {
     setHistoryLoading(true);
     try {
-      const result = await fetchCouponGrants(coupon.couponId, nextPage, PAGE_SIZE);
+      const result = await fetchCouponGrants(session, coupon.couponId, nextPage, PAGE_SIZE);
       setHistory(result.rows);
       setHistoryTotal(result.total);
       setHistoryPage(nextPage);
@@ -184,7 +189,7 @@ export default function CouponModule() {
 
   useEffect(() => {
     void loadCoupons(1);
-  }, []);
+  }, [session.id]);
 
   const openCreate = () => {
     setEditingCoupon(null);
@@ -201,7 +206,7 @@ export default function CouponModule() {
       merchantIds: [],
     });
     setDrawerOpen(true);
-    void loadMerchantOptions();
+    if (isAdmin) void loadMerchantOptions();
   };
 
   const openEdit = (coupon: ManagedCoupon) => {
@@ -223,14 +228,14 @@ export default function CouponModule() {
       description: coupon.description,
       discountAmount: coupon.discountAmount,
       minimumSpend: coupon.minimumSpend,
-      startTime: toDateTimeLocal(coupon.startTime),
-      endTime: toDateTimeLocal(coupon.endTime),
+      startTime: toDateInput(coupon.startTime),
+      endTime: toDateInput(coupon.endTime),
       status: coupon.status,
       totalStock: coupon.totalStock,
       merchantIds: coupon.merchants.map((merchant) => merchant.merchantId),
     });
     setDrawerOpen(true);
-    void loadMerchantOptions();
+    if (isAdmin) void loadMerchantOptions();
   };
 
   const closeDrawer = () => {
@@ -242,21 +247,25 @@ export default function CouponModule() {
 
   const submitCoupon = async (values: CouponFormValues) => {
     if (saving) return;
+    if (values.endTime < values.startTime) {
+      message.warning('结束日期不能早于开始日期');
+      return;
+    }
     const body: CouponWriteBody = {
       couponName: values.couponName.trim(),
       description: values.description?.trim(),
       discountAmount: values.discountAmount,
       minimumSpend: values.minimumSpend,
-      startTime: toApiDateTime(values.startTime),
-      endTime: toApiDateTime(values.endTime),
+      startTime: toApiDate(values.startTime),
+      endTime: toApiDate(values.endTime, true),
       status: values.status,
       totalStock: values.totalStock,
-      merchantIds: values.merchantIds,
+      merchantIds: isAdmin ? values.merchantIds : undefined,
     };
     setSaving(true);
     try {
-      if (editingCoupon) await updateCoupon(editingCoupon.couponId, body);
-      else await createCoupon(body);
+      if (editingCoupon) await updateCoupon(session, editingCoupon.couponId, body);
+      else await createCoupon(session, body);
       setDrawerOpen(false);
       setEditingCoupon(null);
       couponForm.resetFields();
@@ -280,7 +289,7 @@ export default function CouponModule() {
       cancelText: '取消',
       okButtonProps: nextStatus === 'DISABLED' ? { danger: true } : undefined,
       onOk: async () => {
-        await updateCouponStatus(coupon.couponId, nextStatus);
+        await updateCouponStatus(session, coupon.couponId, nextStatus);
         await loadCoupons();
         message.success(nextStatus === 'DISABLED' ? '优惠券已下架' : '优惠券已上架');
       },
@@ -318,7 +327,7 @@ export default function CouponModule() {
     }
     setGrantSaving(true);
     try {
-      await grantCoupon(grantTarget.couponId, values);
+      await grantCoupon(session, grantTarget.couponId, values);
       setGrantTarget(null);
       couponGrantForm.resetFields();
       await loadCoupons();
@@ -369,8 +378,8 @@ export default function CouponModule() {
       responsive: ['md'],
       render: (_, coupon) => (
         <div>
-          <div>{formatDateTime(coupon.startTime)}</div>
-          <div className={styles.subText}>至 {formatDateTime(coupon.endTime)}</div>
+          <div>{formatDate(coupon.startTime)}</div>
+          <div className={styles.subText}>至 {formatDate(coupon.endTime)}</div>
         </div>
       ),
     },
@@ -423,7 +432,7 @@ export default function CouponModule() {
       <section className={styles.tableSurface}>
         <div className={styles.tableHeader}>
           <div>
-            <p className={styles.eyebrow}>平台管理员创建并定向下发，商家无权操作</p>
+            <p className={styles.eyebrow}>{isAdmin ? '平台优惠券可选择多个用户和多个商家' : '本店优惠券可选择多个商城用户'}</p>
             <h3>优惠券管理</h3>
           </div>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>创建优惠券</Button>
@@ -508,11 +517,33 @@ export default function CouponModule() {
             </Form.Item>
           </div>
           <div className={styles.formGrid}>
-            <Form.Item name="startTime" label="开始时间" rules={[{ required: true, message: '请选择开始时间' }]}>
-              <Input type="datetime-local" />
+            <Form.Item
+              name="startTime"
+              label="开始日期"
+              getValueProps={(value?: string) => ({ value: value ? dayjs(value, 'YYYY-MM-DD') : null })}
+              normalize={(value) => value?.format('YYYY-MM-DD') ?? ''}
+              rules={[{ required: true, message: '请选择开始日期' }]}
+            >
+              <DatePicker
+                className={styles.datePicker}
+                format="YYYY-MM-DD"
+                placeholder="请选择开始日期"
+                inputReadOnly
+              />
             </Form.Item>
-            <Form.Item name="endTime" label="结束时间" rules={[{ required: true, message: '请选择结束时间' }]}>
-              <Input type="datetime-local" />
+            <Form.Item
+              name="endTime"
+              label="结束日期"
+              getValueProps={(value?: string) => ({ value: value ? dayjs(value, 'YYYY-MM-DD') : null })}
+              normalize={(value) => value?.format('YYYY-MM-DD') ?? ''}
+              rules={[{ required: true, message: '请选择结束日期' }]}
+            >
+              <DatePicker
+                className={styles.datePicker}
+                format="YYYY-MM-DD"
+                placeholder="请选择结束日期"
+                inputReadOnly
+              />
             </Form.Item>
           </div>
           <div className={styles.formGrid}>
@@ -526,22 +557,25 @@ export default function CouponModule() {
               ]} />
             </Form.Item>
           </div>
-          <Form.Item
-            name="merchantIds"
-            label="适用商家"
-            extra="该优惠券只能用于所选商家；商家自己不能创建或下发。"
-            rules={[{ required: true, type: 'array', min: 1, message: '请至少选择一个适用商家' }]}
-          >
-            <Select
-              mode="multiple"
-              showSearch
-              filterOption={false}
-              onSearch={(value) => void loadMerchantOptions(value)}
-              placeholder="搜索并选择一个或多个已启用商家"
-              options={merchantOptions.map((merchant) => ({ value: merchant.id, label: merchant.name }))}
-              maxTagCount="responsive"
-            />
-          </Form.Item>
+          {isAdmin && (
+            <Form.Item
+              name="merchantIds"
+              label="适用商家"
+              extra="平台优惠券只能用于所选商家。"
+              rules={[{ required: true, type: 'array', min: 1, message: '请至少选择一个适用商家' }]}
+            >
+              <Select
+                mode="multiple"
+                showSearch
+                filterOption={false}
+                onSearch={(value) => void loadMerchantOptions(value)}
+                placeholder="搜索并选择一个或多个已启用商家"
+                options={merchantOptions.map((merchant) => ({ value: merchant.id, label: merchant.name }))}
+                maxTagCount="responsive"
+              />
+            </Form.Item>
+          )}
+          {!isAdmin && <p className={styles.subText}>适用范围固定为当前商家，无法选择或修改其他商家。</p>}
           <Space>
             <Button type="primary" htmlType="submit" loading={saving}>{editingCoupon ? '保存修改' : '创建优惠券'}</Button>
             <Button onClick={closeDrawer} disabled={saving}>取消</Button>
@@ -610,8 +644,8 @@ export default function CouponModule() {
           dataSource={history}
           columns={[
             { title: '下发时间', dataIndex: 'createTime', render: (value: string) => formatDateTime(value) },
-            { title: '方式', dataIndex: 'grantType', render: (value: ManagedCouponGrant['grantType']) => value === 'AUTOMATIC' ? '系统自动' : '管理员手动' },
-            { title: '管理员', dataIndex: 'operatorName' },
+            { title: '方式', dataIndex: 'grantType', render: (value: ManagedCouponGrant['grantType']) => value === 'AUTOMATIC' ? '系统自动' : '手动下发' },
+            { title: '操作人', dataIndex: 'operatorName' },
             { title: '用户数', dataIndex: 'userCount', render: (value: number) => `${value} 人` },
             { title: '每人张数', dataIndex: 'quantityPerUser', render: (value: number) => `${value} 张` },
             { title: '下发总数', dataIndex: 'totalQuantity', render: (value: number) => `${value} 张` },

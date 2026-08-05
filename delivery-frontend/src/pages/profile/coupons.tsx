@@ -23,7 +23,7 @@ const availabilityMeta: Record<ShopCouponDto['availabilityStatus'], {
 };
 
 function formatDate(value: string) {
-  return value?.replace('T', ' ').slice(0, 16);
+  return value?.replace('T', ' ').slice(0, 19);
 }
 
 export default function CouponsPage() {
@@ -97,7 +97,13 @@ export default function CouponsPage() {
                     <p>{coupon.description || '平台定向优惠券'}</p>
                     <dl>
                       <div><dt>适用商家</dt><dd>{merchantNames || '暂无可用商家'}</dd></div>
-                      <div><dt>有效期</dt><dd>{formatDate(coupon.startTime)} 至 {formatDate(coupon.endTime)}</dd></div>
+                      <div>
+                        <dt>有效期</dt>
+                        <dd className={styles.couponWalletValidity}>
+                          <span>{formatDate(coupon.startTime)} 至</span>
+                          <span>{formatDate(coupon.endTime)}</span>
+                        </dd>
+                      </div>
                       <div><dt>券码</dt><dd>{coupon.couponCode}</dd></div>
                     </dl>
                   </div>
