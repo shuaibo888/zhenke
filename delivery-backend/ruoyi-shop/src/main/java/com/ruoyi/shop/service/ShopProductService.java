@@ -3,6 +3,7 @@ package com.ruoyi.shop.service;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,11 +28,14 @@ public class ShopProductService
 
     private final ShopProductMapper productMapper;
     private final ShopMerchantService merchantService;
+    private final ShopProductCertificationService certificationService;
 
-    public ShopProductService(ShopProductMapper productMapper, ShopMerchantService merchantService)
+    public ShopProductService(ShopProductMapper productMapper, ShopMerchantService merchantService,
+            ShopProductCertificationService certificationService)
     {
         this.productMapper = productMapper;
         this.merchantService = merchantService;
+        this.certificationService = certificationService;
     }
 
     public List<ShopProductCategory> enabledCategories()
@@ -103,6 +107,7 @@ public class ShopProductService
     {
         ShopMerchant merchant = merchantService.currentMerchantAccount();
         requireEnabledCategory(body.getCategoryId());
+        requireCreateImages(body);
         ShopProduct product = fromBody(body);
         product.setMerchantId(merchant.getMerchantId());
         product.setStatus(DRAFT);
@@ -131,8 +136,9 @@ public class ShopProductService
     private ShopProduct updateForMerchant(long merchantId, long productId, ShopProductBody body,
             String operator, boolean adminResult)
     {
-        requireVisibleProduct(productMapper.selectMerchantProduct(merchantId, productId));
+        ShopProduct existing = requireVisibleProduct(productMapper.selectMerchantProduct(merchantId, productId));
         requireEnabledCategory(body.getCategoryId());
+        boolean criticalChange = hasCertificationCriticalChange(existing, body);
         ShopProduct product = fromBody(body);
         product.setProductId(productId);
         product.setMerchantId(merchantId);
@@ -142,6 +148,10 @@ public class ShopProductService
             throw new ServiceException("商品不存在");
         }
         replaceImages(productId, body.getMainImageUrls(), body.getDetailImageUrls());
+        if (criticalChange)
+        {
+            certificationService.invalidateForCriticalProductChange(merchantId, productId, operator);
+        }
         return adminResult ? adminProduct(productId)
                 : requireVisibleProduct(productMapper.selectMerchantProduct(merchantId, productId));
     }
@@ -214,6 +224,28 @@ public class ShopProductService
             }
         }
         return new ArrayList<>(unique);
+    }
+
+    private void requireCreateImages(ShopProductBody body)
+    {
+        if (normalizedImageUrls(body.getMainImageUrls()).isEmpty())
+        {
+            throw new ServiceException("请至少上传1张商品主图");
+        }
+        if (normalizedImageUrls(body.getDetailImageUrls()).isEmpty())
+        {
+            throw new ServiceException("请至少上传1张商品详情图");
+        }
+    }
+
+    private boolean hasCertificationCriticalChange(ShopProduct existing, ShopProductBody body)
+    {
+        return !Objects.equals(existing.getCategoryId(), body.getCategoryId())
+                || !Objects.equals(StringUtils.trim(existing.getBrandName()), StringUtils.trim(body.getBrandName()))
+                || !Objects.equals(StringUtils.trim(existing.getProductName()), StringUtils.trim(body.getProductName()))
+                || !Objects.equals(StringUtils.trim(existing.getCoverUrl()), StringUtils.trim(body.getCoverUrl()))
+                || !Objects.equals(normalizedImageUrls(existing.getMainImageUrls()), normalizedImageUrls(body.getMainImageUrls()))
+                || !Objects.equals(normalizedImageUrls(existing.getDetailImageUrls()), normalizedImageUrls(body.getDetailImageUrls()));
     }
 
     private void replaceImages(Long productId, List<String> mainImageUrls, List<String> detailImageUrls)

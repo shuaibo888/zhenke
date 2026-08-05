@@ -458,6 +458,73 @@
   background-size: cover;
 }
 
+.productCertificationTag {
+  margin-top: 6px;
+  margin-inline-end: 0;
+  font-size: 12px;
+}
+
+.certificationLoading {
+  padding: 48px 0;
+  color: #66756f;
+  text-align: center;
+}
+
+.certificationIntro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f4f8f6;
+  color: #52635d;
+}
+
+.certificationIntro strong {
+  color: #183d32;
+  font-size: 16px;
+}
+
+.certificationAlert,
+.certificationResult,
+.certificationMaterials {
+  margin-bottom: 16px;
+}
+
+.certificationMaterials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.certificationMaterials strong {
+  width: 100%;
+  color: #203d34;
+}
+
+.certificationForm {
+  margin-top: 18px;
+}
+
+.certificationTwoColumns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.certificationSubmit {
+  margin-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .certificationTwoColumns {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
 .uploadBlock {
   display: grid;
   grid-template-columns: 128px minmax(0, 1fr);

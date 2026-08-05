@@ -251,14 +251,20 @@ export default function ProductDialogs(props: ProductDialogsProps) {
           <Form.Item
             name="mainImageUrls"
             label="商品主图"
-            extra="最多 6 张；用于商品详情页轮播。支持 JPG/PNG，单张不超过 5MB，系统会自动适配展示。"
+            extra="新建商品至少上传 1 张，最多 6 张；用于商品详情页轮播。支持 JPG/PNG，单张不超过 5MB。"
+            rules={props.editingProductId ? undefined : [
+              { required: true, type: 'array', min: 1, message: '请至少上传 1 张商品主图' },
+            ]}
           >
             <ProductImageUploader kind="MAIN" maxCount={6} session={props.session} productId={props.editingProductId} />
           </Form.Item>
           <Form.Item
             name="detailImageUrls"
             label="商品详情图"
-            extra="最多 6 张；普通图片和长图均可。支持 JPG/PNG，单张不超过 5MB。"
+            extra="新建商品至少上传 1 张，最多 6 张；普通图片和长图均可。支持 JPG/PNG，单张不超过 5MB。"
+            rules={props.editingProductId ? undefined : [
+              { required: true, type: 'array', min: 1, message: '请至少上传 1 张商品详情图' },
+            ]}
           >
             <ProductImageUploader kind="DETAIL" maxCount={6} session={props.session} productId={props.editingProductId} />
           </Form.Item>

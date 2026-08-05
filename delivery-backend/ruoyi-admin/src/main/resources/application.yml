@@ -59,13 +59,13 @@ spring:
       # 单个文件大小
       max-file-size: 10MB
       # 设置总上传的文件大小
-      max-request-size: 20MB
+      max-request-size: 25MB
   # 服务模块
   devtools:
     restart:
       # 热部署开关
       enabled: false
-  # 甄客验智能评分：通过 Spring AI Alibaba 原生 DashScope 适配调用 Qwen。
+  # 平台 AI 功能共用 DashScope API Key 和生成参数，各功能可独立选择模型并使用不同提示词。
   ai:
     model:
       chat: dashscope
@@ -73,7 +73,8 @@ spring:
       api-key: ${DASHSCOPE_API_KEY:}
       chat:
         options:
-          model: qwen3.7-max
+          # Spring AI 客户端默认值跟随评分模型；每项业务调用时仍会显式选择自己的模型。
+          model: ${shop.ai-score.model}
           temperature: 0.2
           enable-thinking: false
           response-format:
@@ -112,10 +113,13 @@ token:
   # 令牌有效期（默认30分钟）
   expireTime: 30
 
-# 设为 true 后，已发布的甄客验会在发布成功后异步评分。
 shop:
   ai-score:
-    enabled: false
+    model: qwen3.7-max
+  product-certification:
+    model: qwen3.7-plus
+    # 认证原始材料使用容器内私有目录
+    storage-path: /private/product-certification
 
 # MyBatis配置
 mybatis:

@@ -102,6 +102,11 @@ export interface ManagedProduct {
   stock: number;
   sales: number;
   verifyCount: number;
+  certificationStatus?: 'PROCESSING' | 'PASSED' | 'REJECTED' | 'EXPIRED';
+  certificationNo?: string;
+  certificationMerchantReason?: string;
+  certificationPassedAt?: string;
+  certificationExpiresAt?: string;
 }
 
 export interface ProductCategoryOption {

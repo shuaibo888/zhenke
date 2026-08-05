@@ -1,7 +1,9 @@
 package com.ruoyi.shop.domain;
 
 import java.math.BigDecimal;
+import java.util.Date;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.ruoyi.common.core.domain.BaseEntity;
 
@@ -29,6 +31,18 @@ public class ShopProduct extends BaseEntity
     private List<ShopProductImage> images;
     private List<String> mainImageUrls;
     private List<String> detailImageUrls;
+    private String certificationStatus;
+    private String certificationNo;
+    private String certificationSourceType;
+    private String certificationSupplierName;
+    private String certificationOriginPlace;
+    private String certificationShippingPlace;
+    private String certificationMatchType;
+    private String certificationProofType;
+    private String certificationPublicSummary;
+    private String certificationMerchantReason;
+    private Date certificationPassedAt;
+    private Date certificationExpiresAt;
 
     public Long getProductId() { return productId; }
     public void setProductId(Long productId) { this.productId = productId; }
@@ -72,4 +86,28 @@ public class ShopProduct extends BaseEntity
     public void setMainImageUrls(List<String> mainImageUrls) { this.mainImageUrls = mainImageUrls; }
     public List<String> getDetailImageUrls() { return detailImageUrls; }
     public void setDetailImageUrls(List<String> detailImageUrls) { this.detailImageUrls = detailImageUrls; }
+    public String getCertificationStatus() { return certificationStatus; }
+    public void setCertificationStatus(String certificationStatus) { this.certificationStatus = certificationStatus; }
+    public String getCertificationNo() { return certificationNo; }
+    public void setCertificationNo(String certificationNo) { this.certificationNo = certificationNo; }
+    public String getCertificationSourceType() { return certificationSourceType; }
+    public void setCertificationSourceType(String certificationSourceType) { this.certificationSourceType = certificationSourceType; }
+    public String getCertificationSupplierName() { return certificationSupplierName; }
+    public void setCertificationSupplierName(String certificationSupplierName) { this.certificationSupplierName = certificationSupplierName; }
+    public String getCertificationOriginPlace() { return certificationOriginPlace; }
+    public void setCertificationOriginPlace(String certificationOriginPlace) { this.certificationOriginPlace = certificationOriginPlace; }
+    public String getCertificationShippingPlace() { return certificationShippingPlace; }
+    public void setCertificationShippingPlace(String certificationShippingPlace) { this.certificationShippingPlace = certificationShippingPlace; }
+    public String getCertificationMatchType() { return certificationMatchType; }
+    public void setCertificationMatchType(String certificationMatchType) { this.certificationMatchType = certificationMatchType; }
+    public String getCertificationProofType() { return certificationProofType; }
+    public void setCertificationProofType(String certificationProofType) { this.certificationProofType = certificationProofType; }
+    public String getCertificationPublicSummary() { return certificationPublicSummary; }
+    public void setCertificationPublicSummary(String certificationPublicSummary) { this.certificationPublicSummary = certificationPublicSummary; }
+    public String getCertificationMerchantReason() { return certificationMerchantReason; }
+    public void setCertificationMerchantReason(String certificationMerchantReason) { this.certificationMerchantReason = certificationMerchantReason; }
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") public Date getCertificationPassedAt() { return certificationPassedAt; }
+    public void setCertificationPassedAt(Date certificationPassedAt) { this.certificationPassedAt = certificationPassedAt; }
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") public Date getCertificationExpiresAt() { return certificationExpiresAt; }
+    public void setCertificationExpiresAt(Date certificationExpiresAt) { this.certificationExpiresAt = certificationExpiresAt; }
 }

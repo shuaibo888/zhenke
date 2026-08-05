@@ -39,6 +39,18 @@
         <result property="createTime" column="product_create_time" />
         <result property="updateTime" column="product_update_time" />
         <result property="remark" column="remark" />
+        <result property="certificationStatus" column="certification_status" />
+        <result property="certificationNo" column="certification_no" />
+        <result property="certificationSourceType" column="certification_source_type" />
+        <result property="certificationSupplierName" column="certification_supplier_name" />
+        <result property="certificationOriginPlace" column="certification_origin_place" />
+        <result property="certificationShippingPlace" column="certification_shipping_place" />
+        <result property="certificationMatchType" column="certification_match_type" />
+        <result property="certificationProofType" column="certification_proof_type" />
+        <result property="certificationPublicSummary" column="certification_public_summary" />
+        <result property="certificationMerchantReason" column="certification_merchant_reason" />
+        <result property="certificationPassedAt" column="certification_passed_at" />
+        <result property="certificationExpiresAt" column="certification_expires_at" />
     </resultMap>
 
     <sql id="selectProduct">
@@ -53,10 +65,23 @@
                      and o.status in ('PAID', 'SHIPPED', 'RECEIVED', 'REFUNDING')
                ), 0) as sales_count,
                p.status as product_status, p.del_flag,
-               p.create_time as product_create_time, p.update_time as product_update_time, p.remark
+               p.create_time as product_create_time, p.update_time as product_update_time, p.remark,
+               pc.status as certification_status, pc.certification_no,
+               pc.source_type as certification_source_type,
+               pc.supplier_name as certification_supplier_name,
+               pc.origin_place as certification_origin_place,
+               pc.shipping_place as certification_shipping_place,
+               pc.match_type as certification_match_type,
+               pc.proof_type as certification_proof_type,
+               pc.public_summary as certification_public_summary,
+               pc.merchant_reason as certification_merchant_reason,
+               pc.passed_at as certification_passed_at,
+               pc.expires_at as certification_expires_at
         from shop_product p
         inner join shop_merchant m on m.merchant_id = p.merchant_id and m.del_flag = '0'
         inner join shop_product_category c on c.category_id = p.category_id
+        left join shop_product_certification pc
+          on pc.product_id = p.product_id and pc.merchant_id = p.merchant_id and pc.current_flag = '1'
     </sql>
 
     <select id="selectCategories" resultMap="ShopProductCategoryResult">
@@ -148,10 +173,27 @@
                    where oi.product_id = p.product_id
                      and o.status in ('PAID', 'SHIPPED', 'RECEIVED', 'REFUNDING')
                ), 0) as sales_count,
-               p.status as product_status
+                p.status as product_status,
+                pc.status as certification_status, pc.certification_no,
+                pc.source_type as certification_source_type,
+                case
+                    when char_length(pc.supplier_name) &lt;= 2 then concat(left(pc.supplier_name, 1), '*')
+                    else concat(left(pc.supplier_name, 2), '***', right(pc.supplier_name, 2))
+                end as certification_supplier_name,
+                pc.origin_place as certification_origin_place,
+                pc.shipping_place as certification_shipping_place,
+                pc.match_type as certification_match_type,
+                pc.proof_type as certification_proof_type,
+                pc.public_summary as certification_public_summary,
+                null as certification_merchant_reason,
+                pc.passed_at as certification_passed_at,
+                pc.expires_at as certification_expires_at
         from shop_product p
         inner join shop_merchant m on m.merchant_id = p.merchant_id and m.del_flag = '0'
         inner join shop_product_category c on c.category_id = p.category_id
+        left join shop_product_certification pc
+          on pc.product_id = p.product_id and pc.merchant_id = p.merchant_id
+         and pc.current_flag = '1' and pc.status = 'PASSED' and pc.expires_at &gt; sysdate()
         <where>
             p.status = 'ON_SALE' and p.del_flag = '0'
             and m.audit_status = 'APPROVED' and m.status = '0'
@@ -168,11 +210,42 @@
                 )
             </if>
         </where>
-        order by p.product_id desc
+        order by case when pc.certification_id is not null then 0 else 1 end, p.product_id desc
     </select>
 
     <select id="selectPublicProduct" parameterType="Long" resultMap="ShopProductResult">
-        <include refid="selectProduct" />
+        select p.product_id, p.merchant_id, m.company_name as merchant_name,
+               p.category_id, c.category_code, c.category_name,
+               p.brand_name, p.product_name, p.subtitle, p.detail, p.cover_url, p.price, p.stock,
+               coalesce((
+                   select sum(oi.quantity)
+                   from shop_order_item oi
+                   inner join shop_order o on o.order_id = oi.order_id and o.del_flag = '0'
+                   where oi.product_id = p.product_id
+                     and o.status in ('PAID', 'SHIPPED', 'RECEIVED', 'REFUNDING')
+               ), 0) as sales_count,
+               p.status as product_status, p.del_flag,
+               p.create_time as product_create_time, p.update_time as product_update_time, p.remark,
+               pc.status as certification_status, pc.certification_no,
+               pc.source_type as certification_source_type,
+               case
+                   when char_length(pc.supplier_name) &lt;= 2 then concat(left(pc.supplier_name, 1), '*')
+                   else concat(left(pc.supplier_name, 2), '***', right(pc.supplier_name, 2))
+               end as certification_supplier_name,
+               pc.origin_place as certification_origin_place,
+               pc.shipping_place as certification_shipping_place,
+               pc.match_type as certification_match_type,
+               pc.proof_type as certification_proof_type,
+               pc.public_summary as certification_public_summary,
+               null as certification_merchant_reason,
+               pc.passed_at as certification_passed_at,
+               pc.expires_at as certification_expires_at
+        from shop_product p
+        inner join shop_merchant m on m.merchant_id = p.merchant_id and m.del_flag = '0'
+        inner join shop_product_category c on c.category_id = p.category_id
+        left join shop_product_certification pc
+          on pc.product_id = p.product_id and pc.merchant_id = p.merchant_id
+         and pc.current_flag = '1' and pc.status = 'PASSED' and pc.expires_at &gt; sysdate()
         where p.product_id = #{productId} and p.status = 'ON_SALE' and p.del_flag = '0'
           and m.audit_status = 'APPROVED' and m.status = '0' and c.status = '0'
     </select>

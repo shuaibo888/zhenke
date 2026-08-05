@@ -26,6 +26,17 @@ export interface PublicProductDto {
   images?: Array<{ imageId: number; imageType: 'MAIN' | 'DETAIL'; imageUrl: string; imageSort: number }>;
   mainImageUrls?: string[];
   detailImageUrls?: string[];
+  certificationStatus?: 'PASSED';
+  certificationNo?: string;
+  certificationSourceType?: string;
+  certificationSupplierName?: string;
+  certificationOriginPlace?: string;
+  certificationShippingPlace?: string;
+  certificationMatchType?: string;
+  certificationProofType?: string;
+  certificationPublicSummary?: string;
+  certificationPassedAt?: string;
+  certificationExpiresAt?: string;
 }
 
 export type MallProductDto = Pick<PublicProductDto,
@@ -42,7 +53,9 @@ export type MallProductDto = Pick<PublicProductDto,
   | 'price'
   | 'stock'
   | 'salesCount'
-  | 'status'>;
+  | 'status'
+  | 'certificationStatus'
+  | 'certificationNo'>;
 
 export interface HomeFeedItemDto {
   contentType: 'TRIAL' | 'REPORT';

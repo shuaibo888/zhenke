@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.shop.mapper.ShopProductCertificationMapper">
+    <resultMap id="CertificationResult" type="ShopProductCertification">
+        <id property="certificationId" column="certification_id" />
+        <result property="certificationNo" column="certification_no" />
+        <result property="tenantId" column="tenant_id" />
+        <result property="merchantId" column="merchant_id" />
+        <result property="productId" column="product_id" />
+        <result property="versionNo" column="version_no" />
+        <result property="currentFlag" column="current_flag" />
+        <result property="status" column="status" />
+        <result property="sourceType" column="source_type" />
+        <result property="supplierName" column="supplier_name" />
+        <result property="originPlace" column="origin_place" />
+        <result property="shippingPlace" column="shipping_place" />
+        <result property="matchType" column="match_type" />
+        <result property="matchValue" column="match_value" />
+        <result property="proofType" column="proof_type" />
+        <result property="declarationConfirmed" column="declaration_confirmed" />
+        <result property="productSnapshot" column="product_snapshot" />
+        <result property="inputHash" column="input_hash" />
+        <result property="aiProvider" column="ai_provider" />
+        <result property="aiModel" column="ai_model" />
+        <result property="promptVersion" column="prompt_version" />
+        <result property="aiDecision" column="ai_decision" />
+        <result property="confidence" column="confidence" />
+        <result property="matchedFields" column="matched_fields" />
+        <result property="missingFields" column="missing_fields" />
+        <result property="riskFlags" column="risk_flags" />
+        <result property="merchantReason" column="merchant_reason" />
+        <result property="publicSummary" column="public_summary" />
+        <result property="materialValidUntil" column="material_valid_until" />
+        <result property="passedAt" column="passed_at" />
+        <result property="expiresAt" column="expires_at" />
+        <result property="attemptCount" column="attempt_count" />
+        <result property="nextRetryAt" column="next_retry_at" />
+        <result property="lockedAt" column="locked_at" />
+        <result property="lastError" column="last_error" />
+        <result property="submittedAt" column="submitted_at" />
+        <result property="createBy" column="create_by" />
+        <result property="updateBy" column="update_by" />
+    </resultMap>
+
+    <resultMap id="MaterialResult" type="ShopProductCertificationMaterial">
+        <id property="materialId" column="material_id" />
+        <result property="tenantId" column="tenant_id" />
+        <result property="certificationId" column="certification_id" />
+        <result property="merchantId" column="merchant_id" />
+        <result property="productId" column="product_id" />
+        <result property="materialKind" column="material_kind" />
+        <result property="materialType" column="material_type" />
+        <result property="originalName" column="original_name" />
+        <result property="storagePath" column="storage_path" />
+        <result property="contentType" column="content_type" />
+        <result property="fileExtension" column="file_extension" />
+        <result property="sizeBytes" column="size_bytes" />
+        <result property="sha256" column="sha256" />
+        <result property="pageCount" column="page_count" />
+        <result property="materialSort" column="material_sort" />
+    </resultMap>
+
+    <sql id="certificationColumns">
+        certification_id, certification_no, tenant_id, merchant_id, product_id, version_no,
+        current_flag, status, source_type, supplier_name, origin_place, shipping_place,
+        match_type, match_value, proof_type, declaration_confirmed, product_snapshot, input_hash,
+        ai_provider, ai_model, prompt_version, ai_decision, confidence, matched_fields,
+        missing_fields, risk_flags, merchant_reason, public_summary, material_valid_until,
+        passed_at, expires_at, attempt_count, next_retry_at, locked_at, last_error,
+        submitted_at, create_by, update_by
+    </sql>
+
+    <select id="selectLatestForMerchant" resultMap="CertificationResult">
+        select <include refid="certificationColumns" />
+        from shop_product_certification
+        where merchant_id = #{merchantId} and product_id = #{productId}
+        order by version_no desc limit 1
+    </select>
+
+    <select id="selectCurrentForProduct" resultMap="CertificationResult">
+        select <include refid="certificationColumns" />
+        from shop_product_certification
+        where merchant_id = #{merchantId} and product_id = #{productId} and current_flag = '1'
+        limit 1
+    </select>
+
+    <select id="selectForProcessing" resultMap="CertificationResult">
+        select <include refid="certificationColumns" />
+        from shop_product_certification
+        where certification_id = #{certificationId} and current_flag = '1' and status = 'PROCESSING'
+    </select>
+
+    <select id="selectById" resultMap="CertificationResult">
+        select <include refid="certificationColumns" />
+        from shop_product_certification where certification_id = #{certificationId}
+    </select>
+
+    <select id="selectMaterials" resultMap="MaterialResult">
+        select material_id, tenant_id, certification_id, merchant_id, product_id,
+               material_kind, material_type, original_name, storage_path, content_type,
+               file_extension, size_bytes, sha256, page_count, material_sort
+        from shop_product_certification_material
+        where certification_id = #{certificationId}
+        order by material_kind, material_sort, material_id
+    </select>
+
+    <select id="selectMaterialForMerchant" resultMap="MaterialResult">
+        select material_id, tenant_id, certification_id, merchant_id, product_id,
+               material_kind, material_type, original_name, storage_path, content_type,
+               file_extension, size_bytes, sha256, page_count, material_sort
+        from shop_product_certification_material
+        where material_id = #{materialId} and merchant_id = #{merchantId} and product_id = #{productId}
+    </select>
+
+    <select id="selectReusableMaterial" resultMap="MaterialResult">
+        select material_id, tenant_id, certification_id, merchant_id, product_id,
+               material_kind, material_type, original_name, storage_path, content_type,
+               file_extension, size_bytes, sha256, page_count, material_sort
+        from shop_product_certification_material
+        where material_id = #{materialId} and certification_id = #{certificationId}
+          and merchant_id = #{merchantId} and product_id = #{productId}
+          and material_kind = #{materialKind}
+    </select>
+
+    <update id="clearCurrent">
+        update shop_product_certification
+        set current_flag = null, update_time = sysdate()
+        where merchant_id = #{merchantId} and product_id = #{productId} and current_flag = '1'
+    </update>
+
+    <insert id="insertCertification" parameterType="ShopProductCertification"
+            useGeneratedKeys="true" keyProperty="certificationId">
+        insert into shop_product_certification
+        (certification_no, tenant_id, merchant_id, product_id, version_no, current_flag, status,
+         source_type, supplier_name, origin_place, shipping_place, match_type, match_value,
+         proof_type, declaration_confirmed, product_snapshot, input_hash, submitted_at,
+         create_by, create_time, update_by, update_time)
+        values
+        (#{certificationNo}, #{tenantId}, #{merchantId}, #{productId}, #{versionNo}, '1', 'PROCESSING',
+         #{sourceType}, #{supplierName}, #{originPlace}, #{shippingPlace}, #{matchType}, #{matchValue},
+         #{proofType}, '1', #{productSnapshot}, #{inputHash}, sysdate(),
+         #{createBy}, sysdate(), #{updateBy}, sysdate())
+    </insert>
+
+    <insert id="insertMaterial" parameterType="ShopProductCertificationMaterial"
+            useGeneratedKeys="true" keyProperty="materialId">
+        insert into shop_product_certification_material
+        (tenant_id, certification_id, merchant_id, product_id, material_kind, material_type,
+         original_name, storage_path, content_type, file_extension, size_bytes, sha256,
+         page_count, material_sort, create_time)
+        values
+        (#{tenantId}, #{certificationId}, #{merchantId}, #{productId}, #{materialKind}, #{materialType},
+         #{originalName}, #{storagePath}, #{contentType}, #{fileExtension}, #{sizeBytes}, #{sha256},
+         #{pageCount}, #{materialSort}, sysdate())
+    </insert>
+
+    <update id="updateInputHash">
+        update shop_product_certification set input_hash = #{inputHash}, update_time = sysdate()
+        where certification_id = #{certificationId} and status = 'PROCESSING'
+    </update>
+
+    <select id="selectProcessingCandidates" resultType="Long">
+        select certification_id
+        from shop_product_certification
+        where current_flag = '1' and status = 'PROCESSING'
+          and (next_retry_at is null or next_retry_at &lt;= sysdate())
+          and (locked_at is null or locked_at &lt; #{staleBefore})
+        order by submitted_at, certification_id
+        limit #{limit}
+    </select>
+
+    <update id="claimProcessing">
+        update shop_product_certification
+        set locked_at = #{lockedAt}, next_retry_at = null, attempt_count = attempt_count + 1,
+            ai_provider = #{aiProvider}, ai_model = #{aiModel}, prompt_version = #{promptVersion},
+            last_error = null, update_time = sysdate()
+        where certification_id = #{certificationId} and current_flag = '1' and status = 'PROCESSING'
+          and (next_retry_at is null or next_retry_at &lt;= sysdate())
+          and (locked_at is null or locked_at &lt; #{staleBefore})
+    </update>
+
+    <update id="completeCertification" parameterType="ShopProductCertification">
+        update shop_product_certification
+        set status = #{status}, ai_decision = #{aiDecision}, confidence = #{confidence},
+            matched_fields = #{matchedFields}, missing_fields = #{missingFields},
+            risk_flags = #{riskFlags}, merchant_reason = #{merchantReason},
+            public_summary = #{publicSummary}, material_valid_until = #{materialValidUntil},
+            passed_at = #{passedAt}, expires_at = #{expiresAt}, locked_at = null,
+            next_retry_at = null, last_error = null, update_by = 'product-certification-ai',
+            update_time = sysdate()
+        where certification_id = #{certificationId} and current_flag = '1' and status = 'PROCESSING'
+    </update>
+
+    <update id="scheduleRetry">
+        update shop_product_certification
+        set locked_at = null, last_error = #{lastError}, next_retry_at = #{nextRetryAt},
+            update_time = sysdate()
+        where certification_id = #{certificationId} and current_flag = '1' and status = 'PROCESSING'
+    </update>
+
+    <select id="selectExpiredPassedIds" resultType="Long">
+        select certification_id from shop_product_certification
+        where current_flag = '1' and status = 'PASSED' and expires_at &lt;= sysdate()
+        order by expires_at, certification_id limit #{limit}
+    </select>
+
+    <update id="expirePassedById">
+        update shop_product_certification
+        set status = 'EXPIRED', update_by = 'product-certification-expiry', update_time = sysdate()
+        where certification_id = #{certificationId} and current_flag = '1'
+          and status = 'PASSED' and expires_at &lt;= sysdate()
+    </update>
+
+    <update id="expireForProductChange">
+        update shop_product_certification
+        set status = 'EXPIRED', locked_at = null, next_retry_at = null,
+            merchant_reason = '商品关键信息已发生变化，请重新申请平台AI认证',
+            update_by = #{operator}, update_time = sysdate()
+        where merchant_id = #{merchantId} and product_id = #{productId} and current_flag = '1'
+          and status in ('PROCESSING', 'PASSED')
+    </update>
+
+    <insert id="insertLog">
+        insert into shop_product_certification_log
+        (tenant_id, certification_id, merchant_id, product_id, event_type, from_status,
+         to_status, event_reason, input_hash, ai_provider, ai_model, prompt_version,
+         operator_type, operator_name, create_time)
+        values
+        (#{tenantId}, #{certificationId}, #{merchantId}, #{productId}, #{eventType}, #{fromStatus},
+         #{toStatus}, #{eventReason}, #{inputHash}, #{aiProvider}, #{aiModel}, #{promptVersion},
+         #{operatorType}, #{operatorName}, sysdate())
+    </insert>
+</mapper>

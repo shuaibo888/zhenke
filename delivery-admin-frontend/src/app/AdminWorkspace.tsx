@@ -56,6 +56,7 @@ import {
   fetchMerchantTrialApplications,
   fetchMerchants,
   fetchProductCategories,
+  fetchProductCertification,
   fetchShopMemberLevels,
   fetchShopUsers,
   loginAdmin,
@@ -70,9 +71,13 @@ import {
   updateProductCategory,
   shipMerchantTrialApplication,
   redeemMerchantTrialApplication,
+  submitProductCertification,
+  openProductCertificationMaterial,
   shipMerchantOrder,
   type CaptchaState,
   type DashboardSummaryDto,
+  type ProductCertificationDto,
+  type ProductCertificationMaterialDto,
 } from '@/services/adminApi';
 
 import CouponModule from '@/modules/coupons';
@@ -90,6 +95,7 @@ import OrderDialogs, {
 } from '@/modules/orders/OrderDialogs';
 import ProductsModule from '@/modules/products';
 import ProductDialogs, { type ProductFormValues } from '@/modules/products/ProductDialogs';
+import ProductCertificationDialog from '@/modules/products/ProductCertificationDialog';
 import ReportsModule from '@/modules/reports';
 import TrialsModule from '@/modules/trials';
 import TrialDialogs, {
@@ -269,6 +275,11 @@ function AdminWorkspace() {
   const [orderKeyword, setOrderKeyword] = useState('');
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
+  const [certificationProduct, setCertificationProduct] = useState<ManagedProduct | null>(null);
+  const [productCertification, setProductCertification] = useState<ProductCertificationDto | null>(null);
+  const [certificationOpen, setCertificationOpen] = useState(false);
+  const [certificationLoading, setCertificationLoading] = useState(false);
+  const [certificationSubmitting, setCertificationSubmitting] = useState(false);
   const [detailOrder, setDetailOrder] = useState<ManagedOrder | null>(null);
   const [orderLogisticsDialog, setOrderLogisticsDialog] = useState<{
     orderNo: string;
@@ -750,6 +761,52 @@ function AdminWorkspace() {
     }
   };
 
+  const openProductCertification = async (product: ManagedProduct) => {
+    if (!session || session.loginType !== 'merchant') return;
+    setCertificationProduct(product);
+    setProductCertification(null);
+    setCertificationOpen(true);
+    setCertificationLoading(true);
+    try {
+      setProductCertification(await fetchProductCertification(product.id));
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '平台AI认证信息加载失败');
+    } finally {
+      setCertificationLoading(false);
+    }
+  };
+
+  const closeProductCertification = () => {
+    if (certificationSubmitting) return;
+    setCertificationOpen(false);
+    setCertificationProduct(null);
+    setProductCertification(null);
+  };
+
+  const handleProductCertificationSubmit = async (body: FormData) => {
+    if (!certificationProduct) return;
+    setCertificationSubmitting(true);
+    try {
+      const submitted = await submitProductCertification(certificationProduct.id, body);
+      setProductCertification(submitted);
+      if (session) await loadProducts(session);
+      message.success('平台AI认证申请已提交，当前正在处理中');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '平台AI认证申请提交失败');
+    } finally {
+      setCertificationSubmitting(false);
+    }
+  };
+
+  const handleOpenCertificationMaterial = async (material: ProductCertificationMaterialDto) => {
+    if (!certificationProduct) return;
+    try {
+      await openProductCertificationMaterial(certificationProduct.id, material);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '认证材料读取失败');
+    }
+  };
+
   const openPublishTrial = async (product?: ManagedProduct) => {
     trialForm.resetFields();
     try {
@@ -1199,6 +1256,16 @@ function AdminWorkspace() {
             <div className={styles.strongText}>{product.title}</div>
             <div className={styles.subText}>品牌：{product.brandName}</div>
             <div className={styles.subText}>{product.artisanName}</div>
+            {product.certificationStatus && (
+              <Tag
+                color={product.certificationStatus === 'PASSED' ? 'success'
+                  : product.certificationStatus === 'PROCESSING' ? 'processing'
+                    : product.certificationStatus === 'REJECTED' ? 'error' : 'default'}
+                className={styles.productCertificationTag}
+              >
+                平台AI认证 · {{ PROCESSING: '处理中', PASSED: '已通过', REJECTED: '未通过', EXPIRED: '已失效' }[product.certificationStatus]}
+              </Tag>
+            )}
           </div>
         </div>
       ),
@@ -1246,6 +1313,19 @@ function AdminWorkspace() {
           {!isAdmin && product.status === 'onSale' && (
             <Button size="small" type="primary" onClick={() => void openPublishTrial(product)}>
               发布试用
+            </Button>
+          )}
+          {!isAdmin && (
+            <Button
+              size="small"
+              icon={<SafetyCertificateOutlined />}
+              onClick={() => void openProductCertification(product)}
+            >
+              {product.certificationStatus === 'PROCESSING' || product.certificationStatus === 'PASSED'
+                ? '查看认证'
+                : product.certificationStatus === 'REJECTED' || product.certificationStatus === 'EXPIRED'
+                  ? '重新申请'
+                  : '申请平台认证'}
             </Button>
           )}
         </Space>
@@ -1757,6 +1837,17 @@ function AdminWorkspace() {
         session={session}
         onProductDrawerClose={closeProductDrawer}
         onSaveProduct={(values) => void handleSaveProduct(values)}
+      />
+
+      <ProductCertificationDialog
+        open={certificationOpen}
+        product={certificationProduct}
+        certification={productCertification}
+        loading={certificationLoading}
+        submitting={certificationSubmitting}
+        onClose={closeProductCertification}
+        onSubmit={(body) => void handleProductCertificationSubmit(body)}
+        onOpenMaterial={(material) => void handleOpenCertificationMaterial(material)}
       />
 
       <OrderDialogs

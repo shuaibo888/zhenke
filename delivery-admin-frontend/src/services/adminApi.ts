@@ -80,6 +80,49 @@ interface ProductDto {
   images?: Array<{ imageId: number; imageUrl: string; imageSort: number }>;
   mainImageUrls?: string[];
   detailImageUrls?: string[];
+  certificationStatus?: 'PROCESSING' | 'PASSED' | 'REJECTED' | 'EXPIRED';
+  certificationNo?: string;
+  certificationMerchantReason?: string;
+  certificationPassedAt?: string;
+  certificationExpiresAt?: string;
+}
+
+export type ProductCertificationStatus = 'PROCESSING' | 'PASSED' | 'REJECTED' | 'EXPIRED';
+
+export interface ProductCertificationMaterialDto {
+  materialId: number;
+  materialKind: 'PROOF' | 'PRODUCT_FRONT' | 'PACKAGE_LABEL';
+  materialType: string;
+  originalName: string;
+  contentType: string;
+  fileExtension: string;
+  sizeBytes: number;
+  pageCount: number;
+  materialSort: number;
+}
+
+export interface ProductCertificationDto {
+  certificationId: number;
+  certificationNo: string;
+  productId: number;
+  versionNo: number;
+  status: ProductCertificationStatus;
+  sourceType: string;
+  supplierName: string;
+  originPlace: string;
+  shippingPlace: string;
+  matchType: string;
+  matchValue: string;
+  proofType: string;
+  declarationConfirmed: '1';
+  confidence?: number;
+  merchantReason?: string;
+  publicSummary?: string;
+  materialValidUntil?: string;
+  passedAt?: string;
+  expiresAt?: string;
+  submittedAt: string;
+  materials: ProductCertificationMaterialDto[];
 }
 
 interface TrialCampaignDto {
@@ -284,6 +327,11 @@ function toManagedProduct(dto: ProductDto): ManagedProduct {
     stock: dto.stock,
     sales: dto.salesCount,
     verifyCount: 0,
+    certificationStatus: dto.certificationStatus,
+    certificationNo: dto.certificationNo,
+    certificationMerchantReason: dto.certificationMerchantReason,
+    certificationPassedAt: dto.certificationPassedAt,
+    certificationExpiresAt: dto.certificationExpiresAt,
   };
 }
 
@@ -834,6 +882,55 @@ export async function fetchMerchantReports(session: AdminSession, query: Managed
   );
   const rows = Array.isArray(result.rows) ? result.rows : [];
   return { rows: rows.map(toManagedReport), total: Number(result.total ?? 0) };
+}
+
+export async function fetchProductCertification(productId: number) {
+  const result = await requestApi<ApiResponse<ProductCertificationDto | null>>(
+    `/shop/merchant/products/${productId}/certification`,
+    {},
+    true,
+  );
+  return result.data ?? null;
+}
+
+export async function submitProductCertification(productId: number, body: FormData) {
+  const token = getToken();
+  if (!token) throw new Error('管理端登录已失效，请重新登录');
+  const response = await fetch(`/api/shop/merchant/products/${productId}/certification`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+  });
+  const payload = (await response.json().catch(() => null)) as ApiResponse<ProductCertificationDto> | null;
+  if (!response.ok || !payload || payload.code !== 200 || !payload.data) {
+    if (payload?.code === 401) storeToken(null);
+    throw new Error(payload?.msg || '平台AI认证申请提交失败');
+  }
+  return payload.data;
+}
+
+export async function openProductCertificationMaterial(productId: number, material: ProductCertificationMaterialDto) {
+  const token = getToken();
+  if (!token) throw new Error('管理端登录已失效，请重新登录');
+  const response = await fetch(
+    `/api/shop/merchant/products/${productId}/certification/materials/${material.materialId}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as ApiResponse | null;
+    if (payload?.code === 401) storeToken(null);
+    throw new Error(payload?.msg || '认证材料读取失败');
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = material.originalName;
+  link.rel = 'noopener noreferrer';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 export async function deleteAdminReport(reportId: number) {

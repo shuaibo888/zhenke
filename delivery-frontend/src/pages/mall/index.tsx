@@ -1,4 +1,4 @@
-import { SearchOutlined } from '@ant-design/icons';
+import { SafetyCertificateOutlined, SearchOutlined } from '@ant-design/icons';
 import { Button, Spin, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'umi';
@@ -209,7 +209,15 @@ export default function MallPage() {
                     <b>¥{Number(product.price).toFixed(2)}</b>
                     <em>已售 {Number(product.salesCount) || 0}</em>
                   </span>
-                  <span className={styles.mallMerchant}>{product.merchantName}</span>
+                  <span className={styles.mallProductFooter}>
+                    <span className={styles.mallMerchant}>{product.merchantName}</span>
+                    {product.certificationStatus === 'PASSED' && (
+                      <span className={styles.mallCertificationBadge}>
+                        <SafetyCertificateOutlined />
+                        <span>平台AI认证</span>
+                      </span>
+                    )}
+                  </span>
                 </span>
               </button>
             );

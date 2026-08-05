@@ -5,6 +5,7 @@ import {
   LeftOutlined,
   LinkOutlined,
   RightOutlined,
+  SafetyCertificateOutlined,
   ShareAltOutlined,
   ShoppingCartOutlined,
 } from '@ant-design/icons';
@@ -53,6 +54,29 @@ const offlineTrialFlowSteps = [
   { label: '商家核销', note: '到店出示核销码' },
   { label: '发布甄客验' },
 ];
+
+const certificationSourceLabels: Record<string, string> = {
+  BRAND_DIRECT: '品牌方直接供货',
+  DISTRIBUTOR: '经销商或供应商供货',
+  OWN_BRAND: '自有品牌或自有生产',
+  OTHER: '其他来源',
+};
+
+const certificationMatchLabels: Record<string, string> = {
+  MODEL_OR_ITEM_NO: '包装上的型号或货号',
+  BARCODE: '包装条形码',
+  PRODUCT_NAME: '材料中的商品名称',
+  PACKAGE_LABEL: '包装标签',
+};
+
+const certificationProofLabels: Record<string, string> = {
+  BRAND_AUTHORIZATION: '品牌授权书',
+  PURCHASE_CONTRACT: '采购合同',
+  PURCHASE_INVOICE_OR_ORDER: '采购发票或订单',
+  DELIVERY_OR_WAREHOUSE_RECEIPT: '送货单或入库单',
+  OWN_PRODUCTION: '自有生产证明',
+  OTHER: '其他供货材料',
+};
 
 export default function ProductDetailPage({ productId: productIdProp }: { productId?: number }) {
   const { productId: productIdParam } = useParams();
@@ -435,6 +459,9 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
           <div className={styles.trialHeroBody}>
             <div className={styles.productTagRow}>
               <Tag color="green">{product.categoryName}</Tag>
+              {product.certificationStatus === 'PASSED' && (
+                <Tag color="cyan" icon={<SafetyCertificateOutlined />}>平台AI认证</Tag>
+              )}
             </div>
             <div className={styles.productDetailTitleRow}>
               <Tag color="gold">{product.brandName}</Tag>
@@ -444,6 +471,34 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
             <strong className={styles.linkedProductPrice}>{formatPrice(product.price)}</strong>
           </div>
         </section>
+
+        {product.certificationStatus === 'PASSED' && (
+          <section className={styles.productCertificationPanel}>
+            <div className={styles.productCertificationHeading}>
+              <span className={styles.productCertificationIcon}><SafetyCertificateOutlined /></span>
+              <div>
+                <h2>平台AI认证</h2>
+                <p>商家已提交供货材料，平台AI已完成信息识别、一致性验证和电子存证。</p>
+              </div>
+            </div>
+            <dl className={styles.productCertificationGrid}>
+              <div><dt>商品来源</dt><dd>{certificationSourceLabels[product.certificationSourceType || ''] || '-'}</dd></div>
+              <div><dt>供货方</dt><dd>{product.certificationSupplierName || '-'}</dd></div>
+              <div><dt>商品产地</dt><dd>{product.certificationOriginPlace || '-'}</dd></div>
+              <div><dt>发货地</dt><dd>{product.certificationShippingPlace || '-'}</dd></div>
+              <div><dt>商品核对方式</dt><dd>{certificationMatchLabels[product.certificationMatchType || ''] || '-'}</dd></div>
+              <div><dt>已提交材料</dt><dd>{certificationProofLabels[product.certificationProofType || ''] || '-'}</dd></div>
+              <div><dt>存证编号</dt><dd>{product.certificationNo || '-'}</dd></div>
+              <div><dt>有效期至</dt><dd>{product.certificationExpiresAt?.slice(0, 10) || '-'}</dd></div>
+            </dl>
+            {product.certificationPublicSummary && (
+              <p className={styles.productCertificationSummary}>{product.certificationPublicSummary}</p>
+            )}
+            <p className={styles.productCertificationDisclaimer}>
+              以上信息及材料由商家自主提交，平台提供AI信息识别和存证服务，不代表平台对商品真伪、质量或法律合规作出鉴定或担保。
+            </p>
+          </section>
+        )}
 
         {campaigns.length > 0 && (
           <button
