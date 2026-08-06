@@ -16,6 +16,7 @@ import { useShop } from '@/app/ShopContext';
 import { getCartCount } from '@/utils/shop';
 import { AddressManager } from './AddressManager';
 import { CartDrawer } from './CartDrawer';
+import { ProfileBackButton } from './ProfileBackButton';
 import styles from '@/styles/commerce.less';
 
 function avatar(user: NonNullable<ReturnType<typeof useShop>['user']>) {
@@ -48,6 +49,8 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const homeContent = searchParams.get('content')?.toUpperCase();
   const homeKeyword = (searchParams.get('keyword') ?? '').trim();
   const mallActive = location.pathname.startsWith('/mall');
+  const profileLanding = location.pathname === '/profile';
+  const profileSubPage = location.pathname.startsWith('/profile/');
   const profileActive = location.pathname.startsWith('/profile')
     || location.pathname.startsWith('/checkout')
     || isPaymentReturn;
@@ -94,8 +97,8 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <div className={`${styles.appShell} ${authPage ? styles.authPage : ''}`}>
-        {!detailPage && !authPage && (
+      <div className={`${styles.appShell} ${authPage ? styles.authPage : ''} ${profileLanding ? styles.profilePage : ''}`}>
+        {!detailPage && !authPage && !mallActive && !profileLanding && (
           <header className={`${styles.masthead} ${homePage ? styles.homeMasthead : ''}`}>
             {homePage && homeSearchOpen ? (
               <form className={styles.homeGlobalSearchForm} role="search" onSubmit={submitHomeSearch}>
@@ -141,6 +144,13 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                   onClick={() => setHomeSearchOpen(true)}
                 >
                   <SearchOutlined />
+                </button>
+              </div>
+            ) : profileSubPage ? (
+              <div className={styles.mastheadBrandGroup}>
+                <ProfileBackButton onClick={() => navigate('/profile')} />
+                <button type="button" className={styles.brandLockup} onClick={() => navigate('/')}>
+                  <h1>㤫者商城</h1>
                 </button>
               </div>
             ) : (

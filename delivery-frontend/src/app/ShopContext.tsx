@@ -1,4 +1,4 @@
-import { message } from 'antd';
+import { Button, Modal, message } from 'antd';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { history } from 'umi';
 import {
@@ -38,6 +38,7 @@ import {
   type ShopShippingAddressBody,
 } from '@/services/shopAuth';
 import type { AuthUser } from '@/utils/authRules';
+import { registerAuthExpiredHandler, storeToken } from '@/services/apiClient';
 import { clearWechatPaymentQuery, invokeWechatJsapi } from '@/utils/wechatPayment';
 
 type AuthMode = 'login' | 'register';
@@ -125,7 +126,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [points, setPoints] = useState<ShopPointBalance>(emptyPoints);
   const [pointsLoading, setPointsLoading] = useState(false);
   const [payingOrderId, setPayingOrderId] = useState<number | null>(null);
+  const [authExpiredOpen, setAuthExpiredOpen] = useState(false);
   const paymentReturnHandled = useRef(false);
+  const authExpiredRef = useRef(false);
   const userRef = useRef<AuthUser | null>(null);
   const cartRefreshRef = useRef<Promise<void> | null>(null);
   const orderRefreshRef = useRef<Promise<void> | null>(null);
@@ -188,6 +191,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mounted = false;
     };
+  }, []);
+
+  useEffect(() => {
+    registerAuthExpiredHandler(() => {
+      if (authExpiredRef.current || !userRef.current) return;
+      authExpiredRef.current = true;
+      setAuthExpiredOpen(true);
+    });
+    return () => registerAuthExpiredHandler(null);
   }, []);
 
   const refreshCart = useCallback(async () => {
@@ -371,20 +383,45 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }
   }, [captcha.uuid, loadCaptcha]);
 
+  const clearSession = useCallback(() => {
+    storeToken(null);
+    userRef.current = null;
+    setUser(null);
+    setCart([]);
+    setCoupons([]);
+    setOrders([]);
+    setTrials([]);
+    setReports([]);
+    setAddresses([]);
+    setPoints(emptyPoints);
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await logoutShopUser();
     } finally {
-      setUser(null);
-      setCart([]);
-      setCoupons([]);
-      setOrders([]);
-      setTrials([]);
-      setReports([]);
-      setAddresses([]);
-      setPoints(emptyPoints);
+      clearSession();
     }
-  }, []);
+  }, [clearSession]);
+
+  const closeAuthExpiredModal = useCallback(() => {
+    setAuthExpiredOpen(false);
+    authExpiredRef.current = false;
+    clearSession();
+  }, [clearSession]);
+
+  const handleAuthExpiredRelogin = useCallback(() => {
+    closeAuthExpiredModal();
+    history.replace('/auth');
+  }, [closeAuthExpiredModal]);
+
+  const handleAuthExpiredGuest = useCallback(() => {
+    closeAuthExpiredModal();
+    const { pathname } = history.location;
+    if (pathname.startsWith('/profile') || pathname.startsWith('/checkout')) {
+      history.replace('/');
+    }
+  }, [closeAuthExpiredModal]);
 
   const addToCart = useCallback(async (productId: number, quantity = 1, sourceReportId?: number) => {
     const saved = await addShopCartItem(productId, quantity, sourceReportId);
@@ -593,7 +630,26 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     removeCartItem, checkoutCart, buyNow, payOrder, saveAddress, makeDefaultAddress, removeAddress,
   ]);
 
-  return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;
+  return (
+    <ShopContext.Provider value={value}>
+      {children}
+      <Modal
+        open={authExpiredOpen}
+        title="登录状态已过期"
+        footer={null}
+        closable={false}
+        maskClosable={false}
+        centered
+        width={380}
+      >
+        <p style={{ margin: 0 }}>你的登录状态已过期，请选择重新登录，或清除登录状态后以游客身份继续浏览。</p>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
+          <Button onClick={handleAuthExpiredGuest}>继续浏览</Button>
+          <Button type="primary" onClick={handleAuthExpiredRelogin}>重新登录</Button>
+        </div>
+      </Modal>
+    </ShopContext.Provider>
+  );
 }
 
 export function useShop() {

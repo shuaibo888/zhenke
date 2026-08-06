@@ -770,7 +770,7 @@ function AdminWorkspace() {
     try {
       setProductCertification(await fetchProductCertification(product.id));
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '平台AI认证信息加载失败');
+      message.error(error instanceof Error ? error.message : '正品认证信息加载失败');
     } finally {
       setCertificationLoading(false);
     }
@@ -790,9 +790,9 @@ function AdminWorkspace() {
       const submitted = await submitProductCertification(certificationProduct.id, body);
       setProductCertification(submitted);
       if (session) await loadProducts(session);
-      message.success('平台AI认证申请已提交，当前正在处理中');
+      message.success('正品认证申请已提交，当前正在处理中');
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '平台AI认证申请提交失败');
+      message.error(error instanceof Error ? error.message : '正品认证申请提交失败');
     } finally {
       setCertificationSubmitting(false);
     }
@@ -1263,7 +1263,7 @@ function AdminWorkspace() {
                     : product.certificationStatus === 'REJECTED' ? 'error' : 'default'}
                 className={styles.productCertificationTag}
               >
-                平台AI认证 · {{ PROCESSING: '处理中', PASSED: '已通过', REJECTED: '未通过', EXPIRED: '已失效' }[product.certificationStatus]}
+                正品认证 · {{ PROCESSING: '处理中', PASSED: '已通过', REJECTED: '未通过', EXPIRED: '已失效' }[product.certificationStatus]}
               </Tag>
             )}
           </div>

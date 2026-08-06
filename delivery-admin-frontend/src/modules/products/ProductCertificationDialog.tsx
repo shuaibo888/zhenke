@@ -188,7 +188,7 @@ export default function ProductCertificationDialog(props: Props) {
   return (
     <Modal
       rootClassName={styles.responsiveModal}
-      title={<Space><SafetyCertificateOutlined />申请平台AI认证</Space>}
+      title={<Space><SafetyCertificateOutlined />申请正品认证</Space>}
       open={props.open}
       onCancel={props.onClose}
       footer={null}
@@ -201,7 +201,7 @@ export default function ProductCertificationDialog(props: Props) {
         <>
           <div className={styles.certificationIntro}>
             <strong>{props.product?.title}</strong>
-            <span>提交商品供货渠道自证资料，由平台AI进行材料识别与一致性验证，预计 3 分钟完成。</span>
+            <span>提交商品供货渠道自证资料，由平台进行材料核验，预计 3 分钟完成。</span>
           </div>
 
           {current && (
@@ -210,7 +210,7 @@ export default function ProductCertificationDialog(props: Props) {
               type={current.status === 'PASSED' ? 'success' : current.status === 'REJECTED' ? 'error' : 'info'}
               message={<Space>当前状态<Tag color={statusMeta[current.status].color}>{statusMeta[current.status].label}</Tag></Space>}
               description={current.status === 'PROCESSING'
-                ? '平台AI正在处理，技术重试期间也会保持此状态，请稍后重新查看。'
+                ? '平台正在处理，技术重试期间也会保持此状态，请稍后重新查看。'
                 : current.merchantReason || (current.status === 'EXPIRED' ? '认证已失效，请在原资料基础上重新申请。' : undefined)}
               className={styles.certificationAlert}
             />
@@ -219,7 +219,7 @@ export default function ProductCertificationDialog(props: Props) {
           {current?.status === 'PASSED' && (
             <Descriptions bordered size="small" column={1} className={styles.certificationResult}>
               <Descriptions.Item label="存证编号">{current.certificationNo}</Descriptions.Item>
-              <Descriptions.Item label="认证结论">平台AI认证已通过</Descriptions.Item>
+              <Descriptions.Item label="认证结论">正品认证已通过</Descriptions.Item>
               <Descriptions.Item label="通过时间">{current.passedAt || '-'}</Descriptions.Item>
               <Descriptions.Item label="有效期至">{current.expiresAt || '-'}</Descriptions.Item>
               <Descriptions.Item label="认证摘要">{current.publicSummary || current.merchantReason || '-'}</Descriptions.Item>
@@ -262,7 +262,7 @@ export default function ProductCertificationDialog(props: Props) {
                 <Form.Item
                   name="matchType"
                   label="4. 材料里如何识别这个商品"
-                  extra="选择供货证明和商品包装上都能找到的一项内容，平台AI会用它核对是不是同一个商品。"
+                  extra="选择供货证明和商品包装上都能找到的一项内容，平台会用它核对是不是同一个商品。"
                   rules={[{ required: true, message: '请选择平台如何核对这个商品' }]}
                 >
                   <Select placeholder="请选择最容易核对的一项" options={[
@@ -304,16 +304,16 @@ export default function ProductCertificationDialog(props: Props) {
                 validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('请确认真实性声明')),
               }]}>
                 <Checkbox>
-                  我确认以上信息和材料真实、完整、有效，并同意平台进行AI信息识别、必要的脱敏展示和电子存证。
+                  我确认以上信息和材料真实、完整、有效，并同意平台进行信息核验、必要的脱敏展示和电子存证。
                 </Checkbox>
               </Form.Item>
               <Alert
                 type="warning"
                 showIcon
-                message="平台AI认证基于商家提交材料，不代表平台对商品真伪、质量或法律合规作出鉴定或担保。"
+                message="正品认证基于商家提交材料，不代表平台对商品真伪、质量或法律合规作出鉴定或担保。"
               />
               <Button type="primary" htmlType="submit" loading={props.submitting} block className={styles.certificationSubmit}>
-                {current ? '重新提交平台AI认证' : '提交平台AI认证'}
+                {current ? '重新提交正品认证' : '提交正品认证'}
               </Button>
             </Form>
           )}

@@ -107,7 +107,49 @@ export default function MallPage() {
 
   return (
     <main className={styles.mallPage}>
-      <aside className={styles.mallCategoryRail} aria-label="商城分类">
+      <form
+        className={styles.mallSearch}
+        role="search"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const value = searchValue.trim();
+          setSearchValue(value);
+          setKeyword(value);
+        }}
+      >
+        <div className={styles.mallSearchControl}>
+          <SearchOutlined className={styles.mallSearchIcon} aria-hidden="true" />
+          <input
+            type="search"
+            maxLength={50}
+            value={searchValue}
+            aria-label="商城商品搜索"
+            placeholder="搜索商品、品牌、商家或商品编号"
+            onChange={(event) => {
+              const value = event.target.value;
+              setSearchValue(value);
+              if (!value && keyword) setKeyword('');
+            }}
+          />
+          {searchValue && (
+            <button
+              type="button"
+              className={styles.mallSearchClear}
+              aria-label="清空搜索"
+              onClick={() => {
+                setSearchValue('');
+                setKeyword('');
+              }}
+            >
+              ×
+            </button>
+          )}
+          <button type="submit" className={styles.mallSearchSubmit}>搜索</button>
+        </div>
+      </form>
+
+      <div className={styles.mallLayout}>
+        <aside className={styles.mallCategoryRail} aria-label="商城分类">
         <button
           type="button"
           className={categoryId == null ? styles.mallCategoryActive : ''}
@@ -130,47 +172,6 @@ export default function MallPage() {
       </aside>
 
       <section className={styles.mallProductPane} aria-live="polite">
-        <form
-          className={styles.mallSearch}
-          role="search"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const value = searchValue.trim();
-            setSearchValue(value);
-            setKeyword(value);
-          }}
-        >
-          <div className={styles.mallSearchControl}>
-            <SearchOutlined className={styles.mallSearchIcon} aria-hidden="true" />
-            <input
-              type="search"
-              maxLength={50}
-              value={searchValue}
-              aria-label="商城商品搜索"
-              placeholder="搜索商品、品牌、商家或商品编号"
-              onChange={(event) => {
-                const value = event.target.value;
-                setSearchValue(value);
-                if (!value && keyword) setKeyword('');
-              }}
-            />
-            {searchValue && (
-              <button
-                type="button"
-                className={styles.mallSearchClear}
-                aria-label="清空搜索"
-                onClick={() => {
-                  setSearchValue('');
-                  setKeyword('');
-                }}
-              >
-                ×
-              </button>
-            )}
-            <button type="submit" className={styles.mallSearchSubmit}>搜索</button>
-          </div>
-        </form>
-
         <div className={styles.mallProductHeading}>
           <h2>{keyword ? `“${keyword}”的搜索结果` : activeCategoryName}</h2>
           {!loading && <em>共 {total} 件</em>}
@@ -214,7 +215,7 @@ export default function MallPage() {
                     {product.certificationStatus === 'PASSED' && (
                       <span className={styles.mallCertificationBadge}>
                         <SafetyCertificateOutlined />
-                        <span>平台AI认证</span>
+                        <span>商家承诺正品</span>
                       </span>
                     )}
                   </span>
@@ -231,7 +232,8 @@ export default function MallPage() {
             </Button>
           </div>
         )}
-      </section>
+        </section>
+      </div>
     </main>
   );
 }

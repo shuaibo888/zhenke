@@ -37,6 +37,7 @@ public interface ShopCouponMapper
     int insertUserCoupons(@Param("coupons") List<ShopUserCoupon> coupons);
     List<ShopCouponGrant> selectGrants(Long couponId);
     List<ShopUserCoupon> selectUserCoupons(Long userId);
+    int countAvailableUserCoupons(Long userId);
     List<ShopUserCoupon> selectAvailableUserCoupons(@Param("userId") Long userId,
             @Param("merchantId") Long merchantId, @Param("subtotal") BigDecimal subtotal);
     ShopUserCoupon selectUserCouponForUpdate(@Param("userId") Long userId,

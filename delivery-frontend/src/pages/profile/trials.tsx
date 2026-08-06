@@ -1,9 +1,8 @@
 import { Button, Spin, Tag, message } from 'antd';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LogisticsModal } from '@/components/LogisticsModal';
-import { ProfileBackButton } from '@/components/ProfileBackButton';
 import { PublishReportModal } from '@/components/PublishReportModal';
 import { TrialRedeemCodeModal } from '@/components/TrialRedeemCodeModal';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
@@ -17,6 +16,8 @@ import {
 } from '@/services/shopContent';
 import { formatDateTime } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
+
+type TrialFilter = 'all' | 'APPLIED' | 'APPROVED' | 'SHIPPED' | 'publishable' | 'COMPLETED' | 'closed';
 
 const statusMeta: Record<TrialApplicationDto['status'], { label: string; color: string }> = {
   APPLIED: { label: '待审核', color: 'processing' },
@@ -41,6 +42,7 @@ export default function TrialsPage() {
     refreshTrials,
     refreshReports,
   } = useShop();
+  const [filter, setFilter] = useState<TrialFilter>('all');
   const [mutatingId, setMutatingId] = useState<number | null>(null);
   const [logisticsTrial, setLogisticsTrial] = useState<TrialApplicationDto | null>(null);
   const [logistics, setLogistics] = useState<LogisticsTraceDto | null>(null);
@@ -49,6 +51,16 @@ export default function TrialsPage() {
   const [redeemTrial, setRedeemTrial] = useState<TrialApplicationDto | null>(null);
   useBodyScrollLock(Boolean(logisticsTrial) || Boolean(publishTrial) || Boolean(redeemTrial));
   useRefreshOnRoute('/profile/trials', refreshTrials, '试用记录刷新失败');
+
+  const filtered = useMemo(() => trials.filter((trial) => {
+    if (filter === 'all') return true;
+    if (filter === 'APPROVED') return trial.status === 'APPROVED' || trial.status === 'PENDING_REDEMPTION';
+    if (filter === 'SHIPPED') return trial.status === 'SHIPPED';
+    if (filter === 'publishable') return trial.status === 'RECEIVED' || trial.status === 'REDEEMED';
+    if (filter === 'COMPLETED') return trial.status === 'COMPLETED';
+    if (filter === 'closed') return trial.status === 'REJECTED' || trial.status === 'EXPIRED';
+    return trial.status === filter;
+  }), [filter, trials]);
 
   if (!user) {
     return <Navigate to="/auth" replace />;
@@ -88,21 +100,37 @@ export default function TrialsPage() {
   return (
     <>
       <main className={`${styles.profileDetailPage} ${styles.trialsPage}`}>
-        <div className={styles.profileDetailToolbar}>
-          <ProfileBackButton onClick={() => navigate('/profile')} />
-          <span>跟进试用任务与甄客验发布进度</span>
-        </div>
         <section className={styles.orderPanel}>
           <div className={styles.orderPanelHeading}>
             <div>
               <span className={styles.eyebrow}>试用中心</span>
               <h3>我的试用</h3>
             </div>
-            <span>共 {trials.length} 项</span>
+            <span>共 {filtered.length} 项</span>
+          </div>
+          <div className={styles.orderFilterTabs}>
+            {([
+              ['all', '全部'],
+              ['APPLIED', '待审核'],
+              ['APPROVED', '已通过'],
+              ['SHIPPED', '待收货'],
+              ['publishable', '待发布'],
+              ['COMPLETED', '已完成'],
+              ['closed', '未通过'],
+            ] as Array<[TrialFilter, string]>).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                className={filter === key ? styles.orderFilterActive : ''}
+                onClick={() => setFilter(key)}
+              >
+                {label}
+              </button>
+            ))}
           </div>
           <Spin spinning={trialsLoading}>
             <div className={styles.trialList}>
-              {trials.map((trial) => {
+              {filtered.map((trial) => {
                 const publishable = (trial.trialType === 'OFFLINE' && trial.status === 'REDEEMED')
                   || (trial.trialType === 'ONLINE' && trial.status === 'RECEIVED');
                 return (
@@ -152,7 +180,9 @@ export default function TrialsPage() {
                 );
               })}
             </div>
-            {!trialsLoading && trials.length === 0 && <p className={styles.empty}>还没有试用申请。</p>}
+            {!trialsLoading && filtered.length === 0 && (
+              <p className={styles.empty}>{trials.length === 0 ? '还没有试用申请。' : '该分类下暂无试用记录。'}</p>
+            )}
           </Spin>
         </section>
       </main>

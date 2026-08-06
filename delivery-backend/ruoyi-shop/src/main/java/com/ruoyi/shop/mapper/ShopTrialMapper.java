@@ -51,6 +51,7 @@ public interface ShopTrialMapper {
                                                    @Param("applicationId") Long applicationId);
 
     List<ShopTrialApplication> selectUserApplications(Long shopUserId);
+    int countUserApplications(Long shopUserId);
 
     ShopTrialApplication selectUserApplication(@Param("shopUserId") Long shopUserId,
                                                @Param("applicationId") Long applicationId);

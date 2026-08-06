@@ -2,7 +2,6 @@ import { LikeOutlined, RightOutlined } from '@ant-design/icons';
 import { Spin, Tag } from 'antd';
 import { Navigate, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
-import { ProfileBackButton } from '@/components/ProfileBackButton';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import { getReportType } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
@@ -16,10 +15,6 @@ export default function MyReportsPage() {
   }
   return (
     <main className={`${styles.profileDetailPage} ${styles.profileReportsPage}`}>
-      <div className={styles.profileDetailToolbar}>
-        <ProfileBackButton onClick={() => navigate('/profile')} />
-        <span>查看我发布的真实体验内容</span>
-      </div>
       <section className={styles.orderPanel}>
         <div className={styles.orderPanelHeading}>
           <div>

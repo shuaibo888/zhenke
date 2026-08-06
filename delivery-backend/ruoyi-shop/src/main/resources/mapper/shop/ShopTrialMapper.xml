@@ -307,6 +307,10 @@
         order by a.application_id desc
     </select>
 
+    <select id="countUserApplications" parameterType="Long" resultType="int">
+        select count(1) from shop_trial_application where shop_user_id = #{shopUserId}
+    </select>
+
     <select id="selectUserApplication" resultMap="ShopTrialApplicationResult">
         <include refid="selectApplication" />
         where a.shop_user_id = #{shopUserId} and a.application_id = #{applicationId}

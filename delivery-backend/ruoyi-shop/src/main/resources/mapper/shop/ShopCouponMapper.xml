@@ -265,6 +265,16 @@
             c.end_time, uc.user_coupon_id desc
     </select>
 
+    <select id="countAvailableUserCoupons" parameterType="Long" resultType="int">
+        select count(1)
+        from shop_user_coupon uc
+        inner join shop_coupon c on c.coupon_id = uc.coupon_id
+        where uc.shop_user_id = #{userId}
+          and uc.status = 'UNUSED'
+          and c.status = 'ENABLED' and c.del_flag = '0'
+          and c.start_time &lt;= sysdate() and c.end_time &gt; sysdate()
+    </select>
+
     <select id="selectAvailableUserCoupons" resultMap="ShopUserCouponResult">
         <include refid="selectUserCouponColumns" />,
         'AVAILABLE' as availability_status

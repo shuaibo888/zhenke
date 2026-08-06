@@ -13,13 +13,19 @@ import {
   UploadOutlined,
 } from '@ant-design/icons';
 import { Button, Form, Input, Modal, message } from 'antd';
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { AddressManager } from '@/components/AddressManager';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
-import { changeShopPassword, updateShopProfile, uploadShopAvatar } from '@/services/shopAuth';
+import {
+  changeShopPassword,
+  fetchMyOverview,
+  updateShopProfile,
+  uploadShopAvatar,
+  type ShopUserOverview,
+} from '@/services/shopAuth';
 import styles from '@/styles/commerce.less';
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
@@ -27,49 +33,32 @@ const ALLOWED_AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif']);
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const {
-    user,
-    orders,
-    trials,
-    reports,
-    coupons,
-    points,
-    pointsLoading,
-    privateLoading,
-    logout,
-    setUser,
-    refreshOrders,
-    refreshTrials,
-    refreshReports,
-    refreshCoupons,
-    refreshPoints,
-  } = useShop();
+  const { user, logout, setUser } = useShop();
   const [profileOpen, setProfileOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [overview, setOverview] = useState<ShopUserOverview | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(true);
   const [nameForm] = Form.useForm<{ name: string }>();
   const [passwordForm] = Form.useForm<{ oldPassword: string; newPassword: string }>();
   const avatarInput = useRef<HTMLInputElement | null>(null);
   useBodyScrollLock(profileOpen || addressOpen);
-  useRefreshOnRoute('/profile', refreshOrders, '订单概览刷新失败');
-  useRefreshOnRoute('/profile', refreshTrials, '试用概览刷新失败');
-  useRefreshOnRoute('/profile', refreshReports, '甄客验概览刷新失败');
-  useRefreshOnRoute('/profile', refreshCoupons, '优惠券概览刷新失败');
-  useRefreshOnRoute('/profile', refreshPoints, '积分刷新失败');
+
+  const loadOverview = useCallback(async () => {
+    setOverviewLoading(true);
+    try {
+      setOverview(await fetchMyOverview());
+    } finally {
+      setOverviewLoading(false);
+    }
+  }, []);
+  useRefreshOnRoute('/profile', loadOverview, '个人中心数据刷新失败');
 
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
 
-  const pendingReportCount = trials.filter((trial) => (
-    trial.status === 'RECEIVED' || (trial.trialType === 'OFFLINE' && trial.status === 'APPROVED')
-  )).length + orders.reduce(
-    (count, order) => count + (order.status === 'RECEIVED'
-      ? order.items.filter((item) => !item.verificationReportId).length
-      : 0),
-    0,
-  );
   const toggleSection = (key: string) => {
     setExpandedSection((prev) => (prev === key ? null : key));
   };
@@ -136,6 +125,7 @@ export default function ProfilePage() {
   return (
     <>
       <main className={styles.profileGrid}>
+        <div className={styles.profileBrand}>㤫者商城</div>
         <section className={styles.profileHeaderCard}>
           <span className={styles.profileHeaderGlow} aria-hidden="true" />
           <div className={styles.profileIdentity}>
@@ -152,21 +142,12 @@ export default function ProfilePage() {
             <button
               type="button"
               className={styles.profilePointsButton}
-              aria-label={pointsLoading ? '积分加载中' : `我的积分 ${points.balance}`}
+              aria-label={overviewLoading ? '积分加载中' : `我的积分 ${overview?.pointsBalance ?? 0}`}
               onClick={() => navigate('/profile/points')}
             >
               <TrophyOutlined className={styles.profilePointsIcon} />
               <span>积分</span>
-              <strong>{pointsLoading ? '--' : points.balance}</strong>
-            </button>
-            <button
-              type="button"
-              className={styles.mobileLogoutButton}
-              aria-label="退出登录"
-              onClick={confirmLogout}
-            >
-              <LogoutOutlined />
-              <span>退出</span>
+              <strong>{overviewLoading ? '--' : overview?.pointsBalance ?? 0}</strong>
             </button>
           </div>
           <div className={styles.profileHeaderActions}>
@@ -177,6 +158,7 @@ export default function ProfilePage() {
               编辑资料
             </Button>
             <Button icon={<EnvironmentOutlined />} onClick={() => setAddressOpen(true)}>收货地址</Button>
+            <Button danger icon={<LogoutOutlined />} onClick={confirmLogout}>退出登录</Button>
           </div>
         </section>
 
@@ -195,7 +177,7 @@ export default function ProfilePage() {
                 <strong>我的订单</strong>
                 <small>付款、物流、收货与售后记录</small>
               </span>
-              <span className={styles.profileMenuMeta}>{privateLoading ? '加载中' : `${orders.length} 笔`}</span>
+              <span className={styles.profileMenuMeta}>{overviewLoading ? '加载中' : `${overview?.orderCount ?? 0} 笔`}</span>
               <RightOutlined className={styles.profileMenuArrow} />
             </button>
             <button type="button" className={styles.profileMenuItem} onClick={() => navigate('/profile/coupons')}>
@@ -204,9 +186,7 @@ export default function ProfilePage() {
                 <strong>我的优惠券</strong>
                 <small>查看可用、待生效、已使用与失效优惠券</small>
               </span>
-              <span className={styles.profileMenuMeta}>
-                {privateLoading ? '加载中' : `${coupons.filter((coupon) => coupon.availabilityStatus === 'AVAILABLE').length} 张可用`}
-              </span>
+              <span className={styles.profileMenuMeta}>{overviewLoading ? '加载中' : `${overview?.couponAvailableCount ?? 0} 张可用`}</span>
               <RightOutlined className={styles.profileMenuArrow} />
             </button>
             <button type="button" className={styles.profileMenuItem} onClick={() => navigate('/profile/trials')}>
@@ -215,16 +195,16 @@ export default function ProfilePage() {
                 <strong>我的试用</strong>
                 <small>申请、审核、物流与发布进度</small>
               </span>
-              <span className={styles.profileMenuMeta}>{privateLoading ? '加载中' : `${trials.length} 项`}</span>
+              <span className={styles.profileMenuMeta}>{overviewLoading ? '加载中' : `${overview?.trialCount ?? 0} 项`}</span>
               <RightOutlined className={styles.profileMenuArrow} />
             </button>
             <button type="button" className={styles.profileMenuItem} onClick={() => navigate('/profile/reports')}>
               <span className={styles.profileMenuIcon}><FileTextOutlined /></span>
               <span className={styles.profileMenuCopy}>
                 <strong>我的甄客验</strong>
-                <small>{privateLoading ? '正在加载发布进度' : `待发布 ${pendingReportCount} · 查看已发布内容`}</small>
+                <small>查看已发布内容</small>
               </span>
-              <span className={styles.profileMenuMeta}>{privateLoading ? '加载中' : `${reports.length} 篇`}</span>
+              <span className={styles.profileMenuMeta}>{overviewLoading ? '加载中' : `${overview?.reportCount ?? 0} 篇`}</span>
               <RightOutlined className={styles.profileMenuArrow} />
             </button>
           </div>

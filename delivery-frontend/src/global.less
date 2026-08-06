@@ -9,10 +9,12 @@ html,
 body {
   margin: 0;
   padding: 0;
-  /* 兜底：禁止整页横向滚动，防止个别元素溢出把页面推宽。 */
-  overflow-x: hidden;
+  /* 兜底：禁止整页横向滚动，防止个别元素溢出把页面推宽。
+     clip 而非 hidden：hidden 会把 html/body 变成滚动容器，
+     导致 position: sticky 在手机上失效（元素随整页一起滚动）。 */
+  overflow-x: clip;
 }
 
 #root {
-  overflow-x: hidden;
+  overflow-x: clip;
 }

@@ -1,9 +1,8 @@
 import { HistoryOutlined, MinusOutlined, PlusOutlined, TrophyOutlined } from '@ant-design/icons';
 import { Pagination, Spin, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Navigate, useNavigate } from 'umi';
+import { Navigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
-import { ProfileBackButton } from '@/components/ProfileBackButton';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import { fetchMyPointRecords, type ShopPointRecord } from '@/services/shopAuth';
 import styles from '@/styles/commerce.less';
@@ -15,7 +14,6 @@ function formatDate(value: string) {
 }
 
 export default function PointsPage() {
-  const navigate = useNavigate();
   const { user, points, pointsLoading, refreshPoints } = useShop();
   const [records, setRecords] = useState<ShopPointRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
@@ -59,10 +57,6 @@ export default function PointsPage() {
 
   return (
     <main className={`${styles.profileDetailPage} ${styles.pointsPage}`}>
-      <div className={styles.profileDetailToolbar}>
-        <ProfileBackButton onClick={() => navigate('/profile')} />
-      </div>
-
       <section className={styles.pointBalancePanel}>
         <span className={styles.pointBalanceIcon}><TrophyOutlined /></span>
         <div className={styles.pointCurrentBalance}>

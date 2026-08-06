@@ -7,6 +7,13 @@
     linear-gradient(180deg, #f7faf4 0%, #eef4ed 100%);
 }
 
+/* 个人中心：整屏固定高度，内容在一页内撑满，禁止上下滚动 */
+.appShell.profilePage {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
 .authPage {
   display: grid;
   min-height: 100vh;
@@ -113,6 +120,15 @@
   line-height: 1.1;
 }
 
+/* 个人中心子页面：返回按钮与品牌同处 masthead 首行 */
+.mastheadBrandGroup {
+  position: relative;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  min-width: 0;
+}
+
 .homeMasthead {
   grid-template-columns: minmax(520px, 1fr) auto;
 }
@@ -125,6 +141,13 @@
   justify-content: flex-start;
   width: 100%;
   min-width: 0;
+}
+
+/* 左侧空槽：让「甄客验」「试用」距居中标题等距（甄客验右缘 = 试用左缘到右侧的距离），
+   宽度 = 试用 86 + gap 16 + 搜索 46 - 甄客验 104 = 28px */
+.homeDiscoveryNav::before {
+  flex: 0 0 28px;
+  content: '';
 }
 
 .homeDiscoveryNav button {
@@ -1463,14 +1486,12 @@
 }
 
 @media (max-width: 640px) {
-  .couponsPage .profileDetailToolbar,
   .checkoutPage .profileDetailToolbar {
     min-height: 36px;
     flex-direction: row;
     align-items: center;
   }
 
-  .couponsPage .profileDetailToolbar > span,
   .checkoutPage .profileDetailToolbar > span {
     display: none;
   }
@@ -2475,16 +2496,33 @@
 }
 
 .profileGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   width: 100%;
   max-width: 1040px;
   margin: 0 auto;
+  height: calc(100vh - 152px);
+  height: calc(100dvh - 152px);
 }
 
 .profileGrid > * {
   min-width: 0;
+}
+
+/* 个人中心顶部小号品牌：替代被隐藏的全局标题，点击返回首页 */
+.profileBrand {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  min-height: 0;
+  padding: 0;
+  color: #173d34;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .profileHeaderCard {
@@ -2493,8 +2531,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  min-height: 148px;
-  padding: 26px 28px;
+  min-height: 112px;
+  padding: 20px 24px;
   overflow: hidden;
   background:
     linear-gradient(115deg, rgba(8, 114, 70, 0.1), transparent 56%),
@@ -2545,10 +2583,6 @@
 .profileIdentityText {
   flex: 1;
   min-width: 0;
-}
-
-.mobileLogoutButton {
-  display: none;
 }
 
 .profileKicker {
@@ -3220,7 +3254,10 @@
 }
 
 .profileMenuPanel {
-  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 18px;
   background:
     linear-gradient(180deg, rgba(239, 247, 242, 0.7), rgba(255, 255, 255, 0) 150px),
     #fff;
@@ -3234,8 +3271,8 @@
   gap: 18px;
   align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: 18px;
-  padding: 2px 2px 16px;
+  margin-bottom: 12px;
+  padding: 2px 2px 12px;
   border-bottom: 1px solid #edf1ec;
 }
 
@@ -3259,21 +3296,21 @@
 }
 
 .profileMenuGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 12px;
 }
 
 .profileMenuItem {
   position: relative;
-  display: grid;
-  grid-template-columns: 52px minmax(0, 1fr);
-  grid-template-rows: auto auto;
-  gap: 9px 13px;
-  align-items: start;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 16px;
   min-width: 0;
-  min-height: 150px;
-  padding: 19px;
+  min-height: 72px;
+  padding: 14px 48px 14px 18px;
   overflow: hidden;
   color: #17241f;
   text-align: left;
@@ -3307,41 +3344,47 @@
 
 .profileMenuIcon {
   display: grid;
-  grid-row: 1 / span 2;
-  width: 52px;
-  height: 52px;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
   place-items: center;
   color: #f8f4e8;
   background: linear-gradient(135deg, #173d34, #087246);
-  border-radius: 15px;
+  border-radius: 14px;
   box-shadow: 0 8px 18px rgba(23, 61, 52, 0.16);
-  font-size: 21px;
+  font-size: 20px;
 }
 
 .profileMenuCopy {
   display: grid;
-  grid-column: 2;
+  flex: 1;
   min-width: 0;
   gap: 5px;
-  padding-right: 18px;
 }
 
 .profileMenuCopy strong {
+  overflow: hidden;
   font-size: 17px;
   line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .profileMenuCopy small {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   color: #7a8780;
   font-size: 12px;
-  line-height: 1.55;
+  line-height: 1.5;
 }
 
 .profileMenuMeta {
-  grid-column: 2;
-  justify-self: start;
+  flex-shrink: 0;
+  margin-left: auto;
   min-height: 25px;
-  padding: 4px 10px;
+  padding: 4px 11px;
   color: #1f6f5b;
   background: #edf7f1;
   border-radius: 999px;
@@ -3352,10 +3395,11 @@
 
 .profileMenuArrow {
   position: absolute;
-  top: 21px;
-  right: 18px;
+  top: 50%;
+  right: 16px;
   color: #9aa59f;
   font-size: 12px;
+  transform: translateY(-50%);
 }
 
 .profileDetailPage {
@@ -6470,6 +6514,11 @@
     font-size: 19px;
   }
 
+  .homeDiscoveryNav::before {
+    /* 移动端：58 + 13 + 44 - 78 = 24px */
+    flex-basis: 24px;
+  }
+
   .homeGlobalSearchForm {
     grid-template-columns: 20px minmax(0, 1fr) auto 34px;
     gap: 6px;
@@ -6508,6 +6557,18 @@
     font-size: 23px;
     font-weight: 900;
     letter-spacing: 1px;
+  }
+
+  .mastheadBrandGroup {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .mastheadBrandGroup .profileBackButton {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    margin-top: -22px;
   }
 
   .headerActions {
@@ -6750,78 +6811,58 @@
   }
 
   .profileGrid {
-    gap: 12px;
+    gap: 8px;
+    height: calc(100vh - 102px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    height: calc(100dvh - 102px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+
+  .profileBrand {
+    font-size: 18px;
   }
 
   .profileHeaderCard {
     align-items: stretch;
     flex-direction: column;
-    gap: 18px;
+    gap: 10px;
     min-height: auto;
-    padding: 19px 17px;
-    border-radius: 17px;
+    padding: 12px 15px;
+    border-radius: 16px;
   }
 
   .profileHeaderCard .profileIdentity {
-    gap: 13px;
-  }
-
-  .mobileLogoutButton {
-    display: inline-flex;
-    flex: 0 0 auto;
-    gap: 5px;
-    align-items: center;
-    justify-content: center;
-    min-height: 34px;
-    padding: 0 11px;
-    color: #a55347;
-    background: rgba(255, 255, 255, 0.82);
-    border: 1px solid rgba(165, 83, 71, 0.18);
-    border-radius: 999px;
-    box-shadow: 0 5px 14px rgba(65, 87, 76, 0.08);
-    cursor: pointer;
-    font: inherit;
-    font-size: 12px;
-    font-weight: 800;
-    white-space: nowrap;
-    transition:
-      background 0.2s ease,
-      border-color 0.2s ease,
-      box-shadow 0.2s ease,
-      transform 0.2s ease;
-  }
-
-  .mobileLogoutButton:active {
-    background: #fff8f6;
-    border-color: rgba(165, 83, 71, 0.32);
-    box-shadow: 0 3px 9px rgba(65, 87, 76, 0.08);
-    transform: scale(0.97);
+    gap: 12px;
   }
 
   .profileHeaderCard .profileAvatar {
-    width: 66px;
-    height: 66px;
-    min-width: 66px;
-    font-size: 24px;
+    width: 54px;
+    height: 54px;
+    min-width: 54px;
+    font-size: 20px;
+  }
+
+  .profileKicker {
+    margin-bottom: 3px;
+    font-size: 10px;
   }
 
   .profileIdentityText h2 {
-    font-size: 21px;
+    font-size: 19px;
   }
 
   .profileIdentityText p {
+    margin-top: 3px;
     font-size: 12px;
   }
 
   .profilePointsButton {
-    min-width: 72px;
-    padding: 7px 9px;
-    grid-template-columns: 17px auto;
+    min-width: 68px;
+    padding: 6px 8px;
+    grid-template-columns: 16px auto;
     gap: 1px 5px;
   }
 
   .profilePointsIcon {
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .profilePointsButton span {
@@ -6829,19 +6870,21 @@
   }
 
   .profilePointsButton strong {
-    font-size: 15px;
+    font-size: 14px;
   }
 
   .profileHeaderActions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
   }
 
   .profileHeaderActions :global(.ant-btn) {
     width: 100%;
+    height: 32px;
     min-width: 0;
-    padding-inline: 8px;
+    padding-inline: 4px;
+    font-size: 12px;
   }
 
   .profileHero {
@@ -6850,45 +6893,66 @@
   }
 
   .profileMenuPanel {
-    padding: 16px;
-    border-radius: 17px;
+    padding: 12px 13px;
+    border-radius: 16px;
   }
 
   .profileMenuHeading {
     align-items: flex-start;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
+    margin-bottom: 6px;
+    padding: 0 2px 8px;
+  }
+
+  .profileMenuHeading h3 {
+    margin-top: 3px;
+    font-size: 19px;
+  }
+
+  .profileMenuHeading p {
+    font-size: 12px;
   }
 
   .profileMenuGrid {
-    grid-template-columns: 1fr;
-    gap: 10px;
+    gap: 8px;
   }
 
   .profileMenuItem {
-    grid-template-columns: 48px minmax(0, 1fr);
-    grid-template-rows: auto auto;
-    gap: 7px 12px;
-    min-height: 112px;
-    padding: 15px;
+    gap: 12px;
+    min-height: 68px;
+    padding: 10px 44px 10px 14px;
     border-radius: 14px;
   }
 
   .profileMenuIcon {
-    width: 48px;
-    height: 48px;
-    border-radius: 13px;
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+    font-size: 17px;
+  }
+
+  .profileMenuCopy {
+    gap: 3px;
+  }
+
+  .profileMenuCopy strong {
+    font-size: 15px;
+  }
+
+  .profileMenuCopy small {
+    font-size: 11px;
+    line-height: 1.5;
   }
 
   .profileMenuMeta {
-    grid-column: 2;
-    justify-self: start;
-    color: #1f6f5b;
+    min-height: auto;
+    padding: 3px 9px;
+    font-size: 11px;
   }
 
   .profileMenuArrow {
-    top: 18px;
-    right: 15px;
+    right: 13px;
   }
 
   .profileDetailToolbar {
@@ -6935,33 +6999,6 @@
   .ordersPage,
   .trialsPage {
     gap: 10px;
-  }
-
-  .ordersPage .profileDetailToolbar,
-  .trialsPage .profileDetailToolbar {
-    min-height: 36px;
-    flex-direction: row;
-    align-items: center;
-  }
-
-  .ordersPage .profileDetailToolbar > span,
-  .trialsPage .profileDetailToolbar > span {
-    display: none;
-  }
-
-  .ordersPage .profileBackButton,
-  .trialsPage .profileBackButton,
-  .profileReportsPage .profileBackButton {
-    min-height: 40px;
-    padding: 4px 13px 4px 4px;
-  }
-
-  .ordersPage .profileBackIcon,
-  .trialsPage .profileBackIcon,
-  .profileReportsPage .profileBackIcon {
-    flex-basis: 30px;
-    width: 30px;
-    height: 30px;
   }
 
   .ordersPage .orderPanel,
@@ -7174,16 +7211,6 @@
     border: 0;
     border-radius: 0;
     box-shadow: none;
-  }
-
-  .profileReportsPage .profileDetailToolbar {
-    min-height: 36px;
-    flex-direction: row;
-    align-items: center;
-  }
-
-  .profileReportsPage .profileDetailToolbar > span {
-    display: none;
   }
 
   .profileReportsPage .profileListHeader {
@@ -9476,6 +9503,98 @@
 
   .mallCategoryRail {
     box-shadow: inset -1px 0 0 rgba(31, 111, 91, 0.06);
+  }
+}
+
+/* =====================================================================
+   商城 · 应用级布局（顶部搜索栏 + 左侧分类栏常驻，右侧商品独立滚动）
+   结构：.mallPage 撑满视口高度（sticky + 100dvh），只承载"搜索行 + .mallLayout
+   左右分栏"；唯一滚动容器是右侧商品列。左侧分类栏和顶部搜索栏不会随商品滚动
+   消失，视觉上把商城拆成"固定头部 + 固定侧栏 + 可滚动内容"的企业级应用形态。
+   ===================================================================== */
+.mallPage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* 左侧分类列背景常驻满高（元素自身背景会被 border-radius 自动裁切） */
+  background: linear-gradient(90deg, #f3f6f4 0, #f3f6f4 148px, #ffffff 148px);
+}
+
+.mallLayout {
+  display: grid;
+  grid-template-columns: 148px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.mallSearch {
+  flex: none;
+  max-width: none;
+  margin-bottom: 0;
+  padding: 18px 24px 14px;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(31, 111, 91, 0.08);
+  box-shadow: 0 8px 20px rgba(28, 66, 52, 0.06);
+}
+
+.mallSearchControl {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.mallCategoryRail {
+  background: transparent;
+  border-right: 0;
+}
+
+.mallProductPane {
+  min-width: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 900px) {
+  .mallPage {
+    background: linear-gradient(90deg, #f3f6f4 0, #f3f6f4 120px, #ffffff 120px);
+  }
+
+  .mallLayout {
+    grid-template-columns: 120px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .mallPage {
+    top: 0;
+    margin: 0 -16px;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: linear-gradient(90deg, #f3f6f4 0, #f3f6f4 88px, #ffffff 88px);
+  }
+
+  .mallLayout {
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+
+  .mallSearch {
+    padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+  }
+
+  .mallProductPane {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+
+  .mallCategoryRail {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
   }
 }
 

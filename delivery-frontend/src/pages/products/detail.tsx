@@ -460,7 +460,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
             <div className={styles.productTagRow}>
               <Tag color="green">{product.categoryName}</Tag>
               {product.certificationStatus === 'PASSED' && (
-                <Tag color="cyan" icon={<SafetyCertificateOutlined />}>平台AI认证</Tag>
+                <Tag color="cyan" icon={<SafetyCertificateOutlined />}>商家承诺正品</Tag>
               )}
             </div>
             <div className={styles.productDetailTitleRow}>
@@ -477,8 +477,8 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
             <div className={styles.productCertificationHeading}>
               <span className={styles.productCertificationIcon}><SafetyCertificateOutlined /></span>
               <div>
-                <h2>平台AI认证</h2>
-                <p>商家已提交供货材料，平台AI已完成信息识别、一致性验证和电子存证。</p>
+                <h2>商家承诺正品</h2>
+                <p>商家已提交供货材料</p>
               </div>
             </div>
             <dl className={styles.productCertificationGrid}>
@@ -495,7 +495,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
               <p className={styles.productCertificationSummary}>{product.certificationPublicSummary}</p>
             )}
             <p className={styles.productCertificationDisclaimer}>
-              以上信息及材料由商家自主提交，平台提供AI信息识别和存证服务，不代表平台对商品真伪、质量或法律合规作出鉴定或担保。
+              以上信息及材料由商家自主提交，不代表平台对商品真伪、质量或法律合规作出鉴定或担保。
             </p>
           </section>
         )}

@@ -13,22 +13,31 @@ import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.shop.domain.dto.ShopPasswordBody;
 import com.ruoyi.shop.domain.dto.ShopProfileBody;
 import com.ruoyi.shop.service.ShopAccountService;
+import com.ruoyi.shop.service.ShopUserOverviewService;
 
 @RestController
 @RequestMapping("/shop/users/me")
 public class ShopUserController
 {
     private final ShopAccountService accountService;
+    private final ShopUserOverviewService overviewService;
 
-    public ShopUserController(ShopAccountService accountService)
+    public ShopUserController(ShopAccountService accountService, ShopUserOverviewService overviewService)
     {
         this.accountService = accountService;
+        this.overviewService = overviewService;
     }
 
     @GetMapping
     public AjaxResult profile()
     {
         return AjaxResult.success(accountService.currentProfile());
+    }
+
+    @GetMapping("/overview")
+    public AjaxResult overview()
+    {
+        return AjaxResult.success(overviewService.overview());
     }
 
     @PutMapping

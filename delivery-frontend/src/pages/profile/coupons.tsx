@@ -1,9 +1,8 @@
 import { GiftOutlined } from '@ant-design/icons';
 import { Spin, Tag } from 'antd';
 import { useMemo, useState } from 'react';
-import { Navigate, useNavigate } from 'umi';
+import { Navigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
-import { ProfileBackButton } from '@/components/ProfileBackButton';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import type { ShopCouponDto } from '@/services/shopContent';
 import { formatPrice } from '@/utils/shop';
@@ -27,7 +26,6 @@ function formatDate(value: string) {
 }
 
 export default function CouponsPage() {
-  const navigate = useNavigate();
   const { user, coupons, couponsLoading, refreshCoupons } = useShop();
   const [filter, setFilter] = useState<CouponFilter>('all');
   useRefreshOnRoute('/profile/coupons', refreshCoupons, '优惠券刷新失败');
@@ -44,10 +42,6 @@ export default function CouponsPage() {
 
   return (
     <main className={`${styles.profileDetailPage} ${styles.couponsPage}`}>
-      <div className={styles.profileDetailToolbar}>
-        <ProfileBackButton onClick={() => navigate('/profile')} />
-        <span>平台定向发放，优惠券仅限标注商家使用</span>
-      </div>
       <section className={styles.orderPanel}>
         <div className={styles.orderPanelHeading}>
           <div>

@@ -57,7 +57,12 @@ export async function loginShopUser(username: string, password: string, code?: s
 export async function restoreShopSession() {
   if (!getToken()) return null;
   try {
-    const result = await requestApi<ApiResponse<AuthUser>>('/shop/users/me', {}, true);
+    const result = await requestApi<ApiResponse<AuthUser>>(
+      '/shop/users/me',
+      {},
+      true,
+      { silentAuthExpired: true },
+    );
     return result.data ?? null;
   } catch {
     storeToken(null);
@@ -67,7 +72,11 @@ export async function restoreShopSession() {
 
 export async function logoutShopUser() {
   try {
-    if (getToken()) await requestApi<ApiResponse>('/logout', { method: 'POST' }, true);
+    if (getToken()) {
+      await requestApi<ApiResponse>('/logout', { method: 'POST' }, true, { silentAuthExpired: true });
+    }
+  } catch {
+    // 主动退出以本地清除令牌为准，忽略接口错误
   } finally {
     storeToken(null);
   }
@@ -101,6 +110,28 @@ export async function changeShopPassword(oldPassword: string, newPassword: strin
     { method: 'PUT', body: JSON.stringify({ oldPassword, newPassword }) },
     true,
   );
+}
+
+export interface ShopUserOverview {
+  orderCount: number;
+  trialCount: number;
+  reportCount: number;
+  couponAvailableCount: number;
+  pointsBalance: number;
+}
+
+export async function fetchMyOverview() {
+  const result = await requestApi<ApiResponse<ShopUserOverview>>('/shop/users/me/overview', {}, true);
+  const overview = result.data;
+  if (!overview
+    || !Number.isSafeInteger(overview.orderCount) || overview.orderCount < 0
+    || !Number.isSafeInteger(overview.trialCount) || overview.trialCount < 0
+    || !Number.isSafeInteger(overview.reportCount) || overview.reportCount < 0
+    || !Number.isSafeInteger(overview.couponAvailableCount) || overview.couponAvailableCount < 0
+    || !Number.isSafeInteger(overview.pointsBalance) || overview.pointsBalance < 0) {
+    throw new Error('个人中心汇总数据异常');
+  }
+  return overview;
 }
 
 export interface ShopPointBalance {

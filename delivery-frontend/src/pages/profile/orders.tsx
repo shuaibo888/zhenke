@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LogisticsModal } from '@/components/LogisticsModal';
-import { ProfileBackButton } from '@/components/ProfileBackButton';
 import { PublishReportModal } from '@/components/PublishReportModal';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
@@ -159,10 +158,6 @@ export default function OrdersPage() {
   return (
     <>
       <main className={`${styles.profileDetailPage} ${styles.ordersPage}`}>
-        <div className={styles.profileDetailToolbar}>
-          <ProfileBackButton onClick={() => navigate('/profile')} />
-          <span>查看付款、物流、收货与购买甄客验</span>
-        </div>
         <section className={styles.orderPanel}>
           <div className={styles.orderPanelHeading}>
             <div>

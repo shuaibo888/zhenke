@@ -36,6 +36,7 @@ public interface ShopOrderMapper
             @Param("fromStatus") String fromStatus, @Param("toStatus") String toStatus,
             @Param("auditBy") Long auditBy, @Param("auditRemark") String auditRemark);
     List<ShopOrder> selectUserOrders(Long userId);
+    int countUserOrders(Long userId);
     List<Long> selectExpiredPendingOrderIds(@Param("limit") Integer limit);
     ShopOrder selectUserOrder(@Param("userId") Long userId, @Param("orderId") Long orderId);
     ShopOrder selectUserOrderForUpdate(@Param("userId") Long userId, @Param("orderId") Long orderId);

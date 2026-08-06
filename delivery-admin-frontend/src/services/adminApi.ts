@@ -904,7 +904,7 @@ export async function submitProductCertification(productId: number, body: FormDa
   const payload = (await response.json().catch(() => null)) as ApiResponse<ProductCertificationDto> | null;
   if (!response.ok || !payload || payload.code !== 200 || !payload.data) {
     if (payload?.code === 401) storeToken(null);
-    throw new Error(payload?.msg || '平台AI认证申请提交失败');
+    throw new Error(payload?.msg || '正品认证申请提交失败');
   }
   return payload.data;
 }
