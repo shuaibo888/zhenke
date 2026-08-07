@@ -1,5 +1,8 @@
 package com.ruoyi.shop.controller;
 
+import java.net.URI;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -11,7 +14,10 @@ import com.ruoyi.common.annotation.Anonymous;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.framework.config.ServerConfig;
 import com.ruoyi.shop.domain.dto.ShopMerchantApplyBody;
+import com.ruoyi.shop.domain.dto.ShopMerchantLicenseVerifyBody;
 import com.ruoyi.shop.domain.dto.ShopMerchantQueryBody;
+import com.ruoyi.shop.qualification.AliyunLicenseService;
+import com.ruoyi.shop.qualification.LicenseVerifyResult;
 import com.ruoyi.shop.service.ShopMerchantService;
 
 @RestController
@@ -19,10 +25,13 @@ import com.ruoyi.shop.service.ShopMerchantService;
 public class ShopMerchantController {
     private final ShopMerchantService merchantService;
     private final ServerConfig serverConfig;
+    private final AliyunLicenseService licenseService;
 
-    public ShopMerchantController(ShopMerchantService merchantService, ServerConfig serverConfig) {
+    public ShopMerchantController(ShopMerchantService merchantService, ServerConfig serverConfig,
+            AliyunLicenseService licenseService) {
         this.merchantService = merchantService;
         this.serverConfig = serverConfig;
+        this.licenseService = licenseService;
     }
 
     @Anonymous
@@ -35,7 +44,38 @@ public class ShopMerchantController {
         AjaxResult result = AjaxResult.success("营业执照上传成功");
         result.put("fileName", fileName);
         result.put("url", serverConfig.getUrl() + fileName);
+        LicenseVerifyResult license = licenseService.recognize(fileName);
+        if (license.isRecognized()) {
+            Map<String, String> recognized = new LinkedHashMap<>();
+            recognized.put("creditCode", license.getCreditCode());
+            recognized.put("companyName", license.getCompanyName());
+            recognized.put("businessAddress", license.getBusinessAddress());
+            recognized.put("legalPerson", license.getLegalPerson());
+            result.put("recognized", recognized);
+        }
+        result.put("verifyMessage", license.getVerifyMessage());
         return result;
+    }
+
+    @Anonymous
+    @PostMapping("/license/verify")
+    public AjaxResult verifyBusinessLicense(@Valid @RequestBody ShopMerchantLicenseVerifyBody body) {
+        LicenseVerifyResult license = licenseService.verify(
+                resourcePathOf(body.getUrl()), body.getCreditCode(), body.getCompanyName(), body.getLegalPerson());
+        AjaxResult result = AjaxResult.success("营业执照核验完成");
+        result.put("verified", license.isVerified());
+        result.put("verifyMessage", license.getVerifyMessage());
+        return result;
+    }
+
+    private String resourcePathOf(String url) {
+        try {
+            String path = URI.create(url).getPath();
+            return path == null ? "" : path;
+        }
+        catch (IllegalArgumentException exception) {
+            return "";
+        }
     }
 
     @Anonymous

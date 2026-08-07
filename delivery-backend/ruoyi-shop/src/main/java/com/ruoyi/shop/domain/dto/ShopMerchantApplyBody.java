@@ -40,6 +40,10 @@ public class ShopMerchantApplyBody
     @Size(max = 500, message = "营业执照地址不能超过500个字符")
     private String businessLicense;
 
+    @NotBlank(message = "请输入统一社会信用代码")
+    @Pattern(regexp = "^[0-9A-Za-z]{18}$", message = "统一社会信用代码必须为18位字母或数字")
+    private String companyCreditCode;
+
     @NotBlank(message = "请输入产品介绍")
     @Size(max = 2000, message = "产品介绍不能超过2000个字符")
     private String productIntro;
@@ -78,6 +82,8 @@ public class ShopMerchantApplyBody
     public void setContactPhone(String contactPhone) { this.contactPhone = contactPhone; }
     public String getBusinessLicense() { return businessLicense; }
     public void setBusinessLicense(String businessLicense) { this.businessLicense = businessLicense; }
+    public String getCompanyCreditCode() { return companyCreditCode; }
+    public void setCompanyCreditCode(String companyCreditCode) { this.companyCreditCode = companyCreditCode; }
     public String getProductIntro() { return productIntro; }
     public void setProductIntro(String productIntro) { this.productIntro = productIntro; }
     public String getOriginTraceability() { return originTraceability; }

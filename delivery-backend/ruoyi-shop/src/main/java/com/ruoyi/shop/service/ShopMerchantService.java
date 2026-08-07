@@ -34,6 +34,8 @@ import com.ruoyi.shop.domain.dto.ShopMerchantAuditBody;
 import com.ruoyi.shop.domain.dto.ShopMerchantQueryBody;
 import com.ruoyi.shop.domain.vo.ShopMerchantApplyResult;
 import com.ruoyi.shop.mapper.ShopMerchantMapper;
+import com.ruoyi.shop.qualification.AliyunLicenseService;
+import com.ruoyi.shop.qualification.LicenseVerifyResult;
 import com.ruoyi.system.service.ISysConfigService;
 import com.ruoyi.system.service.ISysUserService;
 
@@ -53,14 +55,16 @@ public class ShopMerchantService
     private final ISysUserService sysUserService;
     private final RedisCache redisCache;
     private final ISysConfigService configService;
+    private final AliyunLicenseService licenseService;
 
     public ShopMerchantService(ShopMerchantMapper merchantMapper, ISysUserService sysUserService,
-            RedisCache redisCache, ISysConfigService configService)
+            RedisCache redisCache, ISysConfigService configService, AliyunLicenseService licenseService)
     {
         this.merchantMapper = merchantMapper;
         this.sysUserService = sysUserService;
         this.redisCache = redisCache;
         this.configService = configService;
+        this.licenseService = licenseService;
     }
 
     public ShopMerchant applicationStatus(ShopMerchantQueryBody body)
@@ -113,7 +117,18 @@ public class ShopMerchantService
             throw new ServiceException("商家后台账号已存在，请更换账号");
         }
 
+        String businessLicenseAddress = validateBusinessLicenseAddress(body.getBusinessLicense());
+        LicenseVerifyResult license = licenseService.requireVerified(resourcePathOf(businessLicenseAddress));
+        if (!license.getCreditCode().equalsIgnoreCase(StringUtils.trim(body.getCompanyCreditCode())))
+        {
+            throw new ServiceException("统一社会信用代码与营业执照核验结果不一致，请核对后重试");
+        }
+
         ShopMerchant merchant = fromBody(body);
+        merchant.setBusinessLicense(businessLicenseAddress);
+        merchant.setCompanyCreditCode(license.getCreditCode());
+        merchant.setLegalPerson(license.getLegalPerson());
+        merchant.setLicenseVerified("1");
         merchant.setAccountUsername(accountUsername);
         merchant.setAccountPassword(SecurityUtils.encryptPassword(body.getPassword()));
         merchant.setAuditStatus(PENDING);
@@ -256,7 +271,6 @@ public class ShopMerchantService
         merchant.setCompanyAddress(body.getCompanyAddress().trim());
         merchant.setContactName(body.getContactName().trim());
         merchant.setContactPhone(body.getContactPhone().trim());
-        merchant.setBusinessLicense(validateBusinessLicenseAddress(body.getBusinessLicense()));
         merchant.setProductIntro(body.getProductIntro().trim());
         merchant.setOriginTraceability(body.getOriginTraceability().trim());
         merchant.setAcceptsVerificationRecruitment(Boolean.TRUE.equals(body.getAcceptsVerificationRecruitment()) ? "0" : "1");
@@ -309,6 +323,19 @@ public class ShopMerchantService
         catch (IOException exception)
         {
             throw new ServiceException("营业执照图片读取失败");
+        }
+    }
+
+    private String resourcePathOf(String address)
+    {
+        try
+        {
+            String path = URI.create(address).getPath();
+            return path == null ? "" : path;
+        }
+        catch (IllegalArgumentException exception)
+        {
+            return "";
         }
     }
 

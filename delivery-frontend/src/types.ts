@@ -9,6 +9,9 @@ export interface Merchant {
   contactName: string;
   contactPhone: string;
   businessLicense: string;
+  companyCreditCode?: string;
+  legalPerson?: string;
+  licenseVerified?: string;
   productIntro: string;
   originTraceability: string;
   acceptsPublicWelfare: '0' | '1';

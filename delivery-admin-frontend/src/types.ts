@@ -60,6 +60,9 @@ export interface MerchantAccount {
   phone: string;
   companyAddress?: string;
   businessLicense?: string;
+  companyCreditCode?: string;
+  legalPerson?: string;
+  licenseVerified?: boolean;
   productIntro?: string;
   originTraceability?: string;
   acceptsVerificationRecruitment?: boolean;

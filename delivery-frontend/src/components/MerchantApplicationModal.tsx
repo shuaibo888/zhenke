@@ -9,6 +9,7 @@ import {
   getStoredMerchantApplicationLookup,
   submitMerchantApplication,
   uploadMerchantBusinessLicense,
+  verifyMerchantBusinessLicense,
   type MerchantApplicationBody,
   type MerchantApplicationLookup,
 } from '@/services/shopAuth';
@@ -25,6 +26,9 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
   const [queryOpen, setQueryOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [licenseVerified, setLicenseVerified] = useState(false);
+  const [verifyStatus, setVerifyStatus] = useState<{ tone: 'info' | 'success' | 'error'; text: string } | null>(null);
   const [querying, setQuerying] = useState(false);
   const businessLicense = Form.useWatch('businessLicense', form);
   useBodyScrollLock(open);
@@ -32,6 +36,8 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
   useEffect(() => {
     if (!open) return;
     setLookup(getStoredMerchantApplicationLookup());
+    setLicenseVerified(false);
+    setVerifyStatus(null);
     fetchMyMerchantApplication()
       .then(setApplication)
       .catch(() => setApplication(null));
@@ -43,9 +49,11 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
       accountUsername: application.accountUsername,
       companyName: application.companyName,
       companyAddress: application.companyAddress,
+      legalPerson: application.legalPerson,
       contactName: application.contactName,
       contactPhone: application.contactPhone,
-      businessLicense: application.businessLicense,
+      companyCreditCode: application.companyCreditCode,
+      businessLicense: undefined,
       productIntro: application.productIntro,
       originTraceability: application.originTraceability,
       acceptsVerificationRecruitment: application.acceptsVerificationRecruitment === '0',
@@ -93,10 +101,23 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
 
     setUploading(true);
     try {
-      const url = await uploadMerchantBusinessLicense(file, code, captcha.uuid);
-      form.setFieldValue('businessLicense', url);
-      options.onSuccess?.({ url });
-      message.success('营业执照上传成功');
+      const result = await uploadMerchantBusinessLicense(file, code, captcha.uuid);
+      form.setFieldValue('businessLicense', result.url);
+      setLicenseVerified(false);
+      if (result.recognized) {
+        form.setFieldsValue({
+          companyName: result.recognized.companyName,
+          companyAddress: result.recognized.businessAddress,
+          legalPerson: result.recognized.legalPerson,
+          companyCreditCode: result.recognized.creditCode,
+        });
+        setVerifyStatus({ tone: 'info', text: '已自动识别企业信息，请核对后提交核验' });
+        message.success('营业执照上传成功，已自动识别企业信息');
+      } else {
+        setVerifyStatus({ tone: 'error', text: result.verifyMessage || '未能识别营业执照内容' });
+        message.success('营业执照上传成功');
+      }
+      options.onSuccess?.({ url: result.url });
     } catch (error) {
       const uploadError = error instanceof Error ? error : new Error('营业执照上传失败');
       message.error(uploadError.message);
@@ -107,6 +128,42 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
         form.setFieldValue('code', undefined);
         await loadCaptcha();
       }
+    }
+  };
+
+  const verifyLicense = async () => {
+    const businessLicense = form.getFieldValue('businessLicense');
+    const companyCreditCode = form.getFieldValue('companyCreditCode');
+    const companyName = form.getFieldValue('companyName');
+    const legalPerson = form.getFieldValue('legalPerson');
+    if (!businessLicense || !companyCreditCode || !companyName || !legalPerson) {
+      message.warning('请先填写公司名称、法定代表人和统一社会信用代码后再提交核验');
+      return;
+    }
+    setVerifying(true);
+    try {
+      const result = await verifyMerchantBusinessLicense(
+        businessLicense,
+        companyCreditCode,
+        companyName,
+        legalPerson,
+      );
+      setLicenseVerified(result.verified);
+      setVerifyStatus({
+        tone: result.verified ? 'success' : 'error',
+        text: result.verified ? '营业执照核验通过' : (result.verifyMessage || '营业执照核验未通过'),
+      });
+      if (result.verified) {
+        message.success('营业执照核验通过');
+      } else {
+        message.error(result.verifyMessage || '营业执照核验未通过');
+      }
+    } catch (error) {
+      const verifyError = error instanceof Error ? error : new Error('营业执照核验失败');
+      setVerifyStatus({ tone: 'error', text: verifyError.message });
+      message.error(verifyError.message);
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -193,7 +250,12 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
               type="error"
               showIcon
               message="申请已被驳回，请修改材料后重新提交"
-              description={application.auditRemark || '请根据审核要求完善入驻材料。'}
+              description={(
+                <>
+                  <p>{application.auditRemark || '请根据审核要求完善入驻材料。'}</p>
+                  <p>需重新上传营业执照并完成识别核验后，再提交申请。</p>
+                </>
+              )}
               className={styles.merchantRejected}
             />
           )}
@@ -232,8 +294,8 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
               <header className={styles.merchantSectionHeader}>
                 <span>01</span>
                 <div>
-                  <h3>账号与企业信息</h3>
-                  <p>用于创建商家后台账号并核验企业主体。</p>
+                  <h3>账号信息</h3>
+                  <p>用于创建商家后台登录账号，审核通过后凭此账号登录。</p>
                 </div>
               </header>
               <div className={styles.merchantFormGrid}>
@@ -268,36 +330,20 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
               >
                 <Input.Password size="large" maxLength={50} placeholder="请输入包含字母和数字的密码" />
               </Form.Item>
-              <Form.Item name="companyName" label="公司名称" rules={[{ required: true }]}>
-                <Input size="large" />
-              </Form.Item>
-              <Form.Item name="companyAddress" label="公司地址" rules={[{ required: true }]}>
-                <Input size="large" />
-              </Form.Item>
-              <Form.Item name="contactName" label="联系人" rules={[{ required: true }]}>
-                <Input size="large" />
-              </Form.Item>
-              <Form.Item
-                name="contactPhone"
-                label="联系电话"
-                rules={[{ required: true }, { pattern: /^1\d{10}$/, message: '请输入 11 位手机号' }]}
-              >
-                <Input size="large" />
-              </Form.Item>
               </div>
             </section>
             <section className={styles.merchantFormSection}>
               <header className={styles.merchantSectionHeader}>
                 <span>02</span>
                 <div>
-                  <h3>企业资质</h3>
-                  <p>验证码用于保护匿名上传，营业执照仅用于平台审核。</p>
+                  <h3>企业资质核验</h3>
+                  <p>上传营业执照并完成核验，企业信息将自动识别回填。</p>
                 </div>
               </header>
             {captcha.enabled && (
               <Form.Item name="code" label="验证码" rules={[{ required: true }]}>
                 <div className={styles.captchaRow}>
-                  <Input size="large" />
+                  <Input size="large" placeholder="请输入验证码" />
                   <button type="button" className={styles.captchaButton} onClick={() => void loadCaptcha()}>
                     <img src={captcha.image} alt="验证码" />
                   </button>
@@ -319,11 +365,72 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
                   {businessLicense ? '重新上传营业执照' : '上传营业执照'}
                 </Button>
               </Upload>
-              <small>支持 JPG、PNG，文件不超过 5MB。上传时会校验当前验证码。</small>
+              <small>支持 JPG、PNG，文件不超过 5MB。上传时自动识别企业信息。</small>
               {businessLicense && (
                 <img src={businessLicense} alt="营业执照预览" className={styles.merchantLicensePreview} />
               )}
             </div>
+            {businessLicense && (
+              <>
+                <div className={styles.merchantFormGrid}>
+                  <Form.Item
+                    name="companyCreditCode"
+                    label="统一社会信用代码"
+                    extra={licenseVerified ? '已通过营业执照核验，不可修改' : '已根据营业执照自动识别，请核对'}
+                    validateFirst
+                    rules={[
+                      { required: true, message: '请输入统一社会信用代码' },
+                      { pattern: /^[0-9A-Za-z]{18}$/, message: '统一社会信用代码必须为18位字母或数字' },
+                    ]}
+                  >
+                    <Input
+                      size="large"
+                      maxLength={18}
+                      placeholder="请填写18位统一社会信用代码"
+                      disabled={licenseVerified}
+                    />
+                  </Form.Item>
+                  <Form.Item name="companyName" label="公司名称" rules={[{ required: true }]}>
+                    <Input size="large" placeholder="请输入公司名称" />
+                  </Form.Item>
+                  <Form.Item name="companyAddress" label="公司地址" rules={[{ required: true }]}>
+                    <Input size="large" placeholder="请输入公司地址" />
+                  </Form.Item>
+                  <Form.Item
+                    name="legalPerson"
+                    label="法定代表人"
+                    extra={licenseVerified ? '已通过营业执照核验，不可修改' : '已根据营业执照自动识别，请核对'}
+                    validateFirst
+                    rules={[{ required: true, message: '请输入法定代表人' }]}
+                  >
+                    <Input size="large" placeholder="请输入法定代表人" disabled={licenseVerified} />
+                  </Form.Item>
+                  <Form.Item name="contactName" label="联系人" rules={[{ required: true, message: '请输入联系人' }]}>
+                    <Input size="large" placeholder="请输入商家实际运营联系人" />
+                  </Form.Item>
+                  <Form.Item
+                    name="contactPhone"
+                    label="联系电话"
+                    rules={[{ required: true, message: '请输入联系电话' }, { pattern: /^1\d{10}$/, message: '请输入 11 位手机号' }]}
+                  >
+                    <Input size="large" maxLength={11} placeholder="请输入联系电话" />
+                  </Form.Item>
+                </div>
+                {verifyStatus && (
+                  <Alert
+                    style={{ marginTop: 12 }}
+                    type={verifyStatus.tone}
+                    showIcon
+                    message={verifyStatus.text}
+                  />
+                )}
+                <div style={{ marginTop: 12 }}>
+                  <Button block size="large" type="primary" loading={verifying} onClick={verifyLicense}>
+                    {licenseVerified ? '重新核验' : '提交核验'}
+                  </Button>
+                </div>
+              </>
+            )}
             </section>
             <section className={styles.merchantFormSection}>
               <header className={styles.merchantSectionHeader}>
@@ -378,8 +485,20 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
               </div>
             </section>
             <div className={styles.merchantSubmitBar}>
-              <p>提交后可使用申请手机号查询审核进度。</p>
-              <Button type="primary" size="large" htmlType="submit" loading={loading}>
+              <p>
+                {!businessLicense
+                  ? '请先上传营业执照，识别企业信息后再提交核验。'
+                  : !licenseVerified
+                    ? '请完成营业执照核验后，方可提交申请。'
+                    : '提交后可使用申请手机号查询审核进度。'}
+              </p>
+              <Button
+                type="primary"
+                size="large"
+                htmlType="submit"
+                loading={loading}
+                disabled={!licenseVerified || !businessLicense}
+              >
                 {application?.auditStatus === 'REJECTED' ? '重新提交入驻申请' : '提交入驻申请'}
               </Button>
             </div>

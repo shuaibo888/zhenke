@@ -100,6 +100,14 @@ export function MerchantDetailDialog(props: MerchantDetailDialogProps) {
                 <span>{props.detailMerchant.companyAddress ?? '-'}</span>
               </div>
               <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>统一社会信用代码</span>
+                <span>{props.detailMerchant.companyCreditCode ?? '-'}</span>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>法定代表人</span>
+                <span>{props.detailMerchant.legalPerson ?? '-'}</span>
+              </div>
+              <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>入驻时间</span>
                 <span>{formatDateTime(props.detailMerchant.registeredAt)}</span>
               </div>
@@ -113,6 +121,12 @@ export function MerchantDetailDialog(props: MerchantDetailDialogProps) {
                   <img src={props.detailMerchant.businessLicense} alt="营业执照" className={styles.licenseImage} />
                 </div>
               )}
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>营业执照核验</span>
+                <Tag color={props.detailMerchant.licenseVerified ? 'green' : 'default'}>
+                  {props.detailMerchant.licenseVerified ? '已核验' : '未核验'}
+                </Tag>
+              </div>
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>产品介绍</span>
                 <p className={styles.detailText}>{props.detailMerchant.productIntro ?? '-'}</p>

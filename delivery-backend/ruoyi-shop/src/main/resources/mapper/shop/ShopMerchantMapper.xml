@@ -11,6 +11,9 @@
         <result property="contactName" column="contact_name" />
         <result property="contactPhone" column="contact_phone" />
         <result property="businessLicense" column="business_license" />
+        <result property="companyCreditCode" column="company_credit_code" />
+        <result property="legalPerson" column="legal_person" />
+        <result property="licenseVerified" column="license_verified" />
         <result property="productIntro" column="product_intro" />
         <result property="originTraceability" column="origin_traceability" />
         <result property="acceptsVerificationRecruitment" column="accepts_verification_recruitment" />
@@ -47,7 +50,8 @@
     <sql id="selectMerchant">
         select m.merchant_id, m.application_no, m.account_username, m.account_password,
                m.company_name, m.company_address, m.contact_name, m.contact_phone,
-               m.business_license, m.product_intro, m.origin_traceability,
+               m.business_license, m.company_credit_code, m.legal_person, m.license_verified,
+               m.product_intro, m.origin_traceability,
                m.accepts_verification_recruitment, m.accepts_public_welfare, m.protocol_agreed,
                m.audit_status, m.audit_remark, m.admin_user_id, su.user_name as admin_username,
                m.status, m.del_flag, m.audit_by, m.audit_time, m.create_by,
@@ -109,13 +113,15 @@
         insert into shop_merchant
         (application_no, account_username, account_password,
          company_name, company_address, contact_name, contact_phone,
-         business_license, product_intro, origin_traceability, accepts_verification_recruitment,
+         business_license, company_credit_code, legal_person, license_verified,
+         product_intro, origin_traceability, accepts_verification_recruitment,
          accepts_public_welfare, protocol_agreed, audit_status, status, del_flag,
          create_by, create_time, update_by, update_time)
         values
         (#{applicationNo}, #{accountUsername}, #{accountPassword},
          #{companyName}, #{companyAddress}, #{contactName}, #{contactPhone},
-         #{businessLicense}, #{productIntro}, #{originTraceability}, #{acceptsVerificationRecruitment},
+         #{businessLicense}, #{companyCreditCode}, #{legalPerson}, #{licenseVerified},
+         #{productIntro}, #{originTraceability}, #{acceptsVerificationRecruitment},
          #{acceptsPublicWelfare}, #{protocolAgreed}, #{auditStatus}, #{status}, #{delFlag},
          #{createBy}, sysdate(), #{updateBy}, sysdate())
     </insert>
@@ -125,8 +131,9 @@
         set account_username = #{accountUsername}, account_password = #{accountPassword},
             company_name = #{companyName}, company_address = #{companyAddress},
             contact_name = #{contactName}, contact_phone = #{contactPhone},
-            business_license = #{businessLicense}, product_intro = #{productIntro},
-            origin_traceability = #{originTraceability},
+            business_license = #{businessLicense}, company_credit_code = #{companyCreditCode},
+            legal_person = #{legalPerson}, license_verified = #{licenseVerified},
+            product_intro = #{productIntro}, origin_traceability = #{originTraceability},
             accepts_verification_recruitment = #{acceptsVerificationRecruitment},
             accepts_public_welfare = #{acceptsPublicWelfare}, protocol_agreed = #{protocolAgreed},
             audit_status = 'PENDING', audit_remark = null, audit_by = null, audit_time = null,

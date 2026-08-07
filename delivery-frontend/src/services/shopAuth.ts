@@ -254,9 +254,11 @@ export interface MerchantApplicationBody {
   uuid?: string;
   companyName: string;
   companyAddress: string;
+  legalPerson: string;
   contactName: string;
   contactPhone: string;
   businessLicense: string;
+  companyCreditCode: string;
   productIntro: string;
   originTraceability: string;
   acceptsVerificationRecruitment: boolean;
@@ -306,17 +308,52 @@ export async function fetchMyMerchantApplication() {
   return fetchMerchantApplication(lookup);
 }
 
+export interface MerchantLicenseRecognized {
+  creditCode: string;
+  companyName: string;
+  businessAddress: string;
+  legalPerson: string;
+}
+
+export interface MerchantLicenseUploadResult {
+  url: string;
+  recognized: MerchantLicenseRecognized | null;
+  verifyMessage?: string;
+}
+
 export async function uploadMerchantBusinessLicense(file: File, code?: string, uuid?: string) {
   const formData = new FormData();
   formData.append('file', file);
   if (code) formData.append('code', code);
   if (uuid) formData.append('uuid', uuid);
-  const result = await requestApi<ApiResponse & { url?: string }>(
+  const result = await requestApi<ApiResponse & { url?: string; recognized?: MerchantLicenseRecognized; verifyMessage?: string }>(
     '/shop/merchants/license',
     { method: 'POST', body: formData },
   );
   if (!result.url) throw new Error('营业执照上传失败');
-  return result.url;
+  return {
+    url: result.url,
+    recognized: result.recognized ?? null,
+    verifyMessage: result.verifyMessage,
+  } satisfies MerchantLicenseUploadResult;
+}
+
+export interface MerchantLicenseVerifyResult {
+  verified: boolean;
+  verifyMessage?: string;
+}
+
+export async function verifyMerchantBusinessLicense(
+  url: string,
+  creditCode: string,
+  companyName: string,
+  legalPerson: string,
+) {
+  const result = await requestApi<ApiResponse & { verified?: boolean; verifyMessage?: string }>(
+    '/shop/merchants/license/verify',
+    { method: 'POST', body: JSON.stringify({ url, creditCode, companyName, legalPerson }) },
+  );
+  return { verified: result.verified === true, verifyMessage: result.verifyMessage } satisfies MerchantLicenseVerifyResult;
 }
 
 export async function submitMerchantApplication(body: MerchantApplicationBody) {

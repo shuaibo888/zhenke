@@ -19,6 +19,9 @@ public class ShopMerchant extends BaseEntity
     private String contactName;
     private String contactPhone;
     private String businessLicense;
+    private String companyCreditCode;
+    private String legalPerson;
+    private String licenseVerified;
     private String productIntro;
     private String originTraceability;
     private String acceptsVerificationRecruitment;
@@ -53,6 +56,12 @@ public class ShopMerchant extends BaseEntity
     public void setContactPhone(String contactPhone) { this.contactPhone = contactPhone; }
     public String getBusinessLicense() { return businessLicense; }
     public void setBusinessLicense(String businessLicense) { this.businessLicense = businessLicense; }
+    public String getCompanyCreditCode() { return companyCreditCode; }
+    public void setCompanyCreditCode(String companyCreditCode) { this.companyCreditCode = companyCreditCode; }
+    public String getLegalPerson() { return legalPerson; }
+    public void setLegalPerson(String legalPerson) { this.legalPerson = legalPerson; }
+    public String getLicenseVerified() { return licenseVerified; }
+    public void setLicenseVerified(String licenseVerified) { this.licenseVerified = licenseVerified; }
     public String getProductIntro() { return productIntro; }
     public void setProductIntro(String productIntro) { this.productIntro = productIntro; }
     public String getOriginTraceability() { return originTraceability; }

@@ -42,6 +42,9 @@ interface MerchantDto {
   contactName: string;
   contactPhone: string;
   businessLicense?: string;
+  companyCreditCode?: string;
+  legalPerson?: string;
+  licenseVerified?: string;
   productIntro?: string;
   originTraceability?: string;
   acceptsVerificationRecruitment: '0' | '1';
@@ -293,6 +296,9 @@ function toMerchantAccount(dto: MerchantDto): MerchantAccount {
     phone: dto.contactPhone,
     companyAddress: dto.companyAddress,
     businessLicense: dto.businessLicense,
+    companyCreditCode: dto.companyCreditCode,
+    legalPerson: dto.legalPerson,
+    licenseVerified: dto.licenseVerified === '1',
     productIntro: dto.productIntro,
     originTraceability: dto.originTraceability,
     acceptsVerificationRecruitment: dto.acceptsVerificationRecruitment === '0',
