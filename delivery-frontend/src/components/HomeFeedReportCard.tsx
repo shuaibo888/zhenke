@@ -7,11 +7,13 @@ export function HomeFeedReportCard({
   item,
   onOpen,
   onUseful,
+  onImageLoad,
   variant = 'grid',
 }: {
   item: HomeFeedItemDto;
   onOpen: () => void;
   onUseful?: () => void;
+  onImageLoad?: (key: string, width: number, height: number) => void;
   variant?: 'grid' | 'preview';
 }) {
   if (!item.report) return null;
@@ -67,7 +69,18 @@ export function HomeFeedReportCard({
       }}
     >
       <div className={styles.reportGridImage}>
-        <img loading="lazy" decoding="async" src={item.coverUrl} alt={`${item.title}实拍`} />
+        <img
+          loading="lazy"
+          decoding="async"
+          src={item.coverUrl}
+          alt={`${item.title}实拍`}
+          onLoad={(event) => {
+            const img = event.currentTarget;
+            if (img.naturalWidth) img.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+            onImageLoad?.(`report-${item.contentId}`, img.naturalWidth, img.naturalHeight);
+          }}
+          onError={() => onImageLoad?.(`report-${item.contentId}`, 0, 0)}
+        />
       </div>
       <div className={styles.reportGridContent}>
         <span className={styles.homeReportBadge}>甄客验</span>

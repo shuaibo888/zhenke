@@ -3,8 +3,10 @@
   min-height: 100dvh;
   padding: 24px 28px 48px;
   background:
-    linear-gradient(135deg, rgba(31, 111, 91, 0.12), transparent 34%),
-    linear-gradient(180deg, #f7faf4 0%, #eef4ed 100%);
+    radial-gradient(circle at 14% 6%, rgba(47, 158, 119, 0.16), transparent 40%),
+    radial-gradient(circle at 94% 12%, rgba(232, 134, 47, 0.10), transparent 32%),
+    radial-gradient(circle at 50% 118%, rgba(31, 111, 91, 0.14), transparent 48%),
+    linear-gradient(165deg, #f2f8f4 0%, #f8fbf7 48%, #e9f1ec 100%);
 }
 
 /* 个人中心：整屏固定高度，内容在一页内撑满，禁止上下滚动 */
@@ -12,6 +14,28 @@
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
+}
+
+/* 商城：应用级布局——整页固定高度（flex 列），只有商品列表内部滚动；
+   .mallPage 用 flex:1 吃掉导航栏以下的剩余空间，底部贴齐底部导航栏 */
+.appShell.mallApp {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.appShell.mallApp .navBar {
+  flex: none;
+  flex-shrink: 0;
+}
+
+.appShell.mallApp .mallPage {
+  position: static;
+  flex: 1;
+  min-height: 0;
+  height: auto;
 }
 
 .authPage {
@@ -131,6 +155,9 @@
 
 .homeMasthead {
   grid-template-columns: minmax(520px, 1fr) auto;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .homeDiscoveryNav {
@@ -173,9 +200,10 @@
   flex: 0 0 104px;
   min-height: 42px;
   color: #53665f;
-  background: #f4f7f5;
-  border: 1px solid #e4ebe7;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(31, 111, 91, 0.10);
   border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(23, 61, 52, 0.05);
 }
 
 .homeDiscoveryNav .homeContentButton:nth-child(3) {
@@ -186,15 +214,15 @@
 .homeDiscoveryNav .homeContentButton:hover {
   color: #174b3e;
   background: #ffffff;
-  border-color: #d7e3dd;
-  box-shadow: 0 5px 16px rgba(29, 73, 60, 0.08);
+  border-color: rgba(31, 111, 91, 0.22);
+  box-shadow: 0 5px 16px rgba(29, 73, 60, 0.10);
 }
 
 .homeDiscoveryNav .homeContentActive {
   color: #ffffff;
-  background: #174b3e;
-  border-color: #174b3e;
-  box-shadow: 0 7px 18px rgba(23, 75, 62, 0.18);
+  background: linear-gradient(135deg, #2f9e77 0%, #174b3e 100%);
+  border-color: transparent;
+  box-shadow: 0 7px 18px rgba(23, 75, 62, 0.24);
 }
 
 .homeTitleButton span {
@@ -220,8 +248,8 @@
   padding: 0;
   place-items: center;
   color: #174b3e;
-  background: #f4f7f5;
-  border: 1px solid #e1e9e5;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(31, 111, 91, 0.10);
   border-radius: 50%;
   box-shadow: 0 4px 14px rgba(23, 61, 52, 0.08);
   font-size: 20px;
@@ -230,7 +258,7 @@
 .homeDiscoveryNav .homeSearchButton:hover {
   transform: translateY(-1px);
   background: #ffffff;
-  border-color: #cddbd4;
+  border-color: rgba(31, 111, 91, 0.22);
   box-shadow: 0 8px 20px rgba(23, 61, 52, 0.13);
 }
 
@@ -482,6 +510,17 @@
   margin: 0;
   color: #64716b;
   line-height: 1.7;
+}
+
+/* 空状态：统一居中、留白，柔和配色，避免一整行干巴巴的灰字 */
+.empty {
+  display: block;
+  margin: 26px auto;
+  max-width: 560px;
+  padding: 4px 16px;
+  color: #7a8a83;
+  font-size: 14px;
+  text-align: center;
 }
 
 .eyebrow {
@@ -1122,10 +1161,11 @@
 
 .checkoutSection,
 .checkoutSummaryPanel {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(31, 111, 91, 0.13);
   border-radius: 16px;
   box-shadow: 0 9px 28px rgba(23, 61, 52, 0.055);
+  backdrop-filter: blur(12px);
 }
 
 .checkoutSection {
@@ -1714,13 +1754,14 @@
 .homeCategoryNav button {
   min-height: 46px;
   padding: 8px 10px;
-  color: #52655e;
-  background: #f3f7f5;
-  border: 1px solid transparent;
+  color: #4f625a;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(31, 111, 91, 0.10);
   border-radius: 12px;
   cursor: pointer;
   font-size: 15px;
   font-weight: 800;
+  box-shadow: 0 2px 8px rgba(23, 61, 52, 0.05);
   transition:
     color 160ms ease,
     background 160ms ease,
@@ -1731,15 +1772,16 @@
 .homeCategoryNav button:hover {
   color: #174b3e;
   background: #ffffff;
-  border-color: #dce7e1;
-  box-shadow: 0 5px 16px rgba(29, 73, 60, 0.08);
+  border-color: rgba(31, 111, 91, 0.22);
+  box-shadow: 0 5px 16px rgba(29, 73, 60, 0.10);
+  transform: translateY(-1px);
 }
 
 .homeCategoryNav .homeCategoryActive {
   color: #ffffff;
-  background: #174b3e;
-  border-color: #174b3e;
-  box-shadow: 0 7px 18px rgba(23, 75, 62, 0.18);
+  background: linear-gradient(135deg, #2f9e77 0%, #174b3e 100%);
+  border-color: transparent;
+  box-shadow: 0 7px 18px rgba(23, 75, 62, 0.24);
 }
 
 .homeCategoryNav button:focus-visible {
@@ -1754,9 +1796,10 @@
   margin-bottom: 18px;
   padding: 13px 15px;
   color: #66756f;
-  background: #f7faf8;
-  border: 1px solid #e1e9e5;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(31, 111, 91, 0.10);
   border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(23, 61, 52, 0.05);
 }
 
 .homeSearchSummary strong {
@@ -1796,8 +1839,27 @@
 
 .homeLoadMore :global(.ant-btn) {
   min-width: 132px;
-  border-color: rgba(31, 111, 91, 0.24);
-  color: #1f6f5b;
+  border: 0;
+  color: #ffffff;
+  background: linear-gradient(135deg, #2f9e77 0%, #174b3e 100%);
+  border-radius: 999px;
+  box-shadow: 0 6px 16px rgba(23, 75, 62, 0.22);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    opacity 160ms ease;
+}
+
+.homeLoadMore :global(.ant-btn:hover),
+.homeLoadMore :global(.ant-btn:focus) {
+  color: #ffffff;
+  background: linear-gradient(135deg, #2f9e77 0%, #174b3e 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 9px 22px rgba(23, 75, 62, 0.30);
+}
+
+.homeLoadMore :global(.ant-btn-loading) {
+  opacity: 0.85;
 }
 
 .sortSelect {
@@ -2047,13 +2109,6 @@
   gap: 12px;
 }
 
-.reportGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  align-items: stretch;
-}
-
 .homeReportBadge {
   display: inline-flex;
   padding: 2px 6px;
@@ -2064,16 +2119,44 @@
   font-weight: 800;
 }
 
-@media (min-width: 768px) {
-  .reportGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+/* 首页瀑布流（小红书式）：卡片按内容高度自然错落，不强制左右对齐 */
+.masonryFeed {
+  position: relative;
 }
 
-@media (min-width: 1024px) {
-  .reportGrid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
+.masonryColumns {
+  display: grid;
+  align-items: start;
+}
+
+.masonryColumn {
+  display: flex;
+  flex-direction: column;
+}
+
+.homeFeedPage .reportGridCard,
+.homeFeedPage .recruitGridCard {
+  height: auto;
+}
+
+.homeFeedPage .reportGridImage {
+  aspect-ratio: auto;
+}
+
+.homeFeedPage .reportGridImage img {
+  position: static;
+  width: 100%;
+  height: auto;
+  display: block;
+  aspect-ratio: 1 / 1; /* 加载前按 1:1 占位防塌陷；加载后由内联 style 覆盖 */
+  object-fit: cover;
+}
+
+/* 首页：内容直接浮在全页渐变上，不再包白色卡片 */
+.homeFeedPage {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .reportGridCard {
@@ -4279,7 +4362,8 @@
   padding: 24px;
   border: 1px solid rgba(31, 111, 91, 0.12);
   border-radius: 12px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(14px);
   box-shadow: 0 18px 48px rgba(33, 61, 48, 0.08);
 }
 
@@ -4567,8 +4651,8 @@
   align-items: center;
   gap: 12px;
   padding: 12px;
-  background: #fff;
-  border: 1px solid #e3e7e4;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(31, 111, 91, 0.12);
   border-radius: 12px;
   cursor: pointer;
 }
@@ -4613,8 +4697,9 @@
   gap: 14px;
   margin: 4px -16px 0;
   padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
-  background: #fff;
-  border-top: 1px solid #eaeeeb;
+  background: rgba(255, 255, 255, 0.92);
+  border-top: 1px solid rgba(31, 111, 91, 0.12);
+  backdrop-filter: blur(16px);
   z-index: 20;
 }
 
@@ -4664,7 +4749,8 @@
   overflow: hidden;
   border: 1px solid rgba(31, 111, 91, 0.14);
   border-radius: 18px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(14px);
   box-shadow: 0 12px 34px rgba(28, 66, 52, 0.075);
 }
 
@@ -4754,12 +4840,12 @@
 
 .productContentBody {
   min-height: 180px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.85);
 }
 
 .productReportsBody {
   padding: 18px;
-  background: #f6f9f7;
+  background: rgba(247, 250, 248, 0.6);
 }
 
 .productReportsList {
@@ -4779,9 +4865,12 @@
   margin: 0;
   padding: 48px 20px;
   place-items: center;
-  color: #87938d;
+  color: #7d8b85;
   font-size: 14px;
   text-align: center;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px dashed rgba(31, 111, 91, 0.2);
+  border-radius: 14px;
 }
 
 .productReportLoadMore {
@@ -5307,7 +5396,8 @@
   padding: 24px;
   border: 1px solid rgba(31, 111, 91, 0.12);
   border-radius: 12px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(14px);
   box-shadow: 0 18px 48px rgba(33, 61, 48, 0.08);
 }
 
@@ -6266,6 +6356,7 @@
 
 .cartDrawer :global(.ant-drawer-body) {
   padding: 18px;
+  background: linear-gradient(180deg, #f8fbf8 0%, #eef5ef 100%);
 }
 
 .cartDrawer :global(.ant-drawer-footer) {
@@ -6462,7 +6553,10 @@
 @media (max-width: 640px) {
   .appShell {
     padding: calc(10px + env(safe-area-inset-top)) 16px calc(92px + env(safe-area-inset-bottom));
-    background: #ffffff;
+    background:
+      radial-gradient(circle at 14% 4%, rgba(47, 158, 119, 0.16), transparent 44%),
+      radial-gradient(circle at 96% 10%, rgba(232, 134, 47, 0.09), transparent 32%),
+      linear-gradient(180deg, #f6faf6 0%, #edf4ef 100%);
   }
 
   .masthead {
@@ -6472,13 +6566,15 @@
     padding: 10px 16px;
     border: 0;
     border-radius: 0;
-    background: #ffffff;
+    background: rgba(255, 255, 255, 0.8);
     box-shadow: none;
   }
 
   .homeMasthead {
     min-height: 68px;
     padding: 8px 12px;
+    background: transparent;
+    box-shadow: none;
   }
 
   .homeDiscoveryNav {
@@ -6615,7 +6711,8 @@
     border: 0;
     border-top: 1px solid rgba(31, 111, 91, 0.14);
     border-radius: 18px 18px 0 0;
-    background: #ffffff;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(18px);
     box-shadow: 0 -4px 18px rgba(20, 45, 36, 0.08);
   }
 
@@ -6674,8 +6771,9 @@
   .homeFeedPage {
     border: 0;
     border-radius: 0;
-    background: #ffffff;
+    background: transparent;
     box-shadow: none;
+    padding: 6px 10px 28px;
   }
 
   .homeCategoryNav {
@@ -6694,20 +6792,20 @@
     min-height: 42px;
     padding: 6px 4px;
     color: #52655e;
-    background: #f3f7f5;
-    border: 1px solid transparent;
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(31, 111, 91, 0.10);
     border-radius: 11px;
     font-size: 14px;
     font-weight: 700;
     white-space: nowrap;
-    box-shadow: none;
+    box-shadow: 0 2px 8px rgba(23, 61, 52, 0.05);
   }
 
   .homeCategoryNav .homeCategoryActive {
     color: #ffffff;
-    background: #174b3e;
-    border-color: #174b3e;
-    box-shadow: 0 5px 14px rgba(23, 75, 62, 0.18);
+    background: linear-gradient(135deg, #2f9e77 0%, #174b3e 100%);
+    border-color: transparent;
+    box-shadow: 0 5px 14px rgba(23, 75, 62, 0.24);
   }
 
   .homeSearchSummary {
@@ -6716,12 +6814,6 @@
     padding: 10px 12px;
     border-radius: 12px;
     font-size: 13px;
-  }
-
-  .homeFeedPage .reportGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    align-items: stretch;
   }
 
   .homeFeedPage .reportGridCard,
@@ -6742,7 +6834,7 @@
   }
 
   .homeFeedPage .reportGridImage {
-    aspect-ratio: 1 / 1;
+    aspect-ratio: auto;
     padding-top: 0;
     border-radius: 10px 10px 0 0;
   }
@@ -8680,24 +8772,17 @@
 .mallCategoryRail button:focus-visible {
   color: #174b3e;
   background: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
   outline: none;
 }
 
-.mallCategoryRail .mallCategoryActive {
-  color: #174b3e;
-  background: #ffffff;
+.mallCategoryRail .mallCategoryActive,
+.mallCategoryRail .mallCategoryActive:hover {
+  color: #ffffff;
+  background: linear-gradient(135deg, #2f9e77 0%, #174b3e 100%);
+  border-radius: 10px;
   font-weight: 900;
-}
-
-.mallCategoryRail .mallCategoryActive::before {
-  position: absolute;
-  top: 16px;
-  bottom: 16px;
-  left: 0;
-  width: 4px;
-  background: #1f6f5b;
-  border-radius: 0 4px 4px 0;
-  content: '';
+  box-shadow: 0 7px 18px rgba(23, 75, 62, 0.24);
 }
 
 .mallProductPane {
@@ -9040,11 +9125,6 @@
     font-size: 13px;
   }
 
-  .mallCategoryRail .mallCategoryActive::before {
-    top: 14px;
-    bottom: 14px;
-  }
-
   .mallProductPane {
     padding: 14px 12px 24px;
   }
@@ -9351,7 +9431,7 @@
 }
 
 .mallSearchControl {
-  background: rgba(246, 249, 247, 0.96);
+  background: rgba(255, 255, 255, 0.78);
   border-color: rgba(31, 111, 91, 0.16);
 }
 
@@ -9361,15 +9441,11 @@
 }
 
 .mallCategoryRail {
-  background: linear-gradient(180deg, #f4f7f5 0%, #edf3ef 100%);
+  background: transparent;
 }
 
 .mallCategoryRail button {
   border-bottom: 1px solid rgba(31, 111, 91, 0.045);
-}
-
-.mallCategoryRail .mallCategoryActive {
-  box-shadow: inset -1px 0 0 rgba(31, 111, 91, 0.08);
 }
 
 @media (min-width: 641px) {
@@ -9450,7 +9526,10 @@
 
 @media (max-width: 640px) {
   .appShell {
-    background: #ffffff;
+    background:
+      radial-gradient(circle at 14% 4%, rgba(47, 158, 119, 0.16), transparent 44%),
+      radial-gradient(circle at 96% 10%, rgba(232, 134, 47, 0.09), transparent 32%),
+      linear-gradient(180deg, #f6faf6 0%, #edf4ef 100%);
   }
 
   .navBar {
@@ -9515,14 +9594,15 @@
 .mallPage {
   position: sticky;
   top: 0;
-  height: 100vh;
-  height: 100dvh;
+  /* 扣掉 appShell 的上下留白（桌面 24px + 48px），否则 100dvh 超出视口导致整页可滚动 */
+  height: calc(100vh - 24px - 48px);
+  height: calc(100dvh - 24px - 48px);
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* 左侧分类列背景常驻满高（元素自身背景会被 border-radius 自动裁切） */
-  background: linear-gradient(90deg, #f3f6f4 0, #f3f6f4 148px, #ffffff 148px);
+  /* 全页统一透出 appShell 渐变；分类列用细分隔线区分，不再单独背大块白底 */
+  background: transparent;
 }
 
 .mallLayout {
@@ -9539,9 +9619,10 @@
   max-width: none;
   margin-bottom: 0;
   padding: 18px 24px 14px;
-  background: #ffffff;
-  border-bottom: 1px solid rgba(31, 111, 91, 0.08);
-  box-shadow: 0 8px 20px rgba(28, 66, 52, 0.06);
+  background: rgba(255, 255, 255, 0.42);
+  border-bottom: 1px solid rgba(31, 111, 91, 0.10);
+  box-shadow: 0 6px 16px rgba(28, 66, 52, 0.05);
+  backdrop-filter: blur(8px);
 }
 
 .mallSearchControl {
@@ -9551,7 +9632,7 @@
 
 .mallCategoryRail {
   background: transparent;
-  border-right: 0;
+  border-right: 1px solid rgba(31, 111, 91, 0.12);
 }
 
 .mallProductPane {
@@ -9562,7 +9643,9 @@
 
 @media (max-width: 900px) {
   .mallPage {
-    background: linear-gradient(90deg, #f3f6f4 0, #f3f6f4 120px, #ffffff 120px);
+    height: calc(100vh - 12px - 92px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    height: calc(100dvh - 12px - 92px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    background: transparent;
   }
 
   .mallLayout {
@@ -9571,14 +9654,18 @@
 }
 
 @media (max-width: 640px) {
+  .appShell.mallApp {
+    /* 顶部不再留 padding（搜索栏自带顶部间距），底部只留底部导航栏的高度，
+       让 .mallPage 底部正好贴住导航栏，不再有多余横线/空隙 */
+    padding: 0 16px calc(58px + env(safe-area-inset-bottom));
+  }
+
   .mallPage {
-    top: 0;
     margin: 0 -16px;
-    border-right: 0;
-    border-left: 0;
+    border: 0;
     border-radius: 0;
     box-shadow: none;
-    background: linear-gradient(90deg, #f3f6f4 0, #f3f6f4 88px, #ffffff 88px);
+    background: transparent;
   }
 
   .mallLayout {
@@ -9590,11 +9677,11 @@
   }
 
   .mallProductPane {
-    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
   }
 
   .mallCategoryRail {
-    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
   }
 }
 

@@ -97,7 +97,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <div className={`${styles.appShell} ${authPage ? styles.authPage : ''} ${profileLanding ? styles.profilePage : ''}`}>
+      <div className={`${styles.appShell} ${authPage ? styles.authPage : ''} ${profileLanding ? styles.profilePage : ''} ${mallActive ? styles.mallApp : ''}`}>
         {!detailPage && !authPage && !mallActive && !profileLanding && (
           <header className={`${styles.masthead} ${homePage ? styles.homeMasthead : ''}`}>
             {homePage && homeSearchOpen ? (

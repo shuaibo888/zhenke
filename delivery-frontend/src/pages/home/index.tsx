@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { HomeFeedReportCard } from '@/components/HomeFeedReportCard';
+import { MasonryFeed } from '@/components/MasonryFeed';
 import {
   fetchHomeFeed,
   fetchProductCategories,
@@ -32,6 +33,21 @@ export default function HomePage() {
   const loadMoreTrigger = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
   const requestVersion = useRef(0);
+  // 瀑布流：记录每张封面的真实宽高比，图片加载后触发头部重排（settle）。
+  const ratioMapRef = useRef<Record<string, { w: number; h: number }>>({});
+  const [revision, setRevision] = useState(0);
+
+  const handleImageLoad = useCallback((key: string, width: number, height: number) => {
+    ratioMapRef.current[key] = { w: width || 1, h: height || 1 };
+    setRevision((value) => value + 1);
+  }, []);
+
+  const estimateHeight = useCallback((key: string | null, columnWidth: number) => {
+    const ratio = key ? ratioMapRef.current[key] : undefined;
+    const imageHeight = ratio ? (columnWidth * ratio.h) / ratio.w : columnWidth;
+    return imageHeight + (key?.startsWith('trial-') ? 148 : 112);
+  }, []);
+
   const reportQuery = Number(searchParams.get('report'));
   const productQuery = Number(searchParams.get('product'));
   const paymentOrderId = Number(searchParams.get('wechatPayOrderId'));
@@ -179,6 +195,68 @@ export default function HomePage() {
     }
   };
 
+  const cards = feed.map((item) => {
+    if (item.contentType === 'REPORT') {
+      if (!item.report) return null;
+      return (
+        <HomeFeedReportCard
+          key={`report-${item.contentId}`}
+          item={item}
+          onOpen={() => navigate(`/reports/${item.contentId}`)}
+          onUseful={() => void useful(item)}
+          onImageLoad={handleImageLoad}
+        />
+      );
+    }
+    if (!item.trial) return null;
+    const remaining = Math.max(0, item.trial.targetCount - item.trial.approvedCount);
+    const progress = item.trial.targetCount > 0
+      ? Math.min(100, Math.round((item.trial.approvedCount / item.trial.targetCount) * 100))
+      : 0;
+    return (
+      <article
+        key={`trial-${item.contentId}`}
+        className={styles.recruitGridCard}
+        onClick={() => navigate(`/products/${item.productId}?campaign=${item.contentId}`)}
+      >
+        <div className={styles.reportGridImage}>
+          <img
+            loading="lazy"
+            decoding="async"
+            src={item.coverUrl}
+            alt={item.title}
+            onLoad={(event) => {
+              const img = event.currentTarget;
+              if (img.naturalWidth) img.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+              handleImageLoad(`trial-${item.contentId}`, img.naturalWidth, img.naturalHeight);
+            }}
+            onError={() => handleImageLoad(`trial-${item.contentId}`, 0, 0)}
+          />
+        </div>
+        <div className={styles.reportGridContent}>
+          <div className={styles.recruitBadge}>{item.trial.trialType === 'ONLINE' ? '线上试用' : '线下试用'}</div>
+          <p className={styles.reportGridTitle}>{item.title}</p>
+          <div className={styles.recruitGridMeta}>
+            <div className={styles.recruitProgressRow}>
+              <span className={styles.recruitProgressLabel}>已领取 {item.trial.approvedCount}/{item.trial.targetCount}</span>
+              <span className={styles.recruitRemainTag}>剩{remaining}</span>
+            </div>
+            <div className={styles.recruitProgressBar}><i style={{ width: `${progress}%` }} /></div>
+            <span className={styles.recruitDeadlineInline}>
+              截止 {item.trial.applicationDeadline.slice(5, 10).replace('-', '月')}日
+            </span>
+          </div>
+          <div className={styles.reportGridFooter}>
+            <span className={styles.gridAuthor}>
+              <span className={styles.gridMerchantAvatar}>{(item.merchantName || '店').slice(0, 1)}</span>
+              <span className={styles.gridAuthorName}>{item.merchantName}</span>
+            </span>
+          </div>
+        </div>
+      </article>
+    );
+  }).filter((card): card is NonNullable<typeof card> => card != null);
+
   return (
     <main className={`${styles.singleColumn} ${styles.homeFeedPage}`}>
       {searchMode ? (
@@ -204,57 +282,13 @@ export default function HomePage() {
         </div>
       )}
       {loading && <div className={styles.sessionLoading}><Spin /></div>}
-      <div className={styles.reportGrid}>
-        {feed.map((item) => {
-          if (item.contentType === 'REPORT') {
-            if (!item.report) return null;
-            return (
-              <HomeFeedReportCard
-                key={`report-${item.contentId}`}
-                item={item}
-                onOpen={() => navigate(`/reports/${item.contentId}`)}
-                onUseful={() => void useful(item)}
-              />
-            );
-          }
-          if (!item.trial) return null;
-          const remaining = Math.max(0, item.trial.targetCount - item.trial.approvedCount);
-          const progress = item.trial.targetCount > 0
-            ? Math.min(100, Math.round((item.trial.approvedCount / item.trial.targetCount) * 100))
-            : 0;
-          return (
-            <article
-              key={`trial-${item.contentId}`}
-              className={styles.recruitGridCard}
-              onClick={() => navigate(`/products/${item.productId}?campaign=${item.contentId}`)}
-            >
-              <div className={styles.reportGridImage}>
-                <img loading="lazy" decoding="async" src={item.coverUrl} alt={item.title} />
-              </div>
-              <div className={styles.reportGridContent}>
-                <div className={styles.recruitBadge}>{item.trial.trialType === 'ONLINE' ? '线上试用' : '线下试用'}</div>
-                <p className={styles.reportGridTitle}>{item.title}</p>
-                <div className={styles.recruitGridMeta}>
-                  <div className={styles.recruitProgressRow}>
-                    <span className={styles.recruitProgressLabel}>已领取 {item.trial.approvedCount}/{item.trial.targetCount}</span>
-                    <span className={styles.recruitRemainTag}>剩{remaining}</span>
-                  </div>
-                  <div className={styles.recruitProgressBar}><i style={{ width: `${progress}%` }} /></div>
-                  <span className={styles.recruitDeadlineInline}>
-                    截止 {item.trial.applicationDeadline.slice(5, 10).replace('-', '月')}日
-                  </span>
-                </div>
-                <div className={styles.reportGridFooter}>
-                  <span className={styles.gridAuthor}>
-                    <span className={styles.gridMerchantAvatar}>{(item.merchantName || '店').slice(0, 1)}</span>
-                    <span className={styles.gridAuthorName}>{item.merchantName}</span>
-                  </span>
-                </div>
-              </div>
-            </article>
-          );
-        })}
-      </div>
+      <MasonryFeed
+        gap={10}
+        estimateHeight={estimateHeight}
+        revision={revision}
+      >
+        {cards}
+      </MasonryFeed>
       {!loading && feed.length === 0 && (
         <p className={styles.empty}>
           {searchMode
