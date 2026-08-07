@@ -4,6 +4,8 @@ public class WechatPaymentPrepareResult
 {
     private String type;
     private String oauthUrl;
+    private String h5Url;
+    private String codeUrl;
     private String appId;
     private String timeStamp;
     private String nonceStr;
@@ -33,8 +35,26 @@ public class WechatPaymentPrepareResult
         return result;
     }
 
+    public static WechatPaymentPrepareResult h5(String h5Url)
+    {
+        WechatPaymentPrepareResult result = new WechatPaymentPrepareResult();
+        result.type = "H5";
+        result.h5Url = h5Url;
+        return result;
+    }
+
+    public static WechatPaymentPrepareResult nativePay(String codeUrl)
+    {
+        WechatPaymentPrepareResult result = new WechatPaymentPrepareResult();
+        result.type = "NATIVE";
+        result.codeUrl = codeUrl;
+        return result;
+    }
+
     public String getType() { return type; }
     public String getOauthUrl() { return oauthUrl; }
+    public String getH5Url() { return h5Url; }
+    public String getCodeUrl() { return codeUrl; }
     public String getAppId() { return appId; }
     public String getTimeStamp() { return timeStamp; }
     public String getNonceStr() { return nonceStr; }

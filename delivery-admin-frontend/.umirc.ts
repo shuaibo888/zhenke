@@ -12,7 +12,7 @@ export default defineConfig({
     '/api': {
       target: 'http://127.0.0.1:8080',
       pathRewrite: { '^/api': '' },
-      // target: 'https://miniats.cboo.cloud',
+      // target: 'https://dzshop.vip',
       changeOrigin: true,
     },
   },

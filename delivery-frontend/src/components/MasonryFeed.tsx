@@ -39,6 +39,11 @@ function argmin(values: number[]): number {
   return index;
 }
 
+// 手机端（2 列）收紧间距，让每张卡片更宽、图片更大。
+function columnGap(gap: number, columnCount: number): number {
+  return columnCount <= 2 ? 6 : gap;
+}
+
 export function MasonryFeed({
   children,
   gap = 10,
@@ -90,7 +95,7 @@ export function MasonryFeed({
       if (width <= 0) return;
       const count = columnCountForWidth(width);
       setColumnCount((current) => (current !== count ? count : current));
-      setColWidth((width - gap * (count - 1)) / count);
+      setColWidth((width - columnGap(gap, count) * (count - 1)) / count);
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -114,7 +119,7 @@ export function MasonryFeed({
       const height = heightsRef.current.get(keys[i]) ?? estimateHeight?.(keys[i], colWidth) ?? colWidth + 112;
       const column = argmin(colTotals);
       cols[i] = column;
-      colTotals[column] += height + gap;
+      colTotals[column] += height + columnGap(gap, columnCount);
     }
 
     const built: number[][] = Array.from({ length: columnCount }, () => []);
@@ -132,10 +137,10 @@ export function MasonryFeed({
     <div ref={containerRef} className={styles.masonryFeed}>
       <div
         className={styles.masonryColumns}
-        style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`, gap }}
+        style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`, gap: columnGap(gap, columnCount) }}
       >
         {columnItems.map((indices, columnIndex) => (
-          <div key={columnIndex} className={styles.masonryColumn} style={{ gap }}>
+          <div key={columnIndex} className={styles.masonryColumn} style={{ gap: columnGap(gap, columnCount) }}>
             {indices.map((itemIndex) => (
               <div
                 key={itemIndex}

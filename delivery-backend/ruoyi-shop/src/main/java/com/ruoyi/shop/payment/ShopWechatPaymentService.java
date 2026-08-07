@@ -65,27 +65,69 @@ public class ShopWechatPaymentService
     }
 
     @Transactional
-    public WechatPaymentPrepareResult prepare(long orderId, WechatPaymentPrepareBody body, String userAgent)
+    public WechatPaymentPrepareResult prepare(long orderId, WechatPaymentPrepareBody body,
+            String userAgent, String clientIp)
     {
         requireEnabled();
         long userId = ShopAccountIdentity.requireShopUserId();
         ShopOrder order = requirePayableUserOrder(userId, orderId, false);
-        if (userAgent == null || !userAgent.toLowerCase(Locale.ROOT).contains("micromessenger"))
+        if (isWechatBrowser(userAgent))
         {
-            throw new ServiceException("当前仅支持微信内 JSAPI 支付，请使用微信打开本页面");
+            if (StringUtils.isEmpty(StringUtils.trim(body.getCode())))
+            {
+                return WechatPaymentPrepareResult.oauth(buildOauthUrl(userId, orderId, body.getReturnUrl()));
+            }
+            verifyOauthState(body.getState(), userId, orderId);
+            String openId = exchangeOpenId(body.getCode());
+            order = requirePayableUserOrder(userId, orderId, true);
+            markWechatPrepay(order, "JSAPI");
+            WechatPayGateway.JsapiParameters parameters = gateway.createJsapiPayment(
+                    toPaymentOrder(order), openId);
+            return WechatPaymentPrepareResult.jsapi(parameters.appId(), parameters.timeStamp(),
+                    parameters.nonceStr(), parameters.packageValue(), parameters.signType(), parameters.paySign());
         }
-        if (StringUtils.isEmpty(StringUtils.trim(body.getCode())))
-        {
-            return WechatPaymentPrepareResult.oauth(buildOauthUrl(userId, orderId, body.getReturnUrl()));
-        }
-        verifyOauthState(body.getState(), userId, orderId);
-        String openId = exchangeOpenId(body.getCode());
         order = requirePayableUserOrder(userId, orderId, true);
-        markWechatPrepay(order, "JSAPI");
-        WechatPayGateway.JsapiParameters parameters = gateway.createJsapiPayment(
-                toPaymentOrder(order), openId);
-        return WechatPaymentPrepareResult.jsapi(parameters.appId(), parameters.timeStamp(),
-                parameters.nonceStr(), parameters.packageValue(), parameters.signType(), parameters.paySign());
+        if (isMobileBrowser(userAgent))
+        {
+            markWechatPrepay(order, "H5");
+            try
+            {
+                return WechatPaymentPrepareResult.h5(gateway.createH5Payment(toPaymentOrder(order), clientIp));
+            }
+            catch (Exception exception)
+            {
+                log.warn("H5 支付下单失败，订单可在微信内改用 JSAPI 支付，orderId={}", orderId, exception);
+                throw new ServiceException(h5ReviewFallbackMessage());
+            }
+        }
+        markWechatPrepay(order, "NATIVE");
+        return WechatPaymentPrepareResult.nativePay(gateway.createNativePayment(toPaymentOrder(order), clientIp));
+    }
+
+    private boolean isWechatBrowser(String userAgent)
+    {
+        return userAgent != null && userAgent.toLowerCase(Locale.ROOT).contains("micromessenger");
+    }
+
+    private boolean isMobileBrowser(String userAgent)
+    {
+        if (userAgent == null)
+        {
+            return false;
+        }
+        String ua = userAgent.toLowerCase(Locale.ROOT);
+        return ua.contains("mobile") || ua.contains("android") || ua.contains("iphone")
+                || ua.contains("ipad") || ua.contains("ipod") || ua.contains("windows phone");
+    }
+
+    private String h5ReviewFallbackMessage()
+    {
+        String baseUrl = properties.getFrontendReturnUrl();
+        if (baseUrl.endsWith("/"))
+        {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
+        return "当前 H5 支付尚在审核，请复制 " + baseUrl + " 官方网站在微信客户端打开，即可正常支付";
     }
 
     public ShopOrder reconcileUserOrder(long orderId)

@@ -194,10 +194,10 @@ wechat-pay:
   # 当前使用自动下载平台证书模式，不需要配置微信支付公钥 ID 和公钥文件。
   credential-mode: AUTO_CERTIFICATE
   # 两个通知地址必须是公网 HTTPS、不能携带查询参数，并转发到当前后端。
-  payment-notify-url: https://miniats.cboo.cloud/api/shop/payments/wechat/notify/payment
-  refund-notify-url: https://miniats.cboo.cloud/api/shop/payments/wechat/notify/refund
+  payment-notify-url: https://dzshop.vip/api/shop/payments/wechat/notify/payment
+  refund-notify-url: https://dzshop.vip/api/shop/payments/wechat/notify/refund
   # 公众号网页授权后返回的前端页面，不要携带查询参数。
-  frontend-return-url: https://miniats.cboo.cloud/
+  frontend-return-url: https://dzshop.vip/
   # 用于签署公众号 OAuth state，至少 32 个字符且不要与登录 token 密钥复用。
   oauth-state-secret: ${WECHAT_PAY_OAUTH_STATE_SECRET}
 

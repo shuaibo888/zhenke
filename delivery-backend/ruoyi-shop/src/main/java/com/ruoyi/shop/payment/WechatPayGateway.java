@@ -15,6 +15,7 @@ import com.wechat.pay.java.core.notification.NotificationConfig;
 import com.wechat.pay.java.core.notification.NotificationParser;
 import com.wechat.pay.java.core.notification.RequestParam;
 import com.wechat.pay.java.service.payments.h5.H5Service;
+import com.wechat.pay.java.service.payments.nativepay.NativePayService;
 import com.wechat.pay.java.service.payments.jsapi.JsapiServiceExtension;
 import com.wechat.pay.java.service.payments.jsapi.model.PrepayWithRequestPaymentResponse;
 import com.wechat.pay.java.service.payments.model.Transaction;
@@ -31,6 +32,7 @@ public class WechatPayGateway
     private final WechatPayProperties properties;
     private final JsapiServiceExtension jsapiService;
     private final H5Service h5Service;
+    private final NativePayService nativeService;
     private final RefundService refundService;
     private final NotificationParser notificationParser;
 
@@ -41,6 +43,7 @@ public class WechatPayGateway
         {
             this.jsapiService = null;
             this.h5Service = null;
+            this.nativeService = null;
             this.refundService = null;
             this.notificationParser = null;
             return;
@@ -78,6 +81,7 @@ public class WechatPayGateway
         }
         this.jsapiService = new JsapiServiceExtension.Builder().config(config).build();
         this.h5Service = new H5Service.Builder().config(config).build();
+        this.nativeService = new NativePayService.Builder().config(config).build();
         this.refundService = new RefundService.Builder().config(config).build();
         this.notificationParser = new NotificationParser(notificationConfig);
     }
@@ -111,6 +115,58 @@ public class WechatPayGateway
         PrepayWithRequestPaymentResponse response = jsapiService.prepayWithRequestPayment(request);
         return new JsapiParameters(response.getAppId(), response.getTimeStamp(), response.getNonceStr(),
                 response.getPackageVal(), response.getSignType(), response.getPaySign());
+    }
+
+    public String createNativePayment(PaymentOrder order, String clientIp)
+    {
+        requireEnabled();
+        com.wechat.pay.java.service.payments.nativepay.model.PrepayRequest request =
+                new com.wechat.pay.java.service.payments.nativepay.model.PrepayRequest();
+        com.wechat.pay.java.service.payments.nativepay.model.Amount amount =
+                new com.wechat.pay.java.service.payments.nativepay.model.Amount();
+        amount.setTotal(order.amountFen());
+        amount.setCurrency("CNY");
+        com.wechat.pay.java.service.payments.nativepay.model.SceneInfo sceneInfo =
+                new com.wechat.pay.java.service.payments.nativepay.model.SceneInfo();
+        sceneInfo.setPayerClientIp(clientIp);
+        request.setAppid(properties.getAppId());
+        request.setMchid(properties.getMerchantId());
+        request.setDescription(order.description());
+        request.setOutTradeNo(order.orderNo());
+        request.setTimeExpire(order.timeExpire());
+        request.setAttach(String.valueOf(order.orderId()));
+        request.setNotifyUrl(properties.getPaymentNotifyUrl());
+        request.setAmount(amount);
+        request.setSceneInfo(sceneInfo);
+        return nativeService.prepay(request).getCodeUrl();
+    }
+
+    public String createH5Payment(PaymentOrder order, String clientIp)
+    {
+        requireEnabled();
+        com.wechat.pay.java.service.payments.h5.model.PrepayRequest request =
+                new com.wechat.pay.java.service.payments.h5.model.PrepayRequest();
+        com.wechat.pay.java.service.payments.h5.model.Amount amount =
+                new com.wechat.pay.java.service.payments.h5.model.Amount();
+        amount.setTotal(order.amountFen());
+        amount.setCurrency("CNY");
+        com.wechat.pay.java.service.payments.h5.model.SceneInfo sceneInfo =
+                new com.wechat.pay.java.service.payments.h5.model.SceneInfo();
+        sceneInfo.setPayerClientIp(clientIp);
+        com.wechat.pay.java.service.payments.h5.model.H5Info h5Info =
+                new com.wechat.pay.java.service.payments.h5.model.H5Info();
+        h5Info.setType("Wap");
+        sceneInfo.setH5Info(h5Info);
+        request.setAppid(properties.getAppId());
+        request.setMchid(properties.getMerchantId());
+        request.setDescription(order.description());
+        request.setOutTradeNo(order.orderNo());
+        request.setTimeExpire(order.timeExpire());
+        request.setAttach(String.valueOf(order.orderId()));
+        request.setNotifyUrl(properties.getPaymentNotifyUrl());
+        request.setAmount(amount);
+        request.setSceneInfo(sceneInfo);
+        return h5Service.prepay(request).getH5Url();
     }
 
     public Transaction queryOrder(String orderNo)

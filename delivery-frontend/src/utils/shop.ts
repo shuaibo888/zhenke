@@ -9,10 +9,6 @@ export function formatDateTime(value?: string) {
   return value.replace('T', ' ').replace(/\.\d+$/, '').slice(0, 19);
 }
 
-export function isWechatBrowser() {
-  return typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent);
-}
-
 export function getCartCount(items: Array<{ quantity: number }>) {
   return items.reduce((total, item) => total + item.quantity, 0);
 }

@@ -16,6 +16,7 @@ import { useShop } from '@/app/ShopContext';
 import { getCartCount } from '@/utils/shop';
 import { AddressManager } from './AddressManager';
 import { CartDrawer } from './CartDrawer';
+import { NativePayModal } from './NativePayModal';
 import { ProfileBackButton } from './ProfileBackButton';
 import styles from '@/styles/commerce.less';
 
@@ -249,6 +250,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
       <AddressManager open={addressOpen} onClose={() => setAddressOpen(false)} />
+      <NativePayModal />
     </>
   );
 }

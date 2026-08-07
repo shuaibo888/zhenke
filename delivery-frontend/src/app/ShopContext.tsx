@@ -40,6 +40,7 @@ import {
 import type { AuthUser } from '@/utils/authRules';
 import { registerAuthExpiredHandler, storeToken } from '@/services/apiClient';
 import { clearWechatPaymentQuery, invokeWechatJsapi } from '@/utils/wechatPayment';
+import { copyText } from '@/utils/shop';
 
 type AuthMode = 'login' | 'register';
 
@@ -67,6 +68,7 @@ interface ShopContextValue {
   pointsLoading: boolean;
   privateLoading: boolean;
   payingOrderId: number | null;
+  nativePayment: { orderId: number; codeUrl: string } | null;
   setAuthMode: (mode: AuthMode) => void;
   loadCaptcha: () => Promise<void>;
   login: (username: string, password: string, code?: string) => Promise<void>;
@@ -85,6 +87,7 @@ interface ShopContextValue {
   checkoutCart: (addressId: number, userCouponId?: number) => Promise<ShopOrderDto[]>;
   buyNow: (addressId: number, productId: number, quantity?: number, sourceReportId?: number, userCouponId?: number) => Promise<ShopOrderDto[]>;
   payOrder: (orderId: number, authorization?: { code?: string; state?: string }) => Promise<void>;
+  clearNativePayment: () => void;
   saveAddress: (body: ShopShippingAddressBody, addressId?: number) => Promise<void>;
   makeDefaultAddress: (addressId: number) => Promise<void>;
   removeAddress: (addressId: number) => Promise<void>;
@@ -126,7 +129,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [points, setPoints] = useState<ShopPointBalance>(emptyPoints);
   const [pointsLoading, setPointsLoading] = useState(false);
   const [payingOrderId, setPayingOrderId] = useState<number | null>(null);
+  const [nativePayment, setNativePayment] = useState<{ orderId: number; codeUrl: string } | null>(null);
   const [authExpiredOpen, setAuthExpiredOpen] = useState(false);
+  const [h5ReviewFallbackOpen, setH5ReviewFallbackOpen] = useState(false);
   const paymentReturnHandled = useRef(false);
   const authExpiredRef = useRef(false);
   const userRef = useRef<AuthUser | null>(null);
@@ -471,6 +476,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return created;
   }, []);
 
+  const clearNativePayment = useCallback(() => setNativePayment(null), []);
+
   const payOrder = useCallback(async (orderId: number, authorization: { code?: string; state?: string } = {}) => {
     setPayingOrderId(orderId);
     try {
@@ -479,6 +486,20 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       if (prepared.type === 'OAUTH') {
         if (!prepared.oauthUrl) throw new Error('微信网页授权地址缺失');
         window.location.assign(prepared.oauthUrl);
+        return;
+      }
+      if (prepared.type === 'H5') {
+        if (!prepared.h5Url) throw new Error('H5 支付地址缺失');
+        const redirectUrl = new URL(
+          `/checkout?orderId=${orderId}&wechatPayOrderId=${orderId}&wechatPayReturn=1`,
+          window.location.origin,
+        ).toString();
+        window.location.assign(`${prepared.h5Url}&redirect_url=${encodeURIComponent(redirectUrl)}`);
+        return;
+      }
+      if (prepared.type === 'NATIVE') {
+        if (!prepared.codeUrl) throw new Error('Native 支付二维码缺失');
+        setNativePayment({ orderId, codeUrl: prepared.codeUrl });
         return;
       }
       if (!prepared.appId || !prepared.timeStamp || !prepared.nonceStr
@@ -514,7 +535,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       if (authorization.code || authorization.state) clearWechatPaymentQuery();
-      message.error(error instanceof Error ? error.message : '微信支付失败');
+      const reason = error instanceof Error ? error.message : '微信支付失败';
+      if (reason.includes('H5 支付尚在审核')) {
+        setH5ReviewFallbackOpen(true);
+      } else {
+        message.error(reason);
+      }
     } finally {
       setPayingOrderId(null);
     }
@@ -593,6 +619,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     pointsLoading,
     privateLoading,
     payingOrderId,
+    nativePayment,
     setAuthMode,
     loadCaptcha,
     login,
@@ -611,6 +638,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     checkoutCart,
     buyNow,
     payOrder,
+    clearNativePayment,
     saveAddress,
     makeDefaultAddress,
     removeAddress,
@@ -625,9 +653,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     user, authLoading, authSubmitting, authMode, captcha, captchaLoading, captchaError,
     cart, cartLoading, coupons, couponsLoading, orders, ordersLoading, trials, trialsLoading,
     reports, reportsLoading, addresses, addressesLoading, points, pointsLoading, privateLoading, payingOrderId,
+    nativePayment,
     loadCaptcha, login, register, logout, refreshCart, refreshCoupons, refreshOrders, refreshTrials,
     refreshReports, refreshAddresses, refreshPoints, addToCart, changeCartQuantity,
-    removeCartItem, checkoutCart, buyNow, payOrder, saveAddress, makeDefaultAddress, removeAddress,
+    removeCartItem, checkoutCart, buyNow, payOrder, clearNativePayment, saveAddress, makeDefaultAddress, removeAddress,
   ]);
 
   return (
@@ -646,6 +675,40 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
           <Button onClick={handleAuthExpiredGuest}>继续浏览</Button>
           <Button type="primary" onClick={handleAuthExpiredRelogin}>重新登录</Button>
+        </div>
+      </Modal>
+      <Modal
+        open={h5ReviewFallbackOpen}
+        title="H5 支付尚未开通"
+        footer={null}
+        onCancel={() => setH5ReviewFallbackOpen(false)}
+        centered
+        width={420}
+      >
+        <p style={{ margin: '0 0 12px', lineHeight: 1.8 }}>
+          当前 H5 支付尚在审核，手机浏览器暂无法直接唤起微信收银台。请复制官网地址，在微信客户端中打开后即可正常支付。
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+          <code
+            style={{
+              flex: 1,
+              padding: '6px 10px',
+              borderRadius: 6,
+              background: 'rgba(0,0,0,0.04)',
+              fontSize: 13,
+              userSelect: 'all',
+            }}
+          >
+            {window.location.origin}
+          </code>
+          <Button
+            onClick={() => void copyText(window.location.origin).then(() => message.success('网址已复制，请在微信中打开'))}
+          >
+            复制
+          </Button>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button type="primary" onClick={() => setH5ReviewFallbackOpen(false)}>我知道了</Button>
         </div>
       </Modal>
     </ShopContext.Provider>

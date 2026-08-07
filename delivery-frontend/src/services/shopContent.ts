@@ -560,8 +560,10 @@ export async function cancelShopOrder(orderId: number) {
 }
 
 export type WechatPaymentPrepareResult = {
-  type: 'OAUTH' | 'JSAPI';
+  type: 'OAUTH' | 'JSAPI' | 'H5' | 'NATIVE';
   oauthUrl?: string;
+  h5Url?: string;
+  codeUrl?: string;
   appId?: string;
   timeStamp?: string;
   nonceStr?: string;

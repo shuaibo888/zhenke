@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.annotation.Anonymous;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.utils.ip.IpUtils;
 import com.ruoyi.shop.domain.dto.WechatPaymentPrepareBody;
 import com.ruoyi.shop.payment.ShopWechatPaymentService;
 import com.ruoyi.shop.payment.WechatPayGateway;
@@ -37,7 +38,7 @@ public class ShopWechatPaymentController
             @Valid @RequestBody WechatPaymentPrepareBody body, HttpServletRequest request)
     {
         return AjaxResult.success(paymentService.prepare(orderId, body,
-                request.getHeader("User-Agent")));
+                request.getHeader("User-Agent"), IpUtils.getIpAddr(request)));
     }
 
     @GetMapping("/{orderId}/status")
