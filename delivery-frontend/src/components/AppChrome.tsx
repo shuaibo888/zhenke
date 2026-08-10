@@ -119,24 +119,31 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
               </form>
             ) : homePage ? (
               <div className={styles.homeDiscoveryNav} aria-label="首页内容分类">
+                <div className={styles.homeNavRail}>
+                  <button
+                    type="button"
+                    className={`${styles.homeNavItem} ${styles.homeNavSide} ${homeContent === 'REPORT' ? styles.homeContentActive : ''}`}
+                    aria-pressed={homeContent === 'REPORT'}
+                    onClick={() => selectHomeContent('REPORT')}
+                  >
+                    <span>甄客验</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.homeNavItem} ${styles.homeNavSide} ${homeContent === 'TRIAL' ? styles.homeContentActive : ''}`}
+                    aria-pressed={homeContent === 'TRIAL'}
+                    onClick={() => selectHomeContent('TRIAL')}
+                  >
+                    <span>试用</span>
+                  </button>
+                </div>
                 <button
                   type="button"
-                  className={`${styles.homeContentButton} ${homeContent === 'REPORT' ? styles.homeContentActive : ''}`}
-                  aria-pressed={homeContent === 'REPORT'}
-                  onClick={() => selectHomeContent('REPORT')}
+                  className={`${styles.homeNavItem} ${styles.homeNavBrand} ${!homeContent ? styles.homeContentActive : ''}`}
+                  aria-pressed={!homeContent}
+                  onClick={() => navigate('/')}
                 >
-                  甄客验
-                </button>
-                <button type="button" className={styles.homeTitleButton} onClick={() => navigate('/')}>
-                  <span>㤫者商城</span>
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.homeContentButton} ${homeContent === 'TRIAL' ? styles.homeContentActive : ''}`}
-                  aria-pressed={homeContent === 'TRIAL'}
-                  onClick={() => selectHomeContent('TRIAL')}
-                >
-                  试用
+                  <span className={styles.homeBrandDepth} data-text="㤫者商城">㤫者商城</span>
                 </button>
                 <button
                   type="button"
@@ -207,26 +214,29 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 className={!mallActive && !profileActive ? styles.activeTab : ''}
+                aria-current={!mallActive && !profileActive ? 'page' : undefined}
                 onClick={() => navigate('/')}
               >
-                <HomeOutlined />
-                <span>首页</span>
+                <span className={styles.dockIcon}><HomeOutlined /></span>
+                <span className={styles.dockLabel}>首页</span>
               </button>
               <button
                 type="button"
                 className={mallActive ? styles.activeTab : ''}
+                aria-current={mallActive ? 'page' : undefined}
                 onClick={() => navigate('/mall')}
               >
-                <AppstoreOutlined />
-                <span>商城</span>
+                <span className={styles.dockIcon}><AppstoreOutlined /></span>
+                <span className={styles.dockLabel}>商城</span>
               </button>
               <button
                 type="button"
                 className={profileActive ? styles.activeTab : ''}
+                aria-current={profileActive ? 'page' : undefined}
                 onClick={() => openProtected('/profile')}
               >
-                <UserOutlined />
-                <span>我的</span>
+                <span className={styles.dockIcon}><UserOutlined /></span>
+                <span className={styles.dockLabel}>我的</span>
               </button>
             </div>
           </nav>

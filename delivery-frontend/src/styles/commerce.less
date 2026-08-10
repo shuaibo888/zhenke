@@ -204,18 +204,19 @@
   padding: 0;
   place-items: center;
   color: #174b3e;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(31, 111, 91, 0.10);
+  background: transparent;
+  border: 0;
   border-radius: 50%;
-  box-shadow: 0 4px 14px rgba(23, 61, 52, 0.08);
+  box-shadow: none;
   font-size: 20px;
 }
 
 .homeDiscoveryNav .homeSearchButton:hover {
+  color: #087246;
   transform: translateY(-1px);
-  background: #ffffff;
-  border-color: rgba(31, 111, 91, 0.22);
-  box-shadow: 0 8px 20px rgba(23, 61, 52, 0.13);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .homeDiscoveryNav button:focus-visible,
@@ -9638,6 +9639,615 @@
 
   .mallCategoryRail {
     padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+}
+
+/* =====================================================================
+   首页导航动效：参考 Gooey Nav 的活动胶囊和气泡扩散。
+   仅改变表现层，按钮仍沿用原有筛选、首页与搜索处理。
+   ===================================================================== */
+.homeDiscoveryNav {
+  position: relative;
+  gap: 12px;
+}
+
+.homeDiscoveryNav .homeSearchButton {
+  margin-left: auto;
+}
+
+.homeDiscoveryNav::before {
+  content: none;
+}
+
+.homeNavRail {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  grid-template-columns: minmax(82px, 1fr) minmax(150px, 1.5fr) minmax(82px, 1fr);
+  width: min(430px, calc(100% - 84px));
+  gap: 14px;
+  align-items: center;
+  min-width: 0;
+  padding: 0;
+  isolation: isolate;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  transform: translate(-50%, -50%);
+}
+
+.homeDiscoveryNav .homeNavItem {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  min-height: 44px;
+  padding: 0 18px;
+  place-items: center;
+  color: #5f7069;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(31, 111, 91, 0.14);
+  border-radius: 999px;
+  box-shadow:
+    0 7px 18px rgba(23, 61, 52, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  font-size: 16px;
+  font-weight: 850;
+  letter-spacing: 0.02em;
+}
+
+.homeDiscoveryNav .homeNavItem > span {
+  position: relative;
+  z-index: 1;
+}
+
+.homeDiscoveryNav .homeNavSide {
+  width: 100%;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  font-size: 18px;
+  font-weight: 880;
+}
+
+.homeDiscoveryNav .homeNavSide:last-child {
+  grid-column: 3;
+}
+
+.homeDiscoveryNav .homeNavItem:hover {
+  color: #174b3e;
+  background: #fff;
+  border-color: rgba(31, 111, 91, 0.24);
+  box-shadow: 0 10px 22px rgba(23, 61, 52, 0.13);
+  transform: translateY(-1px);
+}
+
+.homeDiscoveryNav .homeNavSide:hover {
+  color: #174b3e;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  text-shadow: 0 5px 14px rgba(23, 75, 62, 0.18);
+}
+
+.homeDiscoveryNav .homeNavBrand {
+  position: absolute;
+  top: calc(50% - 7px);
+  left: 50%;
+  width: max-content;
+  min-width: max-content;
+  min-height: 52px;
+  padding-right: 2px;
+  padding-left: 2px;
+  overflow: visible;
+  perspective: 420px;
+  transform: translate(-50%, -50%);
+}
+
+.homeBrandDepth {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  color: #256d58;
+  font-size: 33px;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  transform: rotateX(-4deg) rotateY(5deg) translateZ(0);
+  transform-style: preserve-3d;
+  text-shadow:
+    1px 1px 0 #b8d4c8,
+    2px 2px 0 #8fb8a7,
+    3px 3px 0 #5e927d,
+    5px 7px 12px rgba(23, 61, 52, 0.22);
+  transition: color 240ms ease, text-shadow 240ms ease;
+  animation: homeBrandDepthOrbit 5.8s ease-in-out infinite;
+}
+
+.homeBrandDepth::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  color: rgba(23, 75, 62, 0.48);
+  content: attr(data-text);
+  transform: translate3d(3px, 4px, -8px);
+  pointer-events: none;
+}
+
+.homeDiscoveryNav .homeContentActive .homeBrandDepth {
+  color: #174b3e;
+  text-shadow:
+    1px 1px 0 #e0c16b,
+    2px 2px 0 #bd9436,
+    3px 3px 0 #6e8f78,
+    5px 8px 14px rgba(23, 61, 52, 0.28);
+}
+
+.homeDiscoveryNav .homeContentActive .homeBrandDepth::before {
+  color: rgba(104, 74, 20, 0.56);
+}
+
+.homeDiscoveryNav .homeNavBrand:hover .homeBrandDepth {
+  animation: none;
+  transform: rotateX(-2deg) rotateY(-4deg) translateY(-1px) translateZ(5px);
+}
+
+@keyframes homeBrandDepthOrbit {
+  0%,
+  100% {
+    transform: rotateX(-4deg) rotateY(5deg) translateY(0) translateZ(0);
+  }
+
+  50% {
+    transform: rotateX(3deg) rotateY(-4deg) translateY(-1px) translateZ(3px);
+  }
+}
+
+.homeDiscoveryNav .homeNavItem.homeContentActive,
+.homeDiscoveryNav .homeNavItem.homeContentActive:hover,
+.homeDiscoveryNav .homeNavItem.homeContentActive:active {
+  color: #fff;
+  background: linear-gradient(135deg, #36a47c 0%, #17634f 100%);
+  border-color: transparent;
+  box-shadow: 0 9px 22px rgba(23, 75, 62, 0.26);
+}
+
+.homeDiscoveryNav .homeNavSide.homeContentActive,
+.homeDiscoveryNav .homeNavSide.homeContentActive:hover,
+.homeDiscoveryNav .homeNavSide.homeContentActive:active {
+  color: #174b3e;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  text-shadow: 0 5px 16px rgba(23, 75, 62, 0.2);
+  transform: translateY(-2px);
+}
+
+.homeDiscoveryNav .homeNavBrand,
+.homeDiscoveryNav .homeNavBrand:hover,
+.homeDiscoveryNav .homeNavBrand.homeContentActive,
+.homeDiscoveryNav .homeNavBrand.homeContentActive:hover,
+.homeDiscoveryNav .homeNavBrand.homeContentActive:active {
+  color: #174b3e;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  transform: translate(-50%, -50%);
+}
+
+.homeDiscoveryNav .homeContentActive::before,
+.homeDiscoveryNav .homeContentActive::after {
+  position: absolute;
+  z-index: 0;
+  width: 8px;
+  height: 8px;
+  background: #2f9e77;
+  border-radius: 50%;
+  content: '';
+  pointer-events: none;
+  animation: homeGooBubble 560ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.homeDiscoveryNav .homeContentActive::before {
+  top: 5px;
+  left: 20%;
+  box-shadow:
+    24px -5px 0 -2px #1f8065,
+    48px 2px 0 -3px #54b88f;
+}
+
+.homeDiscoveryNav .homeContentActive::after {
+  right: 20%;
+  bottom: 5px;
+  box-shadow:
+    -25px 5px 0 -2px #287d66,
+    -48px -1px 0 -3px #79c7a7;
+}
+
+.homeDiscoveryNav .homeNavBrand::before,
+.homeDiscoveryNav .homeNavBrand::after {
+  content: none;
+}
+
+.homeDiscoveryNav .homeNavSide.homeContentActive::before {
+  top: auto;
+  bottom: 3px;
+  left: 50%;
+  width: 30px;
+  height: 3px;
+  background: linear-gradient(90deg, #2f9e77, #c49a3a);
+  border-radius: 999px;
+  box-shadow: 0 3px 8px rgba(23, 75, 62, 0.2);
+  opacity: 1;
+  animation: none;
+  transform: translateX(-50%);
+}
+
+.homeDiscoveryNav .homeNavSide.homeContentActive::after {
+  content: none;
+}
+
+@keyframes homeGooBubble {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.2);
+  }
+
+  48% {
+    opacity: 0.9;
+    transform: translateY(-7px) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.35);
+  }
+}
+
+/* =====================================================================
+   全局主导航：参考 Dock 的悬浮玻璃底座和活动图标抬升。
+   三个按钮继续使用原有路由与登录保护逻辑。
+   ===================================================================== */
+.appShell {
+  padding-bottom: 112px;
+}
+
+.appShell.mallApp {
+  padding-bottom: 92px;
+}
+
+.navBar {
+  position: fixed;
+  z-index: 70;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 8px 16px max(8px, env(safe-area-inset-bottom));
+  border: 0;
+  border-top: 1px solid rgba(31, 111, 91, 0.16);
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(242, 248, 244, 0.92));
+  box-shadow:
+    0 -12px 34px rgba(23, 61, 52, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(22px) saturate(1.2);
+  transform: none;
+}
+
+.topNav {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: min(100%, 520px);
+  margin: 0 auto;
+  gap: 8px;
+  overflow: visible;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.topNav button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 64px;
+  padding: 5px 8px 4px;
+  color: #66766f;
+  background: transparent;
+  border: 0;
+  border-radius: 18px;
+  font-size: 12px;
+  font-weight: 800;
+  transition:
+    color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease,
+    transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.topNav button::before,
+.topNav button::after {
+  content: none;
+}
+
+.dockIcon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(31, 111, 91, 0.1);
+  border-radius: 13px;
+  box-shadow: 0 5px 13px rgba(23, 61, 52, 0.07);
+  font-size: 19px;
+  transition:
+    color 180ms ease,
+    background 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.dockLabel {
+  line-height: 1.2;
+  transition: transform 180ms ease;
+}
+
+.topNav button:hover {
+  color: #174b3e;
+  background: rgba(255, 255, 255, 0.56);
+  border-color: transparent;
+  transform: translateY(-6px) scale(1.04);
+}
+
+.topNav button:hover .dockIcon {
+  transform: scale(1.12);
+  border-color: rgba(31, 111, 91, 0.22);
+  box-shadow: 0 10px 20px rgba(23, 61, 52, 0.14);
+}
+
+.topNav .activeTab,
+.topNav .activeTab:hover {
+  color: #17634f;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  transform: translateY(-6px) scale(1.04);
+}
+
+.topNav .activeTab .dockIcon {
+  color: #087246;
+  background: rgba(255, 255, 255, 0.58);
+  border-color: rgba(31, 111, 91, 0.3);
+  box-shadow: 0 8px 18px rgba(23, 75, 62, 0.16);
+  transform: scale(1.12);
+}
+
+.topNav .activeTab .dockLabel {
+  color: #17634f;
+  font-weight: 900;
+  text-shadow: 0 3px 10px rgba(23, 75, 62, 0.18);
+}
+
+.topNav button:focus-visible {
+  outline: 3px solid rgba(31, 111, 91, 0.28);
+  outline-offset: 3px;
+}
+
+.fixedCartBadge {
+  right: max(34px, calc((100vw - 1280px) / 2 + 34px));
+  bottom: calc(98px + env(safe-area-inset-bottom));
+  z-index: 72;
+}
+
+@media (max-width: 900px) {
+  .appShell {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  }
+
+  .appShell.mallApp {
+    padding-bottom: calc(90px + env(safe-area-inset-bottom));
+  }
+
+  .navBar {
+    bottom: 0;
+    padding: 8px 14px max(8px, env(safe-area-inset-bottom));
+  }
+
+  .topNav {
+    overflow: visible;
+  }
+
+  .topNav button {
+    min-width: 0;
+  }
+
+  .fixedCartBadge {
+    right: 18px;
+    bottom: calc(94px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 640px) {
+  .appShell {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  .appShell.mallApp {
+    padding: 0 16px calc(84px + env(safe-area-inset-bottom));
+  }
+
+  .homeMasthead {
+    min-height: 64px;
+  }
+
+  .homeDiscoveryNav {
+    gap: 8px;
+  }
+
+  .homeNavRail {
+    grid-template-columns: minmax(52px, 1fr) minmax(104px, 1.45fr) minmax(52px, 1fr);
+    width: calc(100% - 84px);
+    max-width: 300px;
+    gap: 7px;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .homeDiscoveryNav .homeNavItem {
+    min-height: 40px;
+    padding: 0 8px;
+    font-size: 14px;
+  }
+
+  .homeDiscoveryNav .homeNavBrand {
+    top: calc(50% - 8px);
+    min-height: 44px;
+    padding-right: 0;
+    padding-left: 0;
+    border-radius: 14px;
+  }
+
+  .homeDiscoveryNav .homeNavSide {
+    font-size: 16px;
+  }
+
+  .homeBrandDepth {
+    font-size: clamp(23px, 6.4vw, 26px);
+    letter-spacing: 0;
+    text-shadow:
+      1px 1px 0 #b8d4c8,
+      2px 2px 0 #6f9f8b,
+      3px 5px 9px rgba(23, 61, 52, 0.22);
+  }
+
+  .homeDiscoveryNav .homeContentActive .homeBrandDepth {
+    text-shadow:
+      1px 1px 0 #ddbd63,
+      2px 2px 0 #a67d2c,
+      3px 5px 10px rgba(7, 44, 34, 0.38);
+  }
+
+  .homeDiscoveryNav .homeSearchButton {
+    flex-basis: 44px;
+    width: 44px;
+    min-height: 44px;
+  }
+
+  .navBar {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-width: none;
+    padding: 6px 12px max(6px, env(safe-area-inset-bottom));
+    border: 0;
+    border-top: 1px solid rgba(31, 111, 91, 0.16);
+    border-radius: 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(242, 248, 244, 0.94));
+    box-shadow: 0 -9px 28px rgba(23, 61, 52, 0.11);
+    backdrop-filter: blur(20px) saturate(1.18);
+    transform: none;
+  }
+
+  .topNav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: min(100%, 420px);
+    gap: 6px;
+    padding: 0;
+    border-radius: 0;
+  }
+
+  .topNav button {
+    width: 100%;
+    min-width: 0;
+    min-height: 60px;
+    padding: 4px 7px 3px;
+    border: 0;
+    font-size: 11px;
+  }
+
+  .dockIcon {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    font-size: 18px;
+  }
+
+  .topNav button:hover {
+    border: 0;
+  }
+
+  .topNav .activeTab {
+    border: 0;
+    transform: translateY(-6px) scale(1.04);
+  }
+
+  .fixedCartBadge {
+    right: 16px;
+    bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+}
+
+.appShell.authPage {
+  padding-bottom: clamp(18px, 3vw, 42px);
+}
+
+/* 触屏设备会在点击后保留 :hover，选中态必须覆盖悬停背景。
+   类名取消后这些规则立即失效，恢复普通分类按钮样式。 */
+.homeCategoryNav button.homeCategoryActive,
+.homeCategoryNav button.homeCategoryActive:hover,
+.homeCategoryNav button.homeCategoryActive:active {
+  color: #ffffff;
+  background: linear-gradient(135deg, #2f9e77 0%, #174b3e 100%);
+  border-color: transparent;
+  box-shadow: 0 5px 14px rgba(23, 75, 62, 0.24);
+  transform: none;
+}
+
+@media (hover: none) {
+  .topNav button:hover {
+    color: #66766f;
+    background: transparent;
+    transform: none;
+  }
+
+  .topNav button:hover .dockIcon {
+    border-color: rgba(31, 111, 91, 0.1);
+    box-shadow: 0 5px 13px rgba(23, 61, 52, 0.07);
+    transform: none;
+  }
+
+  .topNav .activeTab,
+  .topNav .activeTab:hover {
+    color: #17634f;
+    background: transparent;
+    box-shadow: none;
+    transform: translateY(-4px) scale(1.03);
+  }
+
+  .topNav .activeTab:hover .dockIcon {
+    color: #087246;
+    background: rgba(255, 255, 255, 0.58);
+    border-color: rgba(31, 111, 91, 0.3);
+    box-shadow: 0 8px 18px rgba(23, 75, 62, 0.16);
+    transform: scale(1.1);
   }
 }
 

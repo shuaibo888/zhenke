@@ -1,3 +1,5 @@
+cloud-config:
+  api-key: ${PCC_API_KEY:}
 # 项目相关配置
 ruoyi:
   # 名称
