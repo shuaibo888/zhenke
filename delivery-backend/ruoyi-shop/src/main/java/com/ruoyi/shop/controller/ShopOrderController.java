@@ -56,7 +56,7 @@ public class ShopOrderController
     @PostMapping("/from-cart")
     public AjaxResult createFromCart(@Valid @RequestBody ShopCartCheckoutBody body)
     {
-        return AjaxResult.success(orderService.createFromCart(body.getAddressId(), body.getUserCouponId()));
+        return AjaxResult.success(orderService.createFromCart(body.getAddressId(), body.getUserCouponIds()));
     }
 
     @PutMapping("/{orderId}/cancel")

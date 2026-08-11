@@ -19,6 +19,7 @@ import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.shop.domain.ShopCartItem;
 import com.ruoyi.shop.domain.ShopOrder;
 import com.ruoyi.shop.domain.ShopOrderAddress;
+import com.ruoyi.shop.domain.ShopOrderCoupon;
 import com.ruoyi.shop.domain.ShopOrderItem;
 import com.ruoyi.shop.domain.ShopOrderLogisticsEvent;
 import com.ruoyi.shop.domain.ShopOrderRefund;
@@ -86,11 +87,11 @@ public class ShopOrderService
     {
         long userId = ShopAccountIdentity.requireShopUserId();
         lockUser(userId);
-        return createForUser(userId, body.getAddressId(), body.getItems(), body.getUserCouponId());
+        return createForUser(userId, body.getAddressId(), body.getItems(), body.getUserCouponIds());
     }
 
     @Transactional
-    public List<ShopOrder> createFromCart(long addressId, Long userCouponId)
+    public List<ShopOrder> createFromCart(long addressId, List<Long> userCouponIds)
     {
         long userId = ShopAccountIdentity.requireShopUserId();
         lockUser(userId);
@@ -106,7 +107,7 @@ public class ShopOrderService
             body.setSourceReportId(item.getSourceReportId());
             return body;
         }).toList();
-        List<ShopOrder> orders = createForUser(userId, addressId, items, userCouponId);
+        List<ShopOrder> orders = createForUser(userId, addressId, items, userCouponIds);
         List<Long> productIds = items.stream().map(ShopOrderItemBody::getProductId).distinct().toList();
         cartMapper.deleteUserProducts(userId, productIds);
         return orders;
@@ -323,7 +324,7 @@ public class ShopOrderService
     }
 
     private List<ShopOrder> createForUser(long userId, long addressId,
-            List<ShopOrderItemBody> requestedItems, Long userCouponId)
+            List<ShopOrderItemBody> requestedItems, List<Long> userCouponIds)
     {
         ShopUserAddress address = orderMapper.selectUserAddress(userId, addressId);
         if (address == null)
@@ -356,11 +357,8 @@ public class ShopOrderService
                     .add(new OrderLine(product, quantity, sourceReportId));
         }
 
-        if (userCouponId != null && userCouponId <= 0)
-        {
-            throw new ServiceException("优惠券参数无效");
-        }
-        if (userCouponId != null && linesByMerchant.size() != 1)
+        boolean usesCoupons = userCouponIds != null && !userCouponIds.isEmpty();
+        if (usesCoupons && linesByMerchant.size() != 1)
         {
             throw new ServiceException("购物车包含多个商家，优惠券仅支持单商家结算使用");
         }
@@ -372,31 +370,58 @@ public class ShopOrderService
                     .map(line -> line.product().getPrice().multiply(BigDecimal.valueOf(line.quantity())))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal discountAmount = BigDecimal.ZERO;
-            ShopUserCoupon selectedCoupon = null;
-            if (userCouponId != null)
+            BigDecimal payableAmount = originalAmount;
+            List<ShopUserCoupon> selectedCoupons = couponService.lockUsableCoupons(
+                    userId, userCouponIds, merchantEntry.getKey(), originalAmount);
+            List<ShopOrderCoupon> appliedCoupons = new ArrayList<>();
+            for (ShopUserCoupon coupon : selectedCoupons)
             {
-                selectedCoupon = couponService.lockUsableCoupon(
-                        userId, userCouponId, merchantEntry.getKey(), originalAmount);
-                discountAmount = selectedCoupon.getDiscountAmount();
+                if (payableAmount.signum() == 0)
+                {
+                    throw new ServiceException("订单已被优惠券全额抵扣，无需选择更多优惠券");
+                }
+                BigDecimal appliedAmount = coupon.getDiscountAmount().min(payableAmount);
+                payableAmount = payableAmount.subtract(appliedAmount);
+                discountAmount = discountAmount.add(appliedAmount);
+
+                ShopOrderCoupon orderCoupon = new ShopOrderCoupon();
+                orderCoupon.setUserCouponId(coupon.getUserCouponId());
+                orderCoupon.setCouponId(coupon.getCouponId());
+                orderCoupon.setCouponName(coupon.getCouponName());
+                orderCoupon.setCouponCode(coupon.getCouponCode());
+                orderCoupon.setScopeType(coupon.getScopeType());
+                orderCoupon.setFaceDiscountAmount(coupon.getDiscountAmount());
+                orderCoupon.setAppliedDiscountAmount(appliedAmount);
+                appliedCoupons.add(orderCoupon);
             }
 
             ShopOrder order = new ShopOrder();
             order.setOrderNo(newOrderNo());
             order.setUserId(userId);
             order.setMerchantId(merchantEntry.getKey());
-            order.setStatus(PENDING_PAYMENT);
+            boolean fullyDiscounted = payableAmount.signum() == 0;
+            order.setStatus(fullyDiscounted ? PAID : PENDING_PAYMENT);
             order.setItemCount(merchantEntry.getValue().stream().mapToInt(OrderLine::quantity).sum());
             order.setOriginalAmount(originalAmount);
             order.setDiscountAmount(discountAmount);
-            order.setTotalAmount(originalAmount.subtract(discountAmount));
-            order.setUserCouponId(selectedCoupon == null ? null : selectedCoupon.getUserCouponId());
+            order.setTotalAmount(payableAmount);
+            order.setPaymentChannel(fullyDiscounted ? "COUPON" : null);
+            order.setPayTime(fullyDiscounted ? new Date() : null);
             if (orderMapper.insertOrder(order) == 0)
             {
                 throw new ServiceException("订单创建失败");
             }
-            if (selectedCoupon != null)
+            if (!appliedCoupons.isEmpty())
             {
-                couponService.markUsed(userId, selectedCoupon.getUserCouponId(), order.getOrderId());
+                appliedCoupons.forEach(coupon -> coupon.setOrderId(order.getOrderId()));
+                if (orderMapper.insertOrderCoupons(appliedCoupons) != appliedCoupons.size())
+                {
+                    throw new ServiceException("订单优惠券明细创建失败");
+                }
+                for (ShopOrderCoupon coupon : appliedCoupons)
+                {
+                    couponService.markUsed(userId, coupon.getUserCouponId(), order.getOrderId());
+                }
             }
 
             for (OrderLine line : merchantEntry.getValue())
@@ -416,7 +441,8 @@ public class ShopOrderService
                 }
             }
             insertAddressSnapshot(order.getOrderId(), address);
-            insertStatusLog(order.getOrderId(), null, PENDING_PAYMENT, userId, "用户提交订单");
+            insertStatusLog(order.getOrderId(), null, order.getStatus(), userId,
+                    fullyDiscounted ? "用户提交订单，优惠券全额抵扣" : "用户提交订单");
             created.add(hydrate(requireUserOrder(userId, order.getOrderId(), false)));
         }
         return created;
@@ -546,6 +572,7 @@ public class ShopOrderService
     private ShopOrder hydrate(ShopOrder order)
     {
         order.setItems(orderMapper.selectOrderItems(order.getOrderId()));
+        order.setCoupons(orderMapper.selectOrderCoupons(order.getOrderId()));
         order.setAddress(orderMapper.selectOrderAddress(order.getOrderId()));
         order.setStatusLogs(orderMapper.selectStatusLogs(order.getOrderId()));
         order.setLogisticsEvents(orderMapper.selectLogisticsEvents(order.getOrderId()));
@@ -561,8 +588,12 @@ public class ShopOrderService
         List<Long> orderIds = orders.stream().map(ShopOrder::getOrderId).toList();
         Map<Long, List<ShopOrderItem>> itemsByOrder = orderMapper.selectOrderItemsByOrderIds(orderIds)
                 .stream().collect(Collectors.groupingBy(ShopOrderItem::getOrderId));
+        Map<Long, List<ShopOrderCoupon>> couponsByOrder = orderMapper.selectOrderCouponsByOrderIds(orderIds)
+                .stream().collect(Collectors.groupingBy(ShopOrderCoupon::getOrderId));
         orders.forEach(order -> order.setItems(
                 itemsByOrder.getOrDefault(order.getOrderId(), Collections.emptyList())));
+        orders.forEach(order -> order.setCoupons(
+                couponsByOrder.getOrDefault(order.getOrderId(), Collections.emptyList())));
         return orders;
     }
 

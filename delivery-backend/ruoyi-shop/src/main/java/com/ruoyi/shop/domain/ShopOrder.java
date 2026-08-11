@@ -16,7 +16,6 @@ public class ShopOrder
     private BigDecimal originalAmount;
     private BigDecimal discountAmount;
     private BigDecimal totalAmount;
-    private Long userCouponId;
     private Integer itemCount;
     private String delFlag;
     private Date paymentExpireTime;
@@ -41,6 +40,7 @@ public class ShopOrder
     private Date createTime;
     private Date updateTime;
     private List<ShopOrderItem> items;
+    private List<ShopOrderCoupon> coupons;
     private ShopOrderAddress address;
     private List<ShopOrderStatusLog> statusLogs;
     private List<ShopOrderLogisticsEvent> logisticsEvents;
@@ -65,8 +65,6 @@ public class ShopOrder
     public void setDiscountAmount(BigDecimal discountAmount) { this.discountAmount = discountAmount; }
     public BigDecimal getTotalAmount() { return totalAmount; }
     public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
-    public Long getUserCouponId() { return userCouponId; }
-    public void setUserCouponId(Long userCouponId) { this.userCouponId = userCouponId; }
     public Integer getItemCount() { return itemCount; }
     public void setItemCount(Integer itemCount) { this.itemCount = itemCount; }
     public String getDelFlag() { return delFlag; }
@@ -115,6 +113,8 @@ public class ShopOrder
     public void setUpdateTime(Date updateTime) { this.updateTime = updateTime; }
     public List<ShopOrderItem> getItems() { return items; }
     public void setItems(List<ShopOrderItem> items) { this.items = items; }
+    public List<ShopOrderCoupon> getCoupons() { return coupons; }
+    public void setCoupons(List<ShopOrderCoupon> coupons) { this.coupons = coupons; }
     public ShopOrderAddress getAddress() { return address; }
     public void setAddress(ShopOrderAddress address) { this.address = address; }
     public List<ShopOrderStatusLog> getStatusLogs() { return statusLogs; }

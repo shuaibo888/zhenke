@@ -49,11 +49,13 @@ type CouponFormValues = {
   description?: string;
   discountAmount: number;
   minimumSpend: number;
+  scopeType: 'MERCHANT_SPECIFIC' | 'PLATFORM_WIDE';
+  pointsCost?: number;
   startTime: string;
   endTime: string;
   status: 'ENABLED' | 'DISABLED';
   totalStock: number;
-  merchantIds: number[];
+  merchantIds?: number[];
 };
 
 type CouponGrantFormValues = {
@@ -99,6 +101,7 @@ export default function CouponModule({ session }: CouponModuleProps) {
   const { message, modal } = AntApp.useApp();
   const isAdmin = session.loginType === 'admin';
   const [couponForm] = Form.useForm<CouponFormValues>();
+  const selectedScopeType = Form.useWatch('scopeType', couponForm);
   const [couponGrantForm] = Form.useForm<CouponGrantFormValues>();
   const [coupons, setCoupons] = useState<ManagedCoupon[]>([]);
   const [page, setPage] = useState(1);
@@ -199,6 +202,8 @@ export default function CouponModule({ session }: CouponModuleProps) {
       description: '',
       discountAmount: 1,
       minimumSpend: 0,
+      scopeType: 'MERCHANT_SPECIFIC',
+      pointsCost: undefined,
       startTime: '',
       endTime: '',
       status: 'DISABLED',
@@ -228,6 +233,8 @@ export default function CouponModule({ session }: CouponModuleProps) {
       description: coupon.description,
       discountAmount: coupon.discountAmount,
       minimumSpend: coupon.minimumSpend,
+      scopeType: coupon.scopeType,
+      pointsCost: coupon.pointsCost,
       startTime: toDateInput(coupon.startTime),
       endTime: toDateInput(coupon.endTime),
       status: coupon.status,
@@ -255,12 +262,14 @@ export default function CouponModule({ session }: CouponModuleProps) {
       couponName: values.couponName.trim(),
       description: values.description?.trim(),
       discountAmount: values.discountAmount,
-      minimumSpend: values.minimumSpend,
+      minimumSpend: isAdmin && values.scopeType === 'PLATFORM_WIDE' ? 0 : values.minimumSpend,
+      scopeType: isAdmin ? values.scopeType : undefined,
+      pointsCost: isAdmin && values.scopeType === 'PLATFORM_WIDE' ? values.pointsCost : undefined,
       startTime: toApiDate(values.startTime),
       endTime: toApiDate(values.endTime, true),
       status: values.status,
       totalStock: values.totalStock,
-      merchantIds: isAdmin ? values.merchantIds : undefined,
+      merchantIds: isAdmin && values.scopeType === 'MERCHANT_SPECIFIC' ? values.merchantIds : undefined,
     };
     setSaving(true);
     try {
@@ -358,19 +367,24 @@ export default function CouponModule({ session }: CouponModuleProps) {
               ? `满 ${formatMoney(coupon.minimumSpend)} 减 ${formatMoney(coupon.discountAmount)}`
               : `无门槛减 ${formatMoney(coupon.discountAmount)}`}
           </div>
+          {coupon.scopeType === 'PLATFORM_WIDE' && (
+            <div className={styles.subText}>{coupon.pointsCost} 积分兑换</div>
+          )}
         </div>
       ),
     },
     {
-      title: '适用商家',
-      dataIndex: 'merchants',
+      title: '适用范围',
+      key: 'scope',
       responsive: ['md'],
-      render: (merchants: ManagedCoupon['merchants']) => (
-        <Space size={4} wrap>
-          {merchants.slice(0, 3).map((merchant) => <Tag key={merchant.merchantId}>{merchant.merchantName}</Tag>)}
-          {merchants.length > 3 && <Tag>+{merchants.length - 3}</Tag>}
-        </Space>
-      ),
+      render: (_, coupon) => coupon.scopeType === 'PLATFORM_WIDE'
+        ? <Tag color="green">全平台通用</Tag>
+        : (
+          <Space size={4} wrap>
+            {coupon.merchants.slice(0, 3).map((merchant) => <Tag key={merchant.merchantId}>{merchant.merchantName}</Tag>)}
+            {coupon.merchants.length > 3 && <Tag>+{coupon.merchants.length - 3}</Tag>}
+          </Space>
+        ),
     },
     {
       title: '有效期',
@@ -432,7 +446,7 @@ export default function CouponModule({ session }: CouponModuleProps) {
       <section className={styles.tableSurface}>
         <div className={styles.tableHeader}>
           <div>
-            <p className={styles.eyebrow}>{isAdmin ? '平台优惠券可选择多个用户和多个商家' : '本店优惠券可选择多个商城用户'}</p>
+            <p className={styles.eyebrow}>{isAdmin ? '平台可创建指定商家券或全平台积分兑换券' : '本店优惠券可选择多个商城用户'}</p>
             <h3>优惠券管理</h3>
           </div>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>创建优惠券</Button>
@@ -500,7 +514,13 @@ export default function CouponModule({ session }: CouponModuleProps) {
           form={couponForm}
           layout="vertical"
           onFinish={submitCoupon}
-          initialValues={{ status: 'DISABLED', minimumSpend: 0, discountAmount: 1, totalStock: 100 }}
+          initialValues={{
+            status: 'DISABLED',
+            minimumSpend: 0,
+            discountAmount: 1,
+            totalStock: 100,
+            scopeType: 'MERCHANT_SPECIFIC',
+          }}
         >
           <Form.Item name="couponName" label="优惠券名称" rules={[{ required: true, message: '请输入优惠券名称' }, { max: 100 }]}>
             <Input maxLength={100} placeholder="例如：甄选商家满100减20券" />
@@ -512,10 +532,41 @@ export default function CouponModule({ session }: CouponModuleProps) {
             <Form.Item name="discountAmount" label="固定优惠金额" rules={[{ required: true, message: '请输入优惠金额' }]}>
               <InputNumber min={0.01} max={99999999.99} precision={2} prefix="¥" style={{ width: '100%' }} />
             </Form.Item>
-            <Form.Item name="minimumSpend" label="最低消费金额" extra="填写 0 表示无门槛" rules={[{ required: true, message: '请输入最低消费金额' }]}>
-              <InputNumber min={0} max={99999999.99} precision={2} prefix="¥" style={{ width: '100%' }} />
-            </Form.Item>
+            {(!isAdmin || selectedScopeType !== 'PLATFORM_WIDE') && (
+              <Form.Item name="minimumSpend" label="最低消费金额" extra="填写 0 表示无门槛" rules={[{ required: true, message: '请输入最低消费金额' }]}>
+                <InputNumber min={0} max={99999999.99} precision={2} prefix="¥" style={{ width: '100%' }} />
+              </Form.Item>
+            )}
           </div>
+          {isAdmin && (
+            <div className={styles.formGrid}>
+              <Form.Item
+                name="scopeType"
+                label="优惠券类型"
+                rules={[{ required: true, message: '请选择优惠券类型' }]}
+              >
+                <Select
+                  options={[
+                    { label: '指定适用商家', value: 'MERCHANT_SPECIFIC' },
+                    { label: '全平台通用（支持积分兑换）', value: 'PLATFORM_WIDE' },
+                  ]}
+                />
+              </Form.Item>
+              {selectedScopeType === 'PLATFORM_WIDE' && (
+                <Form.Item
+                  name="pointsCost"
+                  label="兑换所需积分"
+                  extra="每位用户对同一张券最多兑换一次"
+                  rules={[{ required: true, message: '请输入兑换所需积分' }]}
+                >
+                  <InputNumber min={1} max={1000000000} precision={0} addonAfter="积分" style={{ width: '100%' }} />
+                </Form.Item>
+              )}
+            </div>
+          )}
+          {isAdmin && selectedScopeType === 'PLATFORM_WIDE' && (
+            <p className={styles.subText}>全平台通用券固定无门槛，可与其他优惠券叠加使用，最低实付金额为 0 元。</p>
+          )}
           <div className={styles.formGrid}>
             <Form.Item
               name="startTime"
@@ -557,11 +608,11 @@ export default function CouponModule({ session }: CouponModuleProps) {
               ]} />
             </Form.Item>
           </div>
-          {isAdmin && (
+          {isAdmin && selectedScopeType === 'MERCHANT_SPECIFIC' && (
             <Form.Item
               name="merchantIds"
               label="适用商家"
-              extra="平台优惠券只能用于所选商家。"
+              extra="指定商家券只能用于所选商家。"
               rules={[{ required: true, type: 'array', min: 1, message: '请至少选择一个适用商家' }]}
             >
               <Select
@@ -594,7 +645,9 @@ export default function CouponModule({ session }: CouponModuleProps) {
         {grantTarget && (
           <>
             <p className={styles.subText}>
-              适用商家：{grantTarget.merchants.map((merchant) => merchant.merchantName).join('、')}
+              适用范围：{grantTarget.scopeType === 'PLATFORM_WIDE'
+                ? '全平台通用'
+                : grantTarget.merchants.map((merchant) => merchant.merchantName).join('、')}
               ；剩余可下发 {grantTarget.totalStock - grantTarget.issuedCount} 张
             </p>
             <Form<CouponGrantFormValues>
@@ -644,7 +697,13 @@ export default function CouponModule({ session }: CouponModuleProps) {
           dataSource={history}
           columns={[
             { title: '下发时间', dataIndex: 'createTime', render: (value: string) => formatDateTime(value) },
-            { title: '方式', dataIndex: 'grantType', render: (value: ManagedCouponGrant['grantType']) => value === 'AUTOMATIC' ? '系统自动' : '手动下发' },
+            {
+              title: '方式',
+              dataIndex: 'grantType',
+              render: (value: ManagedCouponGrant['grantType']) => value === 'POINTS_EXCHANGE'
+                ? '积分兑换'
+                : value === 'AUTOMATIC' ? '系统自动' : '手动下发',
+            },
             { title: '操作人', dataIndex: 'operatorName' },
             { title: '用户数', dataIndex: 'userCount', render: (value: number) => `${value} 人` },
             { title: '每人张数', dataIndex: 'quantityPerUser', render: (value: number) => `${value} 张` },

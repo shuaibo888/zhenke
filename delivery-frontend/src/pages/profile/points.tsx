@@ -1,57 +1,71 @@
-import { HistoryOutlined, MinusOutlined, PlusOutlined, TrophyOutlined } from '@ant-design/icons';
-import { Pagination, Spin, message } from 'antd';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Navigate } from 'umi';
+import { GiftOutlined, HistoryOutlined, TrophyOutlined } from '@ant-design/icons';
+import { Button, Modal, Spin, message } from 'antd';
+import { useCallback, useState } from 'react';
+import { Navigate, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
-import { fetchMyPointRecords, type ShopPointRecord } from '@/services/shopAuth';
+import {
+  exchangePointCoupon,
+  fetchPointCouponOptions,
+  type ShopPointCouponOption,
+} from '@/services/shopAuth';
+import { formatPrice } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
 
-const PAGE_SIZE = 20;
-
 function formatDate(value: string) {
-  return value?.replace('T', ' ').slice(0, 16);
+  return value?.replace('T', ' ').slice(0, 10);
 }
 
 export default function PointsPage() {
-  const { user, points, pointsLoading, refreshPoints } = useShop();
-  const [records, setRecords] = useState<ShopPointRecord[]>([]);
-  const [recordsLoading, setRecordsLoading] = useState(false);
-  const [pageNum, setPageNum] = useState(1);
-  const [total, setTotal] = useState(0);
-  const requestVersion = useRef(0);
+  const navigate = useNavigate();
+  const { user, points, pointsLoading, refreshPoints, refreshCoupons } = useShop();
+  const [coupons, setCoupons] = useState<ShopPointCouponOption[]>([]);
+  const [couponsLoading, setCouponsLoading] = useState(false);
+  const [exchangingId, setExchangingId] = useState<number>();
 
-  const loadRecords = useCallback(async (nextPage = 1) => {
-    const version = ++requestVersion.current;
-    setRecordsLoading(true);
+  const loadCoupons = useCallback(async () => {
+    setCouponsLoading(true);
     try {
-      const result = await fetchMyPointRecords(nextPage, PAGE_SIZE);
-      if (requestVersion.current !== version) return;
-      setRecords(result.rows);
-      setTotal(result.total);
-      setPageNum(nextPage);
+      setCoupons(await fetchPointCouponOptions());
     } finally {
-      if (requestVersion.current === version) setRecordsLoading(false);
+      setCouponsLoading(false);
     }
   }, []);
 
-  useEffect(() => () => {
-    requestVersion.current += 1;
-  }, []);
-
   const refreshPage = useCallback(async () => {
-    await Promise.all([refreshPoints(), loadRecords(1)]);
-  }, [loadRecords, refreshPoints]);
+    await Promise.all([refreshPoints(), loadCoupons()]);
+  }, [loadCoupons, refreshPoints]);
 
-  useRefreshOnRoute('/profile/points', refreshPage, '积分记录刷新失败');
+  useRefreshOnRoute('/profile/points', refreshPage, '积分兑换信息刷新失败');
 
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
 
-  const changePage = (nextPage: number) => {
-    void loadRecords(nextPage).catch((error) => {
-      message.error(error instanceof Error ? error.message : '积分记录加载失败');
+  const confirmExchange = (coupon: ShopPointCouponOption) => {
+    if (coupon.exchanged || coupon.remainingStock <= 0 || exchangingId) return;
+    if (points.balance < coupon.pointsCost) {
+      message.warning('当前积分不足，暂时无法兑换');
+      return;
+    }
+    Modal.confirm({
+      title: `兑换${coupon.couponName}`,
+      content: `本次将扣除 ${coupon.pointsCost} 积分，兑换成功后优惠券会放入“我的优惠券”。`,
+      okText: '确认兑换',
+      cancelText: '再想想',
+      onOk: async () => {
+        setExchangingId(coupon.couponId);
+        try {
+          await exchangePointCoupon(coupon.couponId);
+          await Promise.all([refreshPoints(), refreshCoupons(), loadCoupons()]);
+          message.success('兑换成功，优惠券已放入“我的优惠券”');
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : '优惠券兑换失败');
+          throw error;
+        } finally {
+          setExchangingId(undefined);
+        }
+      },
     });
   };
 
@@ -64,6 +78,13 @@ export default function PointsPage() {
           <strong>{pointsLoading ? '--' : points.balance}</strong>
           <small>可用积分余额</small>
         </div>
+        <Button
+          className={styles.pointRecordsLink}
+          icon={<HistoryOutlined />}
+          onClick={() => navigate('/profile/point-records')}
+        >
+          积分明细
+        </Button>
         <div className={styles.pointSummaryStats}>
           <div>
             <span>累计划入</span>
@@ -79,55 +100,61 @@ export default function PointsPage() {
       <section className={styles.orderPanel}>
         <div className={styles.orderPanelHeading}>
           <div>
-            <span className={styles.eyebrow}>积分明细</span>
-            <h3>积分变更记录</h3>
+            <span className={styles.eyebrow}>积分兑换</span>
+            <h3>全平台通用优惠券</h3>
           </div>
-          <span>共 {total} 条</span>
+          <span>共 {coupons.length} 张</span>
         </div>
 
-        <Spin spinning={recordsLoading}>
-          <div className={styles.pointRecordList}>
-            {records.map((record) => {
-              const increased = record.changeAmount > 0;
+        <Spin spinning={couponsLoading}>
+          <div className={styles.pointCouponGrid}>
+            {coupons.map((coupon) => {
+              const insufficient = points.balance < coupon.pointsCost;
+              const soldOut = coupon.remainingStock <= 0;
+              const disabled = coupon.exchanged || soldOut || insufficient;
+              const buttonText = coupon.exchanged
+                ? '已兑换'
+                : soldOut
+                  ? '已兑完'
+                  : insufficient
+                    ? '积分不足'
+                    : `${coupon.pointsCost} 积分兑换`;
               return (
-                <article className={styles.pointRecordItem} key={record.pointRecordId}>
-                  <span className={`${styles.pointRecordIcon} ${increased ? styles.pointRecordIncrease : styles.pointRecordDecrease}`}>
-                    {increased ? <PlusOutlined /> : <MinusOutlined />}
-                  </span>
-                  <div className={styles.pointRecordCopy}>
-                    <strong>{record.changeReason}</strong>
-                    <small>{formatDate(record.createTime)}</small>
+                <article className={styles.pointCouponCard} key={coupon.couponId}>
+                  <div className={styles.pointCouponAmount}>
+                    <span>{formatPrice(coupon.discountAmount)}</span>
+                    <small>{coupon.minimumSpend > 0 ? `满 ${formatPrice(coupon.minimumSpend)} 可用` : '无门槛优惠'}</small>
                   </div>
-                  <div className={styles.pointRecordAmount}>
-                    <strong className={increased ? styles.pointAmountIncrease : styles.pointAmountDecrease}>
-                      {increased ? '+' : ''}{record.changeAmount}
-                    </strong>
-                    <small>余额 {record.balanceAfter}</small>
+                  <div className={styles.pointCouponBody}>
+                    <div>
+                      <strong>{coupon.couponName}</strong>
+                      <span>全平台通用</span>
+                    </div>
+                    <p>{coupon.description || '平台精选积分兑换优惠券'}</p>
+                    <small>{formatDate(coupon.startTime)} 至 {formatDate(coupon.endTime)}</small>
+                    <small>剩余 {coupon.remainingStock} 张</small>
+                    <Button
+                      type="primary"
+                      disabled={disabled}
+                      loading={exchangingId === coupon.couponId}
+                      onClick={() => confirmExchange(coupon)}
+                    >
+                      {buttonText}
+                    </Button>
                   </div>
                 </article>
               );
             })}
           </div>
 
-          {!recordsLoading && records.length === 0 && (
-            <div className={styles.pointRecordEmpty}>
-              <HistoryOutlined />
-              <strong>暂无积分变更记录</strong>
-              <p>后续产生积分增加或减少时，会在这里显示原因和变更后余额。</p>
+          {!couponsLoading && coupons.length === 0 && (
+            <div className={styles.pointCouponEmpty}>
+              <GiftOutlined />
+              <strong>暂无可兑换优惠券</strong>
+              <p>管理员上架全平台积分券后，会在这里展示。</p>
             </div>
           )}
         </Spin>
-
-        {total > PAGE_SIZE && (
-          <Pagination
-            className={styles.pointRecordPagination}
-            current={pageNum}
-            pageSize={PAGE_SIZE}
-            total={total}
-            showSizeChanger={false}
-            onChange={changePage}
-          />
-        )}
       </section>
     </main>
   );

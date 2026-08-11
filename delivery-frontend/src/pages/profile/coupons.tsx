@@ -90,7 +90,10 @@ export default function CouponsPage() {
                     </div>
                     <p>{coupon.description || '平台定向优惠券'}</p>
                     <dl>
-                      <div><dt>适用商家</dt><dd>{merchantNames || '暂无可用商家'}</dd></div>
+                      <div>
+                        <dt>适用范围</dt>
+                        <dd>{coupon.scopeType === 'PLATFORM_WIDE' ? '全平台通用' : (merchantNames || '暂无可用商家')}</dd>
+                      </div>
                       <div>
                         <dt>有效期</dt>
                         <dd className={styles.couponWalletValidity}>

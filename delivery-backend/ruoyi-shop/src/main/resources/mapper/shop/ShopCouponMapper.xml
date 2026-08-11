@@ -4,10 +4,12 @@
     <resultMap id="ShopCouponResult" type="ShopCoupon">
         <id property="couponId" column="coupon_id" />
         <result property="ownerMerchantId" column="owner_merchant_id" />
+        <result property="scopeType" column="scope_type" />
         <result property="couponName" column="coupon_name" />
         <result property="description" column="description" />
         <result property="discountAmount" column="discount_amount" />
         <result property="minimumSpend" column="minimum_spend" />
+        <result property="pointsCost" column="points_cost" />
         <result property="startTime" column="start_time" />
         <result property="endTime" column="end_time" />
         <result property="status" column="status" />
@@ -50,6 +52,7 @@
         <result property="createTime" column="user_coupon_create_time" />
         <result property="couponName" column="coupon_name" />
         <result property="description" column="description" />
+        <result property="scopeType" column="scope_type" />
         <result property="discountAmount" column="discount_amount" />
         <result property="minimumSpend" column="minimum_spend" />
         <result property="startTime" column="start_time" />
@@ -59,7 +62,8 @@
     </resultMap>
 
     <sql id="selectCoupon">
-        select coupon_id, owner_merchant_id, coupon_name, description, discount_amount, minimum_spend,
+        select coupon_id, owner_merchant_id, scope_type, coupon_name, description, discount_amount, minimum_spend,
+               points_cost,
                start_time, end_time, status, total_stock, issued_count,
                create_by, create_time, update_by, update_time
         from shop_coupon
@@ -163,10 +167,12 @@
 
     <insert id="insertCoupon" parameterType="ShopCoupon" useGeneratedKeys="true" keyProperty="couponId">
         insert into shop_coupon
-        (owner_merchant_id, coupon_name, description, discount_amount, minimum_spend, start_time, end_time,
+        (owner_merchant_id, scope_type, coupon_name, description, discount_amount, minimum_spend, points_cost,
+         start_time, end_time,
          status, total_stock, issued_count, del_flag, create_by, create_time, update_by, update_time)
         values
-        (#{ownerMerchantId}, #{couponName}, #{description}, #{discountAmount}, #{minimumSpend}, #{startTime}, #{endTime},
+        (#{ownerMerchantId}, #{scopeType}, #{couponName}, #{description}, #{discountAmount}, #{minimumSpend},
+         #{pointsCost}, #{startTime}, #{endTime},
          #{status}, #{totalStock}, 0, '0', #{createBy}, sysdate(), #{updateBy}, sysdate())
     </insert>
 
@@ -174,6 +180,7 @@
         update shop_coupon
         set coupon_name = #{couponName}, description = #{description},
             discount_amount = #{discountAmount}, minimum_spend = #{minimumSpend},
+            scope_type = #{scopeType}, points_cost = #{pointsCost},
             start_time = #{startTime}, end_time = #{endTime}, status = #{status},
             total_stock = #{totalStock}, update_by = #{updateBy}, update_time = sysdate()
         where coupon_id = #{couponId} and issued_count = 0 and del_flag = '0'
@@ -238,7 +245,7 @@
         select uc.user_coupon_id, uc.coupon_id, uc.shop_user_id, uc.grant_id,
                uc.coupon_code, uc.status as user_coupon_status, uc.used_order_id,
                uc.used_time, uc.create_time as user_coupon_create_time,
-               c.coupon_name, c.description, c.discount_amount, c.minimum_spend,
+               c.coupon_name, c.description, c.scope_type, c.discount_amount, c.minimum_spend,
                c.start_time, c.end_time, c.status as coupon_status
     </sql>
 
@@ -280,17 +287,22 @@
         'AVAILABLE' as availability_status
         from shop_user_coupon uc
         inner join shop_coupon c on c.coupon_id = uc.coupon_id
-        inner join shop_coupon_merchant cm
-            on cm.coupon_id = c.coupon_id and cm.merchant_id = #{merchantId}
-        inner join shop_merchant m
-            on m.merchant_id = cm.merchant_id
-           and m.audit_status = 'APPROVED' and m.status = '0' and m.del_flag = '0'
         where uc.shop_user_id = #{userId}
           and uc.status = 'UNUSED'
           and c.status = 'ENABLED' and c.del_flag = '0'
           and c.start_time &lt;= sysdate() and c.end_time &gt; sysdate()
           and c.minimum_spend &lt;= #{subtotal}
-          and c.discount_amount &lt; #{subtotal}
+          and (
+              c.scope_type = 'PLATFORM_WIDE'
+              or exists (
+                  select 1
+                  from shop_coupon_merchant cm
+                  inner join shop_merchant m
+                    on m.merchant_id = cm.merchant_id
+                   and m.audit_status = 'APPROVED' and m.status = '0' and m.del_flag = '0'
+                  where cm.coupon_id = c.coupon_id and cm.merchant_id = #{merchantId}
+              )
+          )
         order by c.discount_amount desc, c.end_time, uc.user_coupon_id
     </select>
 
@@ -331,4 +343,37 @@
         set status = 'UNUSED', used_order_id = null, used_time = null, update_time = sysdate()
         where used_order_id = #{orderId} and status = 'USED'
     </update>
+
+    <select id="selectExchangeableCoupons" parameterType="Long"
+            resultType="com.ruoyi.shop.domain.vo.ShopCouponExchangeOption">
+        select c.coupon_id as couponId,
+               c.coupon_name as couponName,
+               c.description,
+               c.discount_amount as discountAmount,
+               c.minimum_spend as minimumSpend,
+               c.points_cost as pointsCost,
+               c.start_time as startTime,
+               c.end_time as endTime,
+               greatest(c.total_stock - c.issued_count, 0) as remainingStock,
+               case when coupon_exchange.exchange_id is null then false else true end as exchanged
+        from shop_coupon c
+        left join shop_coupon_exchange coupon_exchange
+          on coupon_exchange.coupon_id = c.coupon_id and coupon_exchange.shop_user_id = #{userId}
+        where c.scope_type = 'PLATFORM_WIDE'
+          and c.points_cost is not null and c.points_cost &gt; 0
+          and c.status = 'ENABLED' and c.del_flag = '0'
+          and c.start_time &lt;= sysdate() and c.end_time &gt; sysdate()
+        order by exchanged, c.points_cost, c.end_time, c.coupon_id desc
+    </select>
+
+    <select id="countCouponExchange" resultType="int">
+        select count(1)
+        from shop_coupon_exchange
+        where coupon_id = #{couponId} and shop_user_id = #{userId}
+    </select>
+
+    <insert id="insertCouponExchange">
+        insert into shop_coupon_exchange (coupon_id, shop_user_id, points_cost, create_time)
+        values (#{couponId}, #{userId}, #{pointsCost}, sysdate())
+    </insert>
 </mapper>

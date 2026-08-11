@@ -27,10 +27,16 @@ public class ShopCouponBody
     @Digits(integer = 8, fraction = 2, message = "优惠金额最多8位整数和2位小数")
     private BigDecimal discountAmount;
 
-    @NotNull(message = "请输入最低消费金额")
     @DecimalMin(value = "0.00", message = "最低消费金额不能小于0")
     @Digits(integer = 8, fraction = 2, message = "最低消费金额最多8位整数和2位小数")
     private BigDecimal minimumSpend;
+
+    @Pattern(regexp = "MERCHANT_SPECIFIC|PLATFORM_WIDE", message = "优惠券适用范围无效")
+    private String scopeType;
+
+    @Min(value = 1, message = "积分兑换价格至少为1积分")
+    @Max(value = 1000000000, message = "积分兑换价格过大")
+    private Long pointsCost;
 
     @NotNull(message = "请选择开始日期")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -60,6 +66,10 @@ public class ShopCouponBody
     public void setDiscountAmount(BigDecimal discountAmount) { this.discountAmount = discountAmount; }
     public BigDecimal getMinimumSpend() { return minimumSpend; }
     public void setMinimumSpend(BigDecimal minimumSpend) { this.minimumSpend = minimumSpend; }
+    public String getScopeType() { return scopeType; }
+    public void setScopeType(String scopeType) { this.scopeType = scopeType; }
+    public Long getPointsCost() { return pointsCost; }
+    public void setPointsCost(Long pointsCost) { this.pointsCost = pointsCost; }
     public Date getStartTime() { return startTime; }
     public void setStartTime(Date startTime) { this.startTime = startTime; }
     public Date getEndTime() { return endTime; }

@@ -116,6 +116,13 @@
   box-shadow: none;
 }
 
+.masthead.profileSubPageMasthead {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
 .homeDiscoveryNav {
   position: relative;
   display: flex;
@@ -1261,6 +1268,24 @@
   width: 100%;
 }
 
+.checkoutCouponPreview {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  color: #40534a;
+  background: #edf8f1;
+  border: 1px solid #cce7d7;
+  border-radius: 12px;
+}
+
+.checkoutCouponPreview strong {
+  color: #087246;
+  font-size: 17px;
+}
+
 .checkoutCouponAlert {
   margin-bottom: 12px;
 }
@@ -1324,7 +1349,6 @@
   color: #8b9690;
 }
 
-.checkoutCouponNone,
 .checkoutCouponOption {
   display: flex;
   align-items: center;
@@ -1336,6 +1360,12 @@
   border-radius: 12px;
 }
 
+.checkoutCouponOption:global(.ant-checkbox-wrapper-checked) {
+  background: #edf8f1;
+  border-color: #58a77c;
+  box-shadow: 0 6px 16px rgba(8, 114, 70, 0.08);
+}
+
 .checkoutCouponDrawer :global(.ant-drawer-content-wrapper) {
   max-height: min(72vh, 660px);
 }
@@ -1344,7 +1374,7 @@
   overflow-y: auto;
 }
 
-.checkoutCouponOption :global(.ant-radio + span) {
+.checkoutCouponOption :global(.ant-checkbox + span) {
   display: flex;
   flex: 1;
   align-items: center;
@@ -1589,7 +1619,7 @@
     grid-column: 2;
   }
 
-  .checkoutCouponOption :global(.ant-radio + span) {
+  .checkoutCouponOption :global(.ant-checkbox + span) {
     flex-wrap: wrap;
     gap: 7px 10px;
   }
@@ -1600,6 +1630,15 @@
 
   .checkoutCouponCopy {
     flex-basis: calc(100% - 88px);
+  }
+
+  .checkoutCouponPreview {
+    grid-template-columns: 1fr auto;
+  }
+
+  .checkoutCouponPreview :global(.ant-btn) {
+    grid-column: 1 / -1;
+    justify-self: end;
   }
 
   .checkoutSummaryPanel {
@@ -3469,6 +3508,7 @@
 }
 
 .pointBalancePanel {
+  position: relative;
   display: flex;
   gap: 18px;
   align-items: center;
@@ -3527,6 +3567,146 @@
   color: #fff;
   font-size: 20px;
   line-height: 1.2;
+}
+
+.pointRecordsLink {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  height: 36px;
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  border-radius: 18px;
+  box-shadow: none;
+}
+
+.pointRecordsLink:hover,
+.pointRecordsLink:focus {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.pointSummaryStats {
+  padding-top: 48px;
+}
+
+.pointCouponGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.pointCouponCard {
+  display: grid;
+  grid-template-columns: 126px minmax(0, 1fr);
+  min-height: 190px;
+  overflow: hidden;
+  background: #fbfdfb;
+  border: 1px solid #dfeae3;
+  border-radius: 18px;
+  box-shadow: 0 10px 26px rgba(25, 66, 52, 0.08);
+}
+
+.pointCouponAmount {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  padding: 18px 12px;
+  color: #fff;
+  background: linear-gradient(145deg, #226b4d, #3f936d);
+  text-align: center;
+}
+
+.pointCouponAmount span {
+  color: #fff;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.pointCouponAmount small {
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+}
+
+.pointCouponBody {
+  display: grid;
+  gap: 8px;
+  align-content: center;
+  min-width: 0;
+  padding: 17px;
+}
+
+.pointCouponBody > div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pointCouponBody strong {
+  overflow: hidden;
+  color: #17241f;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pointCouponBody > div span {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  color: #237050;
+  background: #e8f5ed;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.pointCouponBody p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: #607067;
+  font-size: 13px;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.pointCouponBody > small {
+  color: #859087;
+  font-size: 11px;
+}
+
+.pointCouponBody button {
+  margin-top: 3px;
+  border-radius: 10px;
+}
+
+.pointCouponEmpty {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  min-height: 310px;
+  align-content: center;
+  color: #7a8780;
+  text-align: center;
+}
+
+.pointCouponEmpty > span {
+  color: #3a8165;
+  font-size: 34px;
+}
+
+.pointCouponEmpty strong {
+  color: #28372f;
+  font-size: 17px;
+}
+
+.pointCouponEmpty p {
+  margin: 0;
 }
 
 .pointRecordList {
@@ -7023,6 +7203,20 @@
   .pointSummaryStats {
     width: 100%;
     margin-left: 0;
+    padding-top: 0;
+  }
+
+  .pointRecordsLink {
+    top: 19px;
+    right: 19px;
+  }
+
+  .pointCouponGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .pointCouponCard {
+    grid-template-columns: 112px minmax(0, 1fr);
   }
 
   .pointSummaryStats > div {
@@ -7746,6 +7940,31 @@
   display: grid;
   gap: 12px;
   padding: 8px 0;
+}
+
+.merchantAdminAccess {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.merchantAdminAccess p {
+  margin: 0;
+}
+
+.merchantAdminAccess > a {
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+
+.merchantAdminActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.merchantAdminActions :global(.ant-btn) {
+  min-width: 116px;
 }
 
 .merchantRejected {

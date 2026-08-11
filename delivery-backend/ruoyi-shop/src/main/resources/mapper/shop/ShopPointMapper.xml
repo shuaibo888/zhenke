@@ -46,4 +46,34 @@
         values
         (#{shopUserId}, 0, 0, 0, #{createBy}, sysdate(), sysdate())
     </insert>
+
+    <select id="selectBalanceForUpdate" parameterType="Long" resultType="Long">
+        select point_account.balance
+        from shop_user_point_account point_account
+        inner join shop_user shop_user
+          on shop_user.user_id = point_account.shop_user_id
+         and shop_user.status = '0' and shop_user.del_flag = '0'
+        where point_account.shop_user_id = #{shopUserId}
+        limit 1
+        for update
+    </select>
+
+    <update id="consumePoints">
+        update shop_user_point_account
+        set balance = balance - #{points},
+            total_consumed = total_consumed + #{points},
+            update_by = 'points_exchange', update_time = sysdate()
+        where shop_user_id = #{shopUserId} and balance &gt;= #{points}
+    </update>
+
+    <insert id="insertConsumeRecord">
+        insert into shop_user_point_record
+        (shop_user_id, change_amount, balance_after, change_reason,
+         source_system, source_event_id, business_type, business_id,
+         status, create_time, update_time)
+        values
+        (#{shopUserId}, -#{points}, #{balanceAfter}, #{changeReason},
+         'MALL', #{sourceEventId}, 'CONSUME', #{businessId},
+         'SUCCESS', sysdate(), sysdate())
+    </insert>
 </mapper>

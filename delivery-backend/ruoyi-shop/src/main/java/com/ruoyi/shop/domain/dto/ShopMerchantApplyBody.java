@@ -17,9 +17,6 @@ public class ShopMerchantApplyBody
     @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$", message = "商家后台密码必须同时包含字母和数字")
     private String password;
 
-    private String code;
-    private String uuid;
-
     @NotBlank(message = "请输入公司名称")
     @Size(max = 100, message = "公司名称不能超过100个字符")
     private String companyName;
@@ -68,10 +65,6 @@ public class ShopMerchantApplyBody
     public void setAccountUsername(String accountUsername) { this.accountUsername = accountUsername; }
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
-    public String getUuid() { return uuid; }
-    public void setUuid(String uuid) { this.uuid = uuid; }
     public String getCompanyName() { return companyName; }
     public void setCompanyName(String companyName) { this.companyName = companyName; }
     public String getCompanyAddress() { return companyAddress; }

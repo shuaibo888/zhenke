@@ -18,6 +18,7 @@ public class ShopUserCoupon
     private Date createTime;
     private String couponName;
     private String description;
+    private String scopeType;
     private BigDecimal discountAmount;
     private BigDecimal minimumSpend;
     private Date startTime;
@@ -50,6 +51,8 @@ public class ShopUserCoupon
     public void setCouponName(String couponName) { this.couponName = couponName; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public String getScopeType() { return scopeType; }
+    public void setScopeType(String scopeType) { this.scopeType = scopeType; }
     public BigDecimal getDiscountAmount() { return discountAmount; }
     public void setDiscountAmount(BigDecimal discountAmount) { this.discountAmount = discountAmount; }
     public BigDecimal getMinimumSpend() { return minimumSpend; }

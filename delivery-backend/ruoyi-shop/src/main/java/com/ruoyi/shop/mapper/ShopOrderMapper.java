@@ -4,6 +4,7 @@ import java.util.List;
 import org.apache.ibatis.annotations.Param;
 import com.ruoyi.shop.domain.ShopOrder;
 import com.ruoyi.shop.domain.ShopOrderAddress;
+import com.ruoyi.shop.domain.ShopOrderCoupon;
 import com.ruoyi.shop.domain.ShopOrderItem;
 import com.ruoyi.shop.domain.ShopOrderLogisticsEvent;
 import com.ruoyi.shop.domain.ShopOrderRefund;
@@ -20,6 +21,7 @@ public interface ShopOrderMapper
     int restoreStock(@Param("productId") Long productId, @Param("quantity") Integer quantity);
     int insertOrder(ShopOrder order);
     int insertOrderItem(ShopOrderItem item);
+    int insertOrderCoupons(@Param("coupons") List<ShopOrderCoupon> coupons);
     int insertOrderAddress(ShopOrderAddress address);
     int insertStatusLog(ShopOrderStatusLog log);
     int insertLogisticsEvent(ShopOrderLogisticsEvent event);
@@ -44,6 +46,8 @@ public interface ShopOrderMapper
     ShopOrder selectOrderByOrderNoForUpdate(String orderNo);
     List<ShopOrderItem> selectOrderItems(Long orderId);
     List<ShopOrderItem> selectOrderItemsByOrderIds(@Param("orderIds") List<Long> orderIds);
+    List<ShopOrderCoupon> selectOrderCoupons(Long orderId);
+    List<ShopOrderCoupon> selectOrderCouponsByOrderIds(@Param("orderIds") List<Long> orderIds);
     ShopOrderItem selectUserReceivedOrderItemForUpdate(@Param("userId") Long userId,
             @Param("orderItemId") Long orderItemId);
     ShopOrderAddress selectOrderAddress(Long orderId);

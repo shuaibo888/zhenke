@@ -24,6 +24,7 @@ import com.ruoyi.shop.domain.dto.ShopCouponBody;
 import com.ruoyi.shop.domain.dto.ShopCouponGrantBody;
 import com.ruoyi.shop.mapper.ShopCouponMapper;
 import com.ruoyi.shop.domain.vo.ShopCouponUserOption;
+import com.ruoyi.shop.domain.vo.ShopCouponExchangeOption;
 import com.ruoyi.shop.security.ShopAccountIdentity;
 
 @Service
@@ -31,16 +32,21 @@ public class ShopCouponService
 {
     public static final String ENABLED = "ENABLED";
     public static final String DISABLED = "DISABLED";
+    public static final String MERCHANT_SPECIFIC = "MERCHANT_SPECIFIC";
+    public static final String PLATFORM_WIDE = "PLATFORM_WIDE";
     private static final String UNUSED = "UNUSED";
     private static final int INSERT_BATCH_SIZE = 500;
 
     private final ShopCouponMapper couponMapper;
     private final ShopMerchantService merchantService;
+    private final ShopPointService pointService;
 
-    public ShopCouponService(ShopCouponMapper couponMapper, ShopMerchantService merchantService)
+    public ShopCouponService(ShopCouponMapper couponMapper, ShopMerchantService merchantService,
+            ShopPointService pointService)
     {
         this.couponMapper = couponMapper;
         this.merchantService = merchantService;
+        this.pointService = pointService;
     }
 
     public List<ShopCoupon> adminList(ShopCoupon query)
@@ -85,13 +91,20 @@ public class ShopCouponService
     @Transactional
     public ShopCoupon create(ShopCouponBody body, String operator)
     {
-        List<Long> merchantIds = normalizeAdminMerchantIds(body);
-        ShopCoupon coupon = fromBody(body);
+        String scopeType = normalizeAdminScopeType(body);
+        List<Long> merchantIds = PLATFORM_WIDE.equals(scopeType)
+                ? List.of() : normalizeAdminMerchantIds(body);
+        ShopCoupon coupon = fromBody(body, scopeType);
+        coupon.setScopeType(scopeType);
+        coupon.setPointsCost(PLATFORM_WIDE.equals(scopeType) ? body.getPointsCost() : null);
         coupon.setIssuedCount(0);
         coupon.setCreateBy(operator);
         coupon.setUpdateBy(operator);
         couponMapper.insertCoupon(coupon);
-        couponMapper.insertMerchantScopes(coupon.getCouponId(), merchantIds);
+        if (!merchantIds.isEmpty())
+        {
+            couponMapper.insertMerchantScopes(coupon.getCouponId(), merchantIds);
+        }
         return detail(coupon.getCouponId());
     }
 
@@ -99,13 +112,16 @@ public class ShopCouponService
     public ShopCoupon merchantCreate(ShopCouponBody body, String operator)
     {
         long merchantId = merchantService.currentMerchantAccount().getMerchantId();
-        validateCommon(body);
+        validateMerchantBody(body);
+        validateCommon(body, MERCHANT_SPECIFIC);
         if (couponMapper.countEnabledMerchants(List.of(merchantId)) != 1)
         {
             throw new ServiceException("当前商家未启用，不能创建优惠券");
         }
-        ShopCoupon coupon = fromBody(body);
+        ShopCoupon coupon = fromBody(body, MERCHANT_SPECIFIC);
         coupon.setOwnerMerchantId(merchantId);
+        coupon.setScopeType(MERCHANT_SPECIFIC);
+        coupon.setPointsCost(null);
         coupon.setIssuedCount(0);
         coupon.setCreateBy(operator);
         coupon.setUpdateBy(operator);
@@ -122,18 +138,25 @@ public class ShopCouponService
         {
             throw new ServiceException("优惠券已下发，不能再修改金额、有效期、库存或适用商家");
         }
-        List<Long> merchantIds = existing.getOwnerMerchantId() == null
-                ? normalizeAdminMerchantIds(body) : List.of(existing.getOwnerMerchantId());
-        validateCommon(body);
-        ShopCoupon coupon = fromBody(body);
+        String scopeType = existing.getOwnerMerchantId() == null
+                ? normalizeAdminScopeType(body) : MERCHANT_SPECIFIC;
+        List<Long> merchantIds = existing.getOwnerMerchantId() != null
+                ? List.of(existing.getOwnerMerchantId())
+                : PLATFORM_WIDE.equals(scopeType) ? List.of() : normalizeAdminMerchantIds(body);
+        ShopCoupon coupon = fromBody(body, scopeType);
         coupon.setCouponId(couponId);
+        coupon.setScopeType(scopeType);
+        coupon.setPointsCost(PLATFORM_WIDE.equals(scopeType) ? body.getPointsCost() : null);
         coupon.setUpdateBy(operator);
         if (couponMapper.updateCoupon(coupon) == 0)
         {
             throw new ServiceException("优惠券状态已变化，请刷新后重试");
         }
         couponMapper.deleteMerchantScopes(couponId);
-        couponMapper.insertMerchantScopes(couponId, merchantIds);
+        if (!merchantIds.isEmpty())
+        {
+            couponMapper.insertMerchantScopes(couponId, merchantIds);
+        }
         return detail(couponId);
     }
 
@@ -147,9 +170,12 @@ public class ShopCouponService
         {
             throw new ServiceException("优惠券已下发，不能再修改金额、有效期或库存");
         }
-        validateCommon(body);
-        ShopCoupon coupon = fromBody(body);
+        validateMerchantBody(body);
+        validateCommon(body, MERCHANT_SPECIFIC);
+        ShopCoupon coupon = fromBody(body, MERCHANT_SPECIFIC);
         coupon.setCouponId(couponId);
+        coupon.setScopeType(MERCHANT_SPECIFIC);
+        coupon.setPointsCost(null);
         coupon.setUpdateBy(operator);
         if (couponMapper.updateCoupon(coupon) == 0)
         {
@@ -203,7 +229,8 @@ public class ShopCouponService
         {
             throw new ServiceException("优惠券已过期，不能继续下发");
         }
-        if (couponMapper.countEnabledMerchantScopes(couponId) == 0)
+        if (!PLATFORM_WIDE.equals(coupon.getScopeType())
+                && couponMapper.countEnabledMerchantScopes(couponId) == 0)
         {
             throw new ServiceException("优惠券当前没有可用的适用商家");
         }
@@ -240,7 +267,10 @@ public class ShopCouponService
         grant.setGrantType("MANUAL");
         grant.setOperatorId(SecurityUtils.getUserId());
         grant.setOperatorName(operator);
-        couponMapper.insertGrant(grant);
+        if (couponMapper.insertGrant(grant) == 0 || grant.getGrantId() == null)
+        {
+            throw new ServiceException("优惠券下发记录保存失败");
+        }
 
         List<ShopUserCoupon> issuedCoupons = new ArrayList<>(totalQuantity);
         for (Long userId : userIds)
@@ -297,7 +327,115 @@ public class ShopCouponService
         return coupons;
     }
 
-    ShopUserCoupon lockUsableCoupon(long userId, long userCouponId, long merchantId, BigDecimal subtotal)
+    public List<ShopCouponExchangeOption> exchangeableCoupons()
+    {
+        long userId = ShopAccountIdentity.requireShopUserId();
+        return couponMapper.selectExchangeableCoupons(userId);
+    }
+
+    @Transactional
+    public void exchangeWithPoints(long couponId)
+    {
+        long userId = ShopAccountIdentity.requireShopUserId();
+        ShopCoupon coupon = requireCoupon(couponMapper.selectByIdForUpdate(couponId));
+        Date now = new Date();
+        if (!PLATFORM_WIDE.equals(coupon.getScopeType()))
+        {
+            throw new ServiceException("该优惠券不是全平台积分兑换券");
+        }
+        if (coupon.getPointsCost() == null || coupon.getPointsCost() <= 0)
+        {
+            throw new ServiceException("该优惠券暂不支持积分兑换");
+        }
+        if (!ENABLED.equals(coupon.getStatus()))
+        {
+            throw new ServiceException("优惠券已下架，暂不可兑换");
+        }
+        if (coupon.getStartTime() == null || coupon.getStartTime().after(now))
+        {
+            throw new ServiceException("优惠券兑换尚未开始");
+        }
+        if (coupon.getEndTime() == null || !coupon.getEndTime().after(now))
+        {
+            throw new ServiceException("优惠券已过期，不能兑换");
+        }
+        if (couponMapper.countCouponExchange(couponId, userId) > 0)
+        {
+            throw new ServiceException("每位用户只能兑换一次该优惠券");
+        }
+        if (couponMapper.reserveStock(couponId, 1, "points_exchange") == 0)
+        {
+            throw new ServiceException("优惠券库存不足或状态已变化，请刷新后重试");
+        }
+
+        pointService.consumeForCoupon(userId, coupon.getPointsCost(), couponId, coupon.getCouponName());
+
+        ShopCouponGrant grant = new ShopCouponGrant();
+        grant.setCouponId(couponId);
+        grant.setUserCount(1);
+        grant.setQuantityPerUser(1);
+        grant.setTotalQuantity(1);
+        grant.setGrantType("POINTS_EXCHANGE");
+        grant.setTriggerCode("COUPON_EXCHANGE:" + couponId + ":" + userId);
+        grant.setOperatorId(null);
+        grant.setOperatorName("用户积分兑换");
+        if (couponMapper.insertGrant(grant) == 0 || grant.getGrantId() == null)
+        {
+            throw new ServiceException("优惠券兑换下发记录保存失败");
+        }
+
+        ShopUserCoupon userCoupon = new ShopUserCoupon();
+        userCoupon.setCouponId(couponId);
+        userCoupon.setShopUserId(userId);
+        userCoupon.setGrantId(grant.getGrantId());
+        userCoupon.setCouponCode("CP" + UUID.randomUUID().toString().replace("-", "").toUpperCase());
+        userCoupon.setStatus(UNUSED);
+        if (couponMapper.insertUserCoupons(List.of(userCoupon)) != 1)
+        {
+            throw new ServiceException("兑换优惠券发放失败");
+        }
+
+        if (couponMapper.insertCouponExchange(couponId, userId, coupon.getPointsCost()) == 0)
+        {
+            throw new ServiceException("优惠券兑换记录保存失败");
+        }
+    }
+
+    List<ShopUserCoupon> lockUsableCoupons(long userId, List<Long> userCouponIds,
+            long merchantId, BigDecimal subtotal)
+    {
+        if (userCouponIds == null || userCouponIds.isEmpty())
+        {
+            return List.of();
+        }
+        if (userCouponIds.size() > 50)
+        {
+            throw new ServiceException("一笔订单最多使用50张优惠券");
+        }
+        LinkedHashSet<Long> uniqueIds = new LinkedHashSet<>();
+        for (Long userCouponId : userCouponIds)
+        {
+            if (userCouponId == null || userCouponId <= 0)
+            {
+                throw new ServiceException("优惠券参数无效");
+            }
+            if (!uniqueIds.add(userCouponId))
+            {
+                throw new ServiceException("不能重复选择同一张优惠券");
+            }
+        }
+        List<Long> lockOrder = uniqueIds.stream().sorted().toList();
+        Map<Long, ShopUserCoupon> lockedById = new java.util.HashMap<>();
+        for (Long userCouponId : lockOrder)
+        {
+            lockedById.put(userCouponId,
+                    lockUsableCoupon(userId, userCouponId, merchantId, subtotal));
+        }
+        return uniqueIds.stream().map(lockedById::get).toList();
+    }
+
+    private ShopUserCoupon lockUsableCoupon(long userId, long userCouponId,
+            long merchantId, BigDecimal subtotal)
     {
         ShopUserCoupon coupon = couponMapper.selectUserCouponForUpdate(userId, userCouponId);
         if (coupon == null)
@@ -321,17 +459,14 @@ public class ShopCouponService
         {
             throw new ServiceException("优惠券已过期");
         }
-        if (couponMapper.countCouponMerchant(coupon.getCouponId(), merchantId) == 0)
+        if (!PLATFORM_WIDE.equals(coupon.getScopeType())
+                && couponMapper.countCouponMerchant(coupon.getCouponId(), merchantId) == 0)
         {
             throw new ServiceException("优惠券不适用于当前商家");
         }
         if (subtotal.compareTo(coupon.getMinimumSpend()) < 0)
         {
             throw new ServiceException("订单金额未达到优惠券使用门槛");
-        }
-        if (subtotal.compareTo(coupon.getDiscountAmount()) <= 0)
-        {
-            throw new ServiceException("优惠金额必须小于订单商品金额");
         }
         return coupon;
     }
@@ -351,7 +486,6 @@ public class ShopCouponService
 
     private List<Long> normalizeAdminMerchantIds(ShopCouponBody body)
     {
-        validateCommon(body);
         List<Long> merchantIds = body.getMerchantIds() == null ? new ArrayList<>()
                 : new ArrayList<>(new LinkedHashSet<>(body.getMerchantIds()));
         if (merchantIds.isEmpty() || merchantIds.size() > 200)
@@ -365,7 +499,34 @@ public class ShopCouponService
         return merchantIds;
     }
 
-    private void validateCommon(ShopCouponBody body)
+    private String normalizeAdminScopeType(ShopCouponBody body)
+    {
+        String scopeType = StringUtils.isEmpty(StringUtils.trim(body.getScopeType()))
+                ? MERCHANT_SPECIFIC : StringUtils.trim(body.getScopeType());
+        if (!MERCHANT_SPECIFIC.equals(scopeType) && !PLATFORM_WIDE.equals(scopeType))
+        {
+            throw new ServiceException("优惠券适用范围无效");
+        }
+        if (PLATFORM_WIDE.equals(scopeType))
+        {
+            if (body.getPointsCost() == null || body.getPointsCost() <= 0)
+            {
+                throw new ServiceException("全平台通用券必须设置积分兑换价格");
+            }
+            if (body.getMerchantIds() != null && !body.getMerchantIds().isEmpty())
+            {
+                throw new ServiceException("全平台通用券不能指定适用商家");
+            }
+        }
+        else if (body.getPointsCost() != null)
+        {
+            throw new ServiceException("指定商家券不能设置积分兑换价格");
+        }
+        validateCommon(body, scopeType);
+        return scopeType;
+    }
+
+    private void validateCommon(ShopCouponBody body, String scopeType)
     {
         LocalDate startDate = couponDate(body.getStartTime());
         LocalDate endDate = couponDate(body.getEndTime());
@@ -373,20 +534,34 @@ public class ShopCouponService
         {
             throw new ServiceException("结束日期不能早于开始日期");
         }
-        if (body.getMinimumSpend().signum() > 0
+        if (MERCHANT_SPECIFIC.equals(scopeType) && body.getMinimumSpend() == null)
+        {
+            throw new ServiceException("请输入最低消费金额");
+        }
+        if (MERCHANT_SPECIFIC.equals(scopeType) && body.getMinimumSpend().signum() > 0
                 && body.getDiscountAmount().compareTo(body.getMinimumSpend()) > 0)
         {
             throw new ServiceException("优惠金额不能大于最低消费金额");
         }
     }
 
-    private ShopCoupon fromBody(ShopCouponBody body)
+    private void validateMerchantBody(ShopCouponBody body)
+    {
+        if (PLATFORM_WIDE.equals(StringUtils.trim(body.getScopeType())) || body.getPointsCost() != null)
+        {
+            throw new ServiceException("商家不能创建或修改全平台通用券");
+        }
+    }
+
+    private ShopCoupon fromBody(ShopCouponBody body, String scopeType)
     {
         ShopCoupon coupon = new ShopCoupon();
         coupon.setCouponName(StringUtils.trim(body.getCouponName()));
         coupon.setDescription(StringUtils.trim(body.getDescription()));
         coupon.setDiscountAmount(body.getDiscountAmount());
-        coupon.setMinimumSpend(body.getMinimumSpend());
+        coupon.setMinimumSpend(PLATFORM_WIDE.equals(scopeType) ? BigDecimal.ZERO : body.getMinimumSpend());
+        coupon.setScopeType(scopeType);
+        coupon.setPointsCost(null);
         coupon.setStartTime(atCouponTime(body.getStartTime(), LocalTime.MIDNIGHT));
         coupon.setEndTime(atCouponTime(body.getEndTime(), LocalTime.of(23, 59, 59)));
         coupon.setStatus(body.getStatus());

@@ -98,7 +98,6 @@ public class ShopMerchantService
     @Transactional
     public ShopMerchantApplyResult apply(ShopMerchantApplyBody body)
     {
-        validateCaptcha(body.getCode(), body.getUuid());
         String accountUsername = normalizeAccountUsername(body.getAccountUsername());
         validateInitialPassword(body.getPassword());
         String contactPhone = StringUtils.trim(body.getContactPhone());

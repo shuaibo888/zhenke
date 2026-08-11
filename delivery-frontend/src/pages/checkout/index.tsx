@@ -5,7 +5,7 @@ import {
   SafetyCertificateOutlined,
   ShopOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Drawer, Radio, Spin, Tag, message } from 'antd';
+import { Alert, Button, Checkbox, Drawer, Modal, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -41,6 +41,10 @@ function addressText(address: ShopShippingAddress) {
 
 function couponValidity(coupon: ShopCouponDto) {
   return `${coupon.startTime.slice(0, 10)} 至 ${coupon.endTime.slice(0, 10)}`;
+}
+
+function toMoney(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
 export default function CheckoutPage() {
@@ -81,8 +85,8 @@ export default function CheckoutPage() {
   const [productLoading, setProductLoading] = useState(!orderMode && source === 'buy');
   const [availableCoupons, setAvailableCoupons] = useState<ShopCouponDto[]>([]);
   const [couponsLoading, setCouponsLoading] = useState(false);
-  const [selectedCouponId, setSelectedCouponId] = useState<number | undefined>();
-  const [draftCouponId, setDraftCouponId] = useState<number | undefined>();
+  const [selectedCouponIds, setSelectedCouponIds] = useState<number[]>([]);
+  const [draftCouponIds, setDraftCouponIds] = useState<number[]>([]);
   const [couponOpen, setCouponOpen] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<number | undefined>();
   const [addressOpen, setAddressOpen] = useState(false);
@@ -202,10 +206,13 @@ export default function CheckoutPage() {
   const subtotal = paymentOrder?.originalAmount
     ?? lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
   const singleMerchant = merchants.length === 1;
-  const selectedCoupon = availableCoupons.find((coupon) => coupon.userCouponId === selectedCouponId);
+  const selectedCoupons = selectedCouponIds
+    .map((couponId) => availableCoupons.find((coupon) => coupon.userCouponId === couponId))
+    .filter((coupon): coupon is ShopCouponDto => Boolean(coupon));
+  const selectedCouponFaceAmount = selectedCoupons.reduce((sum, coupon) => sum + coupon.discountAmount, 0);
   const discount = paymentOrder?.discountAmount
-    ?? (singleMerchant ? selectedCoupon?.discountAmount ?? 0 : 0);
-  const payable = paymentOrder?.totalAmount ?? Math.max(0, subtotal - discount);
+    ?? (singleMerchant ? Math.min(subtotal, toMoney(selectedCouponFaceAmount)) : 0);
+  const payable = paymentOrder?.totalAmount ?? Math.max(0, toMoney(subtotal - discount));
   const selectedAddress = addresses.find((address) => address.id === selectedAddressId);
   const couponUnavailableReason = useMemo(() => {
     if (merchants.length > 1) return '购物车包含多个商家，优惠券仅支持单商家结算使用';
@@ -215,7 +222,8 @@ export default function CheckoutPage() {
     if (unused.length === 0) return '暂无未使用的优惠券';
     const merchantId = merchants[0][0];
     const applicable = unused.filter((coupon) => (
-      coupon.merchants.some((merchant) => merchant.merchantId === merchantId)
+      coupon.scopeType === 'PLATFORM_WIDE'
+      || coupon.merchants.some((merchant) => merchant.merchantId === merchantId)
     ));
     if (applicable.length === 0) return '现有优惠券不适用于当前商家';
     const now = Date.now();
@@ -225,9 +233,7 @@ export default function CheckoutPage() {
     if (started.length === 0) return '适用优惠券尚未生效';
     const unexpired = started.filter((coupon) => new Date(coupon.endTime).getTime() > now);
     if (unexpired.length === 0) return '适用优惠券已过期';
-    if (unexpired.every((coupon) => (
-      coupon.minimumSpend > subtotal || coupon.discountAmount >= subtotal
-    ))) {
+    if (unexpired.every((coupon) => coupon.minimumSpend > subtotal)) {
       return '当前商品金额未达到优惠券使用条件';
     }
     return '当前订单暂无可用优惠券';
@@ -236,7 +242,8 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (orderMode || !user || !singleMerchant || subtotal <= 0) {
       setAvailableCoupons([]);
-      setSelectedCouponId(undefined);
+      setSelectedCouponIds([]);
+      setDraftCouponIds([]);
       setCouponsLoading(false);
       return;
     }
@@ -246,9 +253,9 @@ export default function CheckoutPage() {
       .then((coupons) => {
         if (!mounted) return;
         setAvailableCoupons(coupons);
-        setSelectedCouponId((current) => (
-          current && coupons.some((coupon) => coupon.userCouponId === current) ? current : undefined
-        ));
+        setSelectedCouponIds((current) => current.filter((couponId) => (
+          coupons.some((coupon) => coupon.userCouponId === couponId)
+        )));
       })
       .catch((error) => {
         if (mounted) message.error(error instanceof Error ? error.message : '可用优惠券加载失败');
@@ -268,6 +275,45 @@ export default function CheckoutPage() {
   const pageLoading = productLoading || orderLoading
     || (!orderMode && (addressesLoading || myCouponsLoading))
     || (!orderMode && source === 'cart' && cartLoading);
+
+  const draftCoupons = draftCouponIds
+    .map((couponId) => availableCoupons.find((coupon) => coupon.userCouponId === couponId))
+    .filter((coupon): coupon is ShopCouponDto => Boolean(coupon));
+  const draftFaceAmount = toMoney(draftCoupons.reduce((sum, coupon) => sum + coupon.discountAmount, 0));
+  const draftDiscount = Math.min(subtotal, draftFaceAmount);
+  const draftPayable = Math.max(0, toMoney(subtotal - draftDiscount));
+
+  const toggleDraftCoupon = (coupon: ShopCouponDto, checked: boolean) => {
+    if (!checked) {
+      setDraftCouponIds((current) => current.filter((couponId) => couponId !== coupon.userCouponId));
+      return;
+    }
+    const currentFaceAmount = draftCoupons.reduce((sum, item) => sum + item.discountAmount, 0);
+    const currentPayable = Math.max(0, toMoney(subtotal - currentFaceAmount));
+    if (currentPayable <= 0) {
+      message.warning('本单已经是 0 元，无需再选择更多优惠券');
+      return;
+    }
+    const appliedAmount = Math.min(coupon.discountAmount, currentPayable);
+    const nextCouponIds = [...draftCouponIds, coupon.userCouponId];
+    if (toMoney(currentPayable - appliedAmount) === 0) {
+      Modal.confirm({
+        title: '选择后本单实付 0 元',
+        content: (
+          <div>
+            <p>这张券面额为 {formatPrice(coupon.discountAmount)}，本单将实际抵扣 {formatPrice(appliedAmount)}。</p>
+            <p>确认选择后，订单无需微信支付；该优惠券会在提交订单时正常核销。</p>
+          </div>
+        ),
+        okText: '确认使用，0 元下单',
+        cancelText: '暂不使用',
+        centered: true,
+        onOk: () => setDraftCouponIds(nextCouponIds),
+      });
+      return;
+    }
+    setDraftCouponIds(nextCouponIds);
+  };
 
   const submit = async () => {
     if (orderMode) {
@@ -294,12 +340,19 @@ export default function CheckoutPage() {
     setSubmitting(true);
     try {
       const created = source === 'cart'
-        ? await checkoutCart(selectedAddress.id, singleMerchant ? selectedCouponId : undefined)
-        : await buyNow(selectedAddress.id, productId, quantity, sourceReportId, selectedCouponId);
+        ? await checkoutCart(selectedAddress.id, singleMerchant ? selectedCouponIds : undefined)
+        : await buyNow(selectedAddress.id, productId, quantity, sourceReportId, selectedCouponIds);
       if (created.length === 1) {
-        message.success(discount > 0 ? `优惠 ${formatPrice(discount)}，订单已创建` : '订单已创建');
-        navigate(`/checkout?orderId=${created[0].orderId}`);
-        await payOrder(created[0].orderId);
+        const createdOrder = created[0];
+        navigate(`/checkout?orderId=${createdOrder.orderId}`);
+        if (createdOrder.status === 'PAID' || createdOrder.totalAmount <= 0) {
+          message.success('优惠券已全额抵扣，订单已支付完成');
+          return;
+        }
+        message.success(createdOrder.discountAmount > 0
+          ? `优惠 ${formatPrice(createdOrder.discountAmount)}，订单已创建`
+          : '订单已创建');
+        await payOrder(createdOrder.orderId);
         return;
       }
       message.success(`已按商家生成 ${created.length} 笔订单，请分别完成支付`);
@@ -412,7 +465,7 @@ export default function CheckoutPage() {
               <section className={styles.checkoutSection}>
                 <div className={styles.checkoutSectionTitle}>
                   <span><GiftOutlined /></span>
-                  <div><strong>优惠券</strong><small>每笔单商家订单最多使用一张</small></div>
+                  <div><strong>优惠券</strong><small>支持多张叠加，商家券与平台通用券可混合使用</small></div>
                 </div>
                 {orderMode ? (
                   <div className={styles.checkoutCouponTrigger}>
@@ -436,26 +489,26 @@ export default function CheckoutPage() {
                   className={styles.checkoutCouponTrigger}
                   disabled={couponsLoading || availableCoupons.length === 0 || merchants.length > 1}
                   onClick={() => {
-                    setDraftCouponId(selectedCouponId);
+                    setDraftCouponIds(selectedCouponIds);
                     setCouponOpen(true);
                   }}
                 >
                   <span className={styles.checkoutCouponTriggerIcon}><GiftOutlined /></span>
                   <span className={styles.checkoutCouponTriggerCopy}>
-                    {selectedCoupon ? (
+                    {selectedCoupons.length > 0 ? (
                       <>
-                        <strong>已选择：{selectedCoupon.couponName}</strong>
-                        <small>本单优惠 {formatPrice(selectedCoupon.discountAmount)}</small>
+                        <strong>已选择 {selectedCoupons.length} 张优惠券</strong>
+                        <small>本单优惠 {formatPrice(discount)}，预计实付 {formatPrice(payable)}</small>
                       </>
                     ) : availableCoupons.length > 0 ? (
                       <>
                         <strong>有 {availableCoupons.length} 张可用优惠券</strong>
-                        <small>点击进入并选择本单要使用的优惠券</small>
+                        <small>可多选叠加，优惠最多抵至实付 0 元</small>
                       </>
                     ) : (
                       <>
                         <strong>{couponsLoading ? '正在查询可用优惠券' : couponUnavailableReason}</strong>
-                        <small>优惠券由平台定向下发，仅限指定商家与条件使用</small>
+                        <small>平台通用券无门槛，商家券按各自使用条件生效</small>
                       </>
                     )}
                   </span>
@@ -488,7 +541,7 @@ export default function CheckoutPage() {
               >
                 {orderMode
                   ? paymentOrder?.status === 'PENDING_PAYMENT' ? '立即支付' : '无需支付'
-                  : merchants.length > 1 ? '提交多笔订单' : '提交订单并支付'}
+                  : merchants.length > 1 ? '提交多笔订单' : payable <= 0 ? '0 元提交订单' : '提交订单并支付'}
               </Button>
               <p>{orderMode ? '微信授权返回后会继续停留在本支付页面。' : '提交即表示确认商品、地址和优惠信息。'}</p>
             </aside>
@@ -517,24 +570,27 @@ export default function CheckoutPage() {
             type="primary"
             size="large"
             onClick={() => {
-              setSelectedCouponId(draftCouponId);
+              setSelectedCouponIds(draftCouponIds);
               setCouponOpen(false);
             }}
           >
-            确认选择
+            确认选择{draftCouponIds.length > 0 ? `（${draftCouponIds.length} 张）` : ''}
           </Button>
         )}
       >
-        <Radio.Group
-          className={styles.checkoutCouponList}
-          value={draftCouponId ?? 0}
-          onChange={(event) => setDraftCouponId(event.target.value || undefined)}
-        >
-          <Radio className={styles.checkoutCouponNone} value={0}>不使用优惠券</Radio>
+        <div className={styles.checkoutCouponPreview}>
+          <span>已选 {draftCouponIds.length} 张，预计优惠 {formatPrice(draftDiscount)}</span>
+          <strong>预计实付 {formatPrice(draftPayable)}</strong>
+          {draftCouponIds.length > 0 && (
+            <Button type="link" onClick={() => setDraftCouponIds([])}>清空选择</Button>
+          )}
+        </div>
+        <div className={styles.checkoutCouponList}>
           {availableCoupons.map((coupon) => (
-            <Radio
+            <Checkbox
               className={styles.checkoutCouponOption}
-              value={coupon.userCouponId}
+              checked={draftCouponIds.includes(coupon.userCouponId)}
+              onChange={(event) => toggleDraftCoupon(coupon, event.target.checked)}
               key={coupon.userCouponId}
             >
               <span className={styles.checkoutCouponValue}>{formatPrice(coupon.discountAmount)}</span>
@@ -546,9 +602,9 @@ export default function CheckoutPage() {
                 </small>
               </span>
               <Tag color="green">可用</Tag>
-            </Radio>
+            </Checkbox>
           ))}
-        </Radio.Group>
+        </div>
       </Drawer>
     </>
   );

@@ -11,6 +11,7 @@ import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.shop.domain.ShopMerchant;
 import com.ruoyi.shop.domain.ShopOrder;
+import com.ruoyi.shop.domain.ShopOrderCoupon;
 import com.ruoyi.shop.domain.ShopOrderItem;
 import com.ruoyi.shop.domain.ShopOrderLogisticsEvent;
 import com.ruoyi.shop.domain.ShopOrderRefund;
@@ -189,6 +190,7 @@ public class ShopMerchantOrderService
     private ShopOrder hydrate(ShopOrder order)
     {
         order.setItems(orderMapper.selectOrderItems(order.getOrderId()));
+        order.setCoupons(orderMapper.selectOrderCoupons(order.getOrderId()));
         order.setAddress(orderMapper.selectOrderAddress(order.getOrderId()));
         order.setStatusLogs(orderMapper.selectStatusLogs(order.getOrderId()));
         order.setLogisticsEvents(orderMapper.selectLogisticsEvents(order.getOrderId()));
@@ -214,8 +216,12 @@ public class ShopMerchantOrderService
         List<Long> orderIds = orders.stream().map(ShopOrder::getOrderId).toList();
         Map<Long, List<ShopOrderItem>> itemsByOrder = orderMapper.selectOrderItemsByOrderIds(orderIds)
                 .stream().collect(Collectors.groupingBy(ShopOrderItem::getOrderId));
+        Map<Long, List<ShopOrderCoupon>> couponsByOrder = orderMapper.selectOrderCouponsByOrderIds(orderIds)
+                .stream().collect(Collectors.groupingBy(ShopOrderCoupon::getOrderId));
         orders.forEach(order -> order.setItems(
                 itemsByOrder.getOrDefault(order.getOrderId(), Collections.emptyList())));
+        orders.forEach(order -> order.setCoupons(
+                couponsByOrder.getOrDefault(order.getOrderId(), Collections.emptyList())));
         return orders;
     }
 
