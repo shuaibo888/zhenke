@@ -60,7 +60,7 @@ function loadSdk(sdkUrl: string) {
 
 const sdkErrorGuidance: Record<string, string> = {
   '600004': '认证方案无效',
-  '600011': '请关闭WiFi使用手机流量认证或使用短信验证码',
+  '600011': '请关闭Wi-Fi使用手机流量认证或使用短信验证码',
   '600025': '认证方案校验失败',
   '600028': '认证参数无效',
   '600030': '认证页面配置不完整',
@@ -93,7 +93,7 @@ export async function getAliyunOneClickSpToken() {
   if (!Constructor) throw new Error('一键认证 SDK 未就绪');
   const server = new Constructor();
   if (server.getConnection?.() === 'wifi') {
-    throw new Error('请关闭WiFi使用手机流量认证或使用短信验证码');
+    throw new Error('请关闭Wi-Fi使用手机流量认证或使用短信验证码');
   }
   const tokens = await fetchOneClickTokens();
   return new Promise<string>((resolve, reject) => {
