@@ -169,10 +169,13 @@ export interface ManagedCouponMerchant {
 
 export interface ManagedCoupon {
   couponId: number;
+  ownerMerchantId?: number;
+  scopeType: 'MERCHANT_SPECIFIC' | 'PLATFORM_WIDE';
   couponName: string;
   description?: string;
   discountAmount: number;
   minimumSpend: number;
+  pointsCost?: number;
   startTime: string;
   endTime: string;
   status: 'ENABLED' | 'DISABLED';
@@ -191,7 +194,7 @@ export interface ManagedCouponGrant {
   userCount: number;
   quantityPerUser: number;
   totalQuantity: number;
-  grantType: 'MANUAL' | 'AUTOMATIC';
+  grantType: 'MANUAL' | 'AUTOMATIC' | 'POINTS_EXCHANGE';
   triggerCode?: string;
   operatorId?: number;
   operatorName: string;

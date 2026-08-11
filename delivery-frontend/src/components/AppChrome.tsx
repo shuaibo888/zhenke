@@ -100,7 +100,9 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     <>
       <div className={`${styles.appShell} ${authPage ? styles.authPage : ''} ${profileLanding ? styles.profilePage : ''} ${mallActive ? styles.mallApp : ''}`}>
         {!detailPage && !authPage && !mallActive && !profileLanding && (
-          <header className={`${styles.masthead} ${homePage ? styles.homeMasthead : ''}`}>
+          <header
+            className={`${styles.masthead} ${homePage ? styles.homeMasthead : ''} ${profileSubPage ? styles.profileSubPageMasthead : ''}`}
+          >
             {homePage && homeSearchOpen ? (
               <form className={styles.homeGlobalSearchForm} role="search" onSubmit={submitHomeSearch}>
                 <SearchOutlined aria-hidden="true" />

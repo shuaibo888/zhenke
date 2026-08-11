@@ -1,4 +1,10 @@
-import { SafetyCertificateOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
+import {
+  CopyOutlined,
+  ExportOutlined,
+  SafetyCertificateOutlined,
+  SearchOutlined,
+  UploadOutlined,
+} from '@ant-design/icons';
 import { Alert, Button, Form, Input, Modal, Switch, Upload, message } from 'antd';
 import type { UploadProps } from 'antd';
 import { useEffect, useState } from 'react';
@@ -15,11 +21,15 @@ import {
 } from '@/services/shopAuth';
 import type { Merchant } from '@/types';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { copyText } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
+
+const MERCHANT_ADMIN_LOGIN_URL = 'https://dzshop.vip/admin';
+type MerchantApplicationFormValues = MerchantApplicationBody & { code?: string };
 
 export function MerchantApplicationModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { captcha, loadCaptcha } = useShop();
-  const [form] = Form.useForm<MerchantApplicationBody>();
+  const [form] = Form.useForm<MerchantApplicationFormValues>();
   const [queryForm] = Form.useForm<MerchantApplicationLookup>();
   const [application, setApplication] = useState<Merchant | null>(null);
   const [lookup, setLookup] = useState<MerchantApplicationLookup | null>(null);
@@ -62,16 +72,15 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
     });
   }, [application, form, open]);
 
-  const submit = async (values: MerchantApplicationBody) => {
+  const submit = async ({ code: _code, ...values }: MerchantApplicationFormValues) => {
     setLoading(true);
     try {
-      const saved = await submitMerchantApplication({ ...values, uuid: captcha.uuid });
+      const saved = await submitMerchantApplication(values);
       setApplication(saved.merchant);
       setLookup(saved.lookup);
       message.success('商家入驻申请已提交');
     } catch (error) {
       message.error(error instanceof Error ? error.message : '申请提交失败');
-      await loadCaptcha();
     } finally {
       setLoading(false);
     }
@@ -103,6 +112,7 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
     try {
       const result = await uploadMerchantBusinessLicense(file, code, captcha.uuid);
       form.setFieldValue('businessLicense', result.url);
+      form.setFieldValue('code', undefined);
       setLicenseVerified(false);
       if (result.recognized) {
         form.setFieldsValue({
@@ -122,12 +132,28 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
       const uploadError = error instanceof Error ? error : new Error('营业执照上传失败');
       message.error(uploadError.message);
       options.onError?.(uploadError);
-    } finally {
-      setUploading(false);
       if (captcha.enabled) {
         form.setFieldValue('code', undefined);
         await loadCaptcha();
       }
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const resetLicenseUpload = async () => {
+    form.setFieldsValue({
+      businessLicense: undefined,
+      code: undefined,
+      companyCreditCode: undefined,
+      companyName: undefined,
+      companyAddress: undefined,
+      legalPerson: undefined,
+    });
+    setLicenseVerified(false);
+    setVerifyStatus(null);
+    if (captcha.enabled) {
+      await loadCaptcha();
     }
   };
 
@@ -190,6 +216,15 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
       : '审核中';
   const showStatus = application && application.auditStatus !== 'REJECTED';
 
+  const copyMerchantAdminLoginUrl = async () => {
+    try {
+      await copyText(MERCHANT_ADMIN_LOGIN_URL);
+      message.success('商家后台登录地址已复制');
+    } catch {
+      message.error('复制失败，请手动复制登录地址');
+    }
+  };
+
   return (
     <Modal
       title={(
@@ -227,6 +262,35 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
           <h3>商家入驻申请</h3>
           <p>当前审核状态：{statusLabel}</p>
           {application.auditRemark && <p>审核说明：{application.auditRemark}</p>}
+          {application.auditStatus === 'APPROVED' && (
+            <Alert
+              type="success"
+              showIcon
+              message="入驻审核已通过，商家后台已开通"
+              description={(
+                <div className={styles.merchantAdminAccess}>
+                  <p>请使用入驻时设置的商家账号，在以下地址登录：</p>
+                  <a href={MERCHANT_ADMIN_LOGIN_URL} target="_blank" rel="noreferrer">
+                    {MERCHANT_ADMIN_LOGIN_URL}
+                  </a>
+                  <div className={styles.merchantAdminActions}>
+                    <Button icon={<CopyOutlined />} onClick={() => void copyMerchantAdminLoginUrl()}>
+                      一键复制
+                    </Button>
+                    <Button
+                      type="primary"
+                      icon={<ExportOutlined />}
+                      href={MERCHANT_ADMIN_LOGIN_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      前往登录
+                    </Button>
+                  </div>
+                </div>
+              )}
+            />
+          )}
           {lookup && (
             <Alert
               type="success"
@@ -340,8 +404,8 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
                   <p>上传营业执照并完成核验，企业信息将自动识别回填。</p>
                 </div>
               </header>
-            {captcha.enabled && (
-              <Form.Item name="code" label="验证码" rules={[{ required: true }]}>
+            {captcha.enabled && !businessLicense && (
+              <Form.Item name="code" label="验证码" rules={[{ required: true, message: '请输入验证码' }]}>
                 <div className={styles.captchaRow}>
                   <Input size="large" placeholder="请输入验证码" />
                   <button type="button" className={styles.captchaButton} onClick={() => void loadCaptcha()}>
@@ -355,17 +419,27 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
             </Form.Item>
             <div className={styles.merchantLicenseField}>
               <label>营业执照</label>
-              <Upload
-                accept=".jpg,.jpeg,.png"
-                customRequest={uploadLicense}
-                maxCount={1}
-                showUploadList={false}
-              >
-                <Button block size="large" icon={<UploadOutlined />} loading={uploading}>
-                  {businessLicense ? '重新上传营业执照' : '上传营业执照'}
+              {businessLicense ? (
+                <Button block size="large" icon={<UploadOutlined />} onClick={() => void resetLicenseUpload()}>
+                  重新上传营业执照
                 </Button>
-              </Upload>
-              <small>支持 JPG、PNG，文件不超过 5MB。上传时自动识别企业信息。</small>
+              ) : (
+                <Upload
+                  accept=".jpg,.jpeg,.png"
+                  customRequest={uploadLicense}
+                  maxCount={1}
+                  showUploadList={false}
+                >
+                  <Button block size="large" icon={<UploadOutlined />} loading={uploading}>
+                    上传营业执照
+                  </Button>
+                </Upload>
+              )}
+              <small>
+                {businessLicense
+                  ? '营业执照已上传，验证码已完成本次安全校验，无需在提交申请时再次验证。'
+                  : '支持 JPG、PNG，文件不超过 5MB。验证码仅用于本次上传，上传成功后自动识别企业信息。'}
+              </small>
               {businessLicense && (
                 <img src={businessLicense} alt="营业执照预览" className={styles.merchantLicensePreview} />
               )}

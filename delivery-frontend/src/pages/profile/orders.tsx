@@ -84,7 +84,7 @@ export default function OrdersPage() {
         setMutatingId(order.orderId);
         try {
           replaceOrder(await cancelShopOrder(order.orderId));
-          if (order.userCouponId) await refreshCoupons().catch(() => undefined);
+          if (order.coupons?.length) await refreshCoupons().catch(() => undefined);
           message.success('订单已取消');
         } catch (error) {
           message.error(error instanceof Error ? error.message : '订单取消失败');

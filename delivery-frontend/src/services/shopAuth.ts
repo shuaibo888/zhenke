@@ -187,6 +187,53 @@ export async function fetchMyPointRecords(pageNum = 1, pageSize = 20) {
   };
 }
 
+export interface ShopPointCouponOption {
+  couponId: number;
+  couponName: string;
+  description?: string;
+  discountAmount: number;
+  minimumSpend: number;
+  pointsCost: number;
+  startTime: string;
+  endTime: string;
+  remainingStock: number;
+  exchanged: boolean;
+}
+
+export async function fetchPointCouponOptions() {
+  const result = await requestApi<ApiResponse<ShopPointCouponOption[]>>(
+    '/shop/users/me/points/coupons',
+    {},
+    true,
+  );
+  const rows = Array.isArray(result.data) ? result.data : [];
+  if (rows.some((coupon) => (
+    !Number.isSafeInteger(coupon.couponId) || coupon.couponId <= 0
+    || typeof coupon.couponName !== 'string'
+    || !Number.isFinite(coupon.discountAmount) || coupon.discountAmount <= 0
+    || !Number.isFinite(coupon.minimumSpend) || coupon.minimumSpend < 0
+    || !Number.isSafeInteger(coupon.pointsCost) || coupon.pointsCost <= 0
+    || typeof coupon.startTime !== 'string'
+    || typeof coupon.endTime !== 'string'
+    || !Number.isSafeInteger(coupon.remainingStock) || coupon.remainingStock < 0
+    || typeof coupon.exchanged !== 'boolean'
+  ))) {
+    throw new Error('积分兑换优惠券数据异常');
+  }
+  return rows;
+}
+
+export async function exchangePointCoupon(couponId: number) {
+  if (!Number.isSafeInteger(couponId) || couponId <= 0) {
+    throw new Error('优惠券参数错误');
+  }
+  return requestApi<ApiResponse>(
+    `/shop/users/me/points/coupons/${couponId}/exchange`,
+    { method: 'POST' },
+    true,
+  );
+}
+
 export interface ShopShippingAddress {
   id: number;
   recipient: string;
@@ -250,8 +297,6 @@ export async function deleteShopShippingAddress(addressId: number) {
 export interface MerchantApplicationBody {
   accountUsername: string;
   password: string;
-  code?: string;
-  uuid?: string;
   companyName: string;
   companyAddress: string;
   legalPerson: string;

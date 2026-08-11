@@ -207,6 +207,7 @@ export interface ShopCouponDto {
   startTime: string;
   endTime: string;
   couponStatus: 'ENABLED' | 'DISABLED';
+  scopeType: 'MERCHANT_SPECIFIC' | 'PLATFORM_WIDE';
   availabilityStatus: 'AVAILABLE' | 'PENDING' | 'USED' | 'EXPIRED' | 'DISABLED';
   merchants: Array<{
     couponId: number;
@@ -225,10 +226,9 @@ export interface ShopOrderDto {
   originalAmount: number;
   discountAmount: number;
   totalAmount: number;
-  userCouponId?: number;
   itemCount: number;
   paymentExpireTime?: string;
-  paymentChannel?: 'WECHAT' | 'MOCK';
+  paymentChannel?: 'WECHAT' | 'MOCK' | 'COUPON';
   paymentTradeType?: 'JSAPI' | 'H5';
   payTime?: string;
   carrier?: string;
@@ -245,6 +245,18 @@ export interface ShopOrderDto {
   refundCompleteTime?: string;
   createTime: string;
   updateTime: string;
+  coupons: Array<{
+    orderCouponId: number;
+    orderId: number;
+    userCouponId: number;
+    couponId: number;
+    couponName: string;
+    couponCode: string;
+    scopeType: 'MERCHANT_SPECIFIC' | 'PLATFORM_WIDE';
+    faceDiscountAmount: number;
+    appliedDiscountAmount: number;
+    createTime: string;
+  }>;
   items: Array<{
     orderItemId: number;
     productId: number;
@@ -530,7 +542,7 @@ export async function fetchAvailableCoupons(merchantId: number, subtotal: number
 export async function createShopOrders(body: {
   addressId: number;
   items: Array<{ productId: number; quantity: number; sourceReportId?: number }>;
-  userCouponId?: number;
+  userCouponIds?: number[];
 }) {
   const result = await requestApi<ApiResponse<ShopOrderDto[]>>(
     '/shop/orders',
@@ -540,10 +552,10 @@ export async function createShopOrders(body: {
   return Array.isArray(result.data) ? result.data : [];
 }
 
-export async function checkoutShopCart(addressId: number, userCouponId?: number) {
+export async function checkoutShopCart(addressId: number, userCouponIds?: number[]) {
   const result = await requestApi<ApiResponse<ShopOrderDto[]>>(
     '/shop/orders/from-cart',
-    { method: 'POST', body: JSON.stringify({ addressId, userCouponId }) },
+    { method: 'POST', body: JSON.stringify({ addressId, userCouponIds }) },
     true,
   );
   return Array.isArray(result.data) ? result.data : [];

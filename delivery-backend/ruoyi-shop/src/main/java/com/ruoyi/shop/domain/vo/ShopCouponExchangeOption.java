@@ -1,18 +1,12 @@
-package com.ruoyi.shop.domain;
+package com.ruoyi.shop.domain.vo;
 
 import java.math.BigDecimal;
 import java.util.Date;
-import java.util.List;
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.ruoyi.common.core.domain.BaseEntity;
 
-public class ShopCoupon extends BaseEntity
+public class ShopCouponExchangeOption
 {
-    private static final long serialVersionUID = 1L;
-
     private Long couponId;
-    private Long ownerMerchantId;
-    private String scopeType;
     private String couponName;
     private String description;
     private BigDecimal discountAmount;
@@ -20,17 +14,11 @@ public class ShopCoupon extends BaseEntity
     private Long pointsCost;
     private Date startTime;
     private Date endTime;
-    private String status;
-    private Integer totalStock;
-    private Integer issuedCount;
-    private List<ShopCouponMerchant> merchants;
+    private Integer remainingStock;
+    private Boolean exchanged;
 
     public Long getCouponId() { return couponId; }
     public void setCouponId(Long couponId) { this.couponId = couponId; }
-    public Long getOwnerMerchantId() { return ownerMerchantId; }
-    public void setOwnerMerchantId(Long ownerMerchantId) { this.ownerMerchantId = ownerMerchantId; }
-    public String getScopeType() { return scopeType; }
-    public void setScopeType(String scopeType) { this.scopeType = scopeType; }
     public String getCouponName() { return couponName; }
     public void setCouponName(String couponName) { this.couponName = couponName; }
     public String getDescription() { return description; }
@@ -47,12 +35,8 @@ public class ShopCoupon extends BaseEntity
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     public Date getEndTime() { return endTime; }
     public void setEndTime(Date endTime) { this.endTime = endTime; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-    public Integer getTotalStock() { return totalStock; }
-    public void setTotalStock(Integer totalStock) { this.totalStock = totalStock; }
-    public Integer getIssuedCount() { return issuedCount; }
-    public void setIssuedCount(Integer issuedCount) { this.issuedCount = issuedCount; }
-    public List<ShopCouponMerchant> getMerchants() { return merchants; }
-    public void setMerchants(List<ShopCouponMerchant> merchants) { this.merchants = merchants; }
+    public Integer getRemainingStock() { return remainingStock; }
+    public void setRemainingStock(Integer remainingStock) { this.remainingStock = remainingStock; }
+    public Boolean getExchanged() { return exchanged; }
+    public void setExchanged(Boolean exchanged) { this.exchanged = exchanged; }
 }

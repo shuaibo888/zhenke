@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.shop.domain.ShopOrder;
+import com.ruoyi.shop.domain.ShopOrderCoupon;
 import com.ruoyi.shop.domain.ShopOrderItem;
 import com.ruoyi.shop.mapper.ShopOrderMapper;
 
@@ -38,6 +39,7 @@ public class ShopAdminOrderService
     private ShopOrder hydrate(ShopOrder order)
     {
         order.setItems(orderMapper.selectOrderItems(order.getOrderId()));
+        order.setCoupons(orderMapper.selectOrderCoupons(order.getOrderId()));
         order.setAddress(orderMapper.selectOrderAddress(order.getOrderId()));
         order.setStatusLogs(orderMapper.selectStatusLogs(order.getOrderId()));
         order.setLogisticsEvents(orderMapper.selectLogisticsEvents(order.getOrderId()));
@@ -53,8 +55,12 @@ public class ShopAdminOrderService
         List<Long> orderIds = orders.stream().map(ShopOrder::getOrderId).toList();
         Map<Long, List<ShopOrderItem>> itemsByOrder = orderMapper.selectOrderItemsByOrderIds(orderIds)
                 .stream().collect(Collectors.groupingBy(ShopOrderItem::getOrderId));
+        Map<Long, List<ShopOrderCoupon>> couponsByOrder = orderMapper.selectOrderCouponsByOrderIds(orderIds)
+                .stream().collect(Collectors.groupingBy(ShopOrderCoupon::getOrderId));
         orders.forEach(order -> order.setItems(
                 itemsByOrder.getOrDefault(order.getOrderId(), Collections.emptyList())));
+        orders.forEach(order -> order.setCoupons(
+                couponsByOrder.getOrDefault(order.getOrderId(), Collections.emptyList())));
         return orders;
     }
 }

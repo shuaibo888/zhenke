@@ -8,6 +8,7 @@ export default defineConfig({
     { path: '/reports/:reportId', component: '@/pages/reports/detail' },
     { path: '/profile', component: '@/pages/profile' },
     { path: '/profile/points', component: '@/pages/profile/points' },
+    { path: '/profile/point-records', component: '@/pages/profile/point-records' },
     { path: '/profile/orders', component: '@/pages/profile/orders' },
     { path: '/profile/coupons', component: '@/pages/profile/coupons' },
     { path: '/profile/trials', component: '@/pages/profile/trials' },

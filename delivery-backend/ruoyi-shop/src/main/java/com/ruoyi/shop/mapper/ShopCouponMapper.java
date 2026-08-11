@@ -7,6 +7,7 @@ import com.ruoyi.shop.domain.ShopCoupon;
 import com.ruoyi.shop.domain.ShopCouponGrant;
 import com.ruoyi.shop.domain.ShopCouponMerchant;
 import com.ruoyi.shop.domain.ShopUserCoupon;
+import com.ruoyi.shop.domain.vo.ShopCouponExchangeOption;
 import com.ruoyi.shop.domain.vo.ShopCouponUserOption;
 
 public interface ShopCouponMapper
@@ -46,4 +47,8 @@ public interface ShopCouponMapper
     int markUserCouponUsed(@Param("userId") Long userId, @Param("userCouponId") Long userCouponId,
             @Param("orderId") Long orderId);
     int releaseUserCouponByOrder(Long orderId);
+    List<ShopCouponExchangeOption> selectExchangeableCoupons(Long userId);
+    int countCouponExchange(@Param("couponId") Long couponId, @Param("userId") Long userId);
+    int insertCouponExchange(@Param("couponId") Long couponId, @Param("userId") Long userId,
+            @Param("pointsCost") Long pointsCost);
 }

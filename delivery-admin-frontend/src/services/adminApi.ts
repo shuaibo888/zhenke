@@ -565,6 +565,8 @@ export interface CouponWriteBody {
   description?: string;
   discountAmount: number;
   minimumSpend: number;
+  scopeType?: 'MERCHANT_SPECIFIC' | 'PLATFORM_WIDE';
+  pointsCost?: number;
   startTime: string;
   endTime: string;
   status: 'ENABLED' | 'DISABLED';
@@ -603,6 +605,7 @@ export async function fetchCoupons(session: AdminSession, query: {
       ...coupon,
       discountAmount: Number(coupon.discountAmount),
       minimumSpend: Number(coupon.minimumSpend),
+      pointsCost: coupon.pointsCost == null ? undefined : Number(coupon.pointsCost),
       totalStock: Number(coupon.totalStock),
       issuedCount: Number(coupon.issuedCount),
       merchants: Array.isArray(coupon.merchants) ? coupon.merchants : [],
