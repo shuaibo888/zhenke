@@ -53,6 +53,7 @@ public class ShopOrderService
     public static final String REFUND_REJECTED = "REJECTED";
     public static final int PAYMENT_TIMEOUT_MINUTES = 30;
 
+    private static final BigDecimal MINIMUM_WECHAT_PAYMENT = new BigDecimal("0.01");
     private static final DateTimeFormatter ORDER_TIME = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
     private static final long PAYMENT_TIMEOUT_MILLIS = PAYMENT_TIMEOUT_MINUTES * 60L * 1000L;
 
@@ -376,11 +377,12 @@ public class ShopOrderService
             List<ShopOrderCoupon> appliedCoupons = new ArrayList<>();
             for (ShopUserCoupon coupon : selectedCoupons)
             {
-                if (payableAmount.signum() == 0)
+                BigDecimal remainingDiscountCapacity = payableAmount.subtract(MINIMUM_WECHAT_PAYMENT);
+                if (remainingDiscountCapacity.signum() <= 0)
                 {
-                    throw new ServiceException("订单已被优惠券全额抵扣，无需选择更多优惠券");
+                    throw new ServiceException("订单优惠已达上限，最低仍需微信支付0.01元");
                 }
-                BigDecimal appliedAmount = coupon.getDiscountAmount().min(payableAmount);
+                BigDecimal appliedAmount = coupon.getDiscountAmount().min(remainingDiscountCapacity);
                 payableAmount = payableAmount.subtract(appliedAmount);
                 discountAmount = discountAmount.add(appliedAmount);
 
@@ -399,14 +401,13 @@ public class ShopOrderService
             order.setOrderNo(newOrderNo());
             order.setUserId(userId);
             order.setMerchantId(merchantEntry.getKey());
-            boolean fullyDiscounted = payableAmount.signum() == 0;
-            order.setStatus(fullyDiscounted ? PAID : PENDING_PAYMENT);
+            order.setStatus(PENDING_PAYMENT);
             order.setItemCount(merchantEntry.getValue().stream().mapToInt(OrderLine::quantity).sum());
             order.setOriginalAmount(originalAmount);
             order.setDiscountAmount(discountAmount);
             order.setTotalAmount(payableAmount);
-            order.setPaymentChannel(fullyDiscounted ? "COUPON" : null);
-            order.setPayTime(fullyDiscounted ? new Date() : null);
+            order.setPaymentChannel(null);
+            order.setPayTime(null);
             if (orderMapper.insertOrder(order) == 0)
             {
                 throw new ServiceException("订单创建失败");
@@ -441,8 +442,7 @@ public class ShopOrderService
                 }
             }
             insertAddressSnapshot(order.getOrderId(), address);
-            insertStatusLog(order.getOrderId(), null, order.getStatus(), userId,
-                    fullyDiscounted ? "用户提交订单，优惠券全额抵扣" : "用户提交订单");
+            insertStatusLog(order.getOrderId(), null, order.getStatus(), userId, "用户提交订单");
             created.add(hydrate(requireUserOrder(userId, order.getOrderId(), false)));
         }
         return created;

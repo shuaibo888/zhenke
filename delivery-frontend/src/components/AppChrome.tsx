@@ -10,7 +10,14 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { Badge, Button, Dropdown, message } from 'antd';
-import { useEffect, useState, type FormEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { getCartCount } from '@/utils/shop';
@@ -19,6 +26,31 @@ import { CartDrawer } from './CartDrawer';
 import { NativePayModal } from './NativePayModal';
 import { ProfileBackButton } from './ProfileBackButton';
 import styles from '@/styles/commerce.less';
+
+const floatingCartPositionKey = 'zhenke_floating_cart_position';
+const floatingCartMargin = 12;
+
+type FloatingCartPosition = { x: number; y: number };
+
+function readFloatingCartPosition(): FloatingCartPosition | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const value = JSON.parse(window.localStorage.getItem(floatingCartPositionKey) || 'null');
+    return Number.isFinite(value?.x) && Number.isFinite(value?.y)
+      ? { x: value.x, y: value.y }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistFloatingCartPosition(position: FloatingCartPosition) {
+  try {
+    window.localStorage.setItem(floatingCartPositionKey, JSON.stringify(position));
+  } catch {
+    // 浏览器禁用本地存储时仍允许本次拖动，不影响购物车入口使用。
+  }
+}
 
 function avatar(user: NonNullable<ReturnType<typeof useShop>['user']>) {
   if (user.avatarType === 'image' && user.avatarImage) return <img src={user.avatarImage} alt={user.name} />;
@@ -34,6 +66,22 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const [addressOpen, setAddressOpen] = useState(false);
   const [homeSearchOpen, setHomeSearchOpen] = useState(false);
   const [homeSearchValue, setHomeSearchValue] = useState('');
+  const [floatingCartPosition, setFloatingCartPosition] = useState<FloatingCartPosition | null>(readFloatingCartPosition);
+  const [floatingCartDragging, setFloatingCartDragging] = useState(false);
+  const floatingCartRef = useRef<HTMLDivElement | null>(null);
+  const floatingCartPositionRef = useRef<FloatingCartPosition | null>(floatingCartPosition);
+  const floatingCartPositionPersistedRef = useRef(Boolean(floatingCartPosition));
+  const floatingCartDragRef = useRef<{
+    pointerId: number;
+    offsetX: number;
+    offsetY: number;
+    startX: number;
+    startY: number;
+    width: number;
+    height: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressFloatingCartClickRef = useRef(false);
   const reportQuery = searchParams.get('report');
   const productQuery = searchParams.get('product');
   const paymentOrderId = Number(searchParams.get('wechatPayOrderId'));
@@ -57,10 +105,102 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     || isPaymentReturn;
   const cartCount = getCartCount(cart);
 
+  const clampFloatingCartPosition = useCallback((position: FloatingCartPosition, width: number, height: number) => {
+    const blockers = [styles.navBar, styles.productFixedBar]
+      .map((className) => document.querySelector<HTMLElement>(`.${className}`))
+      .filter((element): element is HTMLElement => Boolean(element))
+      .map((element) => element.getBoundingClientRect())
+      .filter((rect) => rect.width > 0 && rect.height > 0 && rect.top < window.innerHeight);
+    const bottomBoundary = blockers.reduce(
+      (boundary, rect) => Math.min(boundary, rect.top),
+      window.innerHeight - floatingCartMargin,
+    );
+    const maxX = Math.max(floatingCartMargin, window.innerWidth - width - floatingCartMargin);
+    const maxY = Math.max(floatingCartMargin, bottomBoundary - height - floatingCartMargin);
+    return {
+      x: Math.min(Math.max(position.x, floatingCartMargin), maxX),
+      y: Math.min(Math.max(position.y, floatingCartMargin), maxY),
+    };
+  }, []);
+
+  const updateFloatingCartPosition = useCallback((position: FloatingCartPosition, persist = false) => {
+    floatingCartPositionRef.current = position;
+    setFloatingCartPosition(position);
+    if (persist) {
+      floatingCartPositionPersistedRef.current = true;
+      persistFloatingCartPosition(position);
+    }
+  }, []);
+
   useEffect(() => {
     setHomeSearchValue(homeKeyword);
     setHomeSearchOpen(Boolean(homeKeyword));
   }, [homeKeyword]);
+
+  useEffect(() => {
+    const keepFloatingCartInView = () => {
+      const element = floatingCartRef.current;
+      const position = floatingCartPositionRef.current;
+      if (!element) return;
+      const rect = element.getBoundingClientRect();
+      updateFloatingCartPosition(clampFloatingCartPosition(
+        position ?? { x: rect.left, y: rect.top },
+        rect.width,
+        rect.height,
+      ), floatingCartPositionPersistedRef.current);
+    };
+    const frame = window.requestAnimationFrame(keepFloatingCartInView);
+    window.addEventListener('resize', keepFloatingCartInView);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', keepFloatingCartInView);
+    };
+  }, [clampFloatingCartPosition, location.pathname, location.search, updateFloatingCartPosition]);
+
+  const startFloatingCartDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    floatingCartDragRef.current = {
+      pointerId: event.pointerId,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+      startX: event.clientX,
+      startY: event.clientY,
+      width: rect.width,
+      height: rect.height,
+      moved: false,
+    };
+    suppressFloatingCartClickRef.current = false;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setFloatingCartDragging(true);
+  };
+
+  const moveFloatingCart = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = floatingCartDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 4) drag.moved = true;
+    if (!drag.moved) return;
+    event.preventDefault();
+    updateFloatingCartPosition(clampFloatingCartPosition({
+      x: event.clientX - drag.offsetX,
+      y: event.clientY - drag.offsetY,
+    }, drag.width, drag.height));
+  };
+
+  const endFloatingCartDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = floatingCartDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    floatingCartDragRef.current = null;
+    setFloatingCartDragging(false);
+    if (drag.moved && floatingCartPositionRef.current) {
+      suppressFloatingCartClickRef.current = true;
+      floatingCartPositionPersistedRef.current = true;
+      persistFloatingCartPosition(floatingCartPositionRef.current);
+    }
+  };
 
   const openProtected = (path: string) => {
     if (!user) {
@@ -248,16 +388,38 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       </div>
 
       {!checkoutPage && !authPage && (
-        <Badge count={cartCount} size="small" className={styles.fixedCartBadge}>
-          <Button
-            aria-label="打开购物车"
-            className={styles.fixedCartButton}
-            type="primary"
-            shape="circle"
-            icon={<ShoppingCartOutlined />}
-            onClick={() => user ? setCartOpen(true) : navigate('/auth')}
-          />
-        </Badge>
+        <div
+          ref={floatingCartRef}
+          className={`${styles.fixedCartBadge} ${floatingCartDragging ? styles.fixedCartDragging : ''}`}
+          style={floatingCartPosition ? {
+            top: floatingCartPosition.y,
+            right: 'auto',
+            bottom: 'auto',
+            left: floatingCartPosition.x,
+          } : undefined}
+          onPointerDown={startFloatingCartDrag}
+          onPointerMove={moveFloatingCart}
+          onPointerUp={endFloatingCartDrag}
+          onPointerCancel={endFloatingCartDrag}
+        >
+          <Badge count={cartCount} size="small">
+            <Button
+              aria-label="打开购物车"
+              className={styles.fixedCartButton}
+              type="primary"
+              shape="circle"
+              icon={<ShoppingCartOutlined />}
+              onClick={() => {
+                if (suppressFloatingCartClickRef.current) {
+                  suppressFloatingCartClickRef.current = false;
+                  return;
+                }
+                if (user) setCartOpen(true);
+                else navigate('/auth');
+              }}
+            />
+          </Badge>
+        </div>
       )}
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />

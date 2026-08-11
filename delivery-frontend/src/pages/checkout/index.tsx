@@ -35,6 +35,8 @@ type CheckoutLine = {
   quantity: number;
 };
 
+const minimumWechatPayment = 0.01;
+
 function addressText(address: ShopShippingAddress) {
   return `${address.region.join(' ')} ${address.detail}`.trim();
 }
@@ -210,9 +212,13 @@ export default function CheckoutPage() {
     .map((couponId) => availableCoupons.find((coupon) => coupon.userCouponId === couponId))
     .filter((coupon): coupon is ShopCouponDto => Boolean(coupon));
   const selectedCouponFaceAmount = selectedCoupons.reduce((sum, coupon) => sum + coupon.discountAmount, 0);
+  const maximumCouponDiscount = subtotal > minimumWechatPayment
+    ? toMoney(subtotal - minimumWechatPayment)
+    : 0;
   const discount = paymentOrder?.discountAmount
-    ?? (singleMerchant ? Math.min(subtotal, toMoney(selectedCouponFaceAmount)) : 0);
-  const payable = paymentOrder?.totalAmount ?? Math.max(0, toMoney(subtotal - discount));
+    ?? (singleMerchant ? Math.min(maximumCouponDiscount, toMoney(selectedCouponFaceAmount)) : 0);
+  const payable = paymentOrder?.totalAmount
+    ?? (subtotal > 0 ? Math.max(minimumWechatPayment, toMoney(subtotal - discount)) : 0);
   const selectedAddress = addresses.find((address) => address.id === selectedAddressId);
   const couponUnavailableReason = useMemo(() => {
     if (merchants.length > 1) return '购物车包含多个商家，优惠券仅支持单商家结算使用';
@@ -280,32 +286,36 @@ export default function CheckoutPage() {
     .map((couponId) => availableCoupons.find((coupon) => coupon.userCouponId === couponId))
     .filter((coupon): coupon is ShopCouponDto => Boolean(coupon));
   const draftFaceAmount = toMoney(draftCoupons.reduce((sum, coupon) => sum + coupon.discountAmount, 0));
-  const draftDiscount = Math.min(subtotal, draftFaceAmount);
-  const draftPayable = Math.max(0, toMoney(subtotal - draftDiscount));
+  const draftDiscount = Math.min(maximumCouponDiscount, draftFaceAmount);
+  const draftPayable = subtotal > 0
+    ? Math.max(minimumWechatPayment, toMoney(subtotal - draftDiscount))
+    : 0;
 
   const toggleDraftCoupon = (coupon: ShopCouponDto, checked: boolean) => {
     if (!checked) {
       setDraftCouponIds((current) => current.filter((couponId) => couponId !== coupon.userCouponId));
       return;
     }
-    const currentFaceAmount = draftCoupons.reduce((sum, item) => sum + item.discountAmount, 0);
-    const currentPayable = Math.max(0, toMoney(subtotal - currentFaceAmount));
-    if (currentPayable <= 0) {
-      message.warning('本单已经是 0 元，无需再选择更多优惠券');
+    const currentFaceAmount = toMoney(draftCoupons.reduce((sum, item) => sum + item.discountAmount, 0));
+    const currentDiscount = Math.min(maximumCouponDiscount, currentFaceAmount);
+    const currentPayable = Math.max(minimumWechatPayment, toMoney(subtotal - currentDiscount));
+    const remainingDiscountCapacity = Math.max(0, toMoney(currentPayable - minimumWechatPayment));
+    if (remainingDiscountCapacity <= 0) {
+      message.warning('本单优惠已达上限，最低仍需微信支付 0.01 元');
       return;
     }
-    const appliedAmount = Math.min(coupon.discountAmount, currentPayable);
+    const appliedAmount = Math.min(coupon.discountAmount, remainingDiscountCapacity);
     const nextCouponIds = [...draftCouponIds, coupon.userCouponId];
-    if (toMoney(currentPayable - appliedAmount) === 0) {
+    if (toMoney(currentPayable - appliedAmount) <= minimumWechatPayment) {
       Modal.confirm({
-        title: '选择后本单实付 0 元',
+        title: '最低仍需支付 0.01 元',
         content: (
           <div>
             <p>这张券面额为 {formatPrice(coupon.discountAmount)}，本单将实际抵扣 {formatPrice(appliedAmount)}。</p>
-            <p>确认选择后，订单无需微信支付；该优惠券会在提交订单时正常核销。</p>
+            <p>优惠后仍需微信支付 0.01 元；提交订单后该优惠券会正常核销。</p>
           </div>
         ),
-        okText: '确认使用，0 元下单',
+        okText: '确认使用',
         cancelText: '暂不使用',
         centered: true,
         onOk: () => setDraftCouponIds(nextCouponIds),
@@ -313,6 +323,11 @@ export default function CheckoutPage() {
       return;
     }
     setDraftCouponIds(nextCouponIds);
+  };
+
+  const confirmCouponSelection = () => {
+    setSelectedCouponIds(draftCouponIds);
+    setCouponOpen(false);
   };
 
   const submit = async () => {
@@ -345,8 +360,8 @@ export default function CheckoutPage() {
       if (created.length === 1) {
         const createdOrder = created[0];
         navigate(`/checkout?orderId=${createdOrder.orderId}`);
-        if (createdOrder.status === 'PAID' || createdOrder.totalAmount <= 0) {
-          message.success('优惠券已全额抵扣，订单已支付完成');
+        if (createdOrder.status === 'PAID') {
+          message.success('订单已支付完成');
           return;
         }
         message.success(createdOrder.discountAmount > 0
@@ -503,7 +518,7 @@ export default function CheckoutPage() {
                     ) : availableCoupons.length > 0 ? (
                       <>
                         <strong>有 {availableCoupons.length} 张可用优惠券</strong>
-                        <small>可多选叠加，优惠最多抵至实付 0 元</small>
+                        <small>可多选叠加，最低仍需微信支付 0.01 元</small>
                       </>
                     ) : (
                       <>
@@ -541,7 +556,7 @@ export default function CheckoutPage() {
               >
                 {orderMode
                   ? paymentOrder?.status === 'PENDING_PAYMENT' ? '立即支付' : '无需支付'
-                  : merchants.length > 1 ? '提交多笔订单' : payable <= 0 ? '0 元提交订单' : '提交订单并支付'}
+                  : merchants.length > 1 ? '提交多笔订单' : '提交订单并支付'}
               </Button>
               <p>{orderMode ? '微信授权返回后会继续停留在本支付页面。' : '提交即表示确认商品、地址和优惠信息。'}</p>
             </aside>
@@ -560,19 +575,16 @@ export default function CheckoutPage() {
       <Drawer
         title="选择优惠券"
         placement="bottom"
-        height="auto"
+        height="min(78dvh, 660px)"
         open={couponOpen}
-        onClose={() => setCouponOpen(false)}
+        onClose={confirmCouponSelection}
         rootClassName={`${styles.checkoutCouponDrawer} ${styles.responsiveDrawer}`}
         footer={(
           <Button
             block
             type="primary"
             size="large"
-            onClick={() => {
-              setSelectedCouponIds(draftCouponIds);
-              setCouponOpen(false);
-            }}
+            onClick={confirmCouponSelection}
           >
             确认选择{draftCouponIds.length > 0 ? `（${draftCouponIds.length} 张）` : ''}
           </Button>
