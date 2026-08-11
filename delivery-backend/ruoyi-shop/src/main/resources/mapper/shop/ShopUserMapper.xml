@@ -7,6 +7,9 @@
         <result property="nickName" column="nick_name" />
         <result property="password" column="password" />
         <result property="phonenumber" column="phonenumber" />
+        <result property="phoneVerifiedAt" column="phone_verified_at" />
+        <result property="usernameInitialized" column="username_initialized" />
+        <result property="passwordInitialized" column="password_initialized" />
         <result property="email" column="email" />
         <result property="avatar" column="avatar" />
         <result property="levelId" column="level_id" />
@@ -35,6 +38,7 @@
 
     <sql id="selectShopUser">
         select u.user_id, u.user_name, u.nick_name, u.password, u.phonenumber,
+               u.phone_verified_at, u.username_initialized, u.password_initialized,
                u.email, u.avatar, u.level_id, l.level_code, l.level_name,
                u.review_eligible, u.trial_eligible, u.status, u.del_flag,
                u.login_ip, u.login_date, u.pwd_update_date, u.create_time, u.update_time
@@ -48,8 +52,15 @@
     <select id="selectByUsername" parameterType="String" resultMap="ShopUserResult">
         <include refid="selectShopUser" /> where u.user_name = #{username} and u.del_flag = '0' limit 1
     </select>
+    <select id="selectByPhone" parameterType="String" resultMap="ShopUserResult">
+        <include refid="selectShopUser" />
+        where u.phonenumber = #{phone} and u.phone_verified_at is not null and u.del_flag = '0' limit 1
+    </select>
     <select id="countByUsername" parameterType="String" resultType="int">
         select count(1) from shop_user where user_name = #{username} and del_flag = '0'
+    </select>
+    <select id="countByPhone" parameterType="String" resultType="int">
+        select count(1) from shop_user where phonenumber = #{phone} and del_flag = '0'
     </select>
 
     <select id="selectAdminList" parameterType="ShopUser" resultMap="ShopUserResult">
@@ -78,10 +89,12 @@
 
     <insert id="insert" parameterType="ShopUser" useGeneratedKeys="true" keyProperty="userId">
         insert into shop_user
-        (user_name, nick_name, password, level_id, review_eligible, trial_eligible,
+        (user_name, nick_name, password, phonenumber, phone_verified_at,
+         username_initialized, password_initialized, level_id, review_eligible, trial_eligible,
          status, del_flag, pwd_update_date, create_by, create_time)
         values
-        (#{userName}, #{nickName}, #{password}, #{levelId}, #{reviewEligible}, #{trialEligible},
+        (#{userName}, #{nickName}, #{password}, #{phonenumber}, #{phoneVerifiedAt},
+         #{usernameInitialized}, #{passwordInitialized}, #{levelId}, #{reviewEligible}, #{trialEligible},
          #{status}, #{delFlag}, sysdate(), #{createBy}, sysdate())
     </insert>
 
@@ -99,8 +112,29 @@
         where user_id = #{userId} and del_flag = '0'
     </update>
     <update id="updatePassword">
-        update shop_user set password = #{password}, pwd_update_date = sysdate(), update_time = sysdate()
+        update shop_user
+        set password = #{password}, password_initialized = '1', pwd_update_date = sysdate(), update_time = sysdate()
         where user_id = #{userId} and del_flag = '0'
+    </update>
+
+    <update id="initializeUsername">
+        update shop_user
+        set user_name = #{username}, username_initialized = '1', update_time = sysdate()
+        where user_id = #{userId} and username_initialized = '0' and del_flag = '0'
+    </update>
+
+    <update id="bindPhone">
+        update shop_user
+        set phonenumber = #{phone}, phone_verified_at = sysdate(), update_time = sysdate()
+        where user_id = #{userId} and phonenumber is null and phone_verified_at is null and del_flag = '0'
+    </update>
+
+    <update id="changePhone">
+        update shop_user
+        set phonenumber = #{newPhone}, phone_verified_at = sysdate(),
+            update_time = sysdate()
+        where user_id = #{userId} and phonenumber = #{currentPhone}
+          and phone_verified_at is not null and del_flag = '0'
     </update>
 
     <update id="updateStatus">

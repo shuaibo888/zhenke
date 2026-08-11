@@ -41,6 +41,7 @@ import type { AuthUser } from '@/utils/authRules';
 import { registerAuthExpiredHandler, storeToken } from '@/services/apiClient';
 import { clearWechatPaymentQuery, invokeWechatJsapi } from '@/utils/wechatPayment';
 import { copyText } from '@/utils/shop';
+import { PhoneBindingModal } from '@/components/PhoneBindingModal';
 
 type AuthMode = 'login' | 'register';
 
@@ -662,6 +663,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   return (
     <ShopContext.Provider value={value}>
       {children}
+      <PhoneBindingModal
+        open={Boolean(user && !user.phoneBound)}
+        onBound={setUser}
+        onLogout={logout}
+      />
       <Modal
         open={authExpiredOpen}
         title="登录状态已过期"

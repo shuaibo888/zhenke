@@ -34,6 +34,7 @@
         <spring-ai-alibaba.version>1.1.2.3</spring-ai-alibaba.version>
         <wechatpay-java.version>0.2.17</wechatpay-java.version>
         <ocr-api.version>3.1.3</ocr-api.version>
+        <dypnsapi.version>2.0.0</dypnsapi.version>
     </properties>
 
     <!-- 依赖声明 -->
@@ -147,6 +148,13 @@
                 <groupId>com.aliyun</groupId>
                 <artifactId>ocr_api20210707</artifactId>
                 <version>${ocr-api.version}</version>
+            </dependency>
+
+            <!-- 阿里云号码认证服务（短信认证 + H5 一键登录）官方 V2.0 SDK -->
+            <dependency>
+                <groupId>com.aliyun</groupId>
+                <artifactId>dypnsapi20170525</artifactId>
+                <version>${dypnsapi.version}</version>
             </dependency>
 
             <!-- Token生成与解析-->

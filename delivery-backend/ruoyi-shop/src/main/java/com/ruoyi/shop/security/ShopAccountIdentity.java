@@ -21,6 +21,22 @@ public final class ShopAccountIdentity
 
     public static long requireShopUserId()
     {
+        LoginUser loginUser = requireShopLoginUser();
+        if (loginUser.getUser() == null || loginUser.getUser().getPhonenumber() == null
+                || loginUser.getUser().getPhonenumber().isBlank())
+        {
+            throw new ServiceException("请先完成手机号绑定", HttpStatus.FORBIDDEN);
+        }
+        return loginUser.getUserId() - SHOP_USER_ID_OFFSET;
+    }
+
+    public static long requireAuthenticatedShopUserId()
+    {
+        return requireShopLoginUser().getUserId() - SHOP_USER_ID_OFFSET;
+    }
+
+    private static LoginUser requireShopLoginUser()
+    {
         LoginUser loginUser = SecurityUtils.getLoginUser();
         Set<String> permissions = loginUser.getPermissions();
         Long principalId = loginUser.getUserId();
@@ -29,7 +45,7 @@ public final class ShopAccountIdentity
         {
             throw new ServiceException("当前登录账号不是商城用户", HttpStatus.FORBIDDEN);
         }
-        return principalId - SHOP_USER_ID_OFFSET;
+        return loginUser;
     }
 
     public static Long currentShopUserIdOrNull()
@@ -42,7 +58,9 @@ public final class ShopAccountIdentity
         Set<String> permissions = loginUser.getPermissions();
         Long principalId = loginUser.getUserId();
         if (principalId == null || principalId <= SHOP_USER_ID_OFFSET || permissions == null
-                || !permissions.contains(SHOP_USER_PERMISSION))
+                || !permissions.contains(SHOP_USER_PERMISSION) || loginUser.getUser() == null
+                || loginUser.getUser().getPhonenumber() == null
+                || loginUser.getUser().getPhonenumber().isBlank())
         {
             return null;
         }

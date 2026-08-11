@@ -3,14 +3,18 @@ package com.ruoyi.shop.service;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.SecureRandom;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
 import javax.imageio.ImageIO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.dao.DuplicateKeyException;
 import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.constant.CacheConstants;
@@ -48,6 +52,8 @@ public class ShopAccountService
     private static final String[] AVATAR_EXTENSIONS = { "gif", "jpg", "jpeg", "png" };
     private static final Set<String> AVATAR_CONTENT_TYPES = Set.of(
             MimeTypeUtils.IMAGE_GIF, MimeTypeUtils.IMAGE_JPG, MimeTypeUtils.IMAGE_JPEG, MimeTypeUtils.IMAGE_PNG);
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private static final String PHONE_PATTERN = "^1\\d{10}$";
 
     private final ShopUserMapper userMapper;
     private final ShopPointMapper pointMapper;
@@ -74,6 +80,10 @@ public class ShopAccountService
     {
         String username = body.getUsername().trim();
         validateCaptcha(body.getCode(), body.getUuid());
+        if (username.matches(PHONE_PATTERN))
+        {
+            throw new ServiceException("用户名不能使用手机号，请选择手机号注册");
+        }
         if (userMapper.countByUsername(username) > 0)
         {
             throw new ServiceException("用户名已存在");
@@ -82,6 +92,8 @@ public class ShopAccountService
         user.setUserName(username);
         user.setNickName(username);
         user.setPassword(SecurityUtils.encryptPassword(body.getPassword()));
+        user.setUsernameInitialized("1");
+        user.setPasswordInitialized("1");
         user.setLevelId(1L);
         user.setReviewEligible("0");
         user.setTrialEligible("0");
@@ -115,10 +127,71 @@ public class ShopAccountService
             throw new ServiceException("账号已停用，请联系管理员");
         }
 
-        userMapper.updateLoginInfo(user.getUserId(), IpUtils.getIpAddr());
-        String token = tokenService.createToken(createLoginUser(user));
-        recordLogin(username, Constants.LOGIN_SUCCESS, "商城用户登录成功");
-        return new LoginResult(token, profileFrom(user));
+        return issueLogin(user);
+    }
+
+    @Transactional
+    public LoginResult loginByVerifiedPhone(String phone)
+    {
+        ShopUser user = userMapper.selectByPhone(phone);
+        if (user == null) user = createPhoneUser(phone);
+        if (!"0".equals(user.getStatus()))
+        {
+            throw new ServiceException("账号已停用，请联系管理员");
+        }
+        return issueLogin(user);
+    }
+
+    private ShopUser createPhoneUser(String phone)
+    {
+        ShopUser user = new ShopUser();
+        String generatedUsername = generateRandomUsername();
+        user.setUserName(generatedUsername);
+        user.setNickName("用户" + phone.substring(7));
+        byte[] randomPassword = new byte[24];
+        RANDOM.nextBytes(randomPassword);
+        user.setPassword(SecurityUtils.encryptPassword(HexFormat.of().formatHex(randomPassword)));
+        user.setPhonenumber(phone);
+        user.setPhoneVerifiedAt(new Date());
+        user.setUsernameInitialized("0");
+        user.setPasswordInitialized("0");
+        user.setLevelId(1L);
+        user.setReviewEligible("0");
+        user.setTrialEligible("0");
+        user.setStatus("0");
+        user.setDelFlag("0");
+        user.setCreateBy("phone-auth");
+        try
+        {
+            if (userMapper.insert(user) <= 0 || user.getUserId() == null)
+            {
+                throw new ServiceException("手机号账号创建失败");
+            }
+        }
+        catch (DuplicateKeyException exception)
+        {
+            ShopUser existing = userMapper.selectByPhone(phone);
+            if (existing != null) return existing;
+            throw new ServiceException("手机号账号创建冲突，请稍后重试");
+        }
+        if (pointMapper.insertDefaultAccount(user.getUserId(), "phone-auth") <= 0)
+        {
+            throw new ServiceException("积分账户初始化失败");
+        }
+        recordLogin(user.getUserName(), Constants.REGISTER, "商城手机号用户自动注册成功");
+        return user;
+    }
+
+    private String generateRandomUsername()
+    {
+        for (int attempt = 0; attempt < 5; attempt++)
+        {
+            byte[] random = new byte[8];
+            RANDOM.nextBytes(random);
+            String username = "u_" + HexFormat.of().formatHex(random);
+            if (userMapper.countByUsername(username) == 0) return username;
+        }
+        throw new ServiceException("随机账号生成失败，请稍后重试");
     }
 
     private void validateCaptcha(String code, String uuid)
@@ -143,7 +216,104 @@ public class ShopAccountService
 
     public ShopUserProfile currentProfile()
     {
-        return profileFrom(requireUser(ShopAccountIdentity.requireShopUserId()));
+        return profileFrom(requireUser(ShopAccountIdentity.requireAuthenticatedShopUserId()));
+    }
+
+    public String currentPhone()
+    {
+        return requireUser(ShopAccountIdentity.requireAuthenticatedShopUserId()).getPhonenumber();
+    }
+
+    public void requirePhoneAvailable(String phone)
+    {
+        if (userMapper.countByPhone(phone) > 0)
+        {
+            throw new ServiceException("该手机号已绑定其他账号");
+        }
+    }
+
+    @Transactional
+    public ShopUserProfile bindVerifiedPhone(String phone)
+    {
+        long userId = ShopAccountIdentity.requireAuthenticatedShopUserId();
+        ShopUser user = requireUser(userId);
+        if (user.getPhoneVerifiedAt() != null && !StringUtils.isEmpty(user.getPhonenumber()))
+        {
+            throw new ServiceException("当前账号已经绑定手机号");
+        }
+        requirePhoneAvailable(phone);
+        try
+        {
+            if (userMapper.bindPhone(userId, phone) <= 0)
+            {
+                throw new ServiceException("手机号绑定失败，请刷新后重试");
+            }
+        }
+        catch (DuplicateKeyException exception)
+        {
+            throw new ServiceException("该手机号已绑定其他账号");
+        }
+        ShopUser updated = requireUser(userId);
+        refreshLoginUser(updated);
+        return profileFrom(updated);
+    }
+
+    @Transactional
+    public ShopUserProfile changeVerifiedPhone(String newPhone)
+    {
+        long userId = ShopAccountIdentity.requireShopUserId();
+        ShopUser user = requireUser(userId);
+        String currentPhone = user.getPhonenumber();
+        if (newPhone.equals(currentPhone)) throw new ServiceException("新手机号不能与当前手机号相同");
+        requirePhoneAvailable(newPhone);
+        try
+        {
+            if (userMapper.changePhone(userId, currentPhone, newPhone) <= 0)
+            {
+                throw new ServiceException("手机号换绑失败，请刷新后重试");
+            }
+        }
+        catch (DuplicateKeyException exception)
+        {
+            throw new ServiceException("该手机号已绑定其他账号");
+        }
+        ShopUser updated = requireUser(userId);
+        refreshLoginUser(updated);
+        return profileFrom(updated);
+    }
+
+    @Transactional
+    public ShopUserProfile initializeUsername(String rawUsername)
+    {
+        long userId = ShopAccountIdentity.requireShopUserId();
+        ShopUser user = requireUser(userId);
+        if ("1".equals(user.getUsernameInitialized()))
+        {
+            throw new ServiceException("账号名已经确认，不能再次修改");
+        }
+        String username = rawUsername == null ? "" : rawUsername.trim();
+        if (!username.matches("^(?!1\\d{10}$)[A-Za-z0-9_]{4,20}$"))
+        {
+            throw new ServiceException("账号名只能包含4到20位字母、数字和下划线，且不能使用手机号");
+        }
+        if (userMapper.countByUsername(username) > 0)
+        {
+            throw new ServiceException("账号名已存在");
+        }
+        try
+        {
+            if (userMapper.initializeUsername(userId, username) <= 0)
+            {
+                throw new ServiceException("账号名已确认或账号状态已变化，请刷新后重试");
+            }
+        }
+        catch (DuplicateKeyException exception)
+        {
+            throw new ServiceException("账号名已存在");
+        }
+        ShopUser updated = requireUser(userId);
+        refreshLoginUser(updated);
+        return profileFrom(updated);
     }
 
     public List<ShopUser> selectAdminUsers(ShopUser query)
@@ -268,13 +438,14 @@ public class ShopAccountService
     }
 
     @Transactional
-    public void updatePassword(ShopPasswordBody body)
+    public void updatePassword(ShopPasswordBody body, boolean phoneVerified)
     {
         long userId = ShopAccountIdentity.requireShopUserId();
         ShopUser user = requireUser(userId);
-        if (!SecurityUtils.matchesPassword(body.getOldPassword(), user.getPassword()))
+        if (!phoneVerified && (StringUtils.isEmpty(body.getOldPassword())
+                || !SecurityUtils.matchesPassword(body.getOldPassword(), user.getPassword())))
         {
-            throw new ServiceException("原密码不正确");
+            throw new ServiceException("原密码不正确，或请改用手机号短信验证");
         }
         if (SecurityUtils.matchesPassword(body.getNewPassword(), user.getPassword()))
         {
@@ -283,7 +454,16 @@ public class ShopAccountService
         String encodedPassword = SecurityUtils.encryptPassword(body.getNewPassword());
         userMapper.updatePassword(userId, encodedPassword);
         user.setPassword(encodedPassword);
+        user.setPasswordInitialized("1");
         refreshLoginUser(user);
+    }
+
+    private LoginResult issueLogin(ShopUser user)
+    {
+        userMapper.updateLoginInfo(user.getUserId(), IpUtils.getIpAddr());
+        String token = tokenService.createToken(createLoginUser(user));
+        recordLogin(user.getUserName(), Constants.LOGIN_SUCCESS, "商城用户登录成功");
+        return new LoginResult(token, profileFrom(user));
     }
 
     private ShopUser requireUser(long userId)
@@ -312,6 +492,10 @@ public class ShopAccountService
         sysUser.setUserName(shopUser.getUserName());
         sysUser.setNickName(shopUser.getNickName());
         sysUser.setPassword(shopUser.getPassword());
+        if (shopUser.getPhoneVerifiedAt() != null)
+        {
+            sysUser.setPhonenumber(shopUser.getPhonenumber());
+        }
         sysUser.setAvatar(shopUser.getAvatar());
         sysUser.setStatus(shopUser.getStatus());
         sysUser.setDelFlag(shopUser.getDelFlag());

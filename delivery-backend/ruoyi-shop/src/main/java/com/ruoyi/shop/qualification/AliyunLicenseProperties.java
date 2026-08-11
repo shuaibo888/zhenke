@@ -8,8 +8,6 @@ import org.springframework.stereotype.Component;
 public class AliyunLicenseProperties
 {
     private boolean enabled;
-    private String accessKeyId;
-    private String accessKeySecret;
     private String endpoint = "ocr-api.cn-hangzhou.aliyuncs.com";
     private int connectTimeoutSeconds = 5;
     private int requestTimeoutSeconds = 8;
@@ -18,10 +16,6 @@ public class AliyunLicenseProperties
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
-    public String getAccessKeyId() { return accessKeyId; }
-    public void setAccessKeyId(String accessKeyId) { this.accessKeyId = accessKeyId; }
-    public String getAccessKeySecret() { return accessKeySecret; }
-    public void setAccessKeySecret(String accessKeySecret) { this.accessKeySecret = accessKeySecret; }
     public String getEndpoint() { return endpoint; }
     public void setEndpoint(String endpoint) { this.endpoint = endpoint; }
     public int getConnectTimeoutSeconds() { return connectTimeoutSeconds; }

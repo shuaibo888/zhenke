@@ -3166,7 +3166,7 @@
 
 .reportList {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -7054,7 +7054,7 @@
     flex-direction: column;
     gap: 10px;
     min-height: auto;
-    padding: 12px 15px;
+    padding: 12px 15px 16px;
     border-radius: 16px;
   }
 
@@ -7106,11 +7106,13 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
+    margin-bottom: 1px;
   }
 
   .profileHeaderActions :global(.ant-btn) {
     width: 100%;
-    height: 32px;
+    height: 38px;
+    min-height: 38px;
     min-width: 0;
     padding-inline: 4px;
     font-size: 12px;
@@ -8275,35 +8277,6 @@
   background: #ffffff;
 }
 
-.authModeTabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
-  margin-bottom: 28px;
-  padding: 4px;
-  border: 1px solid #e4ebe7;
-  border-radius: 12px;
-  background: #f4f7f5;
-}
-
-.authModeTabs button {
-  min-height: 38px;
-  color: #6c7872;
-  background: transparent;
-  border: 0;
-  border-radius: 9px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 700;
-  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
-}
-
-.authModeTabs button.authModeActive {
-  color: #174b3e;
-  background: #ffffff;
-  box-shadow: 0 3px 12px rgba(29, 73, 60, 0.1);
-}
-
 .authLayout .authHeader {
   margin-bottom: 22px;
 }
@@ -8371,6 +8344,213 @@
   background: #1f6f5b;
   box-shadow: 0 8px 22px rgba(31, 111, 91, 0.2);
   font-size: 15px;
+  font-weight: 800;
+}
+
+.authOneClick {
+  min-height: 46px;
+  margin-top: 8px;
+  border-radius: 12px;
+  font-weight: 800;
+  box-shadow: 0 8px 22px rgba(31, 111, 91, 0.18);
+}
+
+.authOneClickPanel {
+  display: grid;
+  justify-items: center;
+  padding: 24px 22px 18px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 0, rgba(31, 111, 91, 0.12), transparent 48%),
+    linear-gradient(180deg, #f8fcfa, #f3f8f5);
+  border: 1px solid #dce9e2;
+  border-radius: 18px;
+}
+
+.authOneClickIcon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin-bottom: 13px;
+  color: #ffffff;
+  background: linear-gradient(145deg, #174b3e, #2f8068);
+  border-radius: 20px;
+  box-shadow: 0 12px 26px rgba(23, 75, 62, 0.2);
+  font-size: 25px;
+}
+
+.authOneClickPanel strong {
+  color: #1d3029;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.authOneClickPanel p {
+  margin: 5px 0 8px;
+  color: #738078;
+  font-size: 12px;
+}
+
+.authMethodLink {
+  margin-top: 8px;
+  padding: 6px 8px;
+  color: #1f6f5b;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.authMethodLink:hover {
+  color: #124a3c;
+}
+
+.authForm > .authMethodLink {
+  display: block;
+  margin: 8px auto 0;
+}
+
+.authSmsForm {
+  padding: 18px;
+  background: linear-gradient(180deg, #f9fcfa, #f5f9f7);
+  border: 1px solid #dce8e2;
+  border-radius: 18px;
+}
+
+.authSmsForm :global(.ant-input::placeholder),
+.authSmsForm :global(input::placeholder) {
+  color: #a4aea9;
+}
+
+.authSmsCodeRow {
+  --auth-sms-control-height: 48px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 116px;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.authSmsCodeRow :global(.ant-input-affix-wrapper) {
+  width: 100%;
+  height: var(--auth-sms-control-height) !important;
+  min-height: var(--auth-sms-control-height) !important;
+  box-sizing: border-box;
+  border-radius: 12px !important;
+}
+
+.authSmsCodeRow :global(.ant-btn) {
+  width: 116px;
+  height: var(--auth-sms-control-height) !important;
+  min-height: var(--auth-sms-control-height) !important;
+  box-sizing: border-box;
+  padding-inline: 10px;
+  color: #1f6f5b;
+  background: #edf5f1;
+  border-color: #c9ddd3;
+  border-radius: 12px !important;
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: none;
+}
+
+.authSmsCodeRow :global(.ant-btn:hover:not(:disabled)) {
+  color: #174b3e;
+  background: #e4f0ea;
+  border-color: #a9cbbb;
+}
+
+.authPhoneHint {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  color: #65736d;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.authPhoneHint svg {
+  color: #4d8a76;
+  font-size: 13px;
+}
+
+.authSecondaryActions {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.authPhoneEntry {
+  min-height: 44px;
+  color: #245f50;
+  background: #f5f8f6;
+  border-color: #d6e3dc;
+  border-radius: 12px;
+  font-weight: 800;
+  box-shadow: none;
+}
+
+.authPhoneEntry:hover {
+  color: #174b3e !important;
+  background: #ecf4f0 !important;
+  border-color: #b8d1c5 !important;
+}
+
+.authRegisterPrompt {
+  margin: 2px 0 0;
+  color: #7a8781;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.authRegisterPrompt button {
+  margin-left: 4px;
+  padding: 3px 2px;
+  color: #1f6f5b;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.authRegisterPrompt button:hover {
+  color: #124a3c;
+}
+
+.profileSetupNotice {
+  position: relative;
+  z-index: 0;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  background: #fffaf0;
+  border: 1px solid #f0d999;
+  border-radius: 14px;
+  color: #3e463f;
+}
+
+.profileSetupNoticeIcon {
+  color: #efa82f;
+  font-size: 18px;
+}
+
+.profileSetupNotice strong {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.profileSetupNotice :global(.ant-btn) {
+  min-width: 72px;
+  border-radius: 16px;
   font-weight: 800;
 }
 
@@ -8720,13 +8900,9 @@
     padding: 18px 20px 20px;
   }
 
-  .authModeTabs {
-    margin-bottom: 14px;
-  }
-
-  .authModeTabs button {
-    min-height: 34px;
-    font-size: 13px;
+  .authLayout .phoneAuthCard {
+    justify-content: flex-start;
+    padding: 16px 18px 18px;
   }
 
   .authLayout .authHeader {
@@ -8752,7 +8928,79 @@
 
   .authForm :global(.ant-input-affix-wrapper),
   .authForm :global(.ant-input) {
-    min-height: 44px;
+    min-height: 42px;
+  }
+
+  .authOneClick {
+    min-height: 42px;
+  }
+
+  .authOneClickPanel {
+    padding: 20px 16px 14px;
+    border-radius: 16px;
+  }
+
+  .authOneClickIcon {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 10px;
+    border-radius: 17px;
+    font-size: 21px;
+  }
+
+  .authSmsForm {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .authSmsCodeRow {
+    grid-template-columns: minmax(0, 1fr) 104px;
+    gap: 8px;
+  }
+
+  .authSmsCodeRow :global(.ant-btn) {
+    width: 104px;
+    padding-inline: 7px;
+    font-size: 12px;
+  }
+
+  .authPhoneHint {
+    margin-top: 10px;
+    font-size: 11px;
+  }
+
+  .authSecondaryActions {
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .authPhoneEntry {
+    min-height: 40px;
+  }
+
+  .authRegisterPrompt {
+    font-size: 12px;
+  }
+
+  .profileSetupNotice {
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    gap: 7px;
+    padding: 9px 11px;
+    border-radius: 12px;
+  }
+
+  .profileSetupNoticeIcon {
+    font-size: 15px;
+  }
+
+  .profileSetupNotice strong {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .profileSetupNotice :global(.ant-btn) {
+    min-width: 62px;
+    padding-inline: 10px;
   }
 
   .authLayout .captchaRow {
@@ -8889,7 +9137,6 @@
     padding-block: 12px;
   }
 
-  .authModeTabs,
   .authLayout .authHeader {
     margin-bottom: 8px;
   }

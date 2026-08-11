@@ -21,6 +21,23 @@ interface LoginResponse extends ApiResponse {
   user: AuthUser;
 }
 
+export type PhoneVerificationScene =
+  | 'LOGIN_REGISTER'
+  | 'BIND_PHONE'
+  | 'CHANGE_PHONE'
+  | 'RESET_PASSWORD';
+
+export interface PhoneAuthCapabilities {
+  smsEnabled: boolean;
+  oneClickEnabled: boolean;
+  sdkUrl: string;
+}
+
+export interface OneClickTokens {
+  accessToken: string;
+  jwtToken: string;
+}
+
 export async function registerShopUser(
   username: string,
   password: string,
@@ -49,6 +66,45 @@ export async function loginShopUser(username: string, password: string, code?: s
   const result = await requestApi<LoginResponse>('/shop/auth/login', {
     method: 'POST',
     body: JSON.stringify({ username: username.trim(), password, code, uuid }),
+  });
+  storeToken(result.token);
+  return result.user;
+}
+
+export async function fetchPhoneAuthCapabilities() {
+  const result = await requestApi<ApiResponse<PhoneAuthCapabilities>>('/shop/auth/phone/capabilities');
+  if (!result.data) throw new Error('手机号认证配置加载失败');
+  return result.data;
+}
+
+export async function sendLoginPhoneCode(phone: string) {
+  return requestApi<ApiResponse>('/shop/auth/phone/sms/send', {
+    method: 'POST',
+    body: JSON.stringify({ phone: phone.trim(), scene: 'LOGIN_REGISTER' }),
+  });
+}
+
+export async function loginOrRegisterByPhone(phone: string, code: string) {
+  const result = await requestApi<LoginResponse>('/shop/auth/phone/login', {
+    method: 'POST',
+    body: JSON.stringify({ phone: phone.trim(), code: code.trim() }),
+  });
+  storeToken(result.token);
+  return result.user;
+}
+
+export async function fetchOneClickTokens() {
+  const result = await requestApi<ApiResponse<OneClickTokens>>('/shop/auth/phone/one-click/tokens', {
+    method: 'POST',
+  });
+  if (!result.data?.accessToken || !result.data?.jwtToken) throw new Error('一键认证初始化失败');
+  return result.data;
+}
+
+export async function loginOrRegisterByOneClick(spToken: string) {
+  const result = await requestApi<LoginResponse>('/shop/auth/phone/one-click/login', {
+    method: 'POST',
+    body: JSON.stringify({ spToken }),
   });
   storeToken(result.token);
   return result.user;
@@ -104,12 +160,66 @@ export async function uploadShopAvatar(file: File) {
   return result.data;
 }
 
-export async function changeShopPassword(oldPassword: string, newPassword: string) {
+export async function changeShopPassword(newPassword: string, oldPassword?: string, smsCode?: string) {
   return requestApi<ApiResponse>(
     '/shop/users/me/password',
-    { method: 'PUT', body: JSON.stringify({ oldPassword, newPassword }) },
+    { method: 'PUT', body: JSON.stringify({ oldPassword, newPassword, smsCode }) },
     true,
   );
+}
+
+export async function initializeShopUsername(username: string) {
+  const result = await requestApi<ApiResponse<AuthUser>>(
+    '/shop/users/me/username',
+    { method: 'PUT', body: JSON.stringify({ username: username.trim(), permanentConfirmed: true }) },
+    true,
+  );
+  if (!result.data) throw new Error('账号名设置失败');
+  return result.data;
+}
+
+export async function sendAuthenticatedPhoneCode(
+  scene: Exclude<PhoneVerificationScene, 'LOGIN_REGISTER'>,
+  phone?: string,
+) {
+  return requestApi<ApiResponse>(
+    '/shop/users/me/phone/sms/send',
+    { method: 'POST', body: JSON.stringify({ phone: phone?.trim(), scene }) },
+    true,
+  );
+}
+
+export async function bindShopPhone(phone: string, code: string) {
+  const result = await requestApi<ApiResponse<AuthUser>>(
+    '/shop/users/me/phone/bind',
+    { method: 'PUT', body: JSON.stringify({ phone: phone.trim(), code: code.trim() }) },
+    true,
+  );
+  if (!result.data) throw new Error('手机号绑定失败');
+  return result.data;
+}
+
+export async function bindShopPhoneByOneClick(spToken: string) {
+  const result = await requestApi<ApiResponse<AuthUser>>(
+    '/shop/users/me/phone/one-click-bind',
+    { method: 'PUT', body: JSON.stringify({ spToken }) },
+    true,
+  );
+  if (!result.data) throw new Error('手机号绑定失败');
+  return result.data;
+}
+
+export async function changeShopPhone(body: {
+  newPhone: string;
+  newPhoneCode: string;
+}) {
+  const result = await requestApi<ApiResponse<AuthUser>>(
+    '/shop/users/me/phone',
+    { method: 'PUT', body: JSON.stringify(body) },
+    true,
+  );
+  if (!result.data) throw new Error('手机号换绑失败');
+  return result.data;
 }
 
 export interface ShopUserOverview {

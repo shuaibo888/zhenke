@@ -9,11 +9,17 @@ public interface ShopUserMapper
 {
     ShopUser selectById(Long userId);
     ShopUser selectByUsername(String username);
+    ShopUser selectByPhone(String phone);
     int countByUsername(String username);
+    int countByPhone(String phone);
     int insert(ShopUser user);
     int updateLoginInfo(@Param("userId") Long userId, @Param("loginIp") String loginIp);
     int updateProfile(ShopUser user);
     int updatePassword(@Param("userId") Long userId, @Param("password") String password);
+    int initializeUsername(@Param("userId") Long userId, @Param("username") String username);
+    int bindPhone(@Param("userId") Long userId, @Param("phone") String phone);
+    int changePhone(@Param("userId") Long userId, @Param("currentPhone") String currentPhone,
+            @Param("newPhone") String newPhone);
     List<ShopUser> selectAdminList(ShopUser query);
     List<ShopMemberLevel> selectEnabledLevels();
     int countEnabledLevelById(Long levelId);

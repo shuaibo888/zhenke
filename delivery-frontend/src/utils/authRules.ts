@@ -4,6 +4,10 @@ export interface AuthUser extends User {
   roleName?: string;
   reviewEligible?: boolean;
   trialEligible?: boolean;
+  phoneBound: boolean;
+  phoneMasked: string;
+  passwordInitialized: boolean;
+  usernameInitialized: boolean;
 }
 
 export function passwordHasLetterAndNumber(password: string) {
@@ -11,7 +15,7 @@ export function passwordHasLetterAndNumber(password: string) {
 }
 
 export function isValidUsername(username: string) {
-  return /^[A-Za-z0-9_]{4,20}$/.test(username.trim());
+  return /^(?!1\d{10}$)[A-Za-z0-9_]{4,20}$/.test(username.trim());
 }
 
 export function isValidPassword(password: string) {

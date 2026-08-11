@@ -16,6 +16,10 @@ public class ShopUserProfile
     private int usefulCount;
     private boolean reviewEligible;
     private boolean trialEligible;
+    private boolean phoneBound;
+    private String phoneMasked;
+    private boolean passwordInitialized;
+    private boolean usernameInitialized;
 
     public static ShopUserProfile from(ShopUser user)
     {
@@ -29,7 +33,18 @@ public class ShopUserProfile
         profile.roleName = user.getLevelName();
         profile.reviewEligible = "0".equals(user.getReviewEligible());
         profile.trialEligible = "0".equals(user.getTrialEligible());
+        profile.phoneBound = user.getPhoneVerifiedAt() != null && user.getPhonenumber() != null
+                && !user.getPhonenumber().isBlank();
+        profile.phoneMasked = maskPhone(user.getPhonenumber());
+        profile.passwordInitialized = "1".equals(user.getPasswordInitialized());
+        profile.usernameInitialized = "1".equals(user.getUsernameInitialized());
         return profile;
+    }
+
+    private static String maskPhone(String phone)
+    {
+        if (phone == null || phone.length() != 11) return "";
+        return phone.substring(0, 3) + "****" + phone.substring(7);
     }
 
     public Long getId() { return id; }
@@ -45,4 +60,8 @@ public class ShopUserProfile
     public void setUsefulCount(int usefulCount) { this.usefulCount = usefulCount; }
     public boolean isReviewEligible() { return reviewEligible; }
     public boolean isTrialEligible() { return trialEligible; }
+    public boolean isPhoneBound() { return phoneBound; }
+    public String getPhoneMasked() { return phoneMasked; }
+    public boolean isPasswordInitialized() { return passwordInitialized; }
+    public boolean isUsernameInitialized() { return usernameInitialized; }
 }

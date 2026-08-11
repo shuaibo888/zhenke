@@ -12,6 +12,9 @@ public class ShopUser extends BaseEntity
     private String nickName;
     private String password;
     private String phonenumber;
+    private Date phoneVerifiedAt;
+    private String usernameInitialized;
+    private String passwordInitialized;
     private String email;
     private String avatar;
     private Long levelId;
@@ -36,6 +39,12 @@ public class ShopUser extends BaseEntity
     public void setPassword(String password) { this.password = password; }
     public String getPhonenumber() { return phonenumber; }
     public void setPhonenumber(String phonenumber) { this.phonenumber = phonenumber; }
+    public Date getPhoneVerifiedAt() { return phoneVerifiedAt; }
+    public void setPhoneVerifiedAt(Date phoneVerifiedAt) { this.phoneVerifiedAt = phoneVerifiedAt; }
+    public String getUsernameInitialized() { return usernameInitialized; }
+    public void setUsernameInitialized(String usernameInitialized) { this.usernameInitialized = usernameInitialized; }
+    public String getPasswordInitialized() { return passwordInitialized; }
+    public void setPasswordInitialized(String passwordInitialized) { this.passwordInitialized = passwordInitialized; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
     public String getAvatar() { return avatar; }

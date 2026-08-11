@@ -2,9 +2,9 @@ import {
   DownOutlined,
   EditOutlined,
   EnvironmentOutlined,
+  ExclamationCircleFilled,
   FileTextOutlined,
   GiftOutlined,
-  LockOutlined,
   LogoutOutlined,
   ProfileOutlined,
   RightOutlined,
@@ -17,10 +17,10 @@ import { useCallback, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { AddressManager } from '@/components/AddressManager';
+import { AccountSecurityPanel } from '@/components/AccountSecurityPanel';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import {
-  changeShopPassword,
   fetchMyOverview,
   updateShopProfile,
   uploadShopAvatar,
@@ -41,7 +41,6 @@ export default function ProfilePage() {
   const [overview, setOverview] = useState<ShopUserOverview | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [nameForm] = Form.useForm<{ name: string }>();
-  const [passwordForm] = Form.useForm<{ oldPassword: string; newPassword: string }>();
   const avatarInput = useRef<HTMLInputElement | null>(null);
   useBodyScrollLock(profileOpen || addressOpen);
 
@@ -88,16 +87,6 @@ export default function ProfilePage() {
     }
   };
 
-  const savePassword = async (values: { oldPassword: string; newPassword: string }) => {
-    try {
-      await changeShopPassword(values.oldPassword, values.newPassword);
-      passwordForm.resetFields();
-      message.success('密码已更新');
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : '密码更新失败');
-    }
-  };
-
   const uploadAvatar = async (file?: File) => {
     if (!file) return;
 
@@ -137,7 +126,7 @@ export default function ProfilePage() {
             <div className={styles.profileIdentityText}>
               <span className={styles.profileKicker}>个人中心</span>
               <h2>{user.name}</h2>
-              <p>@{user.username} · {user.roleName || '甄客'}</p>
+              <p>{user.usernameInitialized ? `@${user.username}` : '手机号用户'} · {user.roleName || '甄客'}</p>
             </div>
             <button
               type="button"
@@ -161,6 +150,14 @@ export default function ProfilePage() {
             <Button danger icon={<LogoutOutlined />} onClick={confirmLogout}>退出登录</Button>
           </div>
         </section>
+
+        {(!user.usernameInitialized || !user.passwordInitialized) && (
+          <div className={styles.profileSetupNotice} role="status">
+            <ExclamationCircleFilled className={styles.profileSetupNoticeIcon} />
+            <strong>设置账号名和密码，登录更方便</strong>
+            <Button type="primary" size="small" onClick={() => setProfileOpen(true)}>去设置</Button>
+          </div>
+        )}
 
         <section className={styles.profileMenuPanel}>
           <div className={styles.profileMenuHeading}>
@@ -217,7 +214,6 @@ export default function ProfilePage() {
         open={profileOpen}
         onCancel={() => {
           setProfileOpen(false);
-          passwordForm.resetFields();
           setExpandedSection(null);
         }}
         footer={null}
@@ -287,37 +283,7 @@ export default function ProfilePage() {
           </section>
 
           <section className={styles.profileEditSection}>
-            <button
-              type="button"
-              className={`${styles.profileEditHeading} ${styles.profileEditHeadingBtn}`}
-              onClick={() => toggleSection('password')}
-            >
-              <span><LockOutlined /></span>
-              <div><strong>修改密码</strong><small>验证旧密码后单独更新登录密码</small></div>
-              <DownOutlined className={`${styles.profileEditArrow} ${expandedSection === 'password' ? styles.profileEditArrowOpen : ''}`} />
-            </button>
-            <div className={`${styles.profileEditBody} ${expandedSection === 'password' ? styles.profileEditBodyOpen : ''}`}>
-              <Form form={passwordForm} layout="vertical" onFinish={savePassword}>
-                <Form.Item name="oldPassword" label="旧密码" rules={[{ required: true, message: '请输入旧密码' }]}>
-                  <Input.Password size="large" placeholder="请输入旧密码" />
-                </Form.Item>
-                <Form.Item
-                  name="newPassword"
-                  label="新密码"
-                  rules={[
-                    { required: true, message: '请输入新密码' },
-                    {
-                      validator: (_, value) => !value || (/[A-Za-z]/.test(value) && /\d/.test(value))
-                        ? Promise.resolve()
-                        : Promise.reject(new Error('新密码必须同时包含字母和数字')),
-                    },
-                  ]}
-                >
-                  <Input.Password size="large" placeholder="请输入新密码" />
-                </Form.Item>
-                <Button type="primary" htmlType="submit">保存密码</Button>
-              </Form>
-            </div>
+            <AccountSecurityPanel user={user} onUserChange={setUser} />
           </section>
         </div>
       </Modal>

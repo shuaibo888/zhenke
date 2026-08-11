@@ -21,6 +21,7 @@ import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.shop.config.AliyunAccessKeyProperties;
 
 /**
  * 商家入驻营业执照识别 + 三要素核验。
@@ -39,11 +40,14 @@ public class AliyunLicenseService
             + "\\d{4}/\\d{2}/\\d{2}/[A-Za-z0-9_-]+\\.(?i:jpg|jpeg|png)$";
 
     private final AliyunLicenseProperties properties;
+    private final AliyunAccessKeyProperties accessKeyProperties;
     private final RedisCache redisCache;
 
-    public AliyunLicenseService(AliyunLicenseProperties properties, RedisCache redisCache)
+    public AliyunLicenseService(AliyunLicenseProperties properties,
+            AliyunAccessKeyProperties accessKeyProperties, RedisCache redisCache)
     {
         this.properties = properties;
+        this.accessKeyProperties = accessKeyProperties;
         this.redisCache = redisCache;
     }
 
@@ -251,15 +255,15 @@ public class AliyunLicenseService
     private boolean isConfigured()
     {
         return properties.isEnabled()
-                && !StringUtils.isEmpty(StringUtils.trim(properties.getAccessKeyId()))
-                && !StringUtils.isEmpty(StringUtils.trim(properties.getAccessKeySecret()));
+                && !StringUtils.isEmpty(StringUtils.trim(accessKeyProperties.getAccessKeyId()))
+                && !StringUtils.isEmpty(StringUtils.trim(accessKeyProperties.getAccessKeySecret()));
     }
 
     private Client buildClient()
     {
         Config config = new Config();
-        config.setAccessKeyId(properties.getAccessKeyId().trim());
-        config.setAccessKeySecret(properties.getAccessKeySecret().trim());
+        config.setAccessKeyId(accessKeyProperties.getAccessKeyId().trim());
+        config.setAccessKeySecret(accessKeyProperties.getAccessKeySecret().trim());
         config.setEndpoint(properties.getEndpoint().trim());
         config.setConnectTimeout(Math.max(1, properties.getConnectTimeoutSeconds()) * 1000);
         config.setReadTimeout(Math.max(1, properties.getRequestTimeoutSeconds()) * 1000);
