@@ -16,6 +16,7 @@ export default defineConfig({
     { path: '/checkout', component: '@/pages/checkout' },
     { path: '/profile/reports', component: '@/pages/profile/reports' },
     { path: '/auth', component: '@/pages/auth' },
+    { path: '/sso/callback', component: '@/pages/sso/callback' },
     { path: '/*', component: '@/pages/404' },
   ],
   proxy: {

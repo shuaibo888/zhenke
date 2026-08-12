@@ -13,20 +13,26 @@ import com.ruoyi.shop.domain.dto.ShopOneClickBody;
 import com.ruoyi.shop.domain.dto.ShopPhoneLoginBody;
 import com.ruoyi.shop.domain.dto.ShopRegisterBody;
 import com.ruoyi.shop.domain.dto.ShopSmsSendBody;
+import com.ruoyi.shop.domain.dto.ShopSsoLoginBody;
 import com.ruoyi.shop.phone.AliyunPhoneAuthService;
 import com.ruoyi.shop.phone.PhoneVerificationScene;
 import com.ruoyi.shop.service.ShopAccountService;
 import com.ruoyi.shop.service.ShopAccountService.LoginResult;
+import com.ruoyi.shop.sso.EventSsoIdentity;
+import com.ruoyi.shop.sso.EventSsoService;
 
 @RestController
 @RequestMapping("/shop/auth")
 public class ShopAuthController {
     private final ShopAccountService accountService;
     private final AliyunPhoneAuthService phoneAuthService;
+    private final EventSsoService eventSsoService;
 
-    public ShopAuthController(ShopAccountService accountService, AliyunPhoneAuthService phoneAuthService) {
+    public ShopAuthController(ShopAccountService accountService, AliyunPhoneAuthService phoneAuthService,
+            EventSsoService eventSsoService) {
         this.accountService = accountService;
         this.phoneAuthService = phoneAuthService;
+        this.eventSsoService = eventSsoService;
     }
 
     @Anonymous
@@ -81,6 +87,14 @@ public class ShopAuthController {
     public AjaxResult oneClickLogin(@Valid @RequestBody ShopOneClickBody body) {
         String phone = phoneAuthService.getPhoneByOneClickToken(body.getSpToken());
         LoginResult result = accountService.loginByVerifiedPhone(phone);
+        return AjaxResult.success().put(Constants.TOKEN, result.token()).put("user", result.user());
+    }
+
+    @Anonymous
+    @PostMapping("/sso/login")
+    public AjaxResult ssoLogin(@Valid @RequestBody ShopSsoLoginBody body) {
+        EventSsoIdentity identity = eventSsoService.exchangeTicket(body.getTicket());
+        LoginResult result = accountService.loginByVerifiedPhone(identity.phone(), identity.nickname());
         return AjaxResult.success().put(Constants.TOKEN, result.token()).put("user", result.user());
     }
 }

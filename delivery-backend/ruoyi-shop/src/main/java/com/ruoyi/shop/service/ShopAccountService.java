@@ -133,21 +133,32 @@ public class ShopAccountService
     @Transactional
     public LoginResult loginByVerifiedPhone(String phone)
     {
-        ShopUser user = userMapper.selectByPhone(phone);
-        if (user == null) user = createPhoneUser(phone);
+        return loginByVerifiedPhone(phone, null);
+    }
+
+    @Transactional
+    public LoginResult loginByVerifiedPhone(String phone, String nickname)
+    {
+        String normalizedPhone = StringUtils.trim(phone);
+        if (StringUtils.isEmpty(normalizedPhone) || !normalizedPhone.matches(PHONE_PATTERN))
+        {
+            throw new ServiceException("手机号格式错误");
+        }
+        ShopUser user = userMapper.selectByPhone(normalizedPhone);
+        if (user == null) user = createPhoneUser(normalizedPhone, nickname);
         if (!"0".equals(user.getStatus()))
         {
-            throw new ServiceException("账号已停用，请联系管理员");
+            throw new ServiceException("账号已停用，请重新注册新账号");
         }
         return issueLogin(user);
     }
 
-    private ShopUser createPhoneUser(String phone)
+    private ShopUser createPhoneUser(String phone, String nickname)
     {
         ShopUser user = new ShopUser();
         String generatedUsername = generateRandomUsername();
         user.setUserName(generatedUsername);
-        user.setNickName("用户" + phone.substring(7));
+        user.setNickName(resolvePhoneUserNickname(phone, nickname));
         byte[] randomPassword = new byte[24];
         RANDOM.nextBytes(randomPassword);
         user.setPassword(SecurityUtils.encryptPassword(HexFormat.of().formatHex(randomPassword)));
@@ -180,6 +191,20 @@ public class ShopAccountService
         }
         recordLogin(user.getUserName(), Constants.REGISTER, "商城手机号用户自动注册成功");
         return user;
+    }
+
+    private String resolvePhoneUserNickname(String phone, String nickname)
+    {
+        String normalizedNickname = StringUtils.trim(nickname);
+        if (StringUtils.isEmpty(normalizedNickname))
+        {
+            return "用户" + phone.substring(7);
+        }
+        if (normalizedNickname.length() > 30)
+        {
+            throw new ServiceException("昵称长度必须在1到30位之间");
+        }
+        return normalizedNickname;
     }
 
     private String generateRandomUsername()

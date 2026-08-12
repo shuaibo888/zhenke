@@ -21,6 +21,8 @@ interface LoginResponse extends ApiResponse {
   user: AuthUser;
 }
 
+let ssoLoginRequest: { ticket: string; promise: Promise<AuthUser> } | null = null;
+
 export type PhoneVerificationScene =
   | 'LOGIN_REGISTER'
   | 'BIND_PHONE'
@@ -108,6 +110,24 @@ export async function loginOrRegisterByOneClick(spToken: string) {
   });
   storeToken(result.token);
   return result.user;
+}
+
+export function loginOrRegisterBySsoTicket(rawTicket: string) {
+  const ticket = rawTicket.trim();
+  if (!ticket || ticket.length > 512) {
+    return Promise.reject(new Error('登录票据格式错误，请重新从赛事系统进入'));
+  }
+  if (ssoLoginRequest?.ticket === ticket) return ssoLoginRequest.promise;
+
+  const promise = requestApi<LoginResponse>('/shop/auth/sso/login', {
+    method: 'POST',
+    body: JSON.stringify({ ticket }),
+  }).then((result) => {
+    storeToken(result.token);
+    return result.user;
+  });
+  ssoLoginRequest = { ticket, promise };
+  return promise;
 }
 
 export async function restoreShopSession() {
