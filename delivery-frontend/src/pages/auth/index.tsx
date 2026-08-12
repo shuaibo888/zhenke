@@ -155,7 +155,7 @@ export default function AuthPage() {
   return (
     <>
       <main className={`${styles.authShell} ${styles.authLayout}`}>
-        <Button type="text" icon={<ArrowLeftOutlined />} className={styles.authBackButton} onClick={() => navigate('/')}>
+        <Button type="text" icon={<ArrowLeftOutlined />} className={styles.authBackButton} aria-label="返回商城" onClick={() => navigate('/')}>
           返回商城
         </Button>
         <section className={styles.authIntro}>
@@ -197,12 +197,12 @@ export default function AuthPage() {
               ) : (
                 <Form form={phoneForm} layout="vertical" requiredMark={false} className={`${styles.authForm} ${styles.authSmsForm}`} onFinish={submitPhone}>
                   <Form.Item name="phone" label="手机号" rules={[{ required: true, message: '请输入手机号' }, { pattern: /^1\d{10}$/, message: '请输入11位中国大陆手机号' }]}>
-                    <Input size="large" prefix={<MobileOutlined />} inputMode="numeric" maxLength={11} autoComplete="tel" placeholder="请输入手机号" />
+                    <Input size="large" prefix={<MobileOutlined />} inputMode="numeric" maxLength={11} autoComplete="tel" placeholder="请输入11位手机号" />
                   </Form.Item>
                   <Form.Item label="验证码" required>
                     <div className={styles.authSmsCodeRow}>
                       <Form.Item name="code" noStyle rules={[{ required: true, message: '请输入短信验证码' }]}>
-                        <Input size="large" prefix={<LockOutlined />} inputMode="numeric" maxLength={8} autoComplete="one-time-code" placeholder="请输入验证码" />
+                        <Input size="large" prefix={<LockOutlined />} inputMode="numeric" maxLength={8} autoComplete="one-time-code" placeholder="短信验证码" />
                       </Form.Item>
                       <Button size="large" disabled={countdown > 0 || capabilities?.smsEnabled === false} onClick={() => void sendPhoneCode()}>
                         {countdown > 0 ? `${countdown}s` : '获取验证码'}
@@ -217,7 +217,7 @@ export default function AuthPage() {
                   )}
                 </Form>
               )}
-              <div className={styles.authPhoneHint}><CheckCircleFilled /> 首次登录会自动注册，可稍后完善账号资料</div>
+              <div className={styles.authPhoneHint}><CheckCircleFilled /><span>首次登录会自动注册，可稍后完善账号资料</span></div>
               <div className={styles.authSecondaryActions}>
                 <Button block size="large" icon={<UserOutlined />} className={styles.authPhoneEntry} onClick={() => switchAccountMode('login')}>
                   账号密码登录
@@ -230,28 +230,44 @@ export default function AuthPage() {
               <Form form={form} layout="vertical" requiredMark={false} className={styles.authForm} onFinish={submit}>
                 <Form.Item
                   name="username"
-                  label="用户名"
+                  label="登录账号名"
                   rules={[
-                    { required: true, message: '请输入用户名' },
+                    { required: true, message: '请输入登录账号名' },
                     ...(authMode === 'register' ? [{ pattern: /^(?!1\d{10}$)[A-Za-z0-9_]{4,20}$/, message: '账号名需为4到20位字母、数字或下划线，且不能是手机号' }] : []),
                   ]}
                 >
-                  <Input size="large" prefix={<UserOutlined />} autoComplete="username" placeholder="请输入用户名" />
+                  <Input
+                    size="large"
+                    prefix={<UserOutlined />}
+                    autoComplete="username"
+                    maxLength={20}
+                    placeholder={authMode === 'register' ? '请设置4-20位登录账号名' : '请输入登录账号名'}
+                  />
                 </Form.Item>
-                <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入密码' }, { validator: (_, value) => !value || (/[A-Za-z]/.test(value) && /\d/.test(value)) ? Promise.resolve() : Promise.reject(new Error('密码必须同时包含字母和数字')) }]}>
-                  <Input.Password size="large" prefix={<LockOutlined />} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} placeholder="请输入密码" />
+                <Form.Item name="password" label="登录密码" rules={[
+                  { required: true, message: '请输入登录密码' },
+                  ...(authMode === 'register' ? [{ min: 6, max: 20, message: '密码长度需为6到20位' }] : []),
+                  { validator: (_, value) => !value || (/[A-Za-z]/.test(value) && /\d/.test(value)) ? Promise.resolve() : Promise.reject(new Error('密码必须同时包含字母和数字')) },
+                ]}>
+                  <Input.Password
+                    size="large"
+                    prefix={<LockOutlined />}
+                    maxLength={authMode === 'register' ? 20 : undefined}
+                    autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
+                    placeholder={authMode === 'register' ? '6-20位，需含字母和数字' : '请输入登录密码'}
+                  />
                 </Form.Item>
                 {captcha.enabled && captcha.image && (
                   <Form.Item name="code" label="验证码" rules={[{ required: true, message: '请输入验证码结果' }]}>
                     <div className={styles.captchaRow}>
-                      <Input size="large" autoComplete="off" placeholder="请输入验证码" />
-                      <button type="button" className={styles.captchaButton} onClick={() => void loadCaptcha()}><img src={captcha.image} alt="验证码" /></button>
+                      <Input size="large" inputMode="text" maxLength={8} autoComplete="off" placeholder="请输入图形验证码" />
+                      <button type="button" className={styles.captchaButton} aria-label="看不清，点击更换验证码" onClick={() => void loadCaptcha()}><img src={captcha.image} alt="图形验证码" /></button>
                     </div>
                   </Form.Item>
                 )}
                 {captcha.enabled && (!captcha.image || captchaError) && (
-                  <div className={styles.captchaRow}>
-                    <span className={styles.hint}>{captchaLoading ? '验证码加载中…' : captchaError || '验证码暂时无法加载'}</span>
+                  <div className={styles.authCaptchaState} role="status">
+                    <span>{captchaLoading ? '验证码加载中…' : captchaError || '验证码暂时无法加载'}</span>
                     <Button onClick={() => void loadCaptcha()} loading={captchaLoading}>重新获取</Button>
                   </div>
                 )}

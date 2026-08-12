@@ -1,5 +1,5 @@
-import { LockOutlined, MobileOutlined, UserOutlined } from '@ant-design/icons';
-import { Alert, Button, Checkbox, Divider, Form, Input, Radio, Space, message } from 'antd';
+import { DownOutlined, LockOutlined, MobileOutlined, UserOutlined } from '@ant-design/icons';
+import { Alert, Button, Checkbox, Form, Input, Radio, Space, message } from 'antd';
 import { useEffect, useState } from 'react';
 import {
   changeShopPassword,
@@ -8,10 +8,13 @@ import {
   sendAuthenticatedPhoneCode,
 } from '@/services/shopAuth';
 import type { AuthUser } from '@/utils/authRules';
+import styles from '@/styles/commerce.less';
 
 interface AccountSecurityPanelProps {
   user: AuthUser;
   onUserChange: (user: AuthUser) => void;
+  expandedSection: string | null;
+  onToggleSection: (key: string) => void;
 }
 
 interface UsernameValues {
@@ -30,7 +33,12 @@ interface PasswordValues {
   newPassword: string;
 }
 
-export function AccountSecurityPanel({ user, onUserChange }: AccountSecurityPanelProps) {
+export function AccountSecurityPanel({
+  user,
+  onUserChange,
+  expandedSection,
+  onToggleSection,
+}: AccountSecurityPanelProps) {
   const [usernameForm] = Form.useForm<UsernameValues>();
   const [phoneForm] = Form.useForm<PhoneValues>();
   const [passwordForm] = Form.useForm<PasswordValues>();
@@ -121,74 +129,134 @@ export function AccountSecurityPanel({ user, onUserChange }: AccountSecurityPane
   };
 
   return (
-    <div>
-      <section>
-        <h3><UserOutlined /> 登录账号名</h3>
-        {user.usernameInitialized ? (
-          <Alert type="success" showIcon message={`账号名：${user.username}`} description="账号名已确认，不可修改。" />
-        ) : (
-          <>
-            <Alert type="warning" showIcon message="请设置正式账号名" description="确认后不可修改，请核对后提交。" style={{ marginBottom: 16 }} />
-            <Form form={usernameForm} layout="vertical" requiredMark={false} onFinish={saveUsername}>
-              <Form.Item name="username" label="正式账号名" rules={[{ required: true, message: '请输入账号名' }, { pattern: /^(?!1\d{10}$)[A-Za-z0-9_]{4,20}$/, message: '请输入4到20位字母、数字或下划线，且不能是手机号' }]}>
-                <Input size="large" prefix={<UserOutlined />} maxLength={20} autoComplete="username" />
-              </Form.Item>
-              <Form.Item name="permanentConfirmed" valuePropName="checked" rules={[{ validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('请确认账号名不可修改')) }]}>
-                <Checkbox>我已核对账号名，并确认提交后永久不可修改</Checkbox>
-              </Form.Item>
-              <Button type="primary" htmlType="submit" loading={usernameSaving}>确认账号名</Button>
-            </Form>
-          </>
-        )}
-      </section>
-
-      <Divider />
-
-      <section>
-        <h3><MobileOutlined /> 绑定手机号</h3>
-        <p>当前：{user.phoneMasked || '未绑定'}，换绑仅验证新手机号。</p>
-        <Form form={phoneForm} layout="vertical" requiredMark={false} onFinish={savePhone}>
-          <Form.Item name="newPhone" label="新手机号" rules={[{ required: true, message: '请输入新手机号' }, { pattern: /^1\d{10}$/, message: '请输入11位中国大陆手机号' }]}>
-            <Input size="large" prefix={<MobileOutlined />} inputMode="numeric" maxLength={11} />
-          </Form.Item>
-          <Form.Item label="新手机号验证码" required>
-            <Space.Compact block>
-              <Form.Item name="newPhoneCode" noStyle rules={[{ required: true, message: '请输入验证码' }]}>
-                <Input size="large" inputMode="numeric" maxLength={8} />
-              </Form.Item>
-              <Button size="large" disabled={phoneCountdown > 0} onClick={() => void sendNewPhoneCode()}>{phoneCountdown > 0 ? `${phoneCountdown} 秒` : '发送验证码'}</Button>
-            </Space.Compact>
-          </Form.Item>
-          <Button type="primary" htmlType="submit" loading={phoneSaving}>确认换绑</Button>
-        </Form>
-      </section>
-
-      <Divider />
-
-      <section>
-        <h3><LockOutlined /> 登录密码</h3>
-        {!user.passwordInitialized && <Alert type="info" showIcon message="请通过手机号验证设置登录密码" style={{ marginBottom: 16 }} />}
-        <Radio.Group value={passwordMethod} onChange={(event) => { setPasswordMethod(event.target.value); passwordForm.resetFields(['oldPassword', 'smsCode']); }} style={{ marginBottom: 16 }}>
-          <Radio.Button value="password" disabled={!user.passwordInitialized}>验证当前密码</Radio.Button>
-          <Radio.Button value="sms">验证绑定手机号</Radio.Button>
-        </Radio.Group>
-        <Form form={passwordForm} layout="vertical" requiredMark={false} onFinish={savePassword}>
-          {passwordMethod === 'password' ? (
-            <Form.Item name="oldPassword" label="当前密码" rules={[{ required: true, message: '请输入当前密码' }]}><Input.Password size="large" /></Form.Item>
+    <>
+      <section className={styles.profileEditSection}>
+        <button
+          type="button"
+          className={`${styles.profileEditHeading} ${styles.profileEditHeadingBtn}`}
+          onClick={() => onToggleSection('username')}
+          aria-expanded={expandedSection === 'username'}
+        >
+          <span><UserOutlined /></span>
+          <div>
+            <strong>登录账号名</strong>
+            <small>{user.usernameInitialized ? `当前账号：${user.username}` : '设置后可使用账号和密码登录'}</small>
+          </div>
+          <DownOutlined className={`${styles.profileEditArrow} ${expandedSection === 'username' ? styles.profileEditArrowOpen : ''}`} />
+        </button>
+        <div className={`${styles.profileEditBody} ${expandedSection === 'username' ? styles.profileEditBodyOpen : ''}`}>
+          {user.usernameInitialized ? (
+            <Alert type="success" showIcon message={`账号名：${user.username}`} description="账号名已确认，不可修改。" />
           ) : (
-            <Form.Item label={`短信验证码（${user.phoneMasked || '当前手机号'}）`} required>
+            <>
+              <Alert type="warning" showIcon message="请设置正式账号名" description="确认后不可修改，请核对后提交。" style={{ marginBottom: 16 }} />
+              <Form form={usernameForm} layout="vertical" requiredMark={false} onFinish={saveUsername}>
+                <Form.Item name="username" label="正式账号名" rules={[{ required: true, message: '请输入账号名' }, { pattern: /^(?!1\d{10}$)[A-Za-z0-9_]{4,20}$/, message: '请输入4到20位字母、数字或下划线，且不能是手机号' }]}>
+                  <Input
+                    size="large"
+                    prefix={<UserOutlined />}
+                    placeholder="请输入4-20位字母、数字或下划线"
+                    maxLength={20}
+                    autoComplete="username"
+                  />
+                </Form.Item>
+                <Form.Item name="permanentConfirmed" valuePropName="checked" rules={[{ validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('请确认账号名不可修改')) }]}>
+                  <Checkbox>我已核对账号名，并确认提交后永久不可修改</Checkbox>
+                </Form.Item>
+                <Button type="primary" htmlType="submit" loading={usernameSaving}>确认账号名</Button>
+              </Form>
+            </>
+          )}
+        </div>
+      </section>
+
+      <section className={styles.profileEditSection}>
+        <button
+          type="button"
+          className={`${styles.profileEditHeading} ${styles.profileEditHeadingBtn}`}
+          onClick={() => onToggleSection('phone')}
+          aria-expanded={expandedSection === 'phone'}
+        >
+          <span><MobileOutlined /></span>
+          <div>
+            <strong>绑定手机号</strong>
+            <small>当前绑定：{user.phoneMasked || '未绑定'}</small>
+          </div>
+          <DownOutlined className={`${styles.profileEditArrow} ${expandedSection === 'phone' ? styles.profileEditArrowOpen : ''}`} />
+        </button>
+        <div className={`${styles.profileEditBody} ${expandedSection === 'phone' ? styles.profileEditBodyOpen : ''}`}>
+          <p className={styles.profileEditHint}>换绑仅验证新手机号，账号名保持不变。</p>
+          <Form form={phoneForm} layout="vertical" requiredMark={false} onFinish={savePhone}>
+            <Form.Item name="newPhone" label="新手机号" rules={[{ required: true, message: '请输入新手机号' }, { pattern: /^1\d{10}$/, message: '请输入11位中国大陆手机号' }]}>
+              <Input
+                size="large"
+                prefix={<MobileOutlined />}
+                placeholder="请输入新的11位手机号"
+                inputMode="numeric"
+                maxLength={11}
+                autoComplete="tel"
+              />
+            </Form.Item>
+            <Form.Item label="新手机号验证码" required>
               <Space.Compact block>
-                <Form.Item name="smsCode" noStyle rules={[{ required: true, message: '请输入验证码' }]}><Input size="large" inputMode="numeric" maxLength={8} /></Form.Item>
-                <Button size="large" disabled={passwordCountdown > 0} onClick={() => void sendPasswordCode()}>{passwordCountdown > 0 ? `${passwordCountdown} 秒` : '发送验证码'}</Button>
+                <Form.Item name="newPhoneCode" noStyle rules={[{ required: true, message: '请输入验证码' }]}>
+                  <Input size="large" placeholder="请输入短信验证码" inputMode="numeric" maxLength={8} autoComplete="one-time-code" />
+                </Form.Item>
+                <Button size="large" disabled={phoneCountdown > 0} onClick={() => void sendNewPhoneCode()}>{phoneCountdown > 0 ? `${phoneCountdown} 秒` : '发送验证码'}</Button>
               </Space.Compact>
             </Form.Item>
-          )}
-          <Form.Item name="newPassword" label="新密码" rules={[{ required: true, message: '请输入新密码' }, { validator: (_, value) => !value || (/[A-Za-z]/.test(value) && /\d/.test(value)) ? Promise.resolve() : Promise.reject(new Error('密码必须同时包含字母和数字')) }]}>
-            <Input.Password size="large" autoComplete="new-password" />
-          </Form.Item>
-          <Button type="primary" htmlType="submit" loading={passwordSaving}>{user.passwordInitialized ? '保存新密码' : '设置登录密码'}</Button>
-        </Form>
+            <Button type="primary" htmlType="submit" loading={phoneSaving}>确认换绑</Button>
+          </Form>
+        </div>
       </section>
-    </div>
+
+      <section className={styles.profileEditSection}>
+        <button
+          type="button"
+          className={`${styles.profileEditHeading} ${styles.profileEditHeadingBtn}`}
+          onClick={() => onToggleSection('password')}
+          aria-expanded={expandedSection === 'password'}
+        >
+          <span><LockOutlined /></span>
+          <div>
+            <strong>登录密码</strong>
+            <small>{user.passwordInitialized ? '密码已设置，可验证后修改' : '尚未设置登录密码'}</small>
+          </div>
+          <DownOutlined className={`${styles.profileEditArrow} ${expandedSection === 'password' ? styles.profileEditArrowOpen : ''}`} />
+        </button>
+        <div className={`${styles.profileEditBody} ${expandedSection === 'password' ? styles.profileEditBodyOpen : ''}`}>
+          {!user.passwordInitialized && <Alert type="info" showIcon message="请通过手机号验证设置登录密码" style={{ marginBottom: 16 }} />}
+          <Radio.Group value={passwordMethod} onChange={(event) => { setPasswordMethod(event.target.value); passwordForm.resetFields(['oldPassword', 'smsCode']); }} style={{ marginBottom: 16 }}>
+            <Radio.Button value="password" disabled={!user.passwordInitialized}>验证当前密码</Radio.Button>
+            <Radio.Button value="sms">验证绑定手机号</Radio.Button>
+          </Radio.Group>
+          <Form form={passwordForm} layout="vertical" requiredMark={false} onFinish={savePassword}>
+            {passwordMethod === 'password' ? (
+              <Form.Item name="oldPassword" label="当前密码" rules={[{ required: true, message: '请输入当前密码' }]}>
+                <Input.Password size="large" placeholder="请输入当前登录密码" autoComplete="current-password" />
+              </Form.Item>
+            ) : (
+              <Form.Item label={`短信验证码（${user.phoneMasked || '当前手机号'}）`} required>
+                <Space.Compact block>
+                  <Form.Item name="smsCode" noStyle rules={[{ required: true, message: '请输入验证码' }]}>
+                    <Input size="large" placeholder="请输入短信验证码" inputMode="numeric" maxLength={8} autoComplete="one-time-code" />
+                  </Form.Item>
+                  <Button size="large" disabled={passwordCountdown > 0} onClick={() => void sendPasswordCode()}>{passwordCountdown > 0 ? `${passwordCountdown} 秒` : '发送验证码'}</Button>
+                </Space.Compact>
+              </Form.Item>
+            )}
+            <Form.Item name="newPassword" label="新密码" rules={[{ required: true, message: '请输入新密码' }, { min: 6, max: 20, message: '请输入6到20位密码' }, { validator: (_, value) => !value || (/[A-Za-z]/.test(value) && /\d/.test(value)) ? Promise.resolve() : Promise.reject(new Error('密码必须同时包含字母和数字')) }]}>
+              <Input.Password
+                size="large"
+                placeholder="请输入6-20位密码，需包含字母和数字"
+                maxLength={20}
+                autoComplete="new-password"
+              />
+            </Form.Item>
+            <Button type="primary" htmlType="submit" loading={passwordSaving}>{user.passwordInitialized ? '保存新密码' : '设置登录密码'}</Button>
+          </Form>
+        </div>
+      </section>
+    </>
   );
 }

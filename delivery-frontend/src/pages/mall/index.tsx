@@ -1,5 +1,5 @@
 import { SafetyCertificateOutlined, SearchOutlined } from '@ant-design/icons';
-import { Button, Spin, message } from 'antd';
+import { Spin, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'umi';
 import {
@@ -24,6 +24,8 @@ export default function MallPage() {
   const [loadedPage, setLoadedPage] = useState(0);
   const [total, setTotal] = useState(0);
   const requestVersion = useRef(0);
+  const productPaneRef = useRef<HTMLElement | null>(null);
+  const loadMoreTrigger = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
 
   useEffect(() => {
@@ -101,6 +103,23 @@ export default function MallPage() {
     }
   }, [categoryId, keyword, loadedPage, loading, products.length, total]);
 
+  useEffect(() => {
+    const root = productPaneRef.current;
+    const target = loadMoreTrigger.current;
+    if (!root || !target || loading || products.length >= total
+      || typeof IntersectionObserver === 'undefined') {
+      return undefined;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) void loadMore();
+      },
+      { root, rootMargin: '240px 0px', threshold: 0.01 },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [loadMore, loading, products.length, total]);
+
   const activeCategoryName = categoryId == null
     ? '全部商品'
     : categories.find((item) => item.categoryId === categoryId)?.categoryName ?? '当前分类';
@@ -171,7 +190,7 @@ export default function MallPage() {
         ))}
       </aside>
 
-      <section className={styles.mallProductPane} aria-live="polite">
+      <section ref={productPaneRef} className={styles.mallProductPane} aria-live="polite">
         <div className={styles.mallProductHeading}>
           <h2>{keyword ? `“${keyword}”的搜索结果` : activeCategoryName}</h2>
           {!loading && <em>共 {total} 件</em>}
@@ -226,10 +245,12 @@ export default function MallPage() {
         </div>
 
         {!loading && products.length < total && (
-          <div className={styles.mallLoadMore}>
-            <Button loading={loadingMore} onClick={() => void loadMore()}>
-              {loadingMore ? '正在加载' : '加载更多'}
-            </Button>
+          <div ref={loadMoreTrigger} className={styles.mallLoadMore} role="status">
+            {loadingMore ? (
+              <><Spin size="small" /><span>正在加载更多</span></>
+            ) : (
+              <span>继续下滑，将自动加载更多</span>
+            )}
           </div>
         )}
         </section>

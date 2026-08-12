@@ -1,4 +1,4 @@
-import { Button, Spin, message } from 'antd';
+import { Spin, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -301,10 +301,12 @@ export default function HomePage() {
         </p>
       )}
       {!loading && feed.length < total && (
-        <div ref={loadMoreTrigger} className={styles.homeLoadMore}>
-          <Button loading={loadingMore} onClick={() => void loadMore()}>
-            {loadingMore ? '正在加载' : '加载更多'}
-          </Button>
+        <div ref={loadMoreTrigger} className={styles.homeLoadMore} role="status">
+          {loadingMore ? (
+            <><Spin size="small" /><span>正在加载更多</span></>
+          ) : (
+            <span>继续下滑，将自动加载更多</span>
+          )}
         </div>
       )}
     </main>

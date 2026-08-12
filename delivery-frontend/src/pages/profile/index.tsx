@@ -155,7 +155,10 @@ export default function ProfilePage() {
           <div className={styles.profileSetupNotice} role="status">
             <ExclamationCircleFilled className={styles.profileSetupNoticeIcon} />
             <strong>设置账号名和密码，登录更方便</strong>
-            <Button type="primary" size="small" onClick={() => setProfileOpen(true)}>去设置</Button>
+            <Button type="primary" size="small" onClick={() => {
+              setExpandedSection(!user.usernameInitialized ? 'username' : 'password');
+              setProfileOpen(true);
+            }}>去设置</Button>
           </div>
         )}
 
@@ -234,7 +237,7 @@ export default function ProfilePage() {
             <div className={`${styles.profileEditBody} ${expandedSection === 'nickname' ? styles.profileEditBodyOpen : ''}`}>
               <Form form={nameForm} layout="vertical" onFinish={saveName}>
                 <Form.Item name="name" label="昵称" rules={[{ required: true, message: '请输入昵称' }]}>
-                  <Input size="large" />
+                  <Input size="large" placeholder="请输入你希望展示的昵称" autoComplete="nickname" />
                 </Form.Item>
                 <Button type="primary" htmlType="submit">保存昵称</Button>
               </Form>
@@ -282,9 +285,12 @@ export default function ProfilePage() {
             </div>
           </section>
 
-          <section className={styles.profileEditSection}>
-            <AccountSecurityPanel user={user} onUserChange={setUser} />
-          </section>
+          <AccountSecurityPanel
+            user={user}
+            onUserChange={setUser}
+            expandedSection={expandedSection}
+            onToggleSection={toggleSection}
+          />
         </div>
       </Modal>
 

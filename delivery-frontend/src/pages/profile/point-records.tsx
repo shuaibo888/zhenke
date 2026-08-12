@@ -35,11 +35,13 @@ export default function PointRecordsPage() {
     }
   }, []);
 
+  const refreshRecords = useCallback(() => loadRecords(1), [loadRecords]);
+
   useEffect(() => () => {
     requestVersion.current += 1;
   }, []);
 
-  useRefreshOnRoute('/profile/point-records', () => loadRecords(1), '积分记录刷新失败');
+  useRefreshOnRoute('/profile/point-records', refreshRecords, '积分记录刷新失败');
 
   if (!user) {
     return <Navigate to="/auth" replace />;

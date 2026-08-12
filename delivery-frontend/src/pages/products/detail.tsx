@@ -610,7 +610,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
                       ) : reportsLoadingMore ? (
                         <Spin size="small" />
                       ) : (
-                        <span>继续下滑加载更多</span>
+                        <span>继续下滑，将自动加载更多</span>
                       )}
                     </div>
                   )}
