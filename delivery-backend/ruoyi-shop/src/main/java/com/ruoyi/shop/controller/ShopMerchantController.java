@@ -36,11 +36,8 @@ public class ShopMerchantController {
 
     @Anonymous
     @PostMapping("/license")
-    public AjaxResult uploadBusinessLicense(
-            @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "code", required = false) String code,
-            @RequestParam(value = "uuid", required = false) String uuid) {
-        String fileName = merchantService.uploadBusinessLicense(file, code, uuid);
+    public AjaxResult uploadBusinessLicense(@RequestParam("file") MultipartFile file) {
+        String fileName = merchantService.uploadBusinessLicense(file);
         AjaxResult result = AjaxResult.success("营业执照上传成功");
         result.put("fileName", fileName);
         result.put("url", serverConfig.getUrl() + fileName);

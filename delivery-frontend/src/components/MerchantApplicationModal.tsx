@@ -8,7 +8,6 @@ import {
 import { Alert, Button, Form, Input, Modal, Switch, Upload, message } from 'antd';
 import type { UploadProps } from 'antd';
 import { useEffect, useState } from 'react';
-import { useShop } from '@/app/ShopContext';
 import {
   fetchMerchantApplication,
   fetchMyMerchantApplication,
@@ -25,11 +24,8 @@ import { copyText } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
 
 const MERCHANT_ADMIN_LOGIN_URL = 'https://dzshop.vip/admin';
-type MerchantApplicationFormValues = MerchantApplicationBody & { code?: string };
-
 export function MerchantApplicationModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { captcha, loadCaptcha } = useShop();
-  const [form] = Form.useForm<MerchantApplicationFormValues>();
+  const [form] = Form.useForm<MerchantApplicationBody>();
   const [queryForm] = Form.useForm<MerchantApplicationLookup>();
   const [application, setApplication] = useState<Merchant | null>(null);
   const [lookup, setLookup] = useState<MerchantApplicationLookup | null>(null);
@@ -72,7 +68,7 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
     });
   }, [application, form, open]);
 
-  const submit = async ({ code: _code, ...values }: MerchantApplicationFormValues) => {
+  const submit = async (values: MerchantApplicationBody) => {
     setLoading(true);
     try {
       const saved = await submitMerchantApplication(values);
@@ -88,7 +84,6 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
 
   const uploadLicense: NonNullable<UploadProps['customRequest']> = async (options) => {
     const file = options.file as File;
-    const code = form.getFieldValue('code');
     if (file.size > 5 * 1024 * 1024) {
       const error = new Error('营业执照图片不能超过 5MB');
       message.error(error.message);
@@ -101,18 +96,10 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
       options.onError?.(error);
       return;
     }
-    if (captcha.enabled && !code) {
-      const error = new Error('请先填写验证码，再上传营业执照');
-      message.warning(error.message);
-      options.onError?.(error);
-      return;
-    }
-
     setUploading(true);
     try {
-      const result = await uploadMerchantBusinessLicense(file, code, captcha.uuid);
+      const result = await uploadMerchantBusinessLicense(file);
       form.setFieldValue('businessLicense', result.url);
-      form.setFieldValue('code', undefined);
       setLicenseVerified(false);
       if (result.recognized) {
         form.setFieldsValue({
@@ -132,19 +119,14 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
       const uploadError = error instanceof Error ? error : new Error('营业执照上传失败');
       message.error(uploadError.message);
       options.onError?.(uploadError);
-      if (captcha.enabled) {
-        form.setFieldValue('code', undefined);
-        await loadCaptcha();
-      }
     } finally {
       setUploading(false);
     }
   };
 
-  const resetLicenseUpload = async () => {
+  const resetLicenseUpload = () => {
     form.setFieldsValue({
       businessLicense: undefined,
-      code: undefined,
       companyCreditCode: undefined,
       companyName: undefined,
       companyAddress: undefined,
@@ -152,9 +134,6 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
     });
     setLicenseVerified(false);
     setVerifyStatus(null);
-    if (captcha.enabled) {
-      await loadCaptcha();
-    }
   };
 
   const verifyLicense = async () => {
@@ -404,16 +383,6 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
                   <p>上传营业执照并完成核验，企业信息将自动识别回填。</p>
                 </div>
               </header>
-            {captcha.enabled && !businessLicense && (
-              <Form.Item name="code" label="验证码" rules={[{ required: true, message: '请输入验证码' }]}>
-                <div className={styles.captchaRow}>
-                  <Input size="large" placeholder="请输入验证码" />
-                  <button type="button" className={styles.captchaButton} onClick={() => void loadCaptcha()}>
-                    <img src={captcha.image} alt="验证码" />
-                  </button>
-                </div>
-              </Form.Item>
-            )}
             <Form.Item name="businessLicense" hidden rules={[{ required: true, message: '请上传营业执照' }]}>
               <Input />
             </Form.Item>
@@ -437,8 +406,8 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
               )}
               <small>
                 {businessLicense
-                  ? '营业执照已上传，验证码已完成本次安全校验，无需在提交申请时再次验证。'
-                  : '支持 JPG、PNG，文件不超过 5MB。验证码仅用于本次上传，上传成功后自动识别企业信息。'}
+                  ? '营业执照已上传，可重新上传；请核对识别结果并完成营业执照核验。'
+                  : '支持 JPG、PNG，文件不超过 5MB；上传成功后自动识别企业信息。'}
               </small>
               {businessLicense && (
                 <img src={businessLicense} alt="营业执照预览" className={styles.merchantLicensePreview} />

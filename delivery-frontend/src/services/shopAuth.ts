@@ -496,11 +496,9 @@ export interface MerchantLicenseUploadResult {
   verifyMessage?: string;
 }
 
-export async function uploadMerchantBusinessLicense(file: File, code?: string, uuid?: string) {
+export async function uploadMerchantBusinessLicense(file: File) {
   const formData = new FormData();
   formData.append('file', file);
-  if (code) formData.append('code', code);
-  if (uuid) formData.append('uuid', uuid);
   const result = await requestApi<ApiResponse & { url?: string; recognized?: MerchantLicenseRecognized; verifyMessage?: string }>(
     '/shop/merchants/license',
     { method: 'POST', body: formData },

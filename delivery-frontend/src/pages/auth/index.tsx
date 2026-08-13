@@ -176,8 +176,8 @@ export default function AuthPage() {
         </Button>
         <section className={styles.authIntro}>
           <div className={styles.authBrandRow}>
-            <div className={styles.brandMark}>甄</div>
-            <div><strong>甄客商城</strong><span>真实体验 · 理性消费</span></div>
+            <div className={styles.brandMark}>㤫</div>
+            <div><strong>㤫者商城</strong><span>真实体验 · 理性消费</span></div>
           </div>
           <div className={styles.authIntroCopy}>
             <span className={styles.eyebrow}>TRUSTED SHOPPING COMMUNITY</span>

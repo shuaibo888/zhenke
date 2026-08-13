@@ -21,8 +21,6 @@ import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.exception.ServiceException;
-import com.ruoyi.common.exception.user.CaptchaException;
-import com.ruoyi.common.exception.user.CaptchaExpireException;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.file.FileUploadUtils;
@@ -36,7 +34,6 @@ import com.ruoyi.shop.domain.vo.ShopMerchantApplyResult;
 import com.ruoyi.shop.mapper.ShopMerchantMapper;
 import com.ruoyi.shop.qualification.AliyunLicenseService;
 import com.ruoyi.shop.qualification.LicenseVerifyResult;
-import com.ruoyi.system.service.ISysConfigService;
 import com.ruoyi.system.service.ISysUserService;
 
 @Service
@@ -54,16 +51,14 @@ public class ShopMerchantService
     private final ShopMerchantMapper merchantMapper;
     private final ISysUserService sysUserService;
     private final RedisCache redisCache;
-    private final ISysConfigService configService;
     private final AliyunLicenseService licenseService;
 
     public ShopMerchantService(ShopMerchantMapper merchantMapper, ISysUserService sysUserService,
-            RedisCache redisCache, ISysConfigService configService, AliyunLicenseService licenseService)
+            RedisCache redisCache, AliyunLicenseService licenseService)
     {
         this.merchantMapper = merchantMapper;
         this.sysUserService = sysUserService;
         this.redisCache = redisCache;
-        this.configService = configService;
         this.licenseService = licenseService;
     }
 
@@ -77,9 +72,8 @@ public class ShopMerchantService
         return withAuditLogs(merchant);
     }
 
-    public String uploadBusinessLicense(MultipartFile file, String code, String uuid)
+    public String uploadBusinessLicense(MultipartFile file)
     {
-        validateCaptcha(code, uuid);
         validateBusinessLicense(file);
         try
         {
@@ -276,25 +270,6 @@ public class ShopMerchantService
         merchant.setAcceptsPublicWelfare(Boolean.TRUE.equals(body.getAcceptsPublicWelfare()) ? "0" : "1");
         merchant.setProtocolAgreed(Boolean.TRUE.equals(body.getProtocolAgreed()) ? "0" : "1");
         return merchant;
-    }
-
-    private void validateCaptcha(String code, String uuid)
-    {
-        if (!configService.selectCaptchaEnabled())
-        {
-            return;
-        }
-        String verifyKey = CacheConstants.CAPTCHA_CODE_KEY + StringUtils.nvl(uuid, "");
-        String captcha = redisCache.getCacheObject(verifyKey);
-        if (captcha == null)
-        {
-            throw new CaptchaExpireException();
-        }
-        redisCache.deleteObject(verifyKey);
-        if (!captcha.equalsIgnoreCase(StringUtils.nvl(code, "")))
-        {
-            throw new CaptchaException();
-        }
     }
 
     private void validateBusinessLicense(MultipartFile file)
