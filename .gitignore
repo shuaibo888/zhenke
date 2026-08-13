@@ -3,6 +3,9 @@
 /.deploy/
 **/*.docx
 
+# Local documentation and test data
+/docs/
+
 # Local database snapshots with account or business data
 /delivery-backend/sql/delivery_platform.sql
 
