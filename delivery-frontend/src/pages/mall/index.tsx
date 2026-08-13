@@ -221,8 +221,10 @@ export default function MallPage() {
                 </span>
                 <span className={styles.mallProductInfo}>
                   <span className={styles.mallProductTitleRow}>
-                    <span className={styles.mallProductBrand}>{product.brandName}</span>
-                    <strong>{product.productName}</strong>
+                    <strong>
+                      <span className={styles.mallProductBrand}>{product.brandName}</span>
+                      {product.productName}
+                    </strong>
                   </span>
                   {product.subtitle && <small>{product.subtitle}</small>}
                   <span className={styles.mallProductMeta}>

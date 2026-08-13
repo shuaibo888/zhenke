@@ -1,6 +1,7 @@
 import {
   ArrowLeftOutlined,
   CheckCircleFilled,
+  InfoCircleFilled,
   LockOutlined,
   MobileOutlined,
   SafetyCertificateOutlined,
@@ -23,6 +24,7 @@ import styles from '@/styles/commerce.less';
 
 type AuthValues = { username: string; password: string; code?: string };
 type PhoneValues = { phone: string; code: string };
+const ONE_CLICK_NETWORK_GUIDANCE = '请关闭Wi-Fi使用手机流量认证或使用短信验证码';
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -46,6 +48,7 @@ export default function AuthPage() {
   const [phoneLoginMethod, setPhoneLoginMethod] = useState<'oneClick' | 'sms'>('oneClick');
   const [phoneSubmitting, setPhoneSubmitting] = useState(false);
   const [oneClickLoading, setOneClickLoading] = useState(false);
+  const [oneClickGuidance, setOneClickGuidance] = useState('');
   const [countdown, setCountdown] = useState(0);
   const [capabilities, setCapabilities] = useState<PhoneAuthCapabilities | null>(null);
 
@@ -115,6 +118,7 @@ export default function AuthPage() {
   };
 
   const submitOneClick = async () => {
+    setOneClickGuidance('');
     setOneClickLoading(true);
     try {
       const spToken = await getAliyunOneClickSpToken();
@@ -123,7 +127,12 @@ export default function AuthPage() {
       message.success('本机号码认证成功');
       navigate('/profile');
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '一键认证失败，请使用短信验证码');
+      const reason = error instanceof Error ? error.message : '一键认证失败，请使用短信验证码';
+      if (reason.includes('关闭Wi-Fi') || reason.includes('手机流量')) {
+        setOneClickGuidance(ONE_CLICK_NETWORK_GUIDANCE);
+      } else {
+        message.error(reason);
+      }
     } finally {
       setOneClickLoading(false);
     }
@@ -140,12 +149,19 @@ export default function AuthPage() {
   };
 
   const retryOneClick = () => {
+    setOneClickGuidance('');
     setPhoneLoginMethod('oneClick');
     void submitOneClick();
   };
 
+  const switchToSmsLogin = () => {
+    setOneClickGuidance('');
+    setPhoneLoginMethod('sms');
+  };
+
   const switchAccountMode = (mode: 'login' | 'register') => {
     setPhoneMode(false);
+    setOneClickGuidance('');
     setPhoneLoginMethod('oneClick');
     if (mode === authMode) return;
     setAuthMode(mode);
@@ -187,11 +203,20 @@ export default function AuthPage() {
                   <span className={styles.authOneClickIcon}><MobileOutlined /></span>
                   <strong>当前手机号码</strong>
                   <p>请使用手机流量完成安全认证</p>
+                  {oneClickGuidance && (
+                    <div className={styles.authOneClickGuidance} role="status">
+                      <InfoCircleFilled />
+                      <div>
+                        <b>使用提示</b>
+                        <span>{oneClickGuidance}</span>
+                      </div>
+                    </div>
+                  )}
                   <Button block type="primary" size="large" loading={oneClickLoading} onClick={retryOneClick} className={styles.authOneClick}>
                     {oneClickLoading ? '正在认证' : '继续认证'}
                   </Button>
                   {capabilities?.smsEnabled !== false && (
-                    <button type="button" className={styles.authMethodLink} onClick={() => setPhoneLoginMethod('sms')}>使用验证码登录</button>
+                    <button type="button" className={styles.authMethodLink} onClick={switchToSmsLogin}>使用验证码登录</button>
                   )}
                 </div>
               ) : (

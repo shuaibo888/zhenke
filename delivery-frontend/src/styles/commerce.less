@@ -1681,7 +1681,11 @@
   overscroll-behavior: none;
 }
 
-.merchantModal,
+.merchantModal {
+  max-height: none;
+  overflow: visible;
+}
+
 .scrollableFormModal {
   max-height: 85vh;
   overflow: hidden;
@@ -8454,6 +8458,43 @@
   font-size: 12px;
 }
 
+.authOneClickGuidance {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 9px;
+  width: 100%;
+  margin: 4px 0 7px;
+  padding: 11px 12px;
+  color: #51645c;
+  text-align: left;
+  background: #f4f8f2;
+  border: 1px solid #d8e5d7;
+  border-radius: 12px;
+}
+
+.authOneClickGuidance > svg {
+  margin-top: 2px;
+  color: #78916f;
+  font-size: 16px;
+}
+
+.authOneClickGuidance > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.authOneClickGuidance b {
+  color: #40564d;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.authOneClickGuidance span {
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .authMethodLink {
   min-height: 34px;
   margin-top: 8px;
@@ -8801,6 +8842,7 @@
 .merchantForm {
   display: grid;
   gap: 14px;
+  padding-bottom: 12px;
 }
 
 .merchantFormSection {
@@ -8891,12 +8933,13 @@
 .merchantSubmitBar {
   position: sticky;
   z-index: 5;
-  bottom: -1px;
+  bottom: 0;
   display: flex;
+  box-sizing: border-box;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  margin: 0 -2px -2px;
+  margin: 0;
   padding: 14px 16px;
   border: 1px solid #dfe8e3;
   border-radius: 14px;
@@ -9042,6 +9085,16 @@
     margin-bottom: 10px;
     border-radius: 17px;
     font-size: 21px;
+  }
+
+  .authOneClickGuidance {
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 8px;
+    padding: 10px 11px;
+  }
+
+  .authOneClickGuidance > svg {
+    font-size: 15px;
   }
 
   .authSmsForm {
@@ -9209,7 +9262,7 @@
     align-items: stretch;
     flex-direction: column;
     gap: 8px;
-    padding: 12px;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
   }
 
   .merchantSubmitBar p {
@@ -9567,17 +9620,14 @@
 }
 
 .mallProductTitleRow {
-  display: flex;
+  display: block;
   min-width: 0;
-  align-items: flex-start;
-  gap: 7px;
 }
 
 .mallProductBrand {
-  flex: none;
-  width: fit-content;
+  display: inline-block;
   max-width: 104px;
-  margin-top: 2px;
+  margin: 0 7px 0 0;
   padding: 2px 7px;
   overflow: hidden;
   color: #775916;
@@ -9587,13 +9637,15 @@
   font-weight: 800;
   line-height: 1.4;
   text-overflow: ellipsis;
+  vertical-align: 2px;
   white-space: nowrap;
 }
 
 .mallProductTitleRow > strong {
   display: -webkit-box;
   min-width: 0;
-  flex: 1;
+  min-height: 2.9em;
+  max-height: 2.9em;
   overflow: hidden;
   color: #1d2d27;
   font-size: 16px;
@@ -9757,8 +9809,10 @@
 
   .mallProductBrand {
     max-width: 72px;
+    margin-right: 6px;
     padding: 2px 6px;
     font-size: 10px;
+    vertical-align: 1px;
   }
 
   .mallProductInfo > small {
