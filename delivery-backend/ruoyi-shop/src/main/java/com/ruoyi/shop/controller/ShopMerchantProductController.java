@@ -25,7 +25,6 @@ import com.ruoyi.shop.domain.dto.ShopProductStatusBody;
 import com.ruoyi.shop.service.ShopMerchantService;
 import com.ruoyi.shop.service.ShopProductService;
 import com.ruoyi.shop.service.ShopProductImageResourceService;
-import com.ruoyi.framework.config.ServerConfig;
 
 @RestController
 @RequestMapping("/shop/merchant/products")
@@ -33,14 +32,12 @@ public class ShopMerchantProductController extends BaseController {
     private final ShopProductService productService;
     private final ShopMerchantService merchantService;
     private final ShopProductImageResourceService imageResourceService;
-    private final ServerConfig serverConfig;
 
     public ShopMerchantProductController(ShopProductService productService, ShopMerchantService merchantService,
-            ShopProductImageResourceService imageResourceService, ServerConfig serverConfig) {
+            ShopProductImageResourceService imageResourceService) {
         this.productService = productService;
         this.merchantService = merchantService;
         this.imageResourceService = imageResourceService;
-        this.serverConfig = serverConfig;
     }
 
     @PreAuthorize("@ss.hasPermi('shop:product:list')")
@@ -74,7 +71,7 @@ public class ShopMerchantProductController extends BaseController {
         long merchantId = merchantService.currentMerchantAccount().getMerchantId();
         String fileName = imageResourceService.upload(file, kind, merchantId);
         AjaxResult result = AjaxResult.success("商品图片上传成功");
-        result.put("url", serverConfig.getUrl() + fileName);
+        result.put("url", fileName);
         return result;
     }
 

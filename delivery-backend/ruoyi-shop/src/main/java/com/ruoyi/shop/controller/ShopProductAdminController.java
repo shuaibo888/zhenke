@@ -24,7 +24,6 @@ import com.ruoyi.shop.domain.dto.ShopProductBody;
 import com.ruoyi.shop.domain.dto.ShopProductStatusBody;
 import com.ruoyi.shop.service.ShopProductImageResourceService;
 import com.ruoyi.shop.service.ShopProductService;
-import com.ruoyi.framework.config.ServerConfig;
 
 @RestController
 @RequestMapping("/shop/admin/products")
@@ -33,14 +32,12 @@ public class ShopProductAdminController extends BaseController
 {
     private final ShopProductService productService;
     private final ShopProductImageResourceService imageResourceService;
-    private final ServerConfig serverConfig;
 
     public ShopProductAdminController(ShopProductService productService,
-            ShopProductImageResourceService imageResourceService, ServerConfig serverConfig)
+            ShopProductImageResourceService imageResourceService)
     {
         this.productService = productService;
         this.imageResourceService = imageResourceService;
-        this.serverConfig = serverConfig;
     }
 
     @PreAuthorize("@ss.hasRole('admin')")
@@ -70,7 +67,7 @@ public class ShopProductAdminController extends BaseController
         ShopProduct product = productService.adminProduct(productId);
         String fileName = imageResourceService.upload(file, kind, product.getMerchantId());
         AjaxResult result = AjaxResult.success("商品图片上传成功");
-        result.put("url", serverConfig.getUrl() + fileName);
+        result.put("url", fileName);
         return result;
     }
 

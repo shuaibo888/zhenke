@@ -25,6 +25,7 @@ public class ShopProductService
     public static final String OFF_SALE = "OFF_SALE";
     private static final String MAIN_IMAGE = "MAIN";
     private static final String DETAIL_IMAGE = "DETAIL";
+    private static final String PRODUCT_IMAGE_PATH_PREFIX = "/profile/upload/product/";
 
     private final ShopProductMapper productMapper;
     private final ShopMerchantService merchantService;
@@ -203,7 +204,7 @@ public class ShopProductService
         product.setProductName(StringUtils.trim(body.getProductName()));
         product.setSubtitle(StringUtils.trim(body.getSubtitle()));
         product.setDetail("");
-        product.setCoverUrl(StringUtils.trim(body.getCoverUrl()));
+        product.setCoverUrl(normalizeProductImageUrl(body.getCoverUrl()));
         product.setPrice(body.getPrice());
         product.setStock(body.getStock());
         return product;
@@ -216,7 +217,7 @@ public class ShopProductService
         {
             for (String imageUrl : imageUrls)
             {
-                String value = StringUtils.trim(imageUrl);
+                String value = normalizeProductImageUrl(imageUrl);
                 if (StringUtils.isNotEmpty(value))
                 {
                     unique.add(value);
@@ -224,6 +225,17 @@ public class ShopProductService
             }
         }
         return new ArrayList<>(unique);
+    }
+
+    private String normalizeProductImageUrl(String imageUrl)
+    {
+        String value = StringUtils.trim(imageUrl);
+        if (StringUtils.isEmpty(value))
+        {
+            return value;
+        }
+        int productPathIndex = value.indexOf(PRODUCT_IMAGE_PATH_PREFIX);
+        return productPathIndex >= 0 ? value.substring(productPathIndex) : value;
     }
 
     private void requireCreateImages(ShopProductBody body)
@@ -243,7 +255,8 @@ public class ShopProductService
         return !Objects.equals(existing.getCategoryId(), body.getCategoryId())
                 || !Objects.equals(StringUtils.trim(existing.getBrandName()), StringUtils.trim(body.getBrandName()))
                 || !Objects.equals(StringUtils.trim(existing.getProductName()), StringUtils.trim(body.getProductName()))
-                || !Objects.equals(StringUtils.trim(existing.getCoverUrl()), StringUtils.trim(body.getCoverUrl()))
+                || !Objects.equals(normalizeProductImageUrl(existing.getCoverUrl()),
+                        normalizeProductImageUrl(body.getCoverUrl()))
                 || !Objects.equals(normalizedImageUrls(existing.getMainImageUrls()), normalizedImageUrls(body.getMainImageUrls()))
                 || !Objects.equals(normalizedImageUrls(existing.getDetailImageUrls()), normalizedImageUrls(body.getDetailImageUrls()));
     }
