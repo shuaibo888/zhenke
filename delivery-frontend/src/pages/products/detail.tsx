@@ -16,6 +16,7 @@ import { useShop } from '@/app/ShopContext';
 import { AddressManager } from '@/components/AddressManager';
 import { HomeFeedReportCard } from '@/components/HomeFeedReportCard';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { useWechatShare } from '@/hooks/useWechatShare';
 import {
   applyForTrial,
   fetchHomeFeed,
@@ -119,6 +120,13 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   reportProductIdRef.current = productId;
   const [form] = Form.useForm<{ applyReason: string }>();
   useBodyScrollLock(trialChoiceOpen || trialOpen || addressOpen || shareOpen);
+  const productShareTitle = product ? `${product.brandName} ${product.productName}` : '';
+  useWechatShare(product ? {
+    title: productShareTitle,
+    description: product.subtitle || `${product.merchantName} · ${product.categoryName}`,
+    link: buildProductShareLink(product.productId),
+    imageUrl: product.coverUrl,
+  } : null);
 
   useEffect(() => {
     if (!user) return;
@@ -724,10 +732,13 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
           <div className={styles.sharePreview}>
             <img src={product.coverUrl} alt={product.productName} />
             <div className={styles.sharePreviewText}>
-              <strong>{product.productName}</strong>
+              <strong>{productShareTitle}</strong>
               <p>{product.subtitle || `${product.brandName} · ${product.categoryName}`}</p>
             </div>
           </div>
+          <p className={styles.shareWechatHint}>
+            微信内点击右上角“···”并选择“发送给朋友”，发给好友或群聊时会显示上面的标题和封面。
+          </p>
           <div className={styles.shareLinkBox}>
             <LinkOutlined />
             <span className={styles.shareLinkText}>{buildProductShareLink(productId)}</span>

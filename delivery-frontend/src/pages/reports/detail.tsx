@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { useWechatShare } from '@/hooks/useWechatShare';
 import {
   createReportComment,
   deleteReportComment,
@@ -90,6 +91,18 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
   const [shareOpen, setShareOpen] = useState(false);
   const [activeResourceIndex, setActiveResourceIndex] = useState(0);
   useBodyScrollLock(shareOpen);
+  const shareAuthorName = report ? (report.nickName || report.userName) : '';
+  const sharePreviewImage = report?.resources?.find((item) => item.resourceType === 'IMAGE')?.resourceUrl
+    || report?.productCoverUrl
+    || product?.coverUrl
+    || '';
+  const reportProductShareName = product ? `${product.brandName} ${product.productName}` : '';
+  useWechatShare(report && product ? {
+    title: `甄客验｜${reportProductShareName}`,
+    description: `${shareAuthorName}：${report.experience.slice(0, 60)}`,
+    link: buildReportShareLink(report.reportId),
+    imageUrl: sharePreviewImage,
+  } : null);
 
   useEffect(() => {
     setActiveResourceIndex(0);
@@ -230,8 +243,6 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
   const activeResource = reportResources.length
     ? reportResources[Math.min(activeResourceIndex, reportResources.length - 1)]
     : undefined;
-  const sharePreviewImage = report.resources?.find((item) => item.resourceType === 'IMAGE')?.resourceUrl;
-
   return (
     <>
       <main className={`${styles.journeyPage} ${styles.reportDetailPage}`}>
@@ -408,10 +419,13 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
           <div className={styles.sharePreview}>
             {sharePreviewImage && <img src={sharePreviewImage} alt={`${authorName}的甄客验`} />}
             <div className={styles.sharePreviewText}>
-              <strong>{authorName} 的甄客验：{report.productName}</strong>
+              <strong>甄客验｜{reportProductShareName}</strong>
               <p>{report.experience.slice(0, 40)}</p>
             </div>
           </div>
+          <p className={styles.shareWechatHint}>
+            微信内点击右上角“···”并选择“发送给朋友”，发给好友或群聊时会显示上面的标题和图片。
+          </p>
           <div className={styles.shareLinkBox}>
             <LinkOutlined />
             <span className={styles.shareLinkText}>{buildReportShareLink(report.reportId)}</span>

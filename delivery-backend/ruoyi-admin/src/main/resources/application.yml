@@ -186,9 +186,9 @@ xss:
 # 微信支付 APIv3 配置。公开标识和路径保留在此处，真实密钥由环境变量注入。
 wechat-pay:
   enabled: true
-  # 与微信支付商户号绑定的已认证服务号 AppID；当前仅用于微信内 JSAPI 支付。
+  # 与微信支付商户号绑定的已认证服务号 AppID；用于微信内 JSAPI 支付和网页分享。
   app-id: wx445f3b9c251e7617
-  # 仅用于微信内网页 snsapi_base 授权换取 OpenID，不会返回给前端。
+  # 用于微信内网页 snsapi_base 授权及 JS-SDK ticket 获取，不会返回给前端。
   app-secret: ${WECHAT_PAY_APP_SECRET}
   merchant-id: 1704306287
   # 商户 API 证书序列号，必须与下方私钥来自同一套证书。
