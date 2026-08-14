@@ -242,9 +242,10 @@ aliyun-license:
 aliyun-phone-auth:
   enabled: true
   sms:
-    # 配置后启用短信认证；使用控制台当前可用的系统赠送签名。
+    # 普通短信服务的已审核自定义签名与验证码模板；模板变量必须为 ${code}。
     sign-name: ${ALIYUN_PHONE_AUTH_SMS_SIGN_NAME:}
+    template-code: ${ALIYUN_PHONE_AUTH_SMS_TEMPLATE_CODE:}
   h5:
-    # 两项均配置后启用 H5 一键认证。
+    # H5 一键认证仍使用号码认证服务，不受短信发送方式变更影响。
     scene-code: ${ALIYUN_PHONE_AUTH_H5_SCENE_CODE:}
     page-url: ${ALIYUN_PHONE_AUTH_H5_PAGE_URL:}

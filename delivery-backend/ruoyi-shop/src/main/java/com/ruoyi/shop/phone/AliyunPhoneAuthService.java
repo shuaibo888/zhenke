@@ -1,20 +1,24 @@
 package com.ruoyi.shop.phone;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.util.HexFormat;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import com.aliyun.dypnsapi20170525.Client;
-import com.aliyun.dypnsapi20170525.models.CheckSmsVerifyCodeRequest;
-import com.aliyun.dypnsapi20170525.models.CheckSmsVerifyCodeResponse;
 import com.aliyun.dypnsapi20170525.models.GetAuthTokenRequest;
 import com.aliyun.dypnsapi20170525.models.GetAuthTokenResponse;
 import com.aliyun.dypnsapi20170525.models.GetPhoneWithTokenRequest;
 import com.aliyun.dypnsapi20170525.models.GetPhoneWithTokenResponse;
-import com.aliyun.dypnsapi20170525.models.SendSmsVerifyCodeRequest;
-import com.aliyun.dypnsapi20170525.models.SendSmsVerifyCodeResponse;
+import com.aliyun.dysmsapi20170525.models.SendSmsRequest;
+import com.aliyun.dysmsapi20170525.models.SendSmsResponse;
 import com.aliyun.teaopenapi.models.Config;
 import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.exception.ServiceException;
@@ -26,11 +30,15 @@ public class AliyunPhoneAuthService
 {
     private static final Logger log = LoggerFactory.getLogger(AliyunPhoneAuthService.class);
     private static final String SMS_STATE_PREFIX = "shop:phone-auth:sms:state:";
+    private static final String SMS_ATTEMPTS_PREFIX = "shop:phone-auth:sms:attempts:";
     private static final String SMS_COOLDOWN_PREFIX = "shop:phone-auth:sms:cooldown:";
-    private static final String ENDPOINT = "dypnsapi.aliyuncs.com";
+    private static final String PHONE_AUTH_ENDPOINT = "dypnsapi.aliyuncs.com";
+    private static final String SMS_ENDPOINT = "dysmsapi.aliyuncs.com";
     private static final String H5_SDK_URL = "/vendor/aliyun-number-auth/numberAuth-web-sdk.js";
     private static final int SMS_VALID_SECONDS = 300;
     private static final int SMS_SEND_INTERVAL_SECONDS = 60;
+    private static final int SMS_MAX_VERIFY_ATTEMPTS = 5;
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final AliyunPhoneAuthProperties properties;
     private final AliyunAccessKeyProperties accessKeyProperties;
@@ -59,33 +67,32 @@ public class AliyunPhoneAuthService
             throw new ServiceException("验证码发送过于频繁，请稍后再试");
         }
 
-        String outId = UUID.randomUUID().toString().replace("-", "");
         AliyunPhoneAuthProperties.Sms sms = properties.getSms();
+        String code = generateVerificationCode();
+        String nonce = UUID.randomUUID().toString().replace("-", "");
         try
         {
-            SendSmsVerifyCodeRequest request = new SendSmsVerifyCodeRequest()
-                    .setPhoneNumber(phone)
-                    .setCountryCode("86")
-                    .setSignName(sms.getSignName())
-                    .setTemplateCode(templateCode(scene))
-                    .setTemplateParam("{\"code\":\"##code##\",\"min\":\"5\"}")
-                    .setCodeType(1L)
-                    .setCodeLength(6L)
-                    .setValidTime((long) SMS_VALID_SECONDS)
-                    .setInterval((long) SMS_SEND_INTERVAL_SECONDS)
-                    .setDuplicatePolicy(1L)
-                    .setReturnVerifyCode(false)
-                    .setOutId(outId);
-            SendSmsVerifyCodeResponse response = client().sendSmsVerifyCode(request);
+            SendSmsRequest request = new SendSmsRequest()
+                    .setPhoneNumbers(phone)
+                    .setSignName(sms.getSignName().trim())
+                    .setTemplateCode(sms.getTemplateCode().trim())
+                    .setTemplateParam("{\"code\":\"" + code + "\"}")
+                    .setOutId(nonce);
+            SendSmsResponse response = smsClient().sendSms(request);
             if (response == null || response.getBody() == null
-                    || !Boolean.TRUE.equals(response.getBody().getSuccess())
                     || !"OK".equalsIgnoreCase(response.getBody().getCode()))
             {
-                String requestId = response == null || response.getBody() == null ? null : response.getBody().getRequestId();
-                log.warn("Aliyun phone SMS send rejected: scene={}, requestId={}", scene, requestId);
+                String providerCode = response == null || response.getBody() == null ? null : response.getBody().getCode();
+                String message = response == null || response.getBody() == null ? null : response.getBody().getMessage();
+                String requestId = response == null || response.getBody() == null
+                        ? null : response.getBody().getRequestId();
+                log.warn("Aliyun custom SMS send rejected: scene={}, code={}, message={}, requestId={}",
+                        scene, providerCode, message, requestId);
                 throw new ServiceException("短信验证码发送失败，请稍后重试");
             }
-            redisCache.setCacheObject(stateKey(scene, phone), outId, SMS_VALID_SECONDS, TimeUnit.SECONDS);
+            redisCache.setCacheObject(stateKey(scene, phone), encodeVerificationCode(nonce, code),
+                    SMS_VALID_SECONDS, TimeUnit.SECONDS);
+            redisCache.deleteObject(attemptsKey(scene, phone));
             redisCache.setCacheObject(cooldownKey, "1", SMS_SEND_INTERVAL_SECONDS, TimeUnit.SECONDS);
         }
         catch (ServiceException exception)
@@ -94,7 +101,7 @@ public class AliyunPhoneAuthService
         }
         catch (Exception exception)
         {
-            log.warn("Aliyun phone SMS send error: scene={}", scene, exception);
+            log.warn("Aliyun custom SMS send error: scene={}", scene, exception);
             throw new ServiceException("短信验证码服务暂时不可用，请稍后重试");
         }
     }
@@ -109,42 +116,19 @@ public class AliyunPhoneAuthService
         }
         requireSmsConfigured();
         String key = stateKey(scene, phone);
-        String outId = redisCache.getCacheObject(key);
-        if (StringUtils.isEmpty(outId))
+        String encodedCode = redisCache.getCacheObject(key);
+        if (StringUtils.isEmpty(encodedCode))
         {
             throw new ServiceException("验证码已过期，请重新获取");
         }
 
-        try
+        if (!matchesVerificationCode(encodedCode, code))
         {
-            CheckSmsVerifyCodeRequest request = new CheckSmsVerifyCodeRequest()
-                    .setPhoneNumber(phone)
-                    .setCountryCode("86")
-                    .setVerifyCode(code)
-                    .setCaseAuthPolicy(2L)
-                    .setOutId(outId);
-            CheckSmsVerifyCodeResponse response = client().checkSmsVerifyCode(request);
-            boolean passed = response != null && response.getBody() != null
-                    && Boolean.TRUE.equals(response.getBody().getSuccess())
-                    && "OK".equalsIgnoreCase(response.getBody().getCode())
-                    && response.getBody().getModel() != null
-                    && "PASS".equalsIgnoreCase(response.getBody().getModel().getVerifyResult())
-                    && outId.equals(response.getBody().getModel().getOutId());
-            if (!passed)
-            {
-                throw new ServiceException("短信验证码错误或已失效");
-            }
-            redisCache.deleteObject(key);
+            recordFailedAttempt(scene, phone, key);
+            throw new ServiceException("短信验证码错误或已失效");
         }
-        catch (ServiceException exception)
-        {
-            throw exception;
-        }
-        catch (Exception exception)
-        {
-            log.warn("Aliyun phone SMS verify error: scene={}", scene, exception);
-            throw new ServiceException("短信验证码核验失败，请稍后重试");
-        }
+        redisCache.deleteObject(key);
+        redisCache.deleteObject(attemptsKey(scene, phone));
     }
 
     public H5AuthTokens getH5AuthTokens()
@@ -158,7 +142,7 @@ public class AliyunPhoneAuthService
                     .setOrigin(originOf(h5.getPageUrl()))
                     .setSceneCode(h5.getSceneCode())
                     .setBizType(1);
-            GetAuthTokenResponse response = client().getAuthToken(request);
+            GetAuthTokenResponse response = phoneAuthClient().getAuthToken(request);
             if (response == null || response.getBody() == null || response.getBody().getTokenInfo() == null
                     || !"OK".equalsIgnoreCase(response.getBody().getCode()))
             {
@@ -191,7 +175,7 @@ public class AliyunPhoneAuthService
         }
         try
         {
-            GetPhoneWithTokenResponse response = client().getPhoneWithToken(
+            GetPhoneWithTokenResponse response = phoneAuthClient().getPhoneWithToken(
                     new GetPhoneWithTokenRequest().setSpToken(spToken));
             if (response == null || response.getBody() == null || response.getBody().getData() == null
                     || !"OK".equalsIgnoreCase(response.getBody().getCode()))
@@ -221,24 +205,22 @@ public class AliyunPhoneAuthService
         return phone;
     }
 
-    private Client client() throws Exception
+    private Client phoneAuthClient() throws Exception
     {
         Config config = new Config()
                 .setAccessKeyId(accessKeyProperties.getAccessKeyId().trim())
                 .setAccessKeySecret(accessKeyProperties.getAccessKeySecret().trim())
-                .setEndpoint(ENDPOINT);
+                .setEndpoint(PHONE_AUTH_ENDPOINT);
         return new Client(config);
     }
 
-    private String templateCode(PhoneVerificationScene scene)
+    private com.aliyun.dysmsapi20170525.Client smsClient() throws Exception
     {
-        return switch (scene)
-        {
-            case LOGIN_REGISTER -> "100001";
-            case CHANGE_PHONE -> "100002";
-            case RESET_PASSWORD -> "100003";
-            case BIND_PHONE -> "100004";
-        };
+        Config config = new Config()
+                .setAccessKeyId(accessKeyProperties.getAccessKeyId().trim())
+                .setAccessKeySecret(accessKeyProperties.getAccessKeySecret().trim())
+                .setEndpoint(SMS_ENDPOINT);
+        return new com.aliyun.dysmsapi20170525.Client(config);
     }
 
     private String stateKey(PhoneVerificationScene scene, String phone)
@@ -246,10 +228,68 @@ public class AliyunPhoneAuthService
         return SMS_STATE_PREFIX + scene.name() + ":" + phone;
     }
 
+    private String attemptsKey(PhoneVerificationScene scene, String phone)
+    {
+        return SMS_ATTEMPTS_PREFIX + scene.name() + ":" + phone;
+    }
+
+    private void recordFailedAttempt(PhoneVerificationScene scene, String phone, String stateKey)
+    {
+        String attemptsKey = attemptsKey(scene, phone);
+        Long attempts = redisCache.redisTemplate.opsForValue().increment(attemptsKey);
+        if (attempts != null && attempts == 1L)
+        {
+            redisCache.expire(attemptsKey, SMS_VALID_SECONDS, TimeUnit.SECONDS);
+        }
+        if (attempts != null && attempts >= SMS_MAX_VERIFY_ATTEMPTS)
+        {
+            redisCache.deleteObject(stateKey);
+            redisCache.deleteObject(attemptsKey);
+        }
+    }
+
+    static String generateVerificationCode()
+    {
+        return String.format(Locale.ROOT, "%06d", RANDOM.nextInt(1_000_000));
+    }
+
+    static String encodeVerificationCode(String nonce, String code)
+    {
+        return nonce + ":" + sha256(nonce + ":" + code);
+    }
+
+    static boolean matchesVerificationCode(String encodedCode, String code)
+    {
+        if (StringUtils.isEmpty(encodedCode) || StringUtils.isEmpty(code)) return false;
+        int separator = encodedCode.indexOf(':');
+        if (separator <= 0 || separator == encodedCode.length() - 1) return false;
+        String nonce = encodedCode.substring(0, separator);
+        String expected = encodedCode.substring(separator + 1);
+        String actual = sha256(nonce + ":" + code);
+        return MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8),
+                actual.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static String sha256(String value)
+    {
+        try
+        {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        }
+        catch (NoSuchAlgorithmException exception)
+        {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
+    }
+
     private boolean isSmsConfigured()
     {
         AliyunPhoneAuthProperties.Sms sms = properties.getSms();
-        return baseConfigured() && !StringUtils.isEmpty(sms.getSignName());
+        return baseConfigured()
+                && !StringUtils.isEmpty(StringUtils.trim(sms.getSignName()))
+                && !StringUtils.isEmpty(StringUtils.trim(sms.getTemplateCode()));
     }
 
     private boolean isH5Configured()
