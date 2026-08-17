@@ -31,6 +31,14 @@ export function buildProductShareLink(productId: number) {
   return url.toString();
 }
 
+export function buildTrialShareLink(productId: number, campaignId: number) {
+  if (typeof window === 'undefined') return `/?product=${productId}&campaign=${campaignId}`;
+  const url = new URL('/', window.location.origin);
+  url.searchParams.set('product', String(productId));
+  url.searchParams.set('campaign', String(campaignId));
+  return url.toString();
+}
+
 export async function copyText(value: string) {
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(value);

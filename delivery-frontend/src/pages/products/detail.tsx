@@ -15,8 +15,9 @@ import { useNavigate, useParams, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { AddressManager } from '@/components/AddressManager';
 import { HomeFeedReportCard } from '@/components/HomeFeedReportCard';
+import { WechatShareGuide } from '@/components/WechatShareGuide';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
-import { useWechatShare } from '@/hooks/useWechatShare';
+import { isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
 import {
   applyForTrial,
   fetchHomeFeed,
@@ -26,7 +27,7 @@ import {
   type PublicProductDto,
 } from '@/services/shopContent';
 import type { ShopShippingAddress } from '@/services/shopAuth';
-import { buildProductShareLink, copyText, formatPrice } from '@/utils/shop';
+import { buildProductShareLink, buildTrialShareLink, copyText, formatPrice } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
 
 type PendingAddressAction = 'trial' | null;
@@ -110,6 +111,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   const [pendingAddressAction, setPendingAddressAction] = useState<PendingAddressAction>(null);
   const [cartSubmitting, setCartSubmitting] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [wechatShareGuideOpen, setWechatShareGuideOpen] = useState(false);
   const [productContentTab, setProductContentTab] = useState<'DETAIL' | 'REPORT'>('DETAIL');
   const [activeProductImage, setActiveProductImage] = useState('');
   const [carouselResetKey, setCarouselResetKey] = useState(0);
@@ -120,14 +122,6 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   reportProductIdRef.current = productId;
   const [form] = Form.useForm<{ applyReason: string }>();
   useBodyScrollLock(trialChoiceOpen || trialOpen || addressOpen || shareOpen);
-  const productShareTitle = product ? `${product.brandName} ${product.productName}` : '';
-  useWechatShare(product ? {
-    title: productShareTitle,
-    description: product.subtitle || `${product.merchantName} · ${product.categoryName}`,
-    link: buildProductShareLink(product.productId),
-    imageUrl: product.coverUrl,
-  } : null);
-
   useEffect(() => {
     if (!user) return;
     void refreshTrials().catch(() => undefined);
@@ -207,7 +201,24 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
     const nextIndex = (displayedProductImageIndex + offset + productGallery.length) % productGallery.length;
     selectProductImage(productGallery[nextIndex]);
   };
-  const primaryCampaign = campaigns.find((item) => item.contentId === campaignId) ?? campaigns[0];
+  const routeCampaign = campaigns.find((item) => item.contentId === campaignId);
+  const primaryCampaign = routeCampaign ?? campaigns[0];
+  const productShareTitle = product ? `${product.brandName} ${product.productName}` : '';
+  const shareLink = product
+    ? (routeCampaign
+      ? buildTrialShareLink(product.productId, routeCampaign.contentId)
+      : buildProductShareLink(product.productId))
+    : '';
+  const shareDescription = routeCampaign?.summary
+    || product?.subtitle
+    || (product ? `${product.merchantName} · ${product.categoryName}` : '');
+  const shareImageUrl = routeCampaign?.coverUrl || product?.coverUrl || '';
+  useWechatShare(product ? {
+    title: productShareTitle,
+    description: shareDescription,
+    link: shareLink,
+    imageUrl: shareImageUrl,
+  } : null);
   const orderedCampaigns = useMemo(() => (
     primaryCampaign
       ? [primaryCampaign, ...campaigns.filter((item) => item.contentId !== primaryCampaign.contentId)]
@@ -367,12 +378,20 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
 
   const copyShareLink = async () => {
     try {
-      await copyText(buildProductShareLink(productId));
-      message.success('商品链接已复制');
+      await copyText(shareLink);
+      message.success(routeCampaign ? '试用链接已复制' : '商品链接已复制');
       setShareOpen(false);
     } catch {
-      message.info(`可手动复制：${buildProductShareLink(productId)}`);
+      message.info(`可手动复制：${shareLink}`);
     }
+  };
+
+  const handleShareClick = () => {
+    if (isWechatBrowser()) {
+      setWechatShareGuideOpen(true);
+      return;
+    }
+    setShareOpen(true);
   };
 
   if (loading) return <main className={styles.sessionLoading}><Spin size="large" /></main>;
@@ -388,7 +407,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
             <ArrowLeftOutlined />
           </button>
           <span className={styles.trialDetailTitle}>{primaryCampaign ? '试用招募' : '商品详情'}</span>
-          <button type="button" className={styles.reportDetailShare} aria-label="分享商品" onClick={() => setShareOpen(true)}>
+          <button type="button" className={styles.reportDetailShare} aria-label={routeCampaign ? '分享试用' : '分享商品'} onClick={handleShareClick}>
             <ShareAltOutlined />
           </button>
         </header>
@@ -721,7 +740,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
         }}
       />
       <Drawer
-        title="分享商品"
+        title={routeCampaign ? '分享试用' : '分享商品'}
         placement="bottom"
         open={shareOpen}
         onClose={() => setShareOpen(false)}
@@ -730,18 +749,15 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
       >
         <div className={styles.shareSheet}>
           <div className={styles.sharePreview}>
-            <img src={product.coverUrl} alt={product.productName} />
+            <img src={shareImageUrl} alt={product.productName} />
             <div className={styles.sharePreviewText}>
               <strong>{productShareTitle}</strong>
-              <p>{product.subtitle || `${product.brandName} · ${product.categoryName}`}</p>
+              <p>{shareDescription}</p>
             </div>
           </div>
-          <p className={styles.shareWechatHint}>
-            微信内点击右上角“···”并选择“发送给朋友”，发给好友或群聊时会显示上面的标题和封面。
-          </p>
           <div className={styles.shareLinkBox}>
             <LinkOutlined />
-            <span className={styles.shareLinkText}>{buildProductShareLink(productId)}</span>
+            <span className={styles.shareLinkText}>{shareLink}</span>
           </div>
           <Button
             block
@@ -756,6 +772,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
           <Button block size="large" className={styles.shareCancel} onClick={() => setShareOpen(false)}>取消</Button>
         </div>
       </Drawer>
+      <WechatShareGuide open={wechatShareGuideOpen} onClose={() => setWechatShareGuideOpen(false)} />
     </>
   );
 }

@@ -579,13 +579,6 @@
   font-size: 12px;
 }
 
-.shareWechatHint {
-  margin: -6px 2px 14px;
-  color: #5d6b65;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
 .shareLinkBox {
   display: flex;
   align-items: center;
@@ -617,6 +610,98 @@
 .shareCancel {
   border-radius: 23px;
   height: 44px;
+}
+
+.wechatShareGuide {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(0, 0, 0, 0.76);
+  backdrop-filter: blur(1px);
+  color: #fff;
+  cursor: pointer;
+  animation: wechatShareGuideFadeIn 160ms ease-out;
+}
+
+.wechatShareGuidePointer {
+  position: absolute;
+  top: max(4px, env(safe-area-inset-top));
+  right: 8px;
+  width: 132px;
+  height: 116px;
+  pointer-events: none;
+  animation: wechatShareGuidePointerIn 280ms ease-out;
+}
+
+.wechatShareGuidePointer svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.wechatShareGuidePointer path {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+}
+
+.wechatShareGuideCopy {
+  position: absolute;
+  top: max(124px, calc(env(safe-area-inset-top) + 124px));
+  left: 28px;
+  right: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  cursor: default;
+}
+
+.wechatShareGuideCopy strong {
+  font-size: 22px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+
+.wechatShareGuideCopy span {
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.wechatShareGuideCopy button {
+  margin-top: 16px;
+  min-width: 112px;
+  height: 40px;
+  padding: 0 22px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+@keyframes wechatShareGuideFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes wechatShareGuidePointerIn {
+  from { opacity: 0; transform: translate(-10px, 12px); }
+  to { opacity: 1; transform: translate(0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wechatShareGuide,
+  .wechatShareGuidePointer {
+    animation: none;
+  }
 }
 
 .authIntro {

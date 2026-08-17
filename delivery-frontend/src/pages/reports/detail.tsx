@@ -11,8 +11,9 @@ import { Button, Drawer, Input, Modal, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { WechatShareGuide } from '@/components/WechatShareGuide';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
-import { useWechatShare } from '@/hooks/useWechatShare';
+import { isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
 import {
   createReportComment,
   deleteReportComment,
@@ -89,6 +90,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [usefulLoading, setUsefulLoading] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [wechatShareGuideOpen, setWechatShareGuideOpen] = useState(false);
   const [activeResourceIndex, setActiveResourceIndex] = useState(0);
   useBodyScrollLock(shareOpen);
   const shareAuthorName = report ? (report.nickName || report.userName) : '';
@@ -227,6 +229,14 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
     }
   };
 
+  const handleShareClick = () => {
+    if (isWechatBrowser()) {
+      setWechatShareGuideOpen(true);
+      return;
+    }
+    setShareOpen(true);
+  };
+
   if (loading) return <main className={styles.sessionLoading}><Spin size="large" /></main>;
   if (!report || !product) {
     return (
@@ -254,7 +264,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
             <span className={styles.reportDetailAvatar}>{authorName.slice(0, 1)}</span>
             <strong>{authorName}</strong>
           </div>
-          <button type="button" className={styles.reportDetailShare} aria-label="分享" onClick={() => setShareOpen(true)}>
+          <button type="button" className={styles.reportDetailShare} aria-label="分享甄客验" onClick={handleShareClick}>
             <ShareAltOutlined />
           </button>
         </header>
@@ -423,9 +433,6 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
               <p>{report.experience.slice(0, 40)}</p>
             </div>
           </div>
-          <p className={styles.shareWechatHint}>
-            微信内点击右上角“···”并选择“发送给朋友”，发给好友或群聊时会显示上面的标题和图片。
-          </p>
           <div className={styles.shareLinkBox}>
             <LinkOutlined />
             <span className={styles.shareLinkText}>{buildReportShareLink(report.reportId)}</span>
@@ -443,6 +450,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
           <Button block size="large" className={styles.shareCancel} onClick={() => setShareOpen(false)}>取消</Button>
         </div>
       </Drawer>
+      <WechatShareGuide open={wechatShareGuideOpen} onClose={() => setWechatShareGuideOpen(false)} />
     </>
   );
 }

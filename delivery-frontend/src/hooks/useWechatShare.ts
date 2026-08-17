@@ -42,7 +42,7 @@ declare global {
 
 let sdkLoadPromise: Promise<WechatSdk> | null = null;
 
-function isWechatBrowser() {
+export function isWechatBrowser() {
   return typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent);
 }
 
