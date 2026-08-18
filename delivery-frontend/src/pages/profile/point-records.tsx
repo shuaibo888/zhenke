@@ -75,7 +75,9 @@ export default function PointRecordsPage() {
                   </span>
                   <div className={styles.pointRecordCopy}>
                     <strong>{record.changeReason}</strong>
-                    <small>{formatDate(record.createTime)}</small>
+                    <small>
+                      {record.sourceName ? `${record.sourceName} · ` : ''}{formatDate(record.createTime)}
+                    </small>
                   </div>
                   <div className={styles.pointRecordAmount}>
                     <strong className={increased ? styles.pointAmountIncrease : styles.pointAmountDecrease}>

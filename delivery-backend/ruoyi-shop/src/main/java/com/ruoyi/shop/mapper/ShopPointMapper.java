@@ -22,4 +22,10 @@ public interface ShopPointMapper
             @Param("points") Long points, @Param("balanceAfter") Long balanceAfter,
             @Param("changeReason") String changeReason, @Param("sourceEventId") String sourceEventId,
             @Param("businessId") String businessId);
+
+    int addTransferIn(@Param("shopUserId") Long shopUserId, @Param("points") Long points);
+
+    int insertTransferRecord(@Param("shopUserId") Long shopUserId,
+            @Param("points") Long points, @Param("balanceAfter") Long balanceAfter,
+            @Param("sourceEventId") String sourceEventId, @Param("businessId") String businessId);
 }

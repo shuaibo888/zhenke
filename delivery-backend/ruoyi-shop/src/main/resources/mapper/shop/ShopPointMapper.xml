@@ -13,6 +13,8 @@
         <result property="changeAmount" column="change_amount" />
         <result property="balanceAfter" column="balance_after" />
         <result property="changeReason" column="change_reason" />
+        <result property="sourceSystem" column="source_system" />
+        <result property="sourceName" column="source_name" />
         <result property="createTime" column="create_time" />
     </resultMap>
 
@@ -31,8 +33,10 @@
     </select>
 
     <select id="selectUserRecords" parameterType="Long" resultMap="ShopPointRecordResult">
-        select point_record_id, change_amount, balance_after,
-               change_reason, create_time
+        select point_record_id, change_amount, balance_after, change_reason,
+               source_system,
+               case source_system when 'EVENT' then '赛事系统' when 'MALL' then '商城' else source_system end as source_name,
+               create_time
         from shop_user_point_record
         where shop_user_id = #{shopUserId}
           and status = 'SUCCESS'
@@ -74,6 +78,26 @@
         values
         (#{shopUserId}, -#{points}, #{balanceAfter}, #{changeReason},
          'MALL', #{sourceEventId}, 'CONSUME', #{businessId},
+         'SUCCESS', sysdate(), sysdate())
+    </insert>
+
+    <update id="addTransferIn">
+        update shop_user_point_account
+        set balance = balance + #{points},
+            total_transferred_in = total_transferred_in + #{points},
+            last_transfer_time = sysdate(),
+            update_time = sysdate()
+        where shop_user_id = #{shopUserId}
+    </update>
+
+    <insert id="insertTransferRecord">
+        insert into shop_user_point_record
+        (shop_user_id, change_amount, balance_after, change_reason,
+         source_system, source_event_id, business_type, business_id,
+         status, create_time, update_time)
+        values
+        (#{shopUserId}, #{points}, #{balanceAfter}, '赛事系统积分划入',
+         'EVENT', #{sourceEventId}, 'TRANSFER_IN', #{businessId},
          'SUCCESS', sysdate(), sysdate())
     </insert>
 </mapper>

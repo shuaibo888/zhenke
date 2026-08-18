@@ -120,6 +120,11 @@ shop:
     # 赛事系统票据验证接口和共享密钥必须由服务器环境变量注入，禁止写入源码。
     exchange-url: ${EVENT_SSO_EXCHANGE_URL:}
     client-secret: ${EVENT_SSO_CLIENT_SECRET:}
+  event-points:
+    # 赛事系统积分余额查询/划拨地址与密钥由服务器环境变量注入，禁止写入源码。
+    balance-url: ${EVENT_POINTS_BALANCE_URL:}
+    transfer-url: ${EVENT_POINTS_TRANSFER_URL:}
+    client-secret: ${EVENT_POINTS_CLIENT_SECRET:}
   ai-score:
     model: qwen3.7-max
   product-certification:

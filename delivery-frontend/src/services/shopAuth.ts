@@ -290,6 +290,8 @@ export interface ShopPointRecord {
   changeAmount: number;
   balanceAfter: number;
   changeReason: string;
+  sourceSystem?: string;
+  sourceName?: string;
   createTime: string;
 }
 
@@ -362,6 +364,76 @@ export async function exchangePointCoupon(couponId: number) {
     { method: 'POST' },
     true,
   );
+}
+
+export interface ShopPointTransferSource {
+  sourceSystem: string;
+  sourceName: string;
+}
+
+export async function fetchPointTransferSources() {
+  const result = await requestApi<ApiResponse<ShopPointTransferSource[]>>(
+    '/shop/users/me/points/transfer-sources',
+    {},
+    true,
+  );
+  const rows = Array.isArray(result.data) ? result.data : [];
+  if (rows.some((source) => (
+    typeof source.sourceSystem !== 'string'
+    || typeof source.sourceName !== 'string'
+  ))) {
+    throw new Error('积分来源数据异常');
+  }
+  return rows;
+}
+
+export interface ShopPointTransferBalance {
+  sourceSystem: string;
+  sourceName: string;
+  availablePoints: number;
+}
+
+export async function fetchPointTransferBalance(sourceSystem: string) {
+  const result = await requestApi<ApiResponse<ShopPointTransferBalance>>(
+    `/shop/users/me/points/transfer-sources/${encodeURIComponent(sourceSystem)}/balance`,
+    {},
+    true,
+  );
+  const balance = result.data;
+  if (!balance
+    || typeof balance.sourceSystem !== 'string'
+    || balance.sourceSystem !== sourceSystem
+    || !Number.isSafeInteger(balance.availablePoints)
+    || balance.availablePoints < 0) {
+    throw new Error('可划拨积分数据异常');
+  }
+  return balance;
+}
+
+export interface ShopPointTransferResult {
+  requestNo: string;
+  sourceSystem: string;
+  sourceName: string;
+  transferredPoints: number;
+  balance: number;
+}
+
+export async function submitPointTransfer(sourceSystem: string, points: number) {
+  const result = await requestApi<ApiResponse<ShopPointTransferResult>>(
+    '/shop/users/me/points/transfers',
+    { method: 'POST', body: JSON.stringify({ sourceSystem, points }) },
+    true,
+  );
+  const data = result.data;
+  if (!data
+    || typeof data.requestNo !== 'string'
+    || !Number.isSafeInteger(data.transferredPoints)
+    || data.transferredPoints <= 0
+    || !Number.isSafeInteger(data.balance)
+    || data.balance < 0) {
+    throw new Error('积分划拨结果异常');
+  }
+  return data;
 }
 
 export interface ShopShippingAddress {

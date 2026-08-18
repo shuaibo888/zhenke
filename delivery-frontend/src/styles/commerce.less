@@ -3666,10 +3666,17 @@
   line-height: 1.2;
 }
 
-.pointRecordsLink {
+.pointPanelActions {
   position: absolute;
   top: 24px;
   right: 24px;
+  display: flex;
+  gap: 10px;
+  z-index: 1;
+}
+
+.pointTransferLink,
+.pointRecordsLink {
   height: 36px;
   color: #fff !important;
   background: rgba(255, 255, 255, 0.12) !important;
@@ -3678,6 +3685,8 @@
   box-shadow: none;
 }
 
+.pointTransferLink:hover,
+.pointTransferLink:focus,
 .pointRecordsLink:hover,
 .pointRecordsLink:focus {
   background: rgba(255, 255, 255, 0.2) !important;
@@ -3904,6 +3913,50 @@
   display: flex;
   justify-content: center;
   margin-top: 18px;
+}
+
+.pointTransferForm {
+  display: grid;
+  gap: 16px;
+}
+
+.pointTransferField {
+  display: grid;
+  gap: 6px;
+}
+
+.pointTransferField > span {
+  color: #5b6b63;
+  font-size: 13px;
+}
+
+.pointTransferBalance {
+  color: #33443c;
+  font-size: 14px;
+}
+
+.pointTransferBalance strong {
+  margin-left: 6px;
+  color: #087246;
+  font-size: 20px;
+}
+
+.pointTransferInputRow {
+  display: flex;
+  gap: 8px;
+}
+
+.pointTransferHint {
+  margin: 0;
+  color: #8a9891;
+  font-size: 12px;
+}
+
+.pointTransferActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
 }
 
 .profileBackButton {
@@ -7314,7 +7367,7 @@
     padding-top: 0;
   }
 
-  .pointRecordsLink {
+  .pointPanelActions {
     top: 19px;
     right: 19px;
   }
