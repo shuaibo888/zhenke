@@ -92,6 +92,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const checkoutPage = location.pathname.startsWith('/checkout');
   const detailPage = location.pathname.startsWith('/reports/')
     || location.pathname.startsWith('/products/')
+    || location.pathname.startsWith('/merchants/')
     || checkoutPage
     || (location.pathname === '/' && Boolean(reportQuery || productQuery));
   const homePage = location.pathname === '/' && !detailPage;

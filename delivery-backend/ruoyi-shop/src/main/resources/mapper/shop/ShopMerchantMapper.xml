@@ -6,8 +6,11 @@
         <result property="applicationNo" column="application_no" />
         <result property="accountUsername" column="account_username" />
         <result property="accountPassword" column="account_password" />
+        <result property="shopName" column="shop_name" />
         <result property="companyName" column="company_name" />
         <result property="companyAddress" column="company_address" />
+        <result property="latitude" column="latitude" />
+        <result property="longitude" column="longitude" />
         <result property="contactName" column="contact_name" />
         <result property="contactPhone" column="contact_phone" />
         <result property="businessLicense" column="business_license" />
@@ -34,6 +37,29 @@
         <result property="remark" column="remark" />
     </resultMap>
 
+    <resultMap id="ShopMerchantPublicViewResult" type="com.ruoyi.shop.domain.vo.ShopMerchantPublicView">
+        <id property="merchantId" column="merchant_id" />
+        <result property="shopName" column="shop_name" />
+        <result property="companyName" column="company_name" />
+        <result property="companyCreditCode" column="company_credit_code" />
+        <result property="legalPerson" column="legal_person" />
+        <result property="contactName" column="contact_name" />
+        <result property="contactPhone" column="contact_phone" />
+        <result property="storeAddress" column="company_address" />
+        <result property="latitude" column="latitude" />
+        <result property="longitude" column="longitude" />
+    </resultMap>
+
+    <resultMap id="ShopMerchantProofMediaResult" type="ShopMerchantProofMedia">
+        <id property="mediaId" column="media_id" />
+        <result property="merchantId" column="merchant_id" />
+        <result property="mediaType" column="media_type" />
+        <result property="mediaUrl" column="media_url" />
+        <result property="sortOrder" column="sort_order" />
+        <result property="createBy" column="create_by" />
+        <result property="createTime" column="create_time" />
+    </resultMap>
+
     <resultMap id="ShopMerchantAuditLogResult" type="ShopMerchantAuditLog">
         <id property="logId" column="log_id" />
         <result property="merchantId" column="merchant_id" />
@@ -49,7 +75,8 @@
 
     <sql id="selectMerchant">
         select m.merchant_id, m.application_no, m.account_username, m.account_password,
-               m.company_name, m.company_address, m.contact_name, m.contact_phone,
+               m.shop_name, m.company_name, m.company_address, m.latitude, m.longitude,
+               m.contact_name, m.contact_phone,
                m.business_license, m.company_credit_code, m.legal_person, m.license_verified,
                m.product_intro, m.origin_traceability,
                m.accepts_verification_recruitment, m.accepts_public_welfare, m.protocol_agreed,
@@ -81,12 +108,21 @@
         where m.admin_user_id = #{adminUserId} and m.del_flag = '0' limit 1
     </select>
 
+    <select id="selectPublicById" parameterType="Long" resultMap="ShopMerchantPublicViewResult">
+        select merchant_id, shop_name, company_name, company_credit_code, legal_person,
+               contact_name, contact_phone, company_address, latitude, longitude
+        from shop_merchant
+        where merchant_id = #{merchantId} and audit_status = 'APPROVED'
+          and status = '0' and del_flag = '0'
+    </select>
+
     <select id="selectAdminList" parameterType="ShopMerchant" resultMap="ShopMerchantResult">
         <include refid="selectMerchant" />
         <where>
             m.del_flag = '0'
             <if test="companyName != null and companyName != ''">
-                and (m.company_name like concat('%', #{companyName}, '%')
+                and (m.shop_name like concat('%', #{companyName}, '%')
+                     or m.company_name like concat('%', #{companyName}, '%')
                      or m.contact_name like concat('%', #{companyName}, '%')
                      or m.contact_phone like concat('%', #{companyName}, '%')
                      or m.account_username like concat('%', #{companyName}, '%'))
@@ -105,6 +141,13 @@
         order by log_id desc
     </select>
 
+    <select id="selectProofMedia" parameterType="Long" resultMap="ShopMerchantProofMediaResult">
+        select media_id, merchant_id, media_type, media_url, sort_order, create_by, create_time
+        from shop_merchant_proof_media
+        where merchant_id = #{merchantId}
+        order by sort_order, media_id
+    </select>
+
     <select id="selectRoleIdByKey" parameterType="String" resultType="Long">
         select role_id from sys_role where role_key = #{roleKey} and status = '0' and del_flag = '0' limit 1
     </select>
@@ -112,14 +155,15 @@
     <insert id="insert" parameterType="ShopMerchant" useGeneratedKeys="true" keyProperty="merchantId">
         insert into shop_merchant
         (application_no, account_username, account_password,
-         company_name, company_address, contact_name, contact_phone,
+         shop_name, company_name, company_address, latitude, longitude, contact_name, contact_phone,
          business_license, company_credit_code, legal_person, license_verified,
          product_intro, origin_traceability, accepts_verification_recruitment,
          accepts_public_welfare, protocol_agreed, audit_status, status, del_flag,
          create_by, create_time, update_by, update_time)
         values
         (#{applicationNo}, #{accountUsername}, #{accountPassword},
-         #{companyName}, #{companyAddress}, #{contactName}, #{contactPhone},
+         #{shopName}, #{companyName}, #{companyAddress}, #{latitude}, #{longitude},
+         #{contactName}, #{contactPhone},
          #{businessLicense}, #{companyCreditCode}, #{legalPerson}, #{licenseVerified},
          #{productIntro}, #{originTraceability}, #{acceptsVerificationRecruitment},
          #{acceptsPublicWelfare}, #{protocolAgreed}, #{auditStatus}, #{status}, #{delFlag},
@@ -129,7 +173,8 @@
     <update id="resubmit" parameterType="ShopMerchant">
         update shop_merchant
         set account_username = #{accountUsername}, account_password = #{accountPassword},
-            company_name = #{companyName}, company_address = #{companyAddress},
+            shop_name = #{shopName}, company_name = #{companyName}, company_address = #{companyAddress},
+            latitude = #{latitude}, longitude = #{longitude},
             contact_name = #{contactName}, contact_phone = #{contactPhone},
             business_license = #{businessLicense}, company_credit_code = #{companyCreditCode},
             legal_person = #{legalPerson}, license_verified = #{licenseVerified},
@@ -164,5 +209,18 @@
         values
         (#{merchantId}, #{action}, #{fromStatus}, #{toStatus}, #{auditRemark},
          #{operatorType}, #{operatorId}, #{operatorName}, sysdate())
+    </insert>
+
+    <delete id="deleteProofMedia" parameterType="Long">
+        delete from shop_merchant_proof_media where merchant_id = #{merchantId}
+    </delete>
+
+    <insert id="insertProofMedia">
+        insert into shop_merchant_proof_media
+        (merchant_id, media_type, media_url, sort_order, create_by, create_time)
+        values
+        <foreach collection="items" item="item" separator=",">
+            (#{item.merchantId}, #{item.mediaType}, #{item.mediaUrl}, #{item.sortOrder}, #{item.createBy}, sysdate())
+        </foreach>
     </insert>
 </mapper>

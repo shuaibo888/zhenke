@@ -54,7 +54,7 @@
     </resultMap>
 
     <sql id="selectProduct">
-        select p.product_id, p.merchant_id, m.company_name as merchant_name,
+        select p.product_id, p.merchant_id, m.shop_name as merchant_name,
                p.category_id, c.category_code, c.category_name,
                p.brand_name, p.product_name, p.subtitle, p.detail, p.cover_url, p.price,
                p.stock, coalesce((
@@ -143,7 +143,7 @@
                 and (p.product_name like concat('%', #{productName}, '%')
                      or p.subtitle like concat('%', #{productName}, '%')
                      or p.brand_name like concat('%', #{productName}, '%')
-                     or m.company_name like concat('%', #{productName}, '%'))
+                     or m.shop_name like concat('%', #{productName}, '%'))
             </if>
             <if test="categoryId != null">and p.category_id = #{categoryId}</if>
             <if test="status != null and status != ''">and p.status = #{status}</if>
@@ -163,7 +163,7 @@
     </select>
 
     <select id="selectPublicProducts" parameterType="ShopProduct" resultMap="ShopProductResult">
-        select p.product_id, p.merchant_id, m.company_name as merchant_name,
+        select p.product_id, p.merchant_id, m.shop_name as merchant_name,
                p.category_id, c.category_code, c.category_name,
                p.brand_name, p.product_name, p.subtitle, p.cover_url, p.price, p.stock,
                coalesce((
@@ -204,7 +204,7 @@
                     p.product_name like concat('%', #{keyword}, '%')
                     or p.subtitle like concat('%', #{keyword}, '%')
                     or p.brand_name like concat('%', #{keyword}, '%')
-                    or m.company_name like concat('%', #{keyword}, '%')
+                    or m.shop_name like concat('%', #{keyword}, '%')
                     or c.category_name like concat('%', #{keyword}, '%')
                     or cast(p.product_id as char) = #{keyword}
                 )
@@ -214,7 +214,7 @@
     </select>
 
     <select id="selectPublicProduct" parameterType="Long" resultMap="ShopProductResult">
-        select p.product_id, p.merchant_id, m.company_name as merchant_name,
+        select p.product_id, p.merchant_id, m.shop_name as merchant_name,
                p.category_id, c.category_code, c.category_name,
                p.brand_name, p.product_name, p.subtitle, p.detail, p.cover_url, p.price, p.stock,
                coalesce((

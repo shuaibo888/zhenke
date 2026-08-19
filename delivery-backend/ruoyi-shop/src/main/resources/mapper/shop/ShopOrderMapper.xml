@@ -148,7 +148,7 @@
     <sql id="selectOrderColumns">
         select o.order_id, o.order_no, o.user_id,
                coalesce(u.nick_name, u.user_name) as buyer_name, o.merchant_id,
-               m.company_name as merchant_name, o.status as order_status,
+               m.shop_name as merchant_name, o.status as order_status,
                o.original_amount, o.discount_amount, o.total_amount,
                o.item_count, o.del_flag,
                date_add(o.create_time, interval 30 minute) as payment_expire_time,
@@ -172,7 +172,7 @@
     <sql id="selectOrderForUpdateColumns">
         select o.order_id, o.order_no, o.user_id,
                coalesce(u.nick_name, u.user_name) as buyer_name, o.merchant_id,
-               m.company_name as merchant_name, o.status as order_status,
+               m.shop_name as merchant_name, o.status as order_status,
                o.original_amount, o.discount_amount, o.total_amount,
                o.item_count, o.del_flag,
                date_add(o.create_time, interval 30 minute) as payment_expire_time,
@@ -194,7 +194,7 @@
     </select>
 
     <select id="selectOrderableProductForUpdate" parameterType="Long" resultMap="ShopProductResult">
-        select p.product_id, p.merchant_id, m.company_name as merchant_name,
+        select p.product_id, p.merchant_id, m.shop_name as merchant_name,
                p.category_id, c.category_code, c.category_name, p.product_name,
                p.cover_url, p.price, p.stock, p.status as product_status
         from shop_product p
@@ -532,7 +532,7 @@
             and (o.order_no like concat('%', #{keyword}, '%')
                  or u.user_name like concat('%', #{keyword}, '%')
                  or u.nick_name like concat('%', #{keyword}, '%')
-                 or m.company_name like concat('%', #{keyword}, '%'))
+                 or m.shop_name like concat('%', #{keyword}, '%'))
         </if>
         order by o.order_id desc
     </select>

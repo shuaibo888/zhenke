@@ -5,6 +5,7 @@ export default defineConfig({
     { path: '/', component: '@/pages/home' },
     { path: '/mall', component: '@/pages/mall' },
     { path: '/products/:productId', component: '@/pages/products/detail' },
+    { path: '/merchants/:merchantId', component: '@/pages/merchants/detail' },
     { path: '/reports/:reportId', component: '@/pages/reports/detail' },
     { path: '/profile', component: '@/pages/profile' },
     { path: '/profile/points', component: '@/pages/profile/points' },

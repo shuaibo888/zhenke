@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { WechatShareGuide } from '@/components/WechatShareGuide';
+import { MerchantInfoBar } from '@/components/MerchantInfoBar';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
 import {
@@ -99,7 +100,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
     || product?.coverUrl
     || '';
   const reportProductShareName = product ? `${product.brandName} ${product.productName}` : '';
-  useWechatShare(report && product ? {
+  const prepareWechatShare = useWechatShare(report && product ? {
     title: `甄客验｜${reportProductShareName}`,
     description: `${shareAuthorName}：${report.experience.slice(0, 60)}`,
     link: buildReportShareLink(report.reportId),
@@ -231,7 +232,9 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
 
   const handleShareClick = () => {
     if (isWechatBrowser()) {
-      setWechatShareGuideOpen(true);
+      void prepareWechatShare()
+        .then(() => setWechatShareGuideOpen(true))
+        .catch(() => message.error('微信分享卡片准备失败，请刷新页面后重试'));
       return;
     }
     setShareOpen(true);
@@ -329,6 +332,8 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
             <div className={styles.shortcoming}>优化建议：{report.shortcoming}</div>
           </div>
         </section>
+
+        <MerchantInfoBar merchantId={product.merchantId} merchantName={product.merchantName} />
 
         <section
           className={styles.linkedProductCard}

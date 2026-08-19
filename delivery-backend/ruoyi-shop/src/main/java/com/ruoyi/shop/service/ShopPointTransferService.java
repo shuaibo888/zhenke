@@ -25,7 +25,8 @@ public class ShopPointTransferService
 {
     private static final Logger log = LoggerFactory.getLogger(ShopPointTransferService.class);
     private static final List<ShopPointTransferSource> SOURCES = List.of(
-            new ShopPointTransferSource("EVENT", "赛事系统"));
+            new ShopPointTransferSource("EVENT", "燃赛", "燃值",
+                    "https://img.cboo.cloud/dzshop/ransai.jpg"));
 
     private final EventPointsClient eventPointsClient;
     private final ShopPointTransferTransaction transferTransaction;
@@ -183,24 +184,24 @@ public class ShopPointTransferService
     {
         if (exception.uncertain())
         {
-            return new ServiceException("赛事系统暂时无法连接，请稍后重试");
+            return new ServiceException("燃赛暂时无法连接，请稍后重试");
         }
         if ("USER_NOT_FOUND".equals(exception.code()) || "USER_DISABLED".equals(exception.code()))
         {
-            return new ServiceException("赛事系统账号不存在或已停用");
+            return new ServiceException("燃赛账号不存在或已停用");
         }
         if ("INVALID_CLIENT".equals(exception.code()))
         {
             return new ServiceException("积分划拨服务认证失败，请联系管理员");
         }
-        return new ServiceException("赛事系统暂时无法查询积分，请稍后重试");
+        return new ServiceException("燃赛暂时无法查询燃值，请稍后重试");
     }
 
     private ServiceException translateTransfer(EventPointsException exception)
     {
         if ("INSUFFICIENT_POINTS".equals(exception.code()))
         {
-            return new ServiceException("赛事系统积分不足，请刷新后重试");
+            return new ServiceException("燃赛燃值不足，请刷新后重试");
         }
         if ("INVALID_POINTS".equals(exception.code()))
         {
@@ -208,7 +209,7 @@ public class ShopPointTransferService
         }
         if ("USER_NOT_FOUND".equals(exception.code()) || "USER_DISABLED".equals(exception.code()))
         {
-            return new ServiceException("赛事系统账号不存在或已停用");
+            return new ServiceException("燃赛账号不存在或已停用");
         }
         if ("INVALID_CLIENT".equals(exception.code()))
         {

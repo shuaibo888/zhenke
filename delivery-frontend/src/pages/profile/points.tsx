@@ -1,5 +1,5 @@
-import { GiftOutlined, HistoryOutlined, SwapOutlined, TrophyOutlined } from '@ant-design/icons';
-import { Button, InputNumber, Modal, Select, Spin, message } from 'antd';
+import { CheckCircleFilled, GiftOutlined, HistoryOutlined, SwapOutlined, TrophyOutlined } from '@ant-design/icons';
+import { Button, InputNumber, Modal, Spin, message } from 'antd';
 import { useCallback, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -81,7 +81,9 @@ export default function PointsPage() {
       const first = sources[0];
       if (first) {
         setSelectedSource(first.sourceSystem);
-        await queryTransferBalance(first.sourceSystem);
+        void queryTransferBalance(first.sourceSystem).catch((error) => {
+          message.error(error instanceof Error ? error.message : '可划拨余额查询失败');
+        });
       }
     } catch (error) {
       message.error(error instanceof Error ? error.message : '积分来源加载失败');
@@ -135,6 +137,11 @@ export default function PointsPage() {
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
+
+  const selectedTransferSource = transferSources.find((source) => source.sourceSystem === selectedSource);
+  const sourceUnitName = selectedTransferSource?.sourceUnitName || '余额';
+  const transferPointsValid = transferPoints != null && transferPoints > 0
+    && availablePoints !== undefined && transferPoints <= availablePoints;
 
   const confirmExchange = (coupon: ShopPointCouponOption) => {
     if (coupon.exchanged || coupon.remainingStock <= 0 || exchangingId) return;
@@ -203,59 +210,100 @@ export default function PointsPage() {
       <Modal
         open={transferOpen}
         title="积分划拨"
+        className={styles.responsiveModal}
         onCancel={closeTransfer}
         footer={null}
         centered
-        width={420}
+        width={500}
         maskClosable={!transferring}
         closable={!transferring}
       >
         <div className={styles.pointTransferForm}>
-          <label className={styles.pointTransferField}>
-            <span>来源系统</span>
-            <Select
-              value={selectedSource}
-              onChange={(value) => { void selectTransferSource(value); }}
-              loading={transferSourcesLoading}
-              disabled={transferring}
-              options={transferSources.map((source) => ({ value: source.sourceSystem, label: source.sourceName }))}
-              style={{ width: '100%' }}
-            />
-          </label>
-          <div className={styles.pointTransferBalance}>
-            当前可划拨积分：
-            <strong>{balanceLoading ? '查询中…' : availablePoints === undefined ? '--' : availablePoints}</strong>
+          <div className={styles.pointTransferIntro}>
+            <strong>选择来源系统</strong>
+            <span>将其他系统账户中的余额划入商城积分</span>
           </div>
-          <label className={styles.pointTransferField}>
-            <span>划拨数量</span>
-            <div className={styles.pointTransferInputRow}>
-              <InputNumber
-                min={1}
-                max={availablePoints}
-                precision={0}
-                value={transferPoints}
-                onChange={(value) => setTransferPoints(value)}
-                disabled={balanceLoading || availablePoints === undefined || availablePoints === 0 || transferring}
-                placeholder="请输入数量"
-                style={{ flex: 1 }}
-              />
-              <Button
-                onClick={fillAllPoints}
-                disabled={balanceLoading || availablePoints === undefined || availablePoints === 0 || transferring}
-              >
-                全部
-              </Button>
+          <Spin spinning={transferSourcesLoading}>
+            <div className={`${styles.pointTransferSourceGrid} ${
+              transferSources.length > 1 ? styles.pointTransferSourceGridMultiple : ''
+            }`}>
+              {transferSources.map((source) => {
+                const selected = source.sourceSystem === selectedSource;
+                return (
+                  <button
+                    type="button"
+                    key={source.sourceSystem}
+                    className={`${styles.pointTransferSourceCard} ${selected ? styles.pointTransferSourceCardSelected : ''}`}
+                    aria-pressed={selected}
+                    disabled={transferring}
+                    onClick={() => { void selectTransferSource(source.sourceSystem); }}
+                  >
+                    <span className={styles.pointTransferSourceCover}>
+                      <span className={styles.pointTransferSourceFallback}>{source.sourceName}</span>
+                      <img
+                        src={source.coverUrl}
+                        alt={`${source.sourceName}封面`}
+                        onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                      />
+                    </span>
+                    <span className={styles.pointTransferSourceInfo}>
+                      <span className={styles.pointTransferSourceTitle}>
+                        <strong>{source.sourceName}</strong>
+                        {selected ? <CheckCircleFilled /> : null}
+                      </span>
+                      <small>{source.sourceUnitName}划入商城积分</small>
+                    </span>
+                  </button>
+                );
+              })}
+              {!transferSourcesLoading && transferSources.length === 0 ? (
+                <div className={styles.pointTransferSourceEmpty}>暂无可用的来源系统</div>
+              ) : null}
             </div>
-          </label>
-          <p className={styles.pointTransferHint}>积分划入后由商城负责消费。</p>
+          </Spin>
+          {selectedTransferSource ? (
+            <>
+              <div className={styles.pointTransferBalance}>
+                <span>{selectedTransferSource.sourceName}可划拨{sourceUnitName}</span>
+                <strong>{balanceLoading ? '查询中…' : availablePoints === undefined ? '--' : availablePoints.toLocaleString()}</strong>
+              </div>
+              <label className={styles.pointTransferField}>
+                <span>本次划拨{sourceUnitName}</span>
+                <div className={styles.pointTransferInputRow}>
+                  <InputNumber
+                    min={1}
+                    max={availablePoints}
+                    precision={0}
+                    value={transferPoints}
+                    onChange={(value) => setTransferPoints(value)}
+                    disabled={balanceLoading || availablePoints === undefined || availablePoints === 0 || transferring}
+                    placeholder={`请输入${sourceUnitName}数量`}
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    onClick={fillAllPoints}
+                    disabled={balanceLoading || availablePoints === undefined || availablePoints === 0 || transferring}
+                  >
+                    全部划拨
+                  </Button>
+                </div>
+              </label>
+              <div className={styles.pointTransferPreview}>
+                <span>预计划入商城积分</span>
+                <strong>{transferPointsValid ? transferPoints.toLocaleString() : '--'}</strong>
+              </div>
+              <p className={styles.pointTransferHint}>
+                划拨成功后，{selectedTransferSource.sourceName}扣除对应{sourceUnitName}，商城增加积分。
+              </p>
+            </>
+          ) : null}
           <div className={styles.pointTransferActions}>
             <Button onClick={closeTransfer} disabled={transferring}>取消</Button>
             <Button
               type="primary"
               onClick={() => { void confirmTransfer(); }}
               loading={transferring}
-              disabled={balanceLoading || availablePoints === undefined || availablePoints === 0
-                || transferPoints == null || transferPoints <= 0 || transferPoints > availablePoints}
+              disabled={balanceLoading || availablePoints === undefined || availablePoints === 0 || !transferPointsValid}
             >
               确认划拨
             </Button>

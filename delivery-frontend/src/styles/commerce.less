@@ -3917,7 +3917,408 @@
 
 .pointTransferForm {
   display: grid;
+  gap: 18px;
+}
+
+.merchantInfoBar {
+  margin: 12px 0;
+  padding: 10px;
+  border: 1px solid rgba(55, 123, 96, 0.14);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #ffffff 0%, #f3faf6 100%);
+  box-shadow: 0 8px 24px rgba(29, 73, 56, 0.07);
+}
+
+.merchantInfoMain {
+  display: flex;
+  width: 100%;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 11px;
+  padding: 2px;
+  border: 0;
+  color: #1f3d31;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.merchantInfoIcon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  place-items: center;
+  border-radius: 13px;
+  color: #ffffff;
+  background: #397b61;
+  font-size: 20px;
+}
+
+.merchantInfoCopy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.merchantInfoCopy small {
+  color: #85968e;
+  font-size: 12px;
+}
+
+.merchantInfoCopy strong {
+  overflow: hidden;
+  color: #1d392e;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.merchantInfoArrow {
+  color: #9bacA4;
+  font-size: 12px;
+}
+
+.merchantDetailPage {
+  padding-bottom: calc(32px + env(safe-area-inset-bottom));
+}
+
+.merchantDetailHeaderPlaceholder {
+  width: 38px;
+}
+
+.merchantDetailHero {
+  display: flex;
+  align-items: center;
   gap: 16px;
+  margin: 14px 0 12px;
+  padding: 24px 20px;
+  border-radius: 22px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #2f7158 0%, #4b9474 100%);
+  box-shadow: 0 14px 30px rgba(37, 94, 70, 0.2);
+}
+
+.merchantDetailLogo {
+  display: grid;
+  width: 62px;
+  height: 62px;
+  flex: 0 0 62px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 29px;
+}
+
+.merchantDetailHero small {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 12px;
+}
+
+.merchantDetailHero h1 {
+  margin: 5px 0 0;
+  color: #ffffff;
+  font-size: 24px;
+  line-height: 1.3;
+}
+
+.merchantDetailPanel {
+  padding: 20px 18px;
+  border: 1px solid rgba(55, 123, 96, 0.12);
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(31, 73, 56, 0.07);
+}
+
+.merchantDetailPanel h2 {
+  margin: 0 0 6px;
+  color: #213d32;
+  font-size: 17px;
+}
+
+.merchantDetailList {
+  margin: 0;
+}
+
+.merchantDetailList > div {
+  display: grid;
+  grid-template-columns: minmax(126px, 0.8fr) minmax(0, 1.3fr);
+  gap: 16px;
+  padding: 15px 0;
+  border-bottom: 1px solid #edf2ef;
+}
+
+.merchantDetailList > div:last-child {
+  border-bottom: 0;
+}
+
+.merchantDetailList dt {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: #7d8f87;
+  font-size: 13px;
+}
+
+.merchantDetailList dt :global(.anticon) {
+  margin-top: 2px;
+  color: #4c8b70;
+}
+
+.merchantDetailList dd {
+  margin: 0;
+  color: #243a31;
+  font-size: 14px;
+  line-height: 1.55;
+  text-align: right;
+  word-break: break-all;
+}
+
+.merchantDetailList dd a {
+  color: #347b5f;
+  font-weight: 700;
+}
+
+.merchantVisitCard {
+  display: grid;
+  gap: 16px;
+  margin-top: 14px;
+  padding: 18px;
+  border: 1px solid rgba(55, 123, 96, 0.13);
+  border-radius: 20px;
+  background: linear-gradient(145deg, #ffffff 0%, #eef8f2 100%);
+  box-shadow: 0 10px 28px rgba(31, 73, 56, 0.08);
+}
+
+.merchantVisitCopy {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.merchantVisitCopy > span {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: 14px;
+  color: #ffffff;
+  background: #3b8064;
+  font-size: 20px;
+  place-items: center;
+}
+
+.merchantVisitCopy > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.merchantVisitCopy strong {
+  color: #203b30;
+  font-size: 16px;
+}
+
+.merchantVisitCopy small {
+  overflow: hidden;
+  color: #708178;
+  font-size: 13px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.merchantDetailNavigate {
+  display: flex;
+  min-height: 50px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 15px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #2f765a 0%, #438c6c 100%);
+  box-shadow: 0 10px 22px rgba(47, 118, 90, 0.22);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.merchantDetailNavigate:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+@media (max-width: 560px) {
+  .merchantInfoBar {
+    margin: 10px 0;
+  }
+
+  .merchantDetailList > div {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .merchantDetailList dd {
+    text-align: left;
+  }
+
+  .merchantVisitCard {
+    margin-top: 12px;
+  }
+}
+
+.pointTransferIntro {
+  display: grid;
+  gap: 3px;
+}
+
+.pointTransferIntro strong {
+  color: #213c32;
+  font-size: 15px;
+}
+
+.pointTransferIntro span {
+  color: #839189;
+  font-size: 12px;
+}
+
+.pointTransferSourceGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  min-height: 96px;
+}
+
+.pointTransferSourceGridMultiple {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pointTransferSourceCard {
+  display: grid;
+  grid-template-columns: clamp(104px, 26vw, 124px) minmax(0, 1fr);
+  align-items: stretch;
+  min-width: 0;
+  min-height: clamp(104px, 26vw, 124px);
+  padding: 0;
+  overflow: hidden;
+  color: inherit;
+  text-align: left;
+  background: #fff;
+  border: 1px solid #dfe9e3;
+  border-radius: 14px;
+  box-shadow: 0 8px 22px rgba(34, 84, 66, 0.07);
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.pointTransferSourceGridMultiple .pointTransferSourceCard {
+  grid-template-columns: 88px minmax(0, 1fr);
+  min-height: 96px;
+}
+
+.pointTransferSourceCard:hover:not(:disabled) {
+  border-color: rgba(31, 111, 91, 0.48);
+  box-shadow: 0 10px 26px rgba(34, 84, 66, 0.12);
+  transform: translateY(-1px);
+}
+
+.pointTransferSourceCard:focus-visible {
+  outline: 3px solid rgba(31, 111, 91, 0.18);
+  outline-offset: 2px;
+}
+
+.pointTransferSourceCard:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.pointTransferSourceCardSelected {
+  border-color: #1f6f5b;
+  box-shadow: 0 0 0 2px rgba(31, 111, 91, 0.12), 0 10px 26px rgba(34, 84, 66, 0.12);
+}
+
+.pointTransferSourceCover {
+  position: relative;
+  display: grid;
+  height: 100%;
+  min-height: clamp(104px, 26vw, 124px);
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.92);
+  background: linear-gradient(135deg, #245d4b 0%, #438267 100%);
+  border-right: 1px solid #edf2ef;
+  place-items: center;
+}
+
+.pointTransferSourceGridMultiple .pointTransferSourceCover {
+  min-height: 96px;
+}
+
+.pointTransferSourceCover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 9px;
+  background: #fff;
+  object-fit: contain;
+  object-position: center;
+  z-index: 1;
+}
+
+.pointTransferSourceFallback {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 4px;
+}
+
+.pointTransferSourceInfo {
+  display: grid;
+  gap: 3px;
+  align-content: center;
+  min-width: 0;
+  padding: 16px 18px;
+}
+
+.pointTransferSourceGridMultiple .pointTransferSourceInfo {
+  padding: 12px;
+}
+
+.pointTransferSourceTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #213c32;
+}
+
+.pointTransferSourceTitle > span,
+.pointTransferSourceTitle :global(.anticon) {
+  color: #1f6f5b;
+}
+
+.pointTransferSourceInfo small {
+  overflow: hidden;
+  color: #839189;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pointTransferSourceEmpty {
+  display: grid;
+  grid-column: 1 / -1;
+  min-height: 96px;
+  color: #8a9891;
+  background: #f6f9f7;
+  border: 1px dashed #d5e1da;
+  border-radius: 14px;
+  place-items: center;
 }
 
 .pointTransferField {
@@ -3931,19 +4332,50 @@
 }
 
 .pointTransferBalance {
-  color: #33443c;
-  font-size: 14px;
+  display: grid;
+  gap: 4px;
+  padding: 15px 17px;
+  color: #5b6b63;
+  background: linear-gradient(135deg, #f1f8f4 0%, #e7f3ec 100%);
+  border: 1px solid rgba(31, 111, 91, 0.12);
+  border-radius: 14px;
+  font-size: 13px;
 }
 
 .pointTransferBalance strong {
-  margin-left: 6px;
-  color: #087246;
-  font-size: 20px;
+  color: #17674f;
+  font-size: 28px;
+  line-height: 1.15;
 }
 
 .pointTransferInputRow {
   display: flex;
   gap: 8px;
+}
+
+.pointTransferInputRow :global(.ant-input-number) {
+  min-width: 0;
+  border-radius: 9px;
+}
+
+.pointTransferInputRow :global(.ant-btn) {
+  flex-shrink: 0;
+  border-radius: 9px;
+}
+
+.pointTransferPreview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -8px;
+  padding: 0 2px;
+  color: #79877f;
+  font-size: 12px;
+}
+
+.pointTransferPreview strong {
+  color: #1f6f5b;
+  font-size: 15px;
 }
 
 .pointTransferHint {
@@ -3957,6 +4389,37 @@
   justify-content: flex-end;
   gap: 10px;
   margin-top: 4px;
+}
+
+.pointTransferActions :global(.ant-btn) {
+  min-width: 96px;
+  border-radius: 9px;
+}
+
+@media (max-width: 560px) {
+  .pointTransferSourceGridMultiple {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pointTransferSourceCard,
+  .pointTransferSourceGridMultiple .pointTransferSourceCard {
+    grid-template-columns: 104px minmax(0, 1fr);
+    min-height: 104px;
+  }
+
+  .pointTransferSourceCover,
+  .pointTransferSourceGridMultiple .pointTransferSourceCover {
+    min-height: 104px;
+  }
+
+  .pointTransferSourceInfo,
+  .pointTransferSourceGridMultiple .pointTransferSourceInfo {
+    padding: 13px 14px;
+  }
+
+  .pointTransferActions :global(.ant-btn) {
+    flex: 1;
+  }
 }
 
 .profileBackButton {
@@ -8187,6 +8650,82 @@
   background: #f8faf9;
 }
 
+.merchantProofField {
+  display: grid;
+  gap: 14px;
+}
+
+.merchantProofField > :global(.ant-upload-wrapper),
+.merchantProofField > :global(.ant-upload-wrapper) :global(.ant-upload-select) {
+  display: block;
+  width: 100%;
+}
+
+.merchantProofHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.merchantProofHeading > div {
+  display: grid;
+  gap: 4px;
+}
+
+.merchantProofHeading strong {
+  color: #354740;
+  font-size: 13px;
+}
+
+.merchantProofHeading small {
+  color: #7a8882;
+  line-height: 1.5;
+}
+
+.merchantProofHeading > span {
+  flex: 0 0 auto;
+  color: #24634f;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.merchantProofGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.merchantProofItem {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  border: 1px solid rgba(31, 111, 91, 0.15);
+  border-radius: 10px;
+  background: #f3f7f5;
+}
+
+.merchantProofItem img,
+.merchantProofItem video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.merchantProofItem > :global(.ant-btn) {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.merchantProofItem > :global(.ant-btn):hover {
+  color: #fff !important;
+  background: rgba(183, 47, 47, 0.88) !important;
+}
+
 .reviewStars {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -9399,6 +9938,10 @@
     grid-template-columns: 1fr;
   }
 
+  .merchantProofGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .merchantConsentGrid :global(.ant-form-item-label) {
     min-height: 0;
   }
@@ -9765,14 +10308,17 @@
 }
 
 .mallProductTitleRow {
-  display: block;
+  display: flex;
+  align-items: center;
   min-width: 0;
+  min-height: 24px;
+  gap: 7px;
 }
 
 .mallProductBrand {
   display: inline-block;
+  flex: 0 1 auto;
   max-width: 104px;
-  margin: 0 7px 0 0;
   padding: 2px 7px;
   overflow: hidden;
   color: #775916;
@@ -9782,22 +10328,20 @@
   font-weight: 800;
   line-height: 1.4;
   text-overflow: ellipsis;
-  vertical-align: 2px;
   white-space: nowrap;
 }
 
-.mallProductTitleRow > strong {
-  display: -webkit-box;
+.mallProductName {
+  display: block;
+  flex: 1;
   min-width: 0;
-  min-height: 2.9em;
-  max-height: 2.9em;
   overflow: hidden;
   color: #1d2d27;
   font-size: 16px;
   font-weight: 900;
-  line-height: 1.45;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mallProductInfo > small {
@@ -9948,16 +10492,14 @@
     border-radius: 10px;
   }
 
-  .mallProductTitleRow > strong {
+  .mallProductName {
     font-size: 14px;
   }
 
   .mallProductBrand {
     max-width: 72px;
-    margin-right: 6px;
     padding: 2px 6px;
     font-size: 10px;
-    vertical-align: 1px;
   }
 
   .mallProductInfo > small {

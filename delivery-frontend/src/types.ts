@@ -4,6 +4,7 @@ export interface Merchant {
   merchantId: number;
   applicationNo: string;
   accountUsername: string;
+  shopName: string;
   companyName: string;
   companyAddress: string;
   contactName: string;
@@ -25,6 +26,14 @@ export interface Merchant {
   auditBy?: string;
   auditTime?: string;
   createTime?: string;
+  storeProofMedia?: MerchantProofMedia[];
+}
+
+export interface MerchantProofMedia {
+  mediaId?: number;
+  mediaType: 'IMAGE' | 'VIDEO';
+  mediaUrl: string;
+  sortOrder?: number;
 }
 
 export interface User {

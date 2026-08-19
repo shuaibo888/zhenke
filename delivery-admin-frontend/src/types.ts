@@ -56,6 +56,7 @@ export interface MerchantAccount {
   /** 仅兼容旧演示数据；真实接口永不返回或回显密码。 */
   password?: string;
   name: string;
+  companyName?: string;
   ownerName: string;
   phone: string;
   companyAddress?: string;
@@ -74,6 +75,14 @@ export interface MerchantAccount {
   auditTime?: string;
   status: 'active' | 'disabled';
   auditLogs?: MerchantAuditLog[];
+  storeProofMedia?: MerchantProofMedia[];
+}
+
+export interface MerchantProofMedia {
+  mediaId?: number;
+  mediaType: 'IMAGE' | 'VIDEO';
+  mediaUrl: string;
+  sortOrder?: number;
 }
 
 export interface MerchantAuditLog {

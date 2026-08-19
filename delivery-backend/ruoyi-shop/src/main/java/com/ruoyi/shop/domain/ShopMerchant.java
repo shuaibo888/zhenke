@@ -1,5 +1,6 @@
 package com.ruoyi.shop.domain;
 
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -14,8 +15,11 @@ public class ShopMerchant extends BaseEntity
     private String applicationNo;
     private String accountUsername;
     private String accountPassword;
+    private String shopName;
     private String companyName;
     private String companyAddress;
+    private BigDecimal latitude;
+    private BigDecimal longitude;
     private String contactName;
     private String contactPhone;
     private String businessLicense;
@@ -36,6 +40,7 @@ public class ShopMerchant extends BaseEntity
     private String auditBy;
     private Date auditTime;
     private List<ShopMerchantAuditLog> auditLogs;
+    private List<ShopMerchantProofMedia> storeProofMedia;
 
     public Long getMerchantId() { return merchantId; }
     public void setMerchantId(Long merchantId) { this.merchantId = merchantId; }
@@ -46,10 +51,16 @@ public class ShopMerchant extends BaseEntity
     @JsonIgnore
     public String getAccountPassword() { return accountPassword; }
     public void setAccountPassword(String accountPassword) { this.accountPassword = accountPassword; }
+    public String getShopName() { return shopName; }
+    public void setShopName(String shopName) { this.shopName = shopName; }
     public String getCompanyName() { return companyName; }
     public void setCompanyName(String companyName) { this.companyName = companyName; }
     public String getCompanyAddress() { return companyAddress; }
     public void setCompanyAddress(String companyAddress) { this.companyAddress = companyAddress; }
+    public BigDecimal getLatitude() { return latitude; }
+    public void setLatitude(BigDecimal latitude) { this.latitude = latitude; }
+    public BigDecimal getLongitude() { return longitude; }
+    public void setLongitude(BigDecimal longitude) { this.longitude = longitude; }
     public String getContactName() { return contactName; }
     public void setContactName(String contactName) { this.contactName = contactName; }
     public String getContactPhone() { return contactPhone; }
@@ -91,4 +102,6 @@ public class ShopMerchant extends BaseEntity
     public void setAuditTime(Date auditTime) { this.auditTime = auditTime; }
     public List<ShopMerchantAuditLog> getAuditLogs() { return auditLogs; }
     public void setAuditLogs(List<ShopMerchantAuditLog> auditLogs) { this.auditLogs = auditLogs; }
+    public List<ShopMerchantProofMedia> getStoreProofMedia() { return storeProofMedia; }
+    public void setStoreProofMedia(List<ShopMerchantProofMedia> storeProofMedia) { this.storeProofMedia = storeProofMedia; }
 }

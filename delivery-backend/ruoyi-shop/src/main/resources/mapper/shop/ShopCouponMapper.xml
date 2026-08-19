@@ -116,14 +116,14 @@
     </select>
 
     <select id="selectMerchantScopes" resultMap="ShopCouponMerchantResult">
-        select cm.coupon_id, cm.merchant_id, m.company_name as merchant_name
+        select cm.coupon_id, cm.merchant_id, m.shop_name as merchant_name
         from shop_coupon_merchant cm
         inner join shop_merchant m on m.merchant_id = cm.merchant_id and m.del_flag = '0'
         where cm.coupon_id in
         <foreach collection="couponIds" item="couponId" open="(" separator="," close=")">
             #{couponId}
         </foreach>
-        order by cm.coupon_id, m.company_name, cm.merchant_id
+        order by cm.coupon_id, m.shop_name, cm.merchant_id
     </select>
 
     <select id="countEnabledMerchants" resultType="int">

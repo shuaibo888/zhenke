@@ -4,6 +4,8 @@ import java.util.List;
 import org.apache.ibatis.annotations.Param;
 import com.ruoyi.shop.domain.ShopMerchant;
 import com.ruoyi.shop.domain.ShopMerchantAuditLog;
+import com.ruoyi.shop.domain.ShopMerchantProofMedia;
+import com.ruoyi.shop.domain.vo.ShopMerchantPublicView;
 
 public interface ShopMerchantMapper
 {
@@ -11,8 +13,10 @@ public interface ShopMerchantMapper
     ShopMerchant selectByAccountUsername(String accountUsername);
     ShopMerchant selectByContactPhone(String contactPhone);
     ShopMerchant selectByAdminUserId(Long adminUserId);
+    ShopMerchantPublicView selectPublicById(Long merchantId);
     List<ShopMerchant> selectAdminList(ShopMerchant query);
     List<ShopMerchantAuditLog> selectAuditLogs(Long merchantId);
+    List<ShopMerchantProofMedia> selectProofMedia(Long merchantId);
     Long selectRoleIdByKey(String roleKey);
     int insert(ShopMerchant merchant);
     int resubmit(ShopMerchant merchant);
@@ -22,4 +26,6 @@ public interface ShopMerchantMapper
     int updateStatus(@Param("merchantId") Long merchantId, @Param("status") String status,
             @Param("updateBy") String updateBy);
     int insertAuditLog(ShopMerchantAuditLog auditLog);
+    int deleteProofMedia(Long merchantId);
+    int insertProofMedia(@Param("items") List<ShopMerchantProofMedia> items);
 }

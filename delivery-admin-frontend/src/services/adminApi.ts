@@ -37,6 +37,7 @@ interface MerchantDto {
   merchantId: number;
   applicationNo: string;
   accountUsername: string;
+  shopName?: string;
   companyName: string;
   companyAddress?: string;
   contactName: string;
@@ -57,6 +58,12 @@ interface MerchantDto {
   auditTime?: string;
   createTime?: string;
   auditLogs?: MerchantAuditLog[];
+  storeProofMedia?: Array<{
+    mediaId?: number;
+    mediaType: 'IMAGE' | 'VIDEO';
+    mediaUrl: string;
+    sortOrder?: number;
+  }>;
 }
 
 interface MerchantListResponse extends ApiResponse {
@@ -291,7 +298,8 @@ function toMerchantAccount(dto: MerchantDto): MerchantAccount {
     merchantId: dto.merchantId,
     applicationNo: dto.applicationNo,
     username: dto.accountUsername,
-    name: dto.companyName,
+    name: dto.shopName ?? '',
+    companyName: dto.companyName,
     ownerName: dto.contactName,
     phone: dto.contactPhone,
     companyAddress: dto.companyAddress,
@@ -310,6 +318,7 @@ function toMerchantAccount(dto: MerchantDto): MerchantAccount {
     auditTime: dto.auditTime,
     status: dto.status === '0' ? 'active' : 'disabled',
     auditLogs: dto.auditLogs,
+    storeProofMedia: dto.storeProofMedia ?? [],
   };
 }
 

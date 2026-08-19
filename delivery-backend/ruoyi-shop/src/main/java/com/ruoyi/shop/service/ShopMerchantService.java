@@ -4,11 +4,15 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import javax.imageio.ImageIO;
@@ -27,10 +31,15 @@ import com.ruoyi.common.utils.file.FileUploadUtils;
 import com.ruoyi.common.utils.file.MimeTypeUtils;
 import com.ruoyi.shop.domain.ShopMerchant;
 import com.ruoyi.shop.domain.ShopMerchantAuditLog;
+import com.ruoyi.shop.domain.ShopMerchantProofMedia;
 import com.ruoyi.shop.domain.dto.ShopMerchantApplyBody;
 import com.ruoyi.shop.domain.dto.ShopMerchantAuditBody;
+import com.ruoyi.shop.domain.dto.ShopMerchantProofMediaBody;
 import com.ruoyi.shop.domain.dto.ShopMerchantQueryBody;
 import com.ruoyi.shop.domain.vo.ShopMerchantApplyResult;
+import com.ruoyi.shop.domain.vo.ShopMerchantPublicView;
+import com.ruoyi.shop.map.TencentMapLocation;
+import com.ruoyi.shop.map.TencentMapService;
 import com.ruoyi.shop.mapper.ShopMerchantMapper;
 import com.ruoyi.shop.qualification.AliyunLicenseService;
 import com.ruoyi.shop.qualification.LicenseVerifyResult;
@@ -44,7 +53,14 @@ public class ShopMerchantService
     public static final String REJECTED = "REJECTED";
     private static final String MERCHANT_ROLE_KEY = "merchant";
     private static final long MAX_LICENSE_SIZE = 5 * 1024 * 1024L;
+    private static final long MAX_PROOF_IMAGE_SIZE = 5 * 1024 * 1024L;
+    private static final long MAX_PROOF_VIDEO_SIZE = 10 * 1024 * 1024L;
+    private static final int MAX_PROOF_MEDIA_COUNT = 9;
     private static final String[] LICENSE_EXTENSIONS = { "jpg", "jpeg", "png" };
+    private static final String[] PROOF_IMAGE_EXTENSIONS = { "jpg", "jpeg", "png" };
+    private static final String[] PROOF_VIDEO_EXTENSIONS = { "mp4" };
+    private static final String IMAGE = "IMAGE";
+    private static final String VIDEO = "VIDEO";
     private static final Set<String> LICENSE_CONTENT_TYPES = Set.of(
             MimeTypeUtils.IMAGE_JPG, MimeTypeUtils.IMAGE_JPEG, MimeTypeUtils.IMAGE_PNG);
 
@@ -52,14 +68,17 @@ public class ShopMerchantService
     private final ISysUserService sysUserService;
     private final RedisCache redisCache;
     private final AliyunLicenseService licenseService;
+    private final TencentMapService tencentMapService;
 
     public ShopMerchantService(ShopMerchantMapper merchantMapper, ISysUserService sysUserService,
-            RedisCache redisCache, AliyunLicenseService licenseService)
+            RedisCache redisCache, AliyunLicenseService licenseService,
+            TencentMapService tencentMapService)
     {
         this.merchantMapper = merchantMapper;
         this.sysUserService = sysUserService;
         this.redisCache = redisCache;
         this.licenseService = licenseService;
+        this.tencentMapService = tencentMapService;
     }
 
     public ShopMerchant applicationStatus(ShopMerchantQueryBody body)
@@ -86,6 +105,27 @@ public class ShopMerchantService
         catch (Exception exception)
         {
             throw new ServiceException("营业执照上传失败，请重新选择图片");
+        }
+    }
+
+    public ShopMerchantProofMedia uploadStoreProofMedia(MultipartFile file)
+    {
+        String mediaType = validateStoreProofFile(file);
+        try
+        {
+            String mediaUrl = FileUploadUtils.upload(
+                    RuoYiConfig.getUploadPath() + "/merchant-proof",
+                    file,
+                    IMAGE.equals(mediaType) ? PROOF_IMAGE_EXTENSIONS : PROOF_VIDEO_EXTENSIONS,
+                    true);
+            ShopMerchantProofMedia media = new ShopMerchantProofMedia();
+            media.setMediaType(mediaType);
+            media.setMediaUrl(mediaUrl);
+            return media;
+        }
+        catch (Exception exception)
+        {
+            throw new ServiceException("门店证明材料上传失败，请重新选择文件");
         }
     }
 
@@ -116,8 +156,14 @@ public class ShopMerchantService
         {
             throw new ServiceException("统一社会信用代码与营业执照核验结果不一致，请核对后重试");
         }
+        List<ShopMerchantProofMedia> storeProofMedia = validateStoreProofMedia(body.getStoreProofMedia(), accountUsername);
+        String storeAddress = StringUtils.trim(license.getBusinessAddress());
+        TencentMapLocation location = tencentMapService.geocode(storeAddress);
 
         ShopMerchant merchant = fromBody(body);
+        merchant.setCompanyAddress(storeAddress);
+        merchant.setLatitude(location.getLatitude());
+        merchant.setLongitude(location.getLongitude());
         merchant.setBusinessLicense(businessLicenseAddress);
         merchant.setCompanyCreditCode(license.getCreditCode());
         merchant.setLegalPerson(license.getLegalPerson());
@@ -148,6 +194,10 @@ public class ShopMerchantService
             }
         }
 
+        merchantMapper.deleteProofMedia(merchant.getMerchantId());
+        storeProofMedia.forEach(item -> item.setMerchantId(merchant.getMerchantId()));
+        merchantMapper.insertProofMedia(storeProofMedia);
+
         insertAuditLog(merchant.getMerchantId(), action, fromStatus, PENDING, "提交商家入驻申请",
                 "MERCHANT_APPLICANT", null, accountUsername);
         return new ShopMerchantApplyResult(detail(merchant.getMerchantId()));
@@ -161,6 +211,16 @@ public class ShopMerchantService
     public ShopMerchant detail(long merchantId)
     {
         return withAuditLogs(requireMerchant(merchantId));
+    }
+
+    public ShopMerchantPublicView publicDetail(long merchantId)
+    {
+        ShopMerchantPublicView merchant = merchantMapper.selectPublicById(merchantId);
+        if (merchant == null)
+        {
+            throw new ServiceException("商家不存在或暂不可访问");
+        }
+        return merchant;
     }
 
     @Transactional
@@ -188,7 +248,7 @@ public class ShopMerchantService
 
             SysUser account = new SysUser();
             account.setUserName(accountUsername);
-            account.setNickName(merchant.getCompanyName());
+            account.setNickName(merchant.getShopName());
             account.setPhonenumber(merchant.getContactPhone());
             account.setSex("2");
             account.setPassword(merchant.getAccountPassword());
@@ -260,8 +320,8 @@ public class ShopMerchantService
     private ShopMerchant fromBody(ShopMerchantApplyBody body)
     {
         ShopMerchant merchant = new ShopMerchant();
+        merchant.setShopName(body.getShopName().trim());
         merchant.setCompanyName(body.getCompanyName().trim());
-        merchant.setCompanyAddress(body.getCompanyAddress().trim());
         merchant.setContactName(body.getContactName().trim());
         merchant.setContactPhone(body.getContactPhone().trim());
         merchant.setProductIntro(body.getProductIntro().trim());
@@ -270,6 +330,146 @@ public class ShopMerchantService
         merchant.setAcceptsPublicWelfare(Boolean.TRUE.equals(body.getAcceptsPublicWelfare()) ? "0" : "1");
         merchant.setProtocolAgreed(Boolean.TRUE.equals(body.getProtocolAgreed()) ? "0" : "1");
         return merchant;
+    }
+
+    private String validateStoreProofFile(MultipartFile file)
+    {
+        if (file == null || file.isEmpty())
+        {
+            throw new ServiceException("请选择门店照片或视频");
+        }
+        String extension = extension(file.getOriginalFilename());
+        try (InputStream input = file.getInputStream())
+        {
+            byte[] header = input.readNBytes(12);
+            if (isImageExtension(extension))
+            {
+                if (file.getSize() > MAX_PROOF_IMAGE_SIZE)
+                {
+                    throw new ServiceException("单张门店照片不能超过5MB");
+                }
+                boolean jpeg = header.length >= 3
+                        && (header[0] & 0xff) == 0xff
+                        && (header[1] & 0xff) == 0xd8
+                        && (header[2] & 0xff) == 0xff;
+                boolean png = header.length >= 8
+                        && (header[0] & 0xff) == 0x89
+                        && header[1] == 0x50
+                        && header[2] == 0x4e
+                        && header[3] == 0x47
+                        && header[4] == 0x0d
+                        && header[5] == 0x0a
+                        && header[6] == 0x1a
+                        && header[7] == 0x0a;
+                if (("jpg".equals(extension) || "jpeg".equals(extension)) ? !jpeg : !png)
+                {
+                    throw new ServiceException("门店照片内容与文件格式不一致");
+                }
+                return IMAGE;
+            }
+            if ("mp4".equals(extension))
+            {
+                if (file.getSize() > MAX_PROOF_VIDEO_SIZE)
+                {
+                    throw new ServiceException("门店视频不能超过10MB");
+                }
+                if (header.length < 12
+                        || !"ftyp".equals(new String(header, 4, 4, StandardCharsets.US_ASCII)))
+                {
+                    throw new ServiceException("门店视频不是有效的MP4格式");
+                }
+                return VIDEO;
+            }
+        }
+        catch (ServiceException exception)
+        {
+            throw exception;
+        }
+        catch (IOException exception)
+        {
+            throw new ServiceException("门店证明材料读取失败");
+        }
+        throw new ServiceException("门店照片仅支持 JPG、PNG，视频仅支持 MP4");
+    }
+
+    private List<ShopMerchantProofMedia> validateStoreProofMedia(
+            List<ShopMerchantProofMediaBody> submitted, String operator)
+    {
+        if (submitted == null || submitted.isEmpty() || submitted.size() > MAX_PROOF_MEDIA_COUNT)
+        {
+            throw new ServiceException("请上传1到9个门店照片或视频");
+        }
+        List<ShopMerchantProofMedia> result = new ArrayList<>(submitted.size());
+        Set<String> addresses = new HashSet<>();
+        for (int index = 0; index < submitted.size(); index++)
+        {
+            ShopMerchantProofMediaBody item = submitted.get(index);
+            if (item == null)
+            {
+                throw new ServiceException("门店证明材料无效，请重新上传");
+            }
+            String submittedType = StringUtils.trim(item.getMediaType());
+            if (StringUtils.isEmpty(submittedType))
+            {
+                throw new ServiceException("门店证明材料类型无效");
+            }
+            String mediaType = submittedType.toUpperCase(Locale.ROOT);
+            String mediaUrl = validateStoreProofAddress(item.getMediaUrl(), mediaType);
+            if (!addresses.add(mediaUrl))
+            {
+                throw new ServiceException("门店证明材料不能重复提交");
+            }
+            ShopMerchantProofMedia media = new ShopMerchantProofMedia();
+            media.setMediaType(mediaType);
+            media.setMediaUrl(mediaUrl);
+            media.setSortOrder(index);
+            media.setCreateBy(operator);
+            result.add(media);
+        }
+        return result;
+    }
+
+    private String validateStoreProofAddress(String value, String mediaType)
+    {
+        if (!IMAGE.equals(mediaType) && !VIDEO.equals(mediaType))
+        {
+            throw new ServiceException("门店证明材料类型无效");
+        }
+        String address = StringUtils.trim(value);
+        try
+        {
+            String resourcePath = URI.create(address).getPath();
+            String expectedExtension = IMAGE.equals(mediaType) ? "jpg|jpeg|png" : "mp4";
+            if (resourcePath == null
+                    || !resourcePath.matches("^/profile/upload/merchant-proof/"
+                            + "\\d{4}/\\d{2}/\\d{2}/[A-Za-z0-9_-]+\\.(?i:" + expectedExtension + ")$"))
+            {
+                throw new ServiceException("请上传有效的门店证明材料");
+            }
+            Path profile = Paths.get(RuoYiConfig.getProfile()).toAbsolutePath().normalize();
+            Path uploaded = profile.resolve(resourcePath.substring("/profile/".length())).normalize();
+            if (!uploaded.startsWith(profile) || !Files.isRegularFile(uploaded))
+            {
+                throw new ServiceException("门店证明材料不存在，请重新上传");
+            }
+            return address;
+        }
+        catch (IllegalArgumentException exception)
+        {
+            throw new ServiceException("门店证明材料地址无效，请重新上传");
+        }
+    }
+
+    private String extension(String fileName)
+    {
+        if (fileName == null) return "";
+        int dot = fileName.lastIndexOf('.');
+        return dot < 0 ? "" : fileName.substring(dot + 1).toLowerCase(Locale.ROOT);
+    }
+
+    private boolean isImageExtension(String extension)
+    {
+        return "jpg".equals(extension) || "jpeg".equals(extension) || "png".equals(extension);
     }
 
     private void validateBusinessLicense(MultipartFile file)
@@ -352,6 +552,7 @@ public class ShopMerchantService
     private ShopMerchant withAuditLogs(ShopMerchant merchant)
     {
         merchant.setAuditLogs(merchantMapper.selectAuditLogs(merchant.getMerchantId()));
+        merchant.setStoreProofMedia(merchantMapper.selectProofMedia(merchant.getMerchantId()));
         return merchant;
     }
 

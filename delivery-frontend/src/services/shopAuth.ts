@@ -1,4 +1,4 @@
-import type { Merchant } from '@/types';
+import type { Merchant, MerchantProofMedia } from '@/types';
 import type { AuthUser } from '@/utils/authRules';
 import { getToken, storeToken, requestApi, type ApiResponse, type TableResponse } from './apiClient';
 
@@ -369,6 +369,8 @@ export async function exchangePointCoupon(couponId: number) {
 export interface ShopPointTransferSource {
   sourceSystem: string;
   sourceName: string;
+  sourceUnitName: string;
+  coverUrl: string;
 }
 
 export async function fetchPointTransferSources() {
@@ -381,6 +383,8 @@ export async function fetchPointTransferSources() {
   if (rows.some((source) => (
     typeof source.sourceSystem !== 'string'
     || typeof source.sourceName !== 'string'
+    || typeof source.sourceUnitName !== 'string'
+    || typeof source.coverUrl !== 'string'
   ))) {
     throw new Error('积分来源数据异常');
   }
@@ -499,6 +503,7 @@ export async function deleteShopShippingAddress(addressId: number) {
 export interface MerchantApplicationBody {
   accountUsername: string;
   password: string;
+  shopName: string;
   companyName: string;
   companyAddress: string;
   legalPerson: string;
@@ -506,6 +511,7 @@ export interface MerchantApplicationBody {
   contactPhone: string;
   businessLicense: string;
   companyCreditCode: string;
+  storeProofMedia: MerchantProofMedia[];
   productIntro: string;
   originTraceability: string;
   acceptsVerificationRecruitment: boolean;
@@ -581,6 +587,17 @@ export async function uploadMerchantBusinessLicense(file: File) {
     recognized: result.recognized ?? null,
     verifyMessage: result.verifyMessage,
   } satisfies MerchantLicenseUploadResult;
+}
+
+export async function uploadMerchantStoreProofMedia(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const result = await requestApi<ApiResponse & { url?: string; mediaType?: 'IMAGE' | 'VIDEO' }>(
+    '/shop/merchants/proof-media',
+    { method: 'POST', body: formData },
+  );
+  if (!result.url || !result.mediaType) throw new Error('门店证明材料上传失败');
+  return { mediaUrl: result.url, mediaType: result.mediaType } satisfies MerchantProofMedia;
 }
 
 export interface MerchantLicenseVerifyResult {

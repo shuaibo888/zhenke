@@ -3,8 +3,11 @@ import { Outlet } from 'umi';
 import { ShopProvider, useShop } from '@/app/ShopContext';
 import { commerceTheme } from '@/app/theme';
 import { AppChrome } from '@/components/AppChrome';
+import { captureWechatEntryUrl } from '@/utils/wechatEntryUrl';
 import styles from '@/styles/commerce.less';
 import './index.less';
+
+captureWechatEntryUrl();
 
 function CommerceApplication() {
   const { authLoading } = useShop();

@@ -243,6 +243,14 @@ aliyun-license:
   # 单个营业执照文件在缓存周期内允许的核验次数，防刷阿里云额度。
   verify-max-per-file: 5
 
+# 腾讯位置服务：入驻提交时把营业执照地址解析为腾讯坐标，微信预览失败时使用 URI API 地点页兜底。
+tencent-map:
+  enabled: true
+  # 地址解析和腾讯地点页共用同一个 Key，只在后端使用。
+  key: ${TENCENT_MAP_KEY:}
+  connect-timeout-seconds: 5
+  request-timeout-seconds: 8
+
 # 阿里云号码认证服务。短信验证码与 H5 一键登录使用上方公共 RAM 凭证。
 aliyun-phone-auth:
   enabled: true

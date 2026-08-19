@@ -34,7 +34,7 @@
 
     <sql id="selectCartItem">
         select ci.cart_item_id, ci.user_id, ci.product_id, ci.source_report_id, ci.quantity,
-               p.merchant_id, m.company_name as merchant_name,
+               p.merchant_id, m.shop_name as merchant_name,
                c.category_code, c.category_name, p.product_name, p.cover_url,
                p.price, p.stock, p.status as product_status
         from shop_cart_item ci
@@ -68,7 +68,7 @@
     </select>
 
     <select id="selectOrderableProductForUpdate" parameterType="Long" resultMap="ShopProductResult">
-        select p.product_id, p.merchant_id, m.company_name as merchant_name,
+        select p.product_id, p.merchant_id, m.shop_name as merchant_name,
                p.category_id, c.category_code, c.category_name, p.product_name,
                p.cover_url, p.price, p.stock, p.status as product_status
         from shop_product p

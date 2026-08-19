@@ -1,5 +1,6 @@
 import {
   CopyOutlined,
+  DeleteOutlined,
   ExportOutlined,
   SafetyCertificateOutlined,
   SearchOutlined,
@@ -7,18 +8,19 @@ import {
 } from '@ant-design/icons';
 import { Alert, Button, Form, Input, Modal, Switch, Upload, message } from 'antd';
 import type { UploadProps } from 'antd';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   fetchMerchantApplication,
   fetchMyMerchantApplication,
   getStoredMerchantApplicationLookup,
   submitMerchantApplication,
   uploadMerchantBusinessLicense,
+  uploadMerchantStoreProofMedia,
   verifyMerchantBusinessLicense,
   type MerchantApplicationBody,
   type MerchantApplicationLookup,
 } from '@/services/shopAuth';
-import type { Merchant } from '@/types';
+import type { Merchant, MerchantProofMedia } from '@/types';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { copyText } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
@@ -32,11 +34,15 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
   const [queryOpen, setQueryOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [proofUploading, setProofUploading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [licenseVerified, setLicenseVerified] = useState(false);
   const [verifyStatus, setVerifyStatus] = useState<{ tone: 'info' | 'success' | 'error'; text: string } | null>(null);
   const [querying, setQuerying] = useState(false);
+  const proofMediaRef = useRef<MerchantProofMedia[]>([]);
+  const pendingProofUploadsRef = useRef(0);
   const businessLicense = Form.useWatch('businessLicense', form);
+  const storeProofMedia = Form.useWatch('storeProofMedia', form) ?? [];
   useBodyScrollLock(open);
 
   useEffect(() => {
@@ -53,6 +59,7 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
     if (!open || application?.auditStatus !== 'REJECTED') return;
     form.setFieldsValue({
       accountUsername: application.accountUsername,
+      shopName: application.shopName,
       companyName: application.companyName,
       companyAddress: application.companyAddress,
       legalPerson: application.legalPerson,
@@ -60,12 +67,14 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
       contactPhone: application.contactPhone,
       companyCreditCode: application.companyCreditCode,
       businessLicense: undefined,
+      storeProofMedia: application.storeProofMedia ?? [],
       productIntro: application.productIntro,
       originTraceability: application.originTraceability,
       acceptsVerificationRecruitment: application.acceptsVerificationRecruitment === '0',
       acceptsPublicWelfare: application.acceptsPublicWelfare === '0',
       agreeProtocol: true,
     });
+    proofMediaRef.current = application.storeProofMedia ?? [];
   }, [application, form, open]);
 
   const submit = async (values: MerchantApplicationBody) => {
@@ -122,6 +131,59 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
     } finally {
       setUploading(false);
     }
+  };
+
+  const uploadStoreProof: NonNullable<UploadProps['customRequest']> = async (options) => {
+    const file = options.file as File;
+    if (proofMediaRef.current.length + pendingProofUploadsRef.current >= 9) {
+      const error = new Error('实体门店证明材料最多上传9个');
+      message.warning(error.message);
+      options.onError?.(error);
+      return;
+    }
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    const image = ['image/jpeg', 'image/png'].includes(file.type)
+      || ['jpg', 'jpeg', 'png'].includes(extension ?? '');
+    const video = file.type === 'video/mp4' || extension === 'mp4';
+    if (!image && !video) {
+      const error = new Error('照片仅支持 JPG、PNG，视频仅支持 MP4');
+      message.error(error.message);
+      options.onError?.(error);
+      return;
+    }
+    const maxSize = image ? 5 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      const error = new Error(image ? '单张门店照片不能超过5MB' : '门店视频不能超过10MB');
+      message.error(error.message);
+      options.onError?.(error);
+      return;
+    }
+
+    pendingProofUploadsRef.current += 1;
+    setProofUploading(true);
+    try {
+      const uploaded = await uploadMerchantStoreProofMedia(file);
+      const next = [...proofMediaRef.current, uploaded];
+      proofMediaRef.current = next;
+      form.setFieldValue('storeProofMedia', next);
+      form.validateFields(['storeProofMedia']).catch(() => undefined);
+      message.success(uploaded.mediaType === 'IMAGE' ? '门店照片上传成功' : '门店视频上传成功');
+      options.onSuccess?.(uploaded);
+    } catch (error) {
+      const uploadError = error instanceof Error ? error : new Error('门店证明材料上传失败');
+      message.error(uploadError.message);
+      options.onError?.(uploadError);
+    } finally {
+      pendingProofUploadsRef.current -= 1;
+      setProofUploading(pendingProofUploadsRef.current > 0);
+    }
+  };
+
+  const removeStoreProof = (index: number) => {
+    const next = proofMediaRef.current.filter((_, currentIndex) => currentIndex !== index);
+    proofMediaRef.current = next;
+    form.setFieldValue('storeProofMedia', next);
+    form.validateFields(['storeProofMedia']).catch(() => undefined);
   };
 
   const resetLicenseUpload = () => {
@@ -337,10 +399,21 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
               <header className={styles.merchantSectionHeader}>
                 <span>01</span>
                 <div>
-                  <h3>账号信息</h3>
-                  <p>用于创建商家后台登录账号，审核通过后凭此账号登录。</p>
+                  <h3>店铺与账号信息</h3>
+                  <p>店铺名称用于商城展示，不能填写营业执照主体名称代替；账号用于登录商家后台。</p>
                 </div>
               </header>
+              <Form.Item
+                name="shopName"
+                label="店铺名称"
+                extra="仅作为商城展示名称，不等同于营业执照上的公司名称"
+                rules={[
+                  { required: true, message: '请输入店铺名称' },
+                  { max: 100, message: '店铺名称不能超过100个字符' },
+                ]}
+              >
+                <Input size="large" maxLength={100} placeholder="请输入对消费者展示的店铺名称" />
+              </Form.Item>
               <div className={styles.merchantFormGrid}>
               <Form.Item
                 name="accountUsername"
@@ -436,8 +509,13 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
                   <Form.Item name="companyName" label="公司名称" rules={[{ required: true }]}>
                     <Input size="large" placeholder="请输入公司名称" />
                   </Form.Item>
-                  <Form.Item name="companyAddress" label="公司地址" rules={[{ required: true }]}>
-                    <Input size="large" placeholder="请输入公司地址" />
+                  <Form.Item
+                    name="companyAddress"
+                    label="营业执照地址"
+                    extra="由营业执照自动识别，将作为实体店地址并由系统自动定位"
+                    rules={[{ required: true }]}
+                  >
+                    <Input size="large" placeholder="由营业执照自动识别" readOnly />
                   </Form.Item>
                   <Form.Item
                     name="legalPerson"
@@ -479,6 +557,76 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
               <header className={styles.merchantSectionHeader}>
                 <span>03</span>
                 <div>
+                  <h3>实体门店证明</h3>
+                  <p>请上传真实门店照片或视频，辅助管理员确认商家具有实体经营场所。</p>
+                </div>
+              </header>
+              <Form.Item
+                name="storeProofMedia"
+                hidden
+                rules={[
+                  {
+                    validator: (_, value: MerchantProofMedia[] | undefined) => (
+                      value && value.length >= 1 && value.length <= 9
+                        ? Promise.resolve()
+                        : Promise.reject(new Error('请上传1到9个实体门店证明材料'))
+                    ),
+                  },
+                ]}
+              >
+                <Input />
+              </Form.Item>
+              <div className={styles.merchantProofField}>
+                <div className={styles.merchantProofHeading}>
+                  <div>
+                    <strong>门店照片或视频</strong>
+                    <small>必传1个，最多9个；照片支持 JPG、PNG（单张5MB内），视频支持 MP4（单个10MB内）。</small>
+                  </div>
+                  <span>{storeProofMedia.length}/9</span>
+                </div>
+                <Upload
+                  accept=".jpg,.jpeg,.png,.mp4"
+                  customRequest={uploadStoreProof}
+                  multiple
+                  showUploadList={false}
+                  disabled={storeProofMedia.length + pendingProofUploadsRef.current >= 9}
+                >
+                  <Button
+                    block
+                    size="large"
+                    icon={<UploadOutlined />}
+                    loading={proofUploading}
+                    disabled={storeProofMedia.length + pendingProofUploadsRef.current >= 9}
+                  >
+                    {storeProofMedia.length >= 9 ? '已上传9个材料' : '上传门店照片或视频'}
+                  </Button>
+                </Upload>
+                {storeProofMedia.length > 0 && (
+                  <div className={styles.merchantProofGrid}>
+                    {storeProofMedia.map((item, index) => (
+                      <div className={styles.merchantProofItem} key={`${item.mediaUrl}-${index}`}>
+                        {item.mediaType === 'IMAGE' ? (
+                          <img src={item.mediaUrl} alt={`门店证明照片${index + 1}`} />
+                        ) : (
+                          <video src={item.mediaUrl} controls preload="metadata" />
+                        )}
+                        <Button
+                          type="text"
+                          danger
+                          icon={<DeleteOutlined />}
+                          aria-label={`删除第${index + 1}个门店证明材料`}
+                          onClick={() => removeStoreProof(index)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+            <section className={styles.merchantFormSection}>
+              <header className={styles.merchantSectionHeader}>
+                <span>04</span>
+                <div>
                   <h3>经营与溯源信息</h3>
                   <p>帮助平台了解主营方向、产地信息与供应链真实性。</p>
                 </div>
@@ -494,7 +642,7 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
             </section>
             <section className={styles.merchantFormSection}>
               <header className={styles.merchantSectionHeader}>
-                <span>04</span>
+                <span>05</span>
                 <div>
                   <h3>平台合作确认</h3>
                   <p>请确认以下合作约定后提交审核。</p>
@@ -533,14 +681,16 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
                   ? '请先上传营业执照，识别企业信息后再提交核验。'
                   : !licenseVerified
                     ? '请完成营业执照核验后，方可提交申请。'
-                    : '提交后可使用申请手机号查询审核进度。'}
+                    : storeProofMedia.length === 0
+                      ? '请至少上传1个实体门店证明材料。'
+                      : '提交后可使用申请手机号查询审核进度。'}
               </p>
               <Button
                 type="primary"
                 size="large"
                 htmlType="submit"
                 loading={loading}
-                disabled={!licenseVerified || !businessLicense}
+                disabled={!licenseVerified || !businessLicense || storeProofMedia.length === 0 || proofUploading}
               >
                 {application?.auditStatus === 'REJECTED' ? '重新提交入驻申请' : '提交入驻申请'}
               </Button>

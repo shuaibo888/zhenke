@@ -1,5 +1,18 @@
 import { getToken, requestApi, type ApiResponse, type TableResponse } from './apiClient';
 
+export interface PublicMerchantDto {
+  merchantId: number;
+  shopName: string;
+  companyName: string;
+  companyCreditCode: string;
+  legalPerson: string;
+  contactName: string;
+  contactPhone: string;
+  storeAddress: string;
+  latitude: number;
+  longitude: number;
+}
+
 export interface ProductCategoryDto {
   categoryId: number;
   categoryCode: `CATEGORY_${1 | 2 | 3 | 4}`;
@@ -406,6 +419,16 @@ export async function fetchPublicProduct(productId: number) {
   const result = await requestApi<ApiResponse<PublicProductDto>>(`/shop/products/${productId}`);
   if (!result.data) throw new Error('商品详情加载失败');
   return result.data;
+}
+
+export async function fetchPublicMerchant(merchantId: number) {
+  const result = await requestApi<ApiResponse<PublicMerchantDto>>(`/shop/merchants/public/${merchantId}`);
+  if (!result.data) throw new Error('商家详情加载失败');
+  return result.data;
+}
+
+export function merchantNavigationUrl(merchantId: number) {
+  return `/api/shop/merchants/public/${merchantId}/navigation`;
 }
 
 export async function fetchPublishedReport(reportId: number) {

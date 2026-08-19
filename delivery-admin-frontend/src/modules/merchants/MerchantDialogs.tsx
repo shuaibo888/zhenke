@@ -1,4 +1,4 @@
-import { Button, Form, Input, Modal, Select, Tag } from 'antd';
+import { Button, Form, Image, Input, Modal, Select, Tag } from 'antd';
 import type { FormInstance } from 'antd';
 import type { MerchantAccount } from '@/types';
 import styles from '@/pages/index.less';
@@ -84,8 +84,12 @@ export function MerchantDetailDialog(props: MerchantDetailDialogProps) {
             <div className={styles.detailSection}>
               <h4>基本信息</h4>
               <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>商家名称</span>
+                <span className={styles.detailLabel}>店铺名称</span>
                 <span>{props.detailMerchant.name}</span>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>营业执照主体名称</span>
+                <span>{props.detailMerchant.companyName ?? '-'}</span>
               </div>
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>负责人</span>
@@ -96,7 +100,7 @@ export function MerchantDetailDialog(props: MerchantDetailDialogProps) {
                 <span>{props.detailMerchant.phone}</span>
               </div>
               <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>公司地址</span>
+                <span className={styles.detailLabel}>实体店地址（营业执照地址）</span>
                 <span>{props.detailMerchant.companyAddress ?? '-'}</span>
               </div>
               <div className={styles.detailRow}>
@@ -118,7 +122,7 @@ export function MerchantDetailDialog(props: MerchantDetailDialogProps) {
               {props.detailMerchant.businessLicense && (
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>营业执照</span>
-                  <img src={props.detailMerchant.businessLicense} alt="营业执照" className={styles.licenseImage} />
+                  <Image src={props.detailMerchant.businessLicense} alt="营业执照" className={styles.licenseImage} />
                 </div>
               )}
               <div className={styles.detailRow}>
@@ -134,6 +138,24 @@ export function MerchantDetailDialog(props: MerchantDetailDialogProps) {
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>产地溯源</span>
                 <p className={styles.detailText}>{props.detailMerchant.originTraceability ?? '-'}</p>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>实体门店证明（{props.detailMerchant.storeProofMedia?.length ?? 0}/9）</span>
+                {props.detailMerchant.storeProofMedia?.length ? (
+                  <div className={styles.merchantProofGrid}>
+                    {props.detailMerchant.storeProofMedia.map((item, index) => (
+                      <div className={styles.merchantProofItem} key={item.mediaId ?? `${item.mediaUrl}-${index}`}>
+                        {item.mediaType === 'IMAGE' ? (
+                          <Image src={item.mediaUrl} alt={`实体门店证明照片${index + 1}`} />
+                        ) : (
+                          <video src={item.mediaUrl} controls preload="metadata" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className={styles.detailText}>当前商家无实体门店证明材料</p>
+                )}
               </div>
             </div>
 

@@ -130,7 +130,7 @@
     </resultMap>
 
     <sql id="selectCampaign">
-        select c.campaign_id, c.merchant_id, m.company_name as merchant_name,
+        select c.campaign_id, c.merchant_id, m.shop_name as merchant_name,
                c.product_id, c.trial_type, p.product_name,
                p.cover_url as product_cover_url, pc.category_code, pc.category_name,
                c.campaign_title, c.campaign_summary, c.target_count,
@@ -445,7 +445,8 @@
         select r.report_id, r.product_id, p.product_name,
                p.subtitle as product_subtitle, p.detail as product_detail,
                p.cover_url as product_cover_url,
-               p.merchant_id, m.company_name as merchant_name, pc.category_code, pc.category_name,
+               p.merchant_id, m.shop_name as merchant_name,
+               pc.category_code, pc.category_name,
                r.trial_application_id, c.trial_type, r.report_source, r.order_item_id,
                r.source_report_id, r.shop_user_id, u.user_name, u.nick_name,
                 r.report_title, r.experience, r.shortcoming, r.fit_crowd, r.recommend,
@@ -525,7 +526,7 @@
         select feed.* from (
           <if test="contentType == 'ALL' or contentType == 'TRIAL'">
           select 'TRIAL' as content_type, c.campaign_id as content_id,
-                 p.product_id, p.merchant_id, m.company_name as merchant_name,
+                 p.product_id, p.merchant_id, m.shop_name as merchant_name,
                  pc.category_code, pc.category_name, c.campaign_title as title,
                  c.campaign_summary as summary, p.cover_url,
                  c.published_at, (p.stock &gt; 0) as purchasable,
@@ -559,14 +560,14 @@
                 or instr(coalesce(c.campaign_summary, ''), #{keyword}) &gt; 0
                 or instr(p.product_name, #{keyword}) &gt; 0
                 or instr(coalesce(p.subtitle, ''), #{keyword}) &gt; 0
-                or instr(m.company_name, #{keyword}) &gt; 0
+                or instr(m.shop_name, #{keyword}) &gt; 0
               )
             </if>
           </if>
           <if test="contentType == 'ALL'">union all</if>
           <if test="contentType == 'ALL' or contentType == 'REPORT'">
           select 'REPORT' as content_type, r.report_id as content_id,
-                 p.product_id, p.merchant_id, m.company_name as merchant_name,
+                 p.product_id, p.merchant_id, m.shop_name as merchant_name,
                  pc.category_code, pc.category_name,
                  coalesce(nullif(r.report_title, ''), p.product_name) as title,
                  substring(r.experience, 1, 180) as summary,
@@ -606,7 +607,7 @@
                 or instr(coalesce(r.shortcoming, ''), #{keyword}) &gt; 0
                 or instr(p.product_name, #{keyword}) &gt; 0
                 or instr(coalesce(p.subtitle, ''), #{keyword}) &gt; 0
-                or instr(m.company_name, #{keyword}) &gt; 0
+                or instr(m.shop_name, #{keyword}) &gt; 0
                 or instr(coalesce(u.nick_name, ''), #{keyword}) &gt; 0
                 or instr(u.user_name, #{keyword}) &gt; 0
               )

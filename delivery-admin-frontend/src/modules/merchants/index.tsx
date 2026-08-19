@@ -23,7 +23,7 @@ export interface MerchantsModuleProps {
 
 export default function MerchantsModule(props: MerchantsModuleProps) {
   const columns: ColumnsType<MerchantAccount> = [
-    { title: '申请商家', dataIndex: 'name', width: 120 },
+    { title: '店铺名称', dataIndex: 'name', width: 120 },
     { title: '申请编号', dataIndex: 'applicationNo', width: 190, responsive: ['md'] },
     { title: '后台账号', dataIndex: 'username', width: 120, responsive: ['md'] },
     { title: '负责人', dataIndex: 'ownerName', width: 80, responsive: ['md'] },

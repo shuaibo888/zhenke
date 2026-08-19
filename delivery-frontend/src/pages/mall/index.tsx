@@ -220,11 +220,14 @@ export default function MallPage() {
                   {soldOut && <i>已售罄</i>}
                 </span>
                 <span className={styles.mallProductInfo}>
-                  <span className={styles.mallProductTitleRow}>
-                    <strong>
+                  <span
+                    className={styles.mallProductTitleRow}
+                    title={[product.brandName, product.productName].filter(Boolean).join(' ')}
+                  >
+                    {product.brandName && (
                       <span className={styles.mallProductBrand}>{product.brandName}</span>
-                      {product.productName}
-                    </strong>
+                    )}
+                    <strong className={styles.mallProductName}>{product.productName}</strong>
                   </span>
                   {product.subtitle && <small>{product.subtitle}</small>}
                   <span className={styles.mallProductMeta}>

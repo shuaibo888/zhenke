@@ -35,7 +35,7 @@
     <select id="selectUserRecords" parameterType="Long" resultMap="ShopPointRecordResult">
         select point_record_id, change_amount, balance_after, change_reason,
                source_system,
-               case source_system when 'EVENT' then '赛事系统' when 'MALL' then '商城' else source_system end as source_name,
+               case source_system when 'EVENT' then '燃赛' when 'MALL' then '商城' else source_system end as source_name,
                create_time
         from shop_user_point_record
         where shop_user_id = #{shopUserId}
@@ -96,7 +96,7 @@
          source_system, source_event_id, business_type, business_id,
          status, create_time, update_time)
         values
-        (#{shopUserId}, #{points}, #{balanceAfter}, '赛事系统积分划入',
+        (#{shopUserId}, #{points}, #{balanceAfter}, '燃赛燃值划入',
          'EVENT', #{sourceEventId}, 'TRANSFER_IN', #{businessId},
          'SUCCESS', sysdate(), sysdate())
     </insert>

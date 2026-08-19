@@ -1,5 +1,7 @@
 package com.ruoyi.shop.domain.dto;
 
+import java.util.List;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,6 +18,10 @@ public class ShopMerchantApplyBody
     @Size(min = 6, max = 50, message = "商家后台密码必须为6到50位")
     @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$", message = "商家后台密码必须同时包含字母和数字")
     private String password;
+
+    @NotBlank(message = "请输入店铺名称")
+    @Size(max = 100, message = "店铺名称不能超过100个字符")
+    private String shopName;
 
     @NotBlank(message = "请输入公司名称")
     @Size(max = 100, message = "公司名称不能超过100个字符")
@@ -41,6 +47,11 @@ public class ShopMerchantApplyBody
     @Pattern(regexp = "^[0-9A-Za-z]{18}$", message = "统一社会信用代码必须为18位字母或数字")
     private String companyCreditCode;
 
+    @NotNull(message = "请上传实体门店证明材料")
+    @Size(min = 1, max = 9, message = "实体门店证明材料需上传1到9个")
+    @Valid
+    private List<ShopMerchantProofMediaBody> storeProofMedia;
+
     @NotBlank(message = "请输入产品介绍")
     @Size(max = 2000, message = "产品介绍不能超过2000个字符")
     private String productIntro;
@@ -65,6 +76,8 @@ public class ShopMerchantApplyBody
     public void setAccountUsername(String accountUsername) { this.accountUsername = accountUsername; }
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
+    public String getShopName() { return shopName; }
+    public void setShopName(String shopName) { this.shopName = shopName; }
     public String getCompanyName() { return companyName; }
     public void setCompanyName(String companyName) { this.companyName = companyName; }
     public String getCompanyAddress() { return companyAddress; }
@@ -77,6 +90,8 @@ public class ShopMerchantApplyBody
     public void setBusinessLicense(String businessLicense) { this.businessLicense = businessLicense; }
     public String getCompanyCreditCode() { return companyCreditCode; }
     public void setCompanyCreditCode(String companyCreditCode) { this.companyCreditCode = companyCreditCode; }
+    public List<ShopMerchantProofMediaBody> getStoreProofMedia() { return storeProofMedia; }
+    public void setStoreProofMedia(List<ShopMerchantProofMediaBody> storeProofMedia) { this.storeProofMedia = storeProofMedia; }
     public String getProductIntro() { return productIntro; }
     public void setProductIntro(String productIntro) { this.productIntro = productIntro; }
     public String getOriginTraceability() { return originTraceability; }

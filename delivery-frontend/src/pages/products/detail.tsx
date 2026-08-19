@@ -15,6 +15,7 @@ import { useNavigate, useParams, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { AddressManager } from '@/components/AddressManager';
 import { HomeFeedReportCard } from '@/components/HomeFeedReportCard';
+import { MerchantInfoBar } from '@/components/MerchantInfoBar';
 import { WechatShareGuide } from '@/components/WechatShareGuide';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
@@ -213,7 +214,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
     || product?.subtitle
     || (product ? `${product.merchantName} · ${product.categoryName}` : '');
   const shareImageUrl = routeCampaign?.coverUrl || product?.coverUrl || '';
-  useWechatShare(product ? {
+  const prepareWechatShare = useWechatShare(product ? {
     title: productShareTitle,
     description: shareDescription,
     link: shareLink,
@@ -388,7 +389,9 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
 
   const handleShareClick = () => {
     if (isWechatBrowser()) {
-      setWechatShareGuideOpen(true);
+      void prepareWechatShare()
+        .then(() => setWechatShareGuideOpen(true))
+        .catch(() => message.error('微信分享卡片准备失败，请刷新页面后重试'));
       return;
     }
     setShareOpen(true);
@@ -498,6 +501,8 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
             <strong className={styles.linkedProductPrice}>{formatPrice(product.price)}</strong>
           </div>
         </section>
+
+        <MerchantInfoBar merchantId={product.merchantId} merchantName={product.merchantName} />
 
         {product.certificationStatus === 'PASSED' && (
           <section className={styles.productCertificationPanel}>
