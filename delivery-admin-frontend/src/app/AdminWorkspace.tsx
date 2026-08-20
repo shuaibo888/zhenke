@@ -74,6 +74,7 @@ import {
   submitProductCertification,
   openProductCertificationMaterial,
   shipMerchantOrder,
+  redeemShopOrder,
   type CaptchaState,
   type DashboardSummaryDto,
   type ProductCertificationDto,
@@ -253,6 +254,8 @@ function AdminWorkspace() {
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [redeemScanOpen, setRedeemScanOpen] = useState(false);
   const [redeeming, setRedeeming] = useState(false);
+  const [orderRedeemScanOpen, setOrderRedeemScanOpen] = useState(false);
+  const [orderRedeeming, setOrderRedeeming] = useState(false);
   const [merchants, setMerchants] = useState<MerchantAccount[]>([]);
   const [merchantsLoading, setMerchantsLoading] = useState(false);
   const [merchantPage, setMerchantPage] = useState(1);
@@ -689,6 +692,8 @@ function AdminWorkspace() {
       detailImageUrls: [],
       price: 99,
       stock: 20,
+      supportsOnline: true,
+      supportsOffline: false,
     });
     setProductDrawerOpen(true);
   };
@@ -708,6 +713,8 @@ function AdminWorkspace() {
         detailImageUrls: detail.detailImageUrls,
         price: detail.price,
         stock: detail.stock,
+        supportsOnline: detail.supportsOnline ?? true,
+        supportsOffline: detail.supportsOffline ?? false,
       });
       setProductDrawerOpen(true);
     } catch (error) {
@@ -723,6 +730,10 @@ function AdminWorkspace() {
 
   const handleSaveProduct = async (values: ProductFormValues) => {
     if (!session) return;
+    if (!values.supportsOnline && !values.supportsOffline) {
+      message.error('请至少选择一种销售方式（线上配送或到店核销）');
+      return;
+    }
     setProductSaving(true);
     try {
       const body = {
@@ -733,6 +744,8 @@ function AdminWorkspace() {
         coverUrl: values.imageUrl.trim(),
         price: values.price,
         stock: values.stock,
+        supportsOnline: values.supportsOnline,
+        supportsOffline: values.supportsOffline,
         mainImageUrls: values.mainImageUrls ?? [],
         detailImageUrls: values.detailImageUrls ?? [],
       };
@@ -986,6 +999,22 @@ function AdminWorkspace() {
     }
   };
 
+  const handleOrderRedeem = async (redeemCode: string) => {
+    if (!session) return;
+    setOrderRedeeming(true);
+    try {
+      await redeemShopOrder(session, redeemCode);
+      message.success('线下订单已核销');
+      setOrderRedeemScanOpen(false);
+      await loadOrders(session);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '核销失败');
+      throw error;
+    } finally {
+      setOrderRedeeming(false);
+    }
+  };
+
   const openOrderDetail = async (order: ManagedOrder) => {
     if (!session) return;
     try {
@@ -1230,6 +1259,16 @@ function AdminWorkspace() {
       render: (value?: string) => formatDateTime(value),
     },
     {
+      title: '注册来源',
+      dataIndex: 'registerSource',
+      width: 110,
+      render: (registerSource?: ShopUserAccount['registerSource']) => (
+        <Tag color={registerSource === 'RANSAI' ? 'purple' : 'green'}>
+          {registerSource === 'RANSAI' ? '燃赛引流' : '自主注册'}
+        </Tag>
+      ),
+    },
+    {
       title: '账号状态',
       dataIndex: 'status',
       width: 110,
@@ -1293,6 +1332,18 @@ function AdminWorkspace() {
       render: (price: number) => formatMoney(price),
     },
     { title: '库存', dataIndex: 'stock', responsive: ['md'] },
+    {
+      title: '销售方式',
+      key: 'fulfillment',
+      responsive: ['md'],
+      render: (_, product) => {
+        const modes = [
+          product.supportsOnline ? '线上' : null,
+          product.supportsOffline ? '线下' : null,
+        ].filter(Boolean);
+        return modes.length ? modes.join(' + ') : '-';
+      },
+    },
     { title: '销量', dataIndex: 'sales', responsive: ['md'] },
     {
       title: '状态',
@@ -1340,6 +1391,16 @@ function AdminWorkspace() {
     { title: '商品', dataIndex: 'productTitles', responsive: ['md'], render: (titles: string[]) => titles.join('、') },
     { title: '金额', dataIndex: 'amount', render: (amount: number) => formatMoney(amount) },
     {
+      title: '履约方式',
+      key: 'fulfillment',
+      responsive: ['md'],
+      render: (_, order) => (
+        <Tag color={order.fulfillmentType === 'OFFLINE' ? 'purple' : 'blue'}>
+          {order.fulfillmentType === 'OFFLINE' ? '到店核销' : '快递配送'}
+        </Tag>
+      ),
+    },
+    {
       title: '状态',
       dataIndex: 'status',
       render: (status: ManagedOrder['status']) => <Tag color={orderStatusMeta[status].color}>{orderStatusMeta[status].label}</Tag>,
@@ -1362,9 +1423,15 @@ function AdminWorkspace() {
       key: 'actions',
       render: (_, order) => (
         <Space wrap size={6}>
-          <Button size="small" icon={<TruckOutlined />} disabled={order.status !== 'paid'} onClick={() => openOrderShipment(order)}>
-            发货
-          </Button>
+          {order.fulfillmentType === 'OFFLINE' ? (
+            <Button size="small" type="primary" disabled={order.status !== 'paid'} onClick={() => setOrderRedeemScanOpen(true)}>
+              核销
+            </Button>
+          ) : (
+            <Button size="small" icon={<TruckOutlined />} disabled={order.status !== 'paid'} onClick={() => openOrderShipment(order)}>
+              发货
+            </Button>
+          )}
           <Button size="small" icon={<FileSearchOutlined />} onClick={() => void openOrderDetail(order)}>
             订单详情
           </Button>
@@ -1922,6 +1989,15 @@ function AdminWorkspace() {
         redeeming={redeeming}
         onClose={() => setRedeemScanOpen(false)}
         onRedeemed={(code) => handleRedeem(code)}
+      />
+
+      <RedeemScanModal
+        open={orderRedeemScanOpen}
+        redeeming={orderRedeeming}
+        title="线下订单核销"
+        description="对准用户出示的订单核销码，识别成功后核销该线下订单，用户即可发布购买甄客验。"
+        onClose={() => setOrderRedeemScanOpen(false)}
+        onRedeemed={(code) => handleOrderRedeem(code)}
       />
 
       <MerchantDetailDialog

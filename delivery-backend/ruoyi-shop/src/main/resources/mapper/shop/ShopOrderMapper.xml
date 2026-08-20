@@ -12,6 +12,8 @@
         <result property="coverUrl" column="cover_url" />
         <result property="price" column="price" />
         <result property="stock" column="stock" />
+        <result property="supportsOnline" column="supports_online" />
+        <result property="supportsOffline" column="supports_offline" />
         <result property="status" column="product_status" />
     </resultMap>
 
@@ -34,6 +36,9 @@
         <result property="merchantId" column="merchant_id" />
         <result property="merchantName" column="merchant_name" />
         <result property="status" column="order_status" />
+        <result property="fulfillmentType" column="fulfillment_type" />
+        <result property="redeemCode" column="redeem_code" />
+        <result property="redeemedAt" column="redeemed_at" />
         <result property="originalAmount" column="original_amount" />
         <result property="discountAmount" column="discount_amount" />
         <result property="totalAmount" column="total_amount" />
@@ -107,6 +112,7 @@
         <result property="coverUrl" column="cover_url" />
         <result property="unitPrice" column="unit_price" />
         <result property="quantity" column="quantity" />
+        <result property="fulfillmentType" column="fulfillment_type" />
         <result property="lineAmount" column="line_amount" />
         <result property="createTime" column="create_time" />
     </resultMap>
@@ -149,6 +155,7 @@
         select o.order_id, o.order_no, o.user_id,
                coalesce(u.nick_name, u.user_name) as buyer_name, o.merchant_id,
                m.shop_name as merchant_name, o.status as order_status,
+               o.fulfillment_type, o.redeem_code, o.redeemed_at,
                o.original_amount, o.discount_amount, o.total_amount,
                o.item_count, o.del_flag,
                date_add(o.create_time, interval 30 minute) as payment_expire_time,
@@ -173,6 +180,7 @@
         select o.order_id, o.order_no, o.user_id,
                coalesce(u.nick_name, u.user_name) as buyer_name, o.merchant_id,
                m.shop_name as merchant_name, o.status as order_status,
+               o.fulfillment_type, o.redeem_code, o.redeemed_at,
                o.original_amount, o.discount_amount, o.total_amount,
                o.item_count, o.del_flag,
                date_add(o.create_time, interval 30 minute) as payment_expire_time,
@@ -196,7 +204,8 @@
     <select id="selectOrderableProductForUpdate" parameterType="Long" resultMap="ShopProductResult">
         select p.product_id, p.merchant_id, m.shop_name as merchant_name,
                p.category_id, c.category_code, c.category_name, p.product_name,
-               p.cover_url, p.price, p.stock, p.status as product_status
+               p.cover_url, p.price, p.stock, p.supports_online, p.supports_offline,
+               p.status as product_status
         from shop_product p
         inner join shop_merchant m on m.merchant_id = p.merchant_id
         inner join shop_product_category c on c.category_id = p.category_id
@@ -227,11 +236,11 @@
 
     <insert id="insertOrder" parameterType="ShopOrder" useGeneratedKeys="true" keyProperty="orderId">
         insert into shop_order
-        (order_no, user_id, merchant_id, status, original_amount, discount_amount,
+        (order_no, user_id, merchant_id, status, fulfillment_type, original_amount, discount_amount,
          total_amount, item_count, payment_channel, pay_time,
          del_flag, create_time, update_time)
         values
-        (#{orderNo}, #{userId}, #{merchantId}, #{status}, #{originalAmount}, #{discountAmount},
+        (#{orderNo}, #{userId}, #{merchantId}, #{status}, #{fulfillmentType}, #{originalAmount}, #{discountAmount},
          #{totalAmount}, #{itemCount}, #{paymentChannel}, #{payTime},
          '0', sysdate(), sysdate())
     </insert>
@@ -250,9 +259,9 @@
 
     <insert id="insertOrderItem" parameterType="ShopOrderItem" useGeneratedKeys="true" keyProperty="orderItemId">
         insert into shop_order_item
-        (order_id, product_id, source_report_id, product_name, cover_url, unit_price, quantity, line_amount, create_time)
+        (order_id, product_id, source_report_id, product_name, cover_url, unit_price, quantity, fulfillment_type, line_amount, create_time)
         values
-        (#{orderId}, #{productId}, #{sourceReportId}, #{productName}, #{coverUrl}, #{unitPrice}, #{quantity}, #{lineAmount}, sysdate())
+        (#{orderId}, #{productId}, #{sourceReportId}, #{productName}, #{coverUrl}, #{unitPrice}, #{quantity}, #{fulfillmentType}, #{lineAmount}, sysdate())
     </insert>
 
     <insert id="insertOrderAddress" parameterType="ShopOrderAddress" useGeneratedKeys="true" keyProperty="orderAddressId">
@@ -382,7 +391,7 @@
     <select id="selectOrderItems" parameterType="Long" resultMap="ShopOrderItemResult">
         select oi.order_item_id, oi.order_id, oi.product_id, oi.source_report_id,
                published.report_id as verification_report_id, oi.product_name, oi.cover_url,
-               oi.unit_price, oi.quantity, oi.line_amount, oi.create_time
+               oi.unit_price, oi.quantity, oi.fulfillment_type, oi.line_amount, oi.create_time
         from shop_order_item oi
         left join shop_verification_report published
           on published.order_item_id = oi.order_item_id and published.status = 'PUBLISHED'
@@ -393,7 +402,7 @@
     <select id="selectOrderItemsByOrderIds" resultMap="ShopOrderItemResult">
         select oi.order_item_id, oi.order_id, oi.product_id, oi.source_report_id,
                published.report_id as verification_report_id, oi.product_name, oi.cover_url,
-               oi.unit_price, oi.quantity, oi.line_amount, oi.create_time
+               oi.unit_price, oi.quantity, oi.fulfillment_type, oi.line_amount, oi.create_time
         from shop_order_item oi
         left join shop_verification_report published
           on published.order_item_id = oi.order_item_id and published.status = 'PUBLISHED'
@@ -438,7 +447,7 @@
     <select id="selectUserReceivedOrderItemForUpdate" resultMap="ShopOrderItemResult">
         select oi.order_item_id, oi.order_id, oi.product_id, oi.source_report_id,
                published.report_id as verification_report_id, oi.product_name, oi.cover_url,
-               oi.unit_price, oi.quantity, oi.line_amount, oi.create_time
+               oi.unit_price, oi.quantity, oi.fulfillment_type, oi.line_amount, oi.create_time
         from shop_order_item oi
         inner join shop_order o on o.order_id = oi.order_id
         left join shop_verification_report published
@@ -548,6 +557,32 @@
         set status = 'SHIPPED', tracking_no = #{trackingNo},
             ship_time = sysdate(), update_time = sysdate()
         where merchant_id = #{merchantId} and order_id = #{orderId}
-          and status = 'PAID' and del_flag = '0'
+          and status = 'PAID' and fulfillment_type = 'ONLINE' and del_flag = '0'
     </update>
+
+    <update id="updateOrderRedeemCode">
+        update shop_order
+        set redeem_code = #{redeemCode}, update_time = sysdate()
+        where order_id = #{orderId} and user_id = #{userId}
+          and fulfillment_type = 'OFFLINE' and status = 'PAID' and redeem_code is null
+    </update>
+
+    <update id="redeemOrder">
+        update shop_order
+        set status = 'RECEIVED', receive_time = sysdate(), redeemed_at = sysdate(), update_time = sysdate()
+        where redeem_code = #{redeemCode} and merchant_id = #{merchantId}
+          and fulfillment_type = 'OFFLINE' and status = 'PAID' and del_flag = '0'
+    </update>
+
+    <select id="selectMerchantOrderByRedeemCode" resultMap="ShopOrderResult">
+        <include refid="selectOrderColumns" />
+        where o.merchant_id = #{merchantId} and o.redeem_code = #{redeemCode} and o.del_flag = '0'
+        limit 1
+    </select>
+
+    <select id="selectAdminOrderByRedeemCode" parameterType="String" resultMap="ShopOrderResult">
+        <include refid="selectOrderColumns" />
+        where o.redeem_code = #{redeemCode} and o.del_flag = '0'
+        limit 1
+    </select>
 </mapper>

@@ -85,6 +85,8 @@ interface ProductDto {
   coverUrl: string;
   price: number;
   stock: number;
+  supportsOnline: '0' | '1';
+  supportsOffline: '0' | '1';
   salesCount: number;
   status: 'DRAFT' | 'ON_SALE' | 'OFF_SALE';
   images?: Array<{ imageId: number; imageUrl: string; imageSort: number }>;
@@ -161,6 +163,9 @@ interface ShopOrderDto {
   merchantId: number;
   merchantName?: string;
   status: 'PENDING_PAYMENT' | 'PAID' | 'SHIPPED' | 'RECEIVED' | 'CANCELLED' | 'REFUNDING' | 'REFUNDED';
+  fulfillmentType?: 'ONLINE' | 'OFFLINE';
+  redeemCode?: string;
+  redeemedAt?: string;
   totalAmount: number;
   itemCount: number;
   payTime?: string;
@@ -340,6 +345,8 @@ function toManagedProduct(dto: ProductDto): ManagedProduct {
     price: Number(dto.price),
     cost: 0,
     stock: dto.stock,
+    supportsOnline: dto.supportsOnline === '1',
+    supportsOffline: dto.supportsOffline === '1',
     sales: dto.salesCount,
     verifyCount: 0,
     certificationStatus: dto.certificationStatus,
@@ -368,6 +375,9 @@ function toManagedOrder(dto: ShopOrderDto): ManagedOrder {
       REFUNDING: 'refunding',
       REFUNDED: 'refunded',
     } as const)[dto.status],
+    fulfillmentType: dto.fulfillmentType,
+    redeemCode: dto.redeemCode,
+    redeemedAt: dto.redeemedAt,
     amount: Number(dto.totalAmount),
     itemCount: dto.itemCount,
     productTitles: items.map((item) => item.productName),
@@ -721,6 +731,8 @@ export interface ProductWriteBody {
   coverUrl: string;
   price: number;
   stock: number;
+  supportsOnline: boolean;
+  supportsOffline: boolean;
   mainImageUrls?: string[];
   detailImageUrls?: string[];
 }
@@ -817,6 +829,17 @@ export async function shipMerchantOrder(session: AdminSession, orderId: number, 
     true,
   );
   if (!result.data) throw new Error('订单发货失败');
+  return toManagedOrder(result.data);
+}
+
+export async function redeemShopOrder(session: AdminSession, redeemCode: string) {
+  const path = session.loginType === 'merchant' ? '/shop/merchant/orders' : '/shop/admin/orders';
+  const result = await requestApi<ApiResponse<ShopOrderDto>>(
+    `${path}/redeem`,
+    { method: 'POST', body: JSON.stringify({ redeemCode }) },
+    true,
+  );
+  if (!result.data) throw new Error('核销失败');
   return toManagedOrder(result.data);
 }
 

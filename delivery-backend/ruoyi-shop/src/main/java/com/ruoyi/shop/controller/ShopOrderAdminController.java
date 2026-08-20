@@ -19,6 +19,8 @@ import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.shop.domain.ShopOrder;
 import com.ruoyi.shop.domain.dto.ShopOrderRefundAuditBody;
 import com.ruoyi.shop.domain.dto.ShopOrderShipBody;
+import com.ruoyi.shop.domain.dto.ShopOrderRedeemBody;
+import org.springframework.web.bind.annotation.PostMapping;
 import com.ruoyi.shop.service.ShopAdminOrderService;
 import com.ruoyi.shop.service.ShopMerchantOrderService;
 import com.ruoyi.shop.service.ShopOrderService;
@@ -83,5 +85,13 @@ public class ShopOrderAdminController extends BaseController
             order = orderService.adminOrder(orderId);
         }
         return AjaxResult.success(order);
+    }
+
+    @Log(title = "平台管理线下订单核销", businessType = BusinessType.UPDATE)
+    @PostMapping("/redeem")
+    public AjaxResult redeem(@Valid @RequestBody ShopOrderRedeemBody body)
+    {
+        return AjaxResult.success("线下订单已核销，用户现在可以发布购买甄客验",
+                merchantOrderService.adminRedeem(body.getRedeemCode()));
     }
 }

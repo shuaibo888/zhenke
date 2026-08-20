@@ -2,6 +2,7 @@ import { CheckCircleOutlined, UploadOutlined } from '@ant-design/icons';
 import {
   App as AntApp,
   Button,
+  Checkbox,
   Drawer,
   Form,
   Input,
@@ -29,6 +30,8 @@ export interface ProductFormValues {
   detailImageUrls: string[];
   price: number;
   stock: number;
+  supportsOnline: boolean;
+  supportsOffline: boolean;
 }
 
 export interface ProductDialogsProps {
@@ -284,6 +287,16 @@ export default function ProductDialogs(props: ProductDialogsProps) {
               <InputNumber min={0} precision={0} />
             </Form.Item>
           </Space>
+          <Form.Item label="销售方式" required extra="至少选择一种；到店核销在支付后生成核销券，与试用线上线下无关。">
+            <Space size={20}>
+              <Form.Item name="supportsOnline" valuePropName="checked" noStyle>
+                <Checkbox>线上快递配送</Checkbox>
+              </Form.Item>
+              <Form.Item name="supportsOffline" valuePropName="checked" noStyle>
+                <Checkbox>到店核销</Checkbox>
+              </Form.Item>
+            </Space>
+          </Form.Item>
           <Button loading={props.productSaving} type="primary" htmlType="submit" block icon={<CheckCircleOutlined />}>
             {props.editingProductId ? '保存修改' : '保存商品'}
           </Button>

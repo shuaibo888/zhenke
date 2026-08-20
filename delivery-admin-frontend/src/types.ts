@@ -33,6 +33,7 @@ export interface ShopUserAccount {
   reviewEligible: '0' | '1';
   trialEligible: '0' | '1';
   status: '0' | '1';
+  registerSource?: 'SELF' | 'RANSAI';
   loginIp?: string;
   loginDate?: string;
   createTime?: string;
@@ -112,6 +113,8 @@ export interface ManagedProduct {
   price: number;
   cost: number;
   stock: number;
+  supportsOnline?: boolean;
+  supportsOffline?: boolean;
   sales: number;
   verifyCount: number;
   certificationStatus?: 'PROCESSING' | 'PASSED' | 'REJECTED' | 'EXPIRED';
@@ -136,6 +139,9 @@ export interface ManagedOrder {
   orderNo: string;
   buyerName: string;
   status: OrderStatus;
+  fulfillmentType?: 'ONLINE' | 'OFFLINE';
+  redeemCode?: string;
+  redeemedAt?: string;
   amount: number;
   itemCount: number;
   productTitles: string[];

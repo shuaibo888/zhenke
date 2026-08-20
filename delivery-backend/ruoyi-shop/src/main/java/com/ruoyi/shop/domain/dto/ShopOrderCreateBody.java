@@ -8,7 +8,6 @@ import jakarta.validation.constraints.Size;
 
 public class ShopOrderCreateBody
 {
-    @NotNull(message = "请选择收货地址")
     private Long addressId;
 
     @Valid

@@ -82,6 +82,10 @@ public class ShopMerchantOrderService
             String operatorType, long operatorId, String remark)
     {
         ShopOrder order = requireMerchantOrder(merchantId, orderId, true);
+        if (ShopProductService.FULFILLMENT_OFFLINE.equals(order.getFulfillmentType()))
+        {
+            throw new ServiceException("线下核销订单无需发货");
+        }
         if (!ShopOrderService.PAID.equals(order.getStatus()))
         {
             throw new ServiceException(ShopOrderService.SHIPPED.equals(order.getStatus())
@@ -104,6 +108,44 @@ public class ShopMerchantOrderService
                 operatorType, operatorId, remark);
         insertLogisticsEvent(orderId, operatorType);
         return hydrate(requireMerchantOrder(merchantId, orderId, false));
+    }
+
+    @Transactional
+    public ShopOrder redeem(String redeemCode)
+    {
+        ShopMerchant merchant = merchantService.currentMerchantAccount();
+        return redeemForMerchant(merchant.getMerchantId(), redeemCode);
+    }
+
+    @Transactional
+    public ShopOrder adminRedeem(String redeemCode)
+    {
+        String normalized = StringUtils.trim(redeemCode);
+        ShopOrder order = orderMapper.selectAdminOrderByRedeemCode(normalized);
+        if (order == null)
+        {
+            throw new ServiceException("核销码无效");
+        }
+        return redeemForMerchant(order.getMerchantId(), normalized);
+    }
+
+    private ShopOrder redeemForMerchant(long merchantId, String redeemCode)
+    {
+        String normalized = StringUtils.trim(redeemCode);
+        if (StringUtils.isEmpty(normalized))
+        {
+            throw new ServiceException("核销码不能为空");
+        }
+        if (orderMapper.redeemOrder(merchantId, normalized) == 0)
+        {
+            throw new ServiceException("核销码无效或不属于当前商家");
+        }
+        ShopOrder order = orderMapper.selectMerchantOrderByRedeemCode(merchantId, normalized);
+        if (order == null)
+        {
+            throw new ServiceException("订单不存在");
+        }
+        return hydrate(order);
     }
 
     @Transactional

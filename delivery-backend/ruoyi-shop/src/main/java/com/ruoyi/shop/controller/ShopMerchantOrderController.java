@@ -4,13 +4,7 @@ import java.util.List;
 
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import com.github.pagehelper.PageHelper;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
@@ -20,6 +14,7 @@ import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.shop.domain.ShopOrder;
 import com.ruoyi.shop.domain.dto.ShopOrderShipBody;
 import com.ruoyi.shop.domain.dto.ShopOrderRefundAuditBody;
+import com.ruoyi.shop.domain.dto.ShopOrderRedeemBody;
 import com.ruoyi.shop.service.ShopMerchantOrderService;
 import com.ruoyi.shop.service.ShopMerchantService;
 import com.ruoyi.shop.service.ShopOrderService;
@@ -77,5 +72,12 @@ public class ShopMerchantOrderController extends BaseController {
             order = orderService.merchantOrder(orderId);
         }
         return AjaxResult.success(order);
+    }
+
+    @Log(title = "线下订单核销", businessType = BusinessType.UPDATE)
+    @PostMapping("/redeem")
+    public AjaxResult redeem(@Valid @RequestBody ShopOrderRedeemBody body) {
+        return AjaxResult.success("线下订单已核销，用户现在可以发布购买甄客验",
+                orderService.redeem(body.getRedeemCode()));
     }
 }

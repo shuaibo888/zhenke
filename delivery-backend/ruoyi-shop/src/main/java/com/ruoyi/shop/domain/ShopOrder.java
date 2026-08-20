@@ -13,6 +13,9 @@ public class ShopOrder
     private Long merchantId;
     private String merchantName;
     private String status;
+    private String fulfillmentType;
+    private String redeemCode;
+    private Date redeemedAt;
     private BigDecimal originalAmount;
     private BigDecimal discountAmount;
     private BigDecimal totalAmount;
@@ -59,6 +62,12 @@ public class ShopOrder
     public void setMerchantName(String merchantName) { this.merchantName = merchantName; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getFulfillmentType() { return fulfillmentType; }
+    public void setFulfillmentType(String fulfillmentType) { this.fulfillmentType = fulfillmentType; }
+    public String getRedeemCode() { return redeemCode; }
+    public void setRedeemCode(String redeemCode) { this.redeemCode = redeemCode; }
+    public Date getRedeemedAt() { return redeemedAt; }
+    public void setRedeemedAt(Date redeemedAt) { this.redeemedAt = redeemedAt; }
     public BigDecimal getOriginalAmount() { return originalAmount; }
     public void setOriginalAmount(BigDecimal originalAmount) { this.originalAmount = originalAmount; }
     public BigDecimal getDiscountAmount() { return discountAmount; }

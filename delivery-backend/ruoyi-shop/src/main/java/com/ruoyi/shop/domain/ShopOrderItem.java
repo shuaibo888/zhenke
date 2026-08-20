@@ -14,6 +14,7 @@ public class ShopOrderItem
     private String coverUrl;
     private BigDecimal unitPrice;
     private Integer quantity;
+    private String fulfillmentType;
     private BigDecimal lineAmount;
     private Date createTime;
 
@@ -35,6 +36,8 @@ public class ShopOrderItem
     public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
+    public String getFulfillmentType() { return fulfillmentType; }
+    public void setFulfillmentType(String fulfillmentType) { this.fulfillmentType = fulfillmentType; }
     public BigDecimal getLineAmount() { return lineAmount; }
     public void setLineAmount(BigDecimal lineAmount) { this.lineAmount = lineAmount; }
     public Date getCreateTime() { return createTime; }

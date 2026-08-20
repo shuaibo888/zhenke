@@ -34,6 +34,8 @@ export interface PublicProductDto {
   coverUrl: string;
   price: number;
   stock: number;
+  supportsOnline: '0' | '1';
+  supportsOffline: '0' | '1';
   salesCount: number;
   status: 'ON_SALE';
   images?: Array<{ imageId: number; imageType: 'MAIN' | 'DETAIL'; imageUrl: string; imageSort: number }>;
@@ -193,6 +195,7 @@ export interface ShopCartItemDto {
   productId: number;
   sourceReportId?: number;
   quantity: number;
+  fulfillmentType?: 'ONLINE' | 'OFFLINE';
   merchantId: number;
   merchantName: string;
   categoryCode: ProductCategoryDto['categoryCode'];
@@ -236,6 +239,9 @@ export interface ShopOrderDto {
   merchantId: number;
   merchantName: string;
   status: 'PENDING_PAYMENT' | 'PAID' | 'SHIPPED' | 'RECEIVED' | 'CANCELLED' | 'REFUNDING' | 'REFUNDED';
+  fulfillmentType: 'ONLINE' | 'OFFLINE';
+  redeemCode?: string;
+  redeemedAt?: string;
   originalAmount: number;
   discountAmount: number;
   totalAmount: number;
@@ -279,6 +285,7 @@ export interface ShopOrderDto {
     coverUrl: string;
     unitPrice: number;
     quantity: number;
+    fulfillmentType?: 'ONLINE' | 'OFFLINE';
     lineAmount: number;
   }>;
   address?: {
@@ -509,10 +516,10 @@ export async function fetchShopCart() {
   return Array.isArray(result.data) ? result.data : [];
 }
 
-export async function addShopCartItem(productId: number, quantity = 1, sourceReportId?: number) {
+export async function addShopCartItem(productId: number, quantity = 1, sourceReportId?: number, fulfillmentType?: 'ONLINE' | 'OFFLINE') {
   const result = await requestApi<ApiResponse<ShopCartItemDto>>(
     '/shop/users/me/cart',
-    { method: 'POST', body: JSON.stringify({ productId, quantity, sourceReportId }) },
+    { method: 'POST', body: JSON.stringify({ productId, quantity, sourceReportId, fulfillmentType }) },
     true,
   );
   if (!result.data) throw new Error('加入购物车失败');
@@ -563,8 +570,8 @@ export async function fetchAvailableCoupons(merchantId: number, subtotal: number
 }
 
 export async function createShopOrders(body: {
-  addressId: number;
-  items: Array<{ productId: number; quantity: number; sourceReportId?: number }>;
+  addressId?: number | null;
+  items: Array<{ productId: number; quantity: number; sourceReportId?: number; fulfillmentType?: 'ONLINE' | 'OFFLINE' }>;
   userCouponIds?: number[];
 }) {
   const result = await requestApi<ApiResponse<ShopOrderDto[]>>(
@@ -575,7 +582,7 @@ export async function createShopOrders(body: {
   return Array.isArray(result.data) ? result.data : [];
 }
 
-export async function checkoutShopCart(addressId: number, userCouponIds?: number[]) {
+export async function checkoutShopCart(addressId: number | null, userCouponIds?: number[]) {
   const result = await requestApi<ApiResponse<ShopOrderDto[]>>(
     '/shop/orders/from-cart',
     { method: 'POST', body: JSON.stringify({ addressId, userCouponIds }) },
@@ -628,6 +635,16 @@ export async function reconcileWechatPayment(orderId: number) {
     true,
   );
   if (!result.data) throw new Error('微信支付查单失败');
+  return result.data;
+}
+
+export async function fetchShopOrderRedeemCode(orderId: number) {
+  const result = await requestApi<ApiResponse<ShopOrderDto>>(
+    `/shop/orders/${orderId}/redeem-code`,
+    {},
+    true,
+  );
+  if (!result.data) throw new Error('获取核销码失败');
   return result.data;
 }
 

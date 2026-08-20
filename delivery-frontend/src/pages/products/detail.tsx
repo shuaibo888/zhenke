@@ -111,6 +111,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   const [addressOpen, setAddressOpen] = useState(false);
   const [pendingAddressAction, setPendingAddressAction] = useState<PendingAddressAction>(null);
   const [cartSubmitting, setCartSubmitting] = useState(false);
+  const [purchaseFulfillment, setPurchaseFulfillment] = useState<'ONLINE' | 'OFFLINE'>('ONLINE');
   const [shareOpen, setShareOpen] = useState(false);
   const [wechatShareGuideOpen, setWechatShareGuideOpen] = useState(false);
   const [productContentTab, setProductContentTab] = useState<'DETAIL' | 'REPORT'>('DETAIL');
@@ -168,6 +169,13 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
       mounted = false;
     };
   }, [productId]);
+
+  const supportsOnlinePurchase = product?.supportsOnline === '1';
+  const supportsOfflinePurchase = product?.supportsOffline === '1';
+  useEffect(() => {
+    if (supportsOnlinePurchase) setPurchaseFulfillment('ONLINE');
+    else if (supportsOfflinePurchase) setPurchaseFulfillment('OFFLINE');
+  }, [supportsOnlinePurchase, supportsOfflinePurchase]);
 
   const campaigns = useMemo(() => feed.filter((item) => item.contentType === 'TRIAL' && item.trial), [feed]);
   const productGallery = useMemo(() => {
@@ -242,7 +250,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
     if (!requireLogin() || !product) return;
     setCartSubmitting(true);
     try {
-      await addToCart(product.productId, 1, validSourceReportId);
+      await addToCart(product.productId, 1, validSourceReportId, purchaseFulfillment);
       message.success('已加入购物车');
     } catch (error) {
       message.error(error instanceof Error ? error.message : '加入购物车失败');
@@ -258,6 +266,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
       quantity: '1',
     });
     if (validSourceReportId) params.set('sourceReportId', String(validSourceReportId));
+    params.set('fulfillmentType', purchaseFulfillment);
     navigate(`/checkout?${params.toString()}`);
   };
 
@@ -657,6 +666,28 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
           )}
         </section>
 
+        {supportsOnlinePurchase && supportsOfflinePurchase && (
+          <div style={{ display: 'flex', gap: 8, padding: '8px 16px', background: '#fff', borderTop: '1px solid #f0f0f0' }}>
+            {(['ONLINE', 'OFFLINE'] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setPurchaseFulfillment(type)}
+                style={{
+                  flex: 1,
+                  padding: '10px 0',
+                  borderRadius: 8,
+                  border: purchaseFulfillment === type ? '1px solid #1f6f5b' : '1px solid #e5e5e5',
+                  background: purchaseFulfillment === type ? '#eef6f2' : '#fff',
+                  color: purchaseFulfillment === type ? '#1f6f5b' : '#333',
+                  fontWeight: 600,
+                }}
+              >
+                {type === 'ONLINE' ? '快递配送' : '到店核销'}
+              </button>
+            ))}
+          </div>
+        )}
         <div className={`${styles.reportDetailBottomBar} ${styles.productFixedBar}`}>
           <Button
             size="large"

@@ -68,4 +68,10 @@ public interface ShopOrderMapper
     ShopOrder selectAdminOrder(Long orderId);
     int shipOrder(@Param("merchantId") Long merchantId, @Param("orderId") Long orderId,
             @Param("trackingNo") String trackingNo);
+    int updateOrderRedeemCode(@Param("orderId") Long orderId, @Param("userId") Long userId,
+            @Param("redeemCode") String redeemCode);
+    int redeemOrder(@Param("merchantId") Long merchantId, @Param("redeemCode") String redeemCode);
+    ShopOrder selectMerchantOrderByRedeemCode(@Param("merchantId") Long merchantId,
+            @Param("redeemCode") String redeemCode);
+    ShopOrder selectAdminOrderByRedeemCode(String redeemCode);
 }

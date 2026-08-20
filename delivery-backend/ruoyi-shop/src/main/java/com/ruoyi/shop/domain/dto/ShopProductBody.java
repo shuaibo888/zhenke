@@ -40,6 +40,9 @@ public class ShopProductBody
     @Max(value = 999999999, message = "商品库存过大")
     private Integer stock;
 
+    private Boolean supportsOnline;
+    private Boolean supportsOffline;
+
     @Size(max = 6, message = "商品主图最多6张")
     private List<@NotBlank(message = "商品主图地址不能为空") @Size(max = 500, message = "商品主图地址不能超过500个字符") String> mainImageUrls;
 
@@ -60,6 +63,10 @@ public class ShopProductBody
     public void setPrice(BigDecimal price) { this.price = price; }
     public Integer getStock() { return stock; }
     public void setStock(Integer stock) { this.stock = stock; }
+    public Boolean getSupportsOnline() { return supportsOnline; }
+    public void setSupportsOnline(Boolean supportsOnline) { this.supportsOnline = supportsOnline; }
+    public Boolean getSupportsOffline() { return supportsOffline; }
+    public void setSupportsOffline(Boolean supportsOffline) { this.supportsOffline = supportsOffline; }
     public List<String> getMainImageUrls() { return mainImageUrls; }
     public void setMainImageUrls(List<String> mainImageUrls) { this.mainImageUrls = mainImageUrls; }
     public List<String> getDetailImageUrls() { return detailImageUrls; }

@@ -33,6 +33,8 @@
         <result property="coverUrl" column="cover_url" />
         <result property="price" column="price" />
         <result property="stock" column="stock" />
+        <result property="supportsOnline" column="supports_online" />
+        <result property="supportsOffline" column="supports_offline" />
         <result property="salesCount" column="sales_count" />
         <result property="status" column="product_status" />
         <result property="delFlag" column="del_flag" />
@@ -57,7 +59,7 @@
         select p.product_id, p.merchant_id, m.shop_name as merchant_name,
                p.category_id, c.category_code, c.category_name,
                p.brand_name, p.product_name, p.subtitle, p.detail, p.cover_url, p.price,
-               p.stock, coalesce((
+               p.stock, p.supports_online, p.supports_offline, coalesce((
                    select sum(oi.quantity)
                    from shop_order_item oi
                    inner join shop_order o on o.order_id = oi.order_id and o.del_flag = '0'
@@ -166,7 +168,7 @@
         select p.product_id, p.merchant_id, m.shop_name as merchant_name,
                p.category_id, c.category_code, c.category_name,
                p.brand_name, p.product_name, p.subtitle, p.cover_url, p.price, p.stock,
-               coalesce((
+               p.supports_online, p.supports_offline, coalesce((
                    select sum(oi.quantity)
                    from shop_order_item oi
                    inner join shop_order o on o.order_id = oi.order_id and o.del_flag = '0'
@@ -217,7 +219,7 @@
         select p.product_id, p.merchant_id, m.shop_name as merchant_name,
                p.category_id, c.category_code, c.category_name,
                p.brand_name, p.product_name, p.subtitle, p.detail, p.cover_url, p.price, p.stock,
-               coalesce((
+               p.supports_online, p.supports_offline, coalesce((
                    select sum(oi.quantity)
                    from shop_order_item oi
                    inner join shop_order o on o.order_id = oi.order_id and o.del_flag = '0'
@@ -259,16 +261,17 @@
     <insert id="insertProduct" parameterType="ShopProduct" useGeneratedKeys="true" keyProperty="productId">
         insert into shop_product
         (merchant_id, category_id, brand_name, product_name, subtitle, detail, cover_url,
-         price, stock, sales_count, status, del_flag, create_by, create_time, update_by, update_time)
+         price, stock, supports_online, supports_offline, sales_count, status, del_flag, create_by, create_time, update_by, update_time)
         values
         (#{merchantId}, #{categoryId}, #{brandName}, #{productName}, #{subtitle}, #{detail}, #{coverUrl},
-         #{price}, #{stock}, 0, 'DRAFT', '0', #{createBy}, sysdate(), #{updateBy}, sysdate())
+         #{price}, #{stock}, #{supportsOnline}, #{supportsOffline}, 0, 'DRAFT', '0', #{createBy}, sysdate(), #{updateBy}, sysdate())
     </insert>
 
     <update id="updateMerchantProduct" parameterType="ShopProduct">
         update shop_product
         set category_id = #{categoryId}, brand_name = #{brandName}, product_name = #{productName}, subtitle = #{subtitle},
             detail = #{detail}, cover_url = #{coverUrl}, price = #{price}, stock = #{stock},
+            supports_online = #{supportsOnline}, supports_offline = #{supportsOffline},
             update_by = #{updateBy}, update_time = sysdate()
         where product_id = #{productId} and merchant_id = #{merchantId} and del_flag = '0'
     </update>

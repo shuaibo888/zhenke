@@ -23,6 +23,8 @@ public class ShopProduct extends BaseEntity
     private String coverUrl;
     private BigDecimal price;
     private Integer stock;
+    private String supportsOnline;
+    private String supportsOffline;
     private Integer salesCount;
     private String status;
     private String delFlag;
@@ -70,6 +72,10 @@ public class ShopProduct extends BaseEntity
     public void setPrice(BigDecimal price) { this.price = price; }
     public Integer getStock() { return stock; }
     public void setStock(Integer stock) { this.stock = stock; }
+    public String getSupportsOnline() { return supportsOnline; }
+    public void setSupportsOnline(String supportsOnline) { this.supportsOnline = supportsOnline; }
+    public String getSupportsOffline() { return supportsOffline; }
+    public void setSupportsOffline(String supportsOffline) { this.supportsOffline = supportsOffline; }
     public Integer getSalesCount() { return salesCount; }
     public void setSalesCount(Integer salesCount) { this.salesCount = salesCount; }
     public String getStatus() { return status; }

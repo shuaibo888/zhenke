@@ -71,6 +71,12 @@ public class ShopOrderController
         return AjaxResult.success(orderService.confirmReceived(orderId));
     }
 
+    @GetMapping("/{orderId}/redeem-code")
+    public AjaxResult redeemCode(@PathVariable long orderId)
+    {
+        return AjaxResult.success(orderService.getOrCreateRedeemCode(orderId));
+    }
+
     @PostMapping("/{orderId}/refund")
     public AjaxResult refund(@PathVariable long orderId, @Valid @RequestBody ShopOrderRefundBody body)
     {

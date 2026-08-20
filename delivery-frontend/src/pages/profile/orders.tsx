@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LogisticsModal } from '@/components/LogisticsModal';
+import { OrderRedeemCodeModal } from '@/components/OrderRedeemCodeModal';
 import { PublishReportModal } from '@/components/PublishReportModal';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
@@ -53,7 +54,8 @@ export default function OrdersPage() {
   const [refundReason, setRefundReason] = useState('');
   const [refundSubmitting, setRefundSubmitting] = useState(false);
   const [reportItem, setReportItem] = useState<PurchaseItem | null>(null);
-  useBodyScrollLock(logisticsOpen || Boolean(refundOrder) || Boolean(reportItem));
+  const [redeemOrder, setRedeemOrder] = useState<ShopOrderDto | null>(null);
+  useBodyScrollLock(logisticsOpen || Boolean(refundOrder) || Boolean(reportItem) || Boolean(redeemOrder));
   useRefreshOnRoute('/profile/orders', refreshOrders, '订单记录刷新失败');
 
   useEffect(() => {
@@ -200,6 +202,7 @@ export default function OrdersPage() {
                   <div className={styles.orderThumbInfo}>
                     <p className={styles.orderThumbTitle}>{order.items.map((item) => item.productName).join('、')}</p>
                     <p className={styles.orderThumbNo}>订单号 {order.orderNo}</p>
+                    {order.fulfillmentType === 'OFFLINE' && <Tag color="purple">到店核销</Tag>}
                     {order.refundStatus === 'PENDING' && <Tag color="gold">退款待审核</Tag>}
                     {order.refundStatus === 'REFUNDING' && <Tag color="blue">退款处理中</Tag>}
                     {order.refundStatus === 'REJECTED' && <Tag color="red">退款已驳回</Tag>}
@@ -231,7 +234,11 @@ export default function OrdersPage() {
                   </div>
                 ))}
                 <div className={styles.orderCardFooter}>
-                  {!['PENDING_PAYMENT', 'CANCELLED'].includes(order.status) && (
+                  {order.status === 'PAID' && order.fulfillmentType === 'OFFLINE' && (
+                    <Button size="small" type="primary" onClick={() => setRedeemOrder(order)}>出示核销码</Button>
+                  )}
+                  {order.fulfillmentType !== 'OFFLINE'
+                    && !['PENDING_PAYMENT', 'CANCELLED'].includes(order.status) && (
                     <Button size="small" onClick={() => void openLogistics(order)}>查看物流</Button>
                   )}
                   {order.status === 'PENDING_PAYMENT' && (
@@ -314,6 +321,16 @@ export default function OrdersPage() {
         purchaseItem={reportItem}
         onClose={() => setReportItem(null)}
         onPublished={(report) => void reportPublished(report)}
+      />
+
+      <OrderRedeemCodeModal
+        open={Boolean(redeemOrder)}
+        order={redeemOrder}
+        onClose={() => setRedeemOrder(null)}
+        onRedeemed={() => {
+          void refreshOrders();
+          setRedeemOrder(null);
+        }}
       />
     </>
   );

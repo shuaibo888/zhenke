@@ -31,9 +31,18 @@ export interface RedeemScanModalProps {
   redeeming: boolean;
   onClose: () => void;
   onRedeemed: (redeemCode: string) => Promise<void>;
+  title?: string;
+  description?: string;
 }
 
-export default function RedeemScanModal({ open, redeeming, onClose, onRedeemed }: RedeemScanModalProps) {
+export default function RedeemScanModal({
+  open,
+  redeeming,
+  onClose,
+  onRedeemed,
+  title = '线下试用核销',
+  description = '对准用户出示的核销码，识别成功后自动核销该线下试用申请。',
+}: RedeemScanModalProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const busyRef = useRef(false);
   const openRef = useRef(open);
@@ -169,7 +178,7 @@ export default function RedeemScanModal({ open, redeeming, onClose, onRedeemed }
 
   return (
     <Modal
-      title="线下试用核销"
+      title={title}
       open={open}
       onCancel={onClose}
       footer={null}
@@ -189,7 +198,7 @@ export default function RedeemScanModal({ open, redeeming, onClose, onRedeemed }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <p style={{ margin: 0, color: 'rgba(0,0,0,0.45)' }}>
-          对准用户出示的核销码，识别成功后自动核销该线下试用申请。
+          {description}
         </p>
         {open && (
           <div

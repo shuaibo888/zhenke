@@ -55,6 +55,11 @@ public class ShopAccountService
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final String PHONE_PATTERN = "^1\\d{10}$";
 
+    /** 注册来源：商城自主注册（账号密码、手机号、H5 一键认证直接创建账号）。 */
+    public static final String REGISTER_SOURCE_SELF = "SELF";
+    /** 注册来源：用户首次通过燃赛单点登录进入商城并因此自动创建账号。 */
+    public static final String REGISTER_SOURCE_RANSAI = "RANSAI";
+
     private final ShopUserMapper userMapper;
     private final ShopPointMapper pointMapper;
     private final ShopTrialMapper trialMapper;
@@ -98,6 +103,7 @@ public class ShopAccountService
         user.setReviewEligible("0");
         user.setTrialEligible("0");
         user.setStatus("0");
+        user.setRegisterSource(REGISTER_SOURCE_SELF);
         user.setDelFlag("0");
         user.setCreateBy(username);
         if (userMapper.insert(user) <= 0 || user.getUserId() == null)
@@ -133,11 +139,16 @@ public class ShopAccountService
     @Transactional
     public LoginResult loginByVerifiedPhone(String phone)
     {
-        return loginByVerifiedPhone(phone, null);
+        return loginByVerifiedPhone(phone, null, REGISTER_SOURCE_SELF);
     }
 
     @Transactional
-    public LoginResult loginByVerifiedPhone(String phone, String nickname)
+    public LoginResult loginBySsoVerifiedPhone(String phone, String nickname)
+    {
+        return loginByVerifiedPhone(phone, nickname, REGISTER_SOURCE_RANSAI);
+    }
+
+    private LoginResult loginByVerifiedPhone(String phone, String nickname, String registerSource)
     {
         String normalizedPhone = StringUtils.trim(phone);
         if (StringUtils.isEmpty(normalizedPhone) || !normalizedPhone.matches(PHONE_PATTERN))
@@ -145,7 +156,7 @@ public class ShopAccountService
             throw new ServiceException("手机号格式错误");
         }
         ShopUser user = userMapper.selectByPhone(normalizedPhone);
-        if (user == null) user = createPhoneUser(normalizedPhone, nickname);
+        if (user == null) user = createPhoneUser(normalizedPhone, nickname, registerSource);
         if (!"0".equals(user.getStatus()))
         {
             throw new ServiceException("账号已停用，请重新注册新账号");
@@ -153,7 +164,7 @@ public class ShopAccountService
         return issueLogin(user);
     }
 
-    private ShopUser createPhoneUser(String phone, String nickname)
+    private ShopUser createPhoneUser(String phone, String nickname, String registerSource)
     {
         ShopUser user = new ShopUser();
         String generatedUsername = generateRandomUsername();
@@ -170,6 +181,7 @@ public class ShopAccountService
         user.setReviewEligible("0");
         user.setTrialEligible("0");
         user.setStatus("0");
+        user.setRegisterSource(registerSource);
         user.setDelFlag("0");
         user.setCreateBy("phone-auth");
         try

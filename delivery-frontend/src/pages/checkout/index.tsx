@@ -81,6 +81,9 @@ export default function CheckoutPage() {
   const sourceReportId = Number.isSafeInteger(sourceReportValue) && sourceReportValue > 0
     ? sourceReportValue
     : undefined;
+  const buyFulfillmentType: 'ONLINE' | 'OFFLINE' = searchParams.get('fulfillmentType') === 'OFFLINE'
+    ? 'OFFLINE'
+    : 'ONLINE';
   const [product, setProduct] = useState<PublicProductDto | null>(null);
   const [loadedPaymentOrder, setLoadedPaymentOrder] = useState<ShopOrderDto | null>(null);
   const [orderLoading, setOrderLoading] = useState(orderMode);
@@ -220,6 +223,11 @@ export default function CheckoutPage() {
   const payable = paymentOrder?.totalAmount
     ?? (subtotal > 0 ? Math.max(minimumWechatPayment, toMoney(subtotal - discount)) : 0);
   const selectedAddress = addresses.find((address) => address.id === selectedAddressId);
+  const needsAddress = orderMode
+    ? paymentOrder?.fulfillmentType === 'ONLINE'
+    : source === 'cart'
+      ? cart.some((item) => (item.fulfillmentType ?? 'ONLINE') !== 'OFFLINE')
+      : buyFulfillmentType !== 'OFFLINE';
   const couponUnavailableReason = useMemo(() => {
     if (merchants.length > 1) return '购物车包含多个商家，优惠券仅支持单商家结算使用';
     if (!singleMerchant || subtotal <= 0) return '暂无可结算商品';
@@ -343,7 +351,7 @@ export default function CheckoutPage() {
       await payOrder(paymentOrder.orderId);
       return;
     }
-    if (!selectedAddress) {
+    if (needsAddress && !selectedAddress) {
       setAddressOpen(true);
       message.info('请先选择收货地址');
       return;
@@ -352,11 +360,12 @@ export default function CheckoutPage() {
       message.warning(source === 'cart' ? '购物车为空' : '商品不存在或已下架');
       return;
     }
+    const addressId = needsAddress ? (selectedAddress?.id ?? null) : null;
     setSubmitting(true);
     try {
       const created = source === 'cart'
-        ? await checkoutCart(selectedAddress.id, singleMerchant ? selectedCouponIds : undefined)
-        : await buyNow(selectedAddress.id, productId, quantity, sourceReportId, selectedCouponIds);
+        ? await checkoutCart(addressId, singleMerchant ? selectedCouponIds : undefined)
+        : await buyNow(addressId, productId, quantity, sourceReportId, selectedCouponIds, buyFulfillmentType);
       if (created.length === 1) {
         const createdOrder = created[0];
         navigate(`/checkout?orderId=${createdOrder.orderId}`);
@@ -419,6 +428,7 @@ export default function CheckoutPage() {
           )}
           <div className={styles.checkoutLayout}>
             <div className={styles.checkoutMain}>
+              {needsAddress ? (
               <section className={styles.checkoutSection}>
                 <div className={styles.checkoutSectionTitle}>
                   <span><EnvironmentOutlined /></span>
@@ -449,6 +459,20 @@ export default function CheckoutPage() {
                   {!orderMode && <RightOutlined />}
                 </button>
               </section>
+              ) : (
+              <section className={styles.checkoutSection}>
+                <div className={styles.checkoutSectionTitle}>
+                  <span><ShopOutlined /></span>
+                  <div><strong>到店核销</strong><small>支付后到店出示核销码，商家核销后完成</small></div>
+                </div>
+                <div className={styles.checkoutCouponTrigger}>
+                  <span className={styles.checkoutCouponTriggerCopy}>
+                    <strong>无需收货地址</strong>
+                    <small>下单支付后生成核销券，到店扫码核销</small>
+                  </span>
+                </div>
+              </section>
+              )}
 
               <section className={styles.checkoutSection}>
                 <div className={styles.checkoutSectionTitle}>

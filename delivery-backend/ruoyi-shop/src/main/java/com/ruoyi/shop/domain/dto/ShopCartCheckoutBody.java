@@ -6,7 +6,6 @@ import jakarta.validation.constraints.Size;
 
 public class ShopCartCheckoutBody
 {
-    @NotNull(message = "请选择收货地址")
     private Long addressId;
 
     @Size(max = 50, message = "一笔订单最多使用50张优惠券")

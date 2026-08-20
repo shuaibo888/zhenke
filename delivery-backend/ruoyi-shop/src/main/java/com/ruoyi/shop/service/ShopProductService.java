@@ -23,6 +23,8 @@ public class ShopProductService
     public static final String DRAFT = "DRAFT";
     public static final String ON_SALE = "ON_SALE";
     public static final String OFF_SALE = "OFF_SALE";
+    public static final String FULFILLMENT_ONLINE = "ONLINE";
+    public static final String FULFILLMENT_OFFLINE = "OFFLINE";
     private static final String MAIN_IMAGE = "MAIN";
     private static final String DETAIL_IMAGE = "DETAIL";
     private static final String PRODUCT_IMAGE_PATH_PREFIX = "/profile/upload/product/";
@@ -207,7 +209,26 @@ public class ShopProductService
         product.setCoverUrl(normalizeProductImageUrl(body.getCoverUrl()));
         product.setPrice(body.getPrice());
         product.setStock(body.getStock());
+        applyFulfillment(product, body);
         return product;
+    }
+
+    private void applyFulfillment(ShopProduct product, ShopProductBody body)
+    {
+        boolean online = Boolean.TRUE.equals(body.getSupportsOnline());
+        boolean offline = Boolean.TRUE.equals(body.getSupportsOffline());
+        if (body.getSupportsOnline() == null && body.getSupportsOffline() == null)
+        {
+            // 兼容未升级的前端：默认仅线上
+            online = true;
+            offline = false;
+        }
+        if (!online && !offline)
+        {
+            throw new ServiceException("请至少选择一种销售方式（线上配送或到店核销）");
+        }
+        product.setSupportsOnline(online ? "1" : "0");
+        product.setSupportsOffline(offline ? "1" : "0");
     }
 
     private List<String> normalizedImageUrls(List<String> imageUrls)

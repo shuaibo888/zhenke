@@ -92,7 +92,7 @@ public class ShopOrderService
     }
 
     @Transactional
-    public List<ShopOrder> createFromCart(long addressId, List<Long> userCouponIds)
+    public List<ShopOrder> createFromCart(Long addressId, List<Long> userCouponIds)
     {
         long userId = ShopAccountIdentity.requireShopUserId();
         lockUser(userId);
@@ -106,6 +106,7 @@ public class ShopOrderService
             body.setProductId(item.getProductId());
             body.setQuantity(item.getQuantity());
             body.setSourceReportId(item.getSourceReportId());
+            body.setFulfillmentType(item.getFulfillmentType());
             return body;
         }).toList();
         List<ShopOrder> orders = createForUser(userId, addressId, items, userCouponIds);
@@ -212,6 +213,37 @@ public class ShopOrderService
         insertStatusLog(orderId, SHIPPED, RECEIVED, userId, "用户确认收货");
         insertLogisticsEvent(orderId, "USER_RECEIVED", "用户已确认收货", "USER_RECEIVED");
         return hydrate(requireUserOrder(userId, orderId, false));
+    }
+
+    @Transactional
+    public ShopOrder getOrCreateRedeemCode(long orderId)
+    {
+        long userId = ShopAccountIdentity.requireShopUserId();
+        ShopOrder order = requireUserOrder(userId, orderId, false);
+        if (!ShopProductService.FULFILLMENT_OFFLINE.equals(order.getFulfillmentType()))
+        {
+            throw new ServiceException("线下订单才能出示核销码");
+        }
+        if (PAID.equals(order.getStatus()))
+        {
+            if (StringUtils.isEmpty(order.getRedeemCode()))
+            {
+                String redeemCode = UUID.randomUUID().toString().replace("-", "");
+                orderMapper.updateOrderRedeemCode(orderId, userId, redeemCode);
+                order = requireUserOrder(userId, orderId, false);
+                if (StringUtils.isEmpty(order.getRedeemCode()))
+                {
+                    throw new ServiceException("当前状态不能出示核销码");
+                }
+            }
+            return hydrate(order);
+        }
+        if (RECEIVED.equals(order.getStatus()))
+        {
+            // 已核销后返回最新状态，供用户端轮询识别核销成功
+            return hydrate(order);
+        }
+        throw new ServiceException("当前状态不能出示核销码");
     }
 
     public ShopLogisticsTrace myOrderLogistics(long orderId)
@@ -324,17 +356,11 @@ public class ShopOrderService
         return hydrate(orderMapper.selectUserOrder(order.getUserId(), orderId));
     }
 
-    private List<ShopOrder> createForUser(long userId, long addressId,
+    private List<ShopOrder> createForUser(long userId, Long addressId,
             List<ShopOrderItemBody> requestedItems, List<Long> userCouponIds)
     {
-        ShopUserAddress address = orderMapper.selectUserAddress(userId, addressId);
-        if (address == null)
-        {
-            throw new ServiceException("收货地址不存在");
-        }
-
         Map<Long, RequestedLine> normalized = normalizeItems(requestedItems);
-        Map<Long, List<OrderLine>> linesByMerchant = new LinkedHashMap<>();
+        Map<GroupKey, List<OrderLine>> linesByGroup = new LinkedHashMap<>();
         for (Map.Entry<Long, RequestedLine> requested : normalized.entrySet())
         {
             ShopProduct product = orderMapper.selectOrderableProductForUpdate(requested.getKey());
@@ -349,31 +375,50 @@ public class ShopOrderService
             {
                 throw new ServiceException("甄客验购买来源无效");
             }
+            String fulfillmentType = resolveFulfillment(product, requested.getValue().fulfillmentType());
             if (product.getStock() == null || product.getStock() < quantity
                     || orderMapper.deductStock(product.getProductId(), quantity) == 0)
             {
                 throw new ServiceException(product.getProductName() + "库存不足");
             }
-            linesByMerchant.computeIfAbsent(product.getMerchantId(), ignored -> new ArrayList<>())
+            GroupKey key = new GroupKey(product.getMerchantId(), fulfillmentType);
+            linesByGroup.computeIfAbsent(key, ignored -> new ArrayList<>())
                     .add(new OrderLine(product, quantity, sourceReportId));
         }
 
-        boolean usesCoupons = userCouponIds != null && !userCouponIds.isEmpty();
-        if (usesCoupons && linesByMerchant.size() != 1)
+        boolean needsAddress = linesByGroup.keySet().stream()
+                .anyMatch(key -> ShopProductService.FULFILLMENT_ONLINE.equals(key.fulfillmentType()));
+        ShopUserAddress address = null;
+        if (needsAddress)
         {
-            throw new ServiceException("购物车包含多个商家，优惠券仅支持单商家结算使用");
+            if (addressId == null)
+            {
+                throw new ServiceException("线上订单需要选择收货地址");
+            }
+            address = orderMapper.selectUserAddress(userId, addressId);
+            if (address == null)
+            {
+                throw new ServiceException("收货地址不存在");
+            }
+        }
+
+        boolean usesCoupons = userCouponIds != null && !userCouponIds.isEmpty();
+        if (usesCoupons && linesByGroup.size() != 1)
+        {
+            throw new ServiceException("订单包含多个商家或多种履约方式，优惠券仅支持单一履约方式结算");
         }
 
         List<ShopOrder> created = new ArrayList<>();
-        for (Map.Entry<Long, List<OrderLine>> merchantEntry : linesByMerchant.entrySet())
+        for (Map.Entry<GroupKey, List<OrderLine>> groupEntry : linesByGroup.entrySet())
         {
-            BigDecimal originalAmount = merchantEntry.getValue().stream()
+            GroupKey group = groupEntry.getKey();
+            BigDecimal originalAmount = groupEntry.getValue().stream()
                     .map(line -> line.product().getPrice().multiply(BigDecimal.valueOf(line.quantity())))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal discountAmount = BigDecimal.ZERO;
             BigDecimal payableAmount = originalAmount;
             List<ShopUserCoupon> selectedCoupons = couponService.lockUsableCoupons(
-                    userId, userCouponIds, merchantEntry.getKey(), originalAmount);
+                    userId, userCouponIds, group.merchantId(), originalAmount);
             List<ShopOrderCoupon> appliedCoupons = new ArrayList<>();
             for (ShopUserCoupon coupon : selectedCoupons)
             {
@@ -400,9 +445,10 @@ public class ShopOrderService
             ShopOrder order = new ShopOrder();
             order.setOrderNo(newOrderNo());
             order.setUserId(userId);
-            order.setMerchantId(merchantEntry.getKey());
+            order.setMerchantId(group.merchantId());
             order.setStatus(PENDING_PAYMENT);
-            order.setItemCount(merchantEntry.getValue().stream().mapToInt(OrderLine::quantity).sum());
+            order.setFulfillmentType(group.fulfillmentType());
+            order.setItemCount(groupEntry.getValue().stream().mapToInt(OrderLine::quantity).sum());
             order.setOriginalAmount(originalAmount);
             order.setDiscountAmount(discountAmount);
             order.setTotalAmount(payableAmount);
@@ -425,7 +471,7 @@ public class ShopOrderService
                 }
             }
 
-            for (OrderLine line : merchantEntry.getValue())
+            for (OrderLine line : groupEntry.getValue())
             {
                 ShopOrderItem item = new ShopOrderItem();
                 item.setOrderId(order.getOrderId());
@@ -435,17 +481,42 @@ public class ShopOrderService
                 item.setCoverUrl(line.product().getCoverUrl());
                 item.setUnitPrice(line.product().getPrice());
                 item.setQuantity(line.quantity());
+                item.setFulfillmentType(group.fulfillmentType());
                 item.setLineAmount(line.product().getPrice().multiply(BigDecimal.valueOf(line.quantity())));
                 if (orderMapper.insertOrderItem(item) == 0)
                 {
                     throw new ServiceException("订单明细创建失败");
                 }
             }
-            insertAddressSnapshot(order.getOrderId(), address);
+            if (address != null)
+            {
+                insertAddressSnapshot(order.getOrderId(), address);
+            }
             insertStatusLog(order.getOrderId(), null, order.getStatus(), userId, "用户提交订单");
             created.add(hydrate(requireUserOrder(userId, order.getOrderId(), false)));
         }
         return created;
+    }
+
+    private String resolveFulfillment(ShopProduct product, String requested)
+    {
+        boolean online = "1".equals(product.getSupportsOnline());
+        boolean offline = "1".equals(product.getSupportsOffline());
+        String normalized = StringUtils.trim(requested);
+        if (ShopProductService.FULFILLMENT_ONLINE.equals(normalized) && online)
+        {
+            return ShopProductService.FULFILLMENT_ONLINE;
+        }
+        if (ShopProductService.FULFILLMENT_OFFLINE.equals(normalized) && offline)
+        {
+            return ShopProductService.FULFILLMENT_OFFLINE;
+        }
+        if (!online && !offline)
+        {
+            throw new ServiceException("商品暂不支持购买");
+        }
+        if (online) return ShopProductService.FULFILLMENT_ONLINE;
+        return ShopProductService.FULFILLMENT_OFFLINE;
     }
 
     private Map<Long, RequestedLine> normalizeItems(List<ShopOrderItemBody> items)
@@ -471,7 +542,10 @@ public class ShopOrderService
             Long sourceReportId = item.getSourceReportId() != null
                     ? item.getSourceReportId()
                     : existing == null ? null : existing.sourceReportId();
-            normalized.put(item.getProductId(), new RequestedLine(quantity, sourceReportId));
+            String fulfillmentType = item.getFulfillmentType() != null
+                    ? item.getFulfillmentType()
+                    : existing == null ? null : existing.fulfillmentType();
+            normalized.put(item.getProductId(), new RequestedLine(quantity, sourceReportId, fulfillmentType));
         }
         if (normalized.size() > 50)
         {
@@ -632,6 +706,7 @@ public class ShopOrderService
                 + UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
     }
 
-    private record RequestedLine(int quantity, Long sourceReportId) { }
+    private record RequestedLine(int quantity, Long sourceReportId, String fulfillmentType) { }
     private record OrderLine(ShopProduct product, int quantity, Long sourceReportId) { }
+    private record GroupKey(Long merchantId, String fulfillmentType) { }
 }

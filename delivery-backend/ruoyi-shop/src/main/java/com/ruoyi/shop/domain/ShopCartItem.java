@@ -9,6 +9,7 @@ public class ShopCartItem
     private Long productId;
     private Long sourceReportId;
     private Integer quantity;
+    private String fulfillmentType;
     private Long merchantId;
     private String merchantName;
     private String categoryCode;
@@ -29,6 +30,8 @@ public class ShopCartItem
     public void setSourceReportId(Long sourceReportId) { this.sourceReportId = sourceReportId; }
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
+    public String getFulfillmentType() { return fulfillmentType; }
+    public void setFulfillmentType(String fulfillmentType) { this.fulfillmentType = fulfillmentType; }
     public Long getMerchantId() { return merchantId; }
     public void setMerchantId(Long merchantId) { this.merchantId = merchantId; }
     public String getMerchantName() { return merchantName; }

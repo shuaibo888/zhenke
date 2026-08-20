@@ -91,7 +91,7 @@ public class ShopAuthController {
     @PostMapping("/sso/login")
     public AjaxResult ssoLogin(@Valid @RequestBody ShopSsoLoginBody body) {
         EventSsoIdentity identity = eventSsoService.exchangeTicket(body.getTicket());
-        LoginResult result = accountService.loginByVerifiedPhone(identity.phone(), identity.nickname());
+        LoginResult result = accountService.loginBySsoVerifiedPhone(identity.phone(), identity.nickname());
         return AjaxResult.success().put(Constants.TOKEN, result.token()).put("user", result.user());
     }
 }

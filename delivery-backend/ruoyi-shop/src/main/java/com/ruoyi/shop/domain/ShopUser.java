@@ -23,6 +23,7 @@ public class ShopUser extends BaseEntity
     private String reviewEligible;
     private String trialEligible;
     private String status;
+    private String registerSource;
     private String delFlag;
     private String loginIp;
     private Date loginDate;
@@ -61,6 +62,8 @@ public class ShopUser extends BaseEntity
     public void setTrialEligible(String trialEligible) { this.trialEligible = trialEligible; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getRegisterSource() { return registerSource; }
+    public void setRegisterSource(String registerSource) { this.registerSource = registerSource; }
     public String getDelFlag() { return delFlag; }
     public void setDelFlag(String delFlag) { this.delFlag = delFlag; }
     public String getLoginIp() { return loginIp; }

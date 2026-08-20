@@ -82,11 +82,11 @@ interface ShopContextValue {
   refreshReports: () => Promise<void>;
   refreshAddresses: () => Promise<void>;
   refreshPoints: () => Promise<void>;
-  addToCart: (productId: number, quantity?: number, sourceReportId?: number) => Promise<void>;
+  addToCart: (productId: number, quantity?: number, sourceReportId?: number, fulfillmentType?: 'ONLINE' | 'OFFLINE') => Promise<void>;
   changeCartQuantity: (cartItemId: number, quantity: number) => Promise<void>;
   removeCartItem: (cartItemId: number) => Promise<void>;
-  checkoutCart: (addressId: number, userCouponIds?: number[]) => Promise<ShopOrderDto[]>;
-  buyNow: (addressId: number, productId: number, quantity?: number, sourceReportId?: number, userCouponIds?: number[]) => Promise<ShopOrderDto[]>;
+  checkoutCart: (addressId: number | null, userCouponIds?: number[]) => Promise<ShopOrderDto[]>;
+  buyNow: (addressId: number | null, productId: number, quantity?: number, sourceReportId?: number, userCouponIds?: number[], fulfillmentType?: 'ONLINE' | 'OFFLINE') => Promise<ShopOrderDto[]>;
   payOrder: (orderId: number, authorization?: { code?: string; state?: string }) => Promise<void>;
   clearNativePayment: () => void;
   saveAddress: (body: ShopShippingAddressBody, addressId?: number) => Promise<void>;
@@ -429,8 +429,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }
   }, [closeAuthExpiredModal]);
 
-  const addToCart = useCallback(async (productId: number, quantity = 1, sourceReportId?: number) => {
-    const saved = await addShopCartItem(productId, quantity, sourceReportId);
+  const addToCart = useCallback(async (productId: number, quantity = 1, sourceReportId?: number, fulfillmentType?: 'ONLINE' | 'OFFLINE') => {
+    const saved = await addShopCartItem(productId, quantity, sourceReportId, fulfillmentType);
     setCart((items) => {
       const exists = items.some((item) => item.cartItemId === saved.cartItemId);
       return exists ? items.map((item) => item.cartItemId === saved.cartItemId ? saved : item) : [...items, saved];
@@ -452,7 +452,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setCart((items) => items.filter((item) => item.cartItemId !== cartItemId));
   }, []);
 
-  const checkoutCart = useCallback(async (addressId: number, userCouponIds?: number[]) => {
+  const checkoutCart = useCallback(async (addressId: number | null, userCouponIds?: number[]) => {
     const created = await checkoutShopCart(addressId, userCouponIds);
     setCart([]);
     setOrders((items) => [...created, ...items]);
@@ -461,15 +461,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const buyNow = useCallback(async (
-    addressId: number,
+    addressId: number | null,
     productId: number,
     quantity = 1,
     sourceReportId?: number,
     userCouponIds?: number[],
+    fulfillmentType?: 'ONLINE' | 'OFFLINE',
   ) => {
     const created = await createShopOrders({
       addressId,
-      items: [{ productId, quantity, sourceReportId }],
+      items: [{ productId, quantity, sourceReportId, fulfillmentType }],
       userCouponIds,
     });
     setOrders((items) => [...created, ...items]);

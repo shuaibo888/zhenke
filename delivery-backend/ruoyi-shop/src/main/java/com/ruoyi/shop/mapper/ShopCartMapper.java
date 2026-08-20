@@ -15,7 +15,8 @@ public interface ShopCartMapper
     int countPublishedReportForProduct(@Param("reportId") Long reportId, @Param("productId") Long productId);
     int insert(ShopCartItem item);
     int updateQuantity(@Param("userId") Long userId, @Param("cartItemId") Long cartItemId,
-            @Param("quantity") Integer quantity, @Param("sourceReportId") Long sourceReportId);
+            @Param("quantity") Integer quantity, @Param("sourceReportId") Long sourceReportId,
+            @Param("fulfillmentType") String fulfillmentType);
     int delete(@Param("userId") Long userId, @Param("cartItemId") Long cartItemId);
     int deleteUserProducts(@Param("userId") Long userId, @Param("productIds") List<Long> productIds);
 }
