@@ -106,7 +106,7 @@ public class ShopOrderService
             body.setProductId(item.getProductId());
             body.setQuantity(item.getQuantity());
             body.setSourceReportId(item.getSourceReportId());
-            body.setFulfillmentType(item.getFulfillmentType());
+            body.setFulfillmentType(ShopProductService.FULFILLMENT_ONLINE);
             return body;
         }).toList();
         List<ShopOrder> orders = createForUser(userId, addressId, items, userCouponIds);

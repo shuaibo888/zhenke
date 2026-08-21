@@ -195,7 +195,6 @@ export interface ShopCartItemDto {
   productId: number;
   sourceReportId?: number;
   quantity: number;
-  fulfillmentType?: 'ONLINE' | 'OFFLINE';
   merchantId: number;
   merchantName: string;
   categoryCode: ProductCategoryDto['categoryCode'];
@@ -516,10 +515,10 @@ export async function fetchShopCart() {
   return Array.isArray(result.data) ? result.data : [];
 }
 
-export async function addShopCartItem(productId: number, quantity = 1, sourceReportId?: number, fulfillmentType?: 'ONLINE' | 'OFFLINE') {
+export async function addShopCartItem(productId: number, quantity = 1, sourceReportId?: number) {
   const result = await requestApi<ApiResponse<ShopCartItemDto>>(
     '/shop/users/me/cart',
-    { method: 'POST', body: JSON.stringify({ productId, quantity, sourceReportId, fulfillmentType }) },
+    { method: 'POST', body: JSON.stringify({ productId, quantity, sourceReportId }) },
     true,
   );
   if (!result.data) throw new Error('加入购物车失败');

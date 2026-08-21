@@ -16,7 +16,7 @@ import {
 } from 'antd';
 import type { FormInstance, UploadFile } from 'antd';
 import { useState } from 'react';
-import type { AdminSession, ProductCategory, ProductCategoryOption } from '@/types';
+import type { AdminSession, ProductCategoryOption } from '@/types';
 import { uploadAdminFile } from '@/services/adminApi';
 import styles from '@/pages/index.less';
 
@@ -46,7 +46,7 @@ export interface ProductDialogsProps {
   editingProductId: number | null;
   productDrawerOpen: boolean;
   productForm: FormInstance<ProductFormValues>;
-  productCategories: ProductCategory[];
+  productCategories: ProductCategoryOption[];
   productSaving: boolean;
   session: AdminSession;
   onProductDrawerClose: () => void;

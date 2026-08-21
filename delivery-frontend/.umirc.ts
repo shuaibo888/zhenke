@@ -32,6 +32,10 @@ export default defineConfig({
       target: 'https://dzshop.vip',
       changeOrigin: true,
     },
+    // '/profile': {
+    //   target: 'https://dzshop.vip',
+    //   changeOrigin: true,
+    // },
   },
   npmClient: 'npm',
   esbuildMinifyIIFE: true,

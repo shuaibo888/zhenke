@@ -15,7 +15,6 @@ public class ShopCartItemBody
     private Integer quantity;
 
     private Long sourceReportId;
-    private String fulfillmentType;
 
     public Long getProductId() { return productId; }
     public void setProductId(Long productId) { this.productId = productId; }
@@ -23,6 +22,4 @@ public class ShopCartItemBody
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
     public Long getSourceReportId() { return sourceReportId; }
     public void setSourceReportId(Long sourceReportId) { this.sourceReportId = sourceReportId; }
-    public String getFulfillmentType() { return fulfillmentType; }
-    public void setFulfillmentType(String fulfillmentType) { this.fulfillmentType = fulfillmentType; }
 }

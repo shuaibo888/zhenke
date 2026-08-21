@@ -4,6 +4,7 @@ import {
   RightOutlined,
   SafetyCertificateOutlined,
   ShopOutlined,
+  TruckOutlined,
 } from '@ant-design/icons';
 import { Alert, Button, Checkbox, Drawer, Modal, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
@@ -81,9 +82,6 @@ export default function CheckoutPage() {
   const sourceReportId = Number.isSafeInteger(sourceReportValue) && sourceReportValue > 0
     ? sourceReportValue
     : undefined;
-  const buyFulfillmentType: 'ONLINE' | 'OFFLINE' = searchParams.get('fulfillmentType') === 'OFFLINE'
-    ? 'OFFLINE'
-    : 'ONLINE';
   const [product, setProduct] = useState<PublicProductDto | null>(null);
   const [loadedPaymentOrder, setLoadedPaymentOrder] = useState<ShopOrderDto | null>(null);
   const [orderLoading, setOrderLoading] = useState(orderMode);
@@ -96,6 +94,7 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<number | undefined>();
   const [addressOpen, setAddressOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedFulfillmentType, setSelectedFulfillmentType] = useState<'ONLINE' | 'OFFLINE'>('ONLINE');
   const paymentOrder = contextPaymentOrder ?? loadedPaymentOrder ?? undefined;
   useBodyScrollLock(addressOpen || couponOpen);
 
@@ -167,6 +166,13 @@ export default function CheckoutPage() {
     setSelectedAddressId(preferred?.id);
   }, [addresses, selectedAddressId]);
 
+  const buySupportsOnline = product?.supportsOnline === '1';
+  const buySupportsOffline = product?.supportsOffline === '1';
+  useEffect(() => {
+    if (orderMode || source !== 'buy' || !product) return;
+    setSelectedFulfillmentType(buySupportsOnline ? 'ONLINE' : 'OFFLINE');
+  }, [buySupportsOnline, buySupportsOffline, orderMode, product, source]);
+
   const lines = useMemo<CheckoutLine[]>(() => {
     if (paymentOrder) {
       return paymentOrder.items.map((item) => ({
@@ -226,8 +232,8 @@ export default function CheckoutPage() {
   const needsAddress = orderMode
     ? paymentOrder?.fulfillmentType === 'ONLINE'
     : source === 'cart'
-      ? cart.some((item) => (item.fulfillmentType ?? 'ONLINE') !== 'OFFLINE')
-      : buyFulfillmentType !== 'OFFLINE';
+      ? true
+      : selectedFulfillmentType === 'ONLINE';
   const couponUnavailableReason = useMemo(() => {
     if (merchants.length > 1) return '购物车包含多个商家，优惠券仅支持单商家结算使用';
     if (!singleMerchant || subtotal <= 0) return '暂无可结算商品';
@@ -365,7 +371,7 @@ export default function CheckoutPage() {
     try {
       const created = source === 'cart'
         ? await checkoutCart(addressId, singleMerchant ? selectedCouponIds : undefined)
-        : await buyNow(addressId, productId, quantity, sourceReportId, selectedCouponIds, buyFulfillmentType);
+        : await buyNow(addressId, productId, quantity, sourceReportId, selectedCouponIds, selectedFulfillmentType);
       if (created.length === 1) {
         const createdOrder = created[0];
         navigate(`/checkout?orderId=${createdOrder.orderId}`);
@@ -428,6 +434,58 @@ export default function CheckoutPage() {
           )}
           <div className={styles.checkoutLayout}>
             <div className={styles.checkoutMain}>
+              {!orderMode && (source === 'cart' || product) && (
+              <section className={styles.checkoutSection}>
+                <div className={styles.checkoutSectionTitle}>
+                  <span>{source === 'cart' ? <TruckOutlined /> : selectedFulfillmentType === 'ONLINE' ? <TruckOutlined /> : <ShopOutlined />}</span>
+                  <div>
+                    <strong>履约方式</strong>
+                    <small>{source === 'cart' ? '购物车商品统一使用快递物流' : '请确认本次购买的收货方式'}</small>
+                  </div>
+                </div>
+                {source === 'cart' ? (
+                  <div className={`${styles.checkoutFulfillmentOption} ${styles.checkoutFulfillmentOptionActive} ${styles.checkoutFulfillmentOptionFixed}`}>
+                    <span className={styles.checkoutFulfillmentIcon}><TruckOutlined /></span>
+                    <span className={styles.checkoutFulfillmentCopy}>
+                      <strong>快递物流</strong>
+                      <small>商品将配送至你选择的收货地址</small>
+                    </span>
+                    <Tag color="green">已固定</Tag>
+                  </div>
+                ) : (
+                  <div className={styles.checkoutFulfillmentOptions}>
+                    {buySupportsOnline && (
+                      <button
+                        type="button"
+                        className={`${styles.checkoutFulfillmentOption} ${selectedFulfillmentType === 'ONLINE' ? styles.checkoutFulfillmentOptionActive : ''}`}
+                        onClick={() => setSelectedFulfillmentType('ONLINE')}
+                      >
+                        <span className={styles.checkoutFulfillmentIcon}><TruckOutlined /></span>
+                        <span className={styles.checkoutFulfillmentCopy}>
+                          <strong>快递物流</strong>
+                          <small>默认选择，填写地址后送货上门</small>
+                        </span>
+                        <span className={styles.checkoutFulfillmentCheck}>{selectedFulfillmentType === 'ONLINE' ? '已选择' : '选择'}</span>
+                      </button>
+                    )}
+                    {buySupportsOffline && (
+                      <button
+                        type="button"
+                        className={`${styles.checkoutFulfillmentOption} ${selectedFulfillmentType === 'OFFLINE' ? styles.checkoutFulfillmentOptionActive : ''}`}
+                        onClick={() => setSelectedFulfillmentType('OFFLINE')}
+                      >
+                        <span className={styles.checkoutFulfillmentIcon}><ShopOutlined /></span>
+                        <span className={styles.checkoutFulfillmentCopy}>
+                          <strong>线下核销</strong>
+                          <small>无需地址，支付后到店出示核销码</small>
+                        </span>
+                        <span className={styles.checkoutFulfillmentCheck}>{selectedFulfillmentType === 'OFFLINE' ? '已选择' : '选择'}</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </section>
+              )}
               {needsAddress ? (
               <section className={styles.checkoutSection}>
                 <div className={styles.checkoutSectionTitle}>

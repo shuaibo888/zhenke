@@ -82,7 +82,7 @@ interface ShopContextValue {
   refreshReports: () => Promise<void>;
   refreshAddresses: () => Promise<void>;
   refreshPoints: () => Promise<void>;
-  addToCart: (productId: number, quantity?: number, sourceReportId?: number, fulfillmentType?: 'ONLINE' | 'OFFLINE') => Promise<void>;
+  addToCart: (productId: number, quantity?: number, sourceReportId?: number) => Promise<void>;
   changeCartQuantity: (cartItemId: number, quantity: number) => Promise<void>;
   removeCartItem: (cartItemId: number) => Promise<void>;
   checkoutCart: (addressId: number | null, userCouponIds?: number[]) => Promise<ShopOrderDto[]>;
@@ -429,8 +429,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }
   }, [closeAuthExpiredModal]);
 
-  const addToCart = useCallback(async (productId: number, quantity = 1, sourceReportId?: number, fulfillmentType?: 'ONLINE' | 'OFFLINE') => {
-    const saved = await addShopCartItem(productId, quantity, sourceReportId, fulfillmentType);
+  const addToCart = useCallback(async (productId: number, quantity = 1, sourceReportId?: number) => {
+    const saved = await addShopCartItem(productId, quantity, sourceReportId);
     setCart((items) => {
       const exists = items.some((item) => item.cartItemId === saved.cartItemId);
       return exists ? items.map((item) => item.cartItemId === saved.cartItemId ? saved : item) : [...items, saved];

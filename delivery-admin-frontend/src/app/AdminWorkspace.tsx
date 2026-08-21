@@ -31,6 +31,7 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Outlet, useLocation, useNavigate } from '@umijs/renderer-react';
 import type { AdminSession, ManagedLogisticsTrace, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, NavKey, ProductCategory, ProductCategoryOption, ProductStatus, ShopMemberLevel, ShopUserAccount } from '@/types';
 import {
   auditMerchantOrderRefund,
@@ -81,30 +82,24 @@ import {
   type ProductCertificationMaterialDto,
 } from '@/services/adminApi';
 
-import CouponModule from '@/modules/coupons';
-import DashboardModule from '@/modules/dashboard';
-import MerchantsModule from '@/modules/merchants';
 import {
   MerchantAuditDialog,
   MerchantDetailDialog,
   type MerchantFormValues,
 } from '@/modules/merchants/MerchantDialogs';
-import OrdersModule from '@/modules/orders';
 import OrderDialogs, {
   type OrderShipFormValues,
   type RefundAuditFormValues,
 } from '@/modules/orders/OrderDialogs';
-import ProductsModule from '@/modules/products';
 import ProductDialogs, { type ProductFormValues } from '@/modules/products/ProductDialogs';
 import ProductCertificationDialog from '@/modules/products/ProductCertificationDialog';
-import ReportsModule from '@/modules/reports';
-import TrialsModule from '@/modules/trials';
 import TrialDialogs, {
   type TrialApplicationActionFormValues,
   type TrialFormValues,
 } from '@/modules/trials/TrialDialogs';
 import RedeemScanModal from '@/modules/trials/RedeemScanModal';
-import UsersModule from '@/modules/users';
+import { AdminPageContext, type AdminPagePropsMap } from '@/app/AdminPageContext';
+import { adminNavPaths, getAdminNavKey } from '@/app/adminRoutes';
 import { filterRowsForSession, getAvailableNavKeys, hasGlobalAccess } from '@/utils/access';
 import { type OrderStatusFilter } from '@/utils/orderManagement';
 import { type ProductCategoryFilter, type ProductStatusFilter } from '@/utils/productFilters';
@@ -208,11 +203,13 @@ function getManagedAiScoreMeta(report: ManagedReport) {
 */
 
 function AdminWorkspace() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeNav = getAdminNavKey(location.pathname) ?? 'dashboard';
   const [session, setSession] = useState<AdminSession | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [loginSubmitting, setLoginSubmitting] = useState(false);
   const [captcha, setCaptcha] = useState<CaptchaState>({ enabled: false, image: '', uuid: '' });
-  const [activeNav, setActiveNav] = useState<NavKey>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [products, setProducts] = useState<ManagedProduct[]>([]);
   const [productPage, setProductPage] = useState(1);
@@ -541,6 +538,11 @@ function AdminWorkspace() {
   }, []);
 
   useEffect(() => {
+    if (!session || availableNavKeys.includes(activeNav)) return;
+    navigate(adminNavPaths.dashboard, { replace: true });
+  }, [activeNav, navigate, session]);
+
+  useEffect(() => {
     if (!session) return;
     const permissions = session.permissions ?? [];
     if (activeNav === 'dashboard') {
@@ -583,7 +585,6 @@ function AdminWorkspace() {
     try {
       const loggedIn = await loginAdmin({ ...values, uuid: captcha.uuid });
       setSession(loggedIn);
-      setActiveNav('dashboard');
       loginForm.resetFields(['password', 'code']);
       message.success('已进入管理员后台');
     } catch (error) {
@@ -598,7 +599,7 @@ function AdminWorkspace() {
   const handleLogout = async () => {
     await logoutAdmin();
     setSession(null);
-    setActiveNav('dashboard');
+    navigate(adminNavPaths.dashboard, { replace: true });
     setProductDrawerOpen(false);
     setEditingProductId(null);
     setDetailOrder(null);
@@ -1423,11 +1424,7 @@ function AdminWorkspace() {
       key: 'actions',
       render: (_, order) => (
         <Space wrap size={6}>
-          {order.fulfillmentType === 'OFFLINE' ? (
-            <Button size="small" type="primary" disabled={order.status !== 'paid'} onClick={() => setOrderRedeemScanOpen(true)}>
-              核销
-            </Button>
-          ) : (
+          {order.fulfillmentType !== 'OFFLINE' && (
             <Button size="small" icon={<TruckOutlined />} disabled={order.status !== 'paid'} onClick={() => openOrderShipment(order)}>
               发货
             </Button>
@@ -1684,13 +1681,128 @@ function AdminWorkspace() {
     label: navMeta[key].label,
   }));
 
+  const pageProps: AdminPagePropsMap = {
+    dashboard: {
+      summary: dashboardSummary,
+      isAdmin,
+    },
+    users: {
+      users: shopUsers,
+      columns: shopUserColumns,
+      loading: shopUsersLoading,
+      total: shopUserTotal,
+      page: userPage,
+      keyword: userKeyword,
+      status: userStatus,
+      levelId: userLevelId,
+      levels: memberLevels,
+      onKeywordChange: setUserKeyword,
+      onStatusChange: setUserStatus,
+      onLevelChange: setUserLevelId,
+      onLoad: (page) => void loadShopUsers(page),
+      onReset: resetShopUserFilters,
+    },
+    coupons: {
+      session,
+    },
+    products: {
+      isAdmin,
+      canEditCategory: hasPermission('shop:category:edit'),
+      canAddProduct: hasPermission('shop:product:add'),
+      products: filteredProducts,
+      columns: productColumns,
+      loading: productsLoading,
+      total: productTotal,
+      page: productPage,
+      keyword: productKeyword,
+      categoryFilter: productCategoryFilter,
+      statusFilter: productStatusFilter,
+      categories: productCategories,
+      onKeywordChange: setProductKeyword,
+      onCategoryChange: (value) => {
+        setProductCategoryFilter(value);
+        void loadProducts(session, 1, {
+          keyword: productKeyword,
+          category: value,
+          status: productStatusFilter,
+        });
+      },
+      onStatusChange: (value) => {
+        setProductStatusFilter(value);
+        void loadProducts(session, 1, {
+          keyword: productKeyword,
+          category: productCategoryFilter,
+          status: value,
+        });
+      },
+      onSearch: (page) => void loadProducts(session, page),
+      onReset: () => resetProductFilters(),
+      onOpenCategorySettings: () => void openCategorySettings(),
+      onCreateProduct: openCreateProduct,
+    },
+    orders: {
+      isAdmin,
+      orders: filteredOrders,
+      columns: orderColumns,
+      loading: ordersLoading,
+      total: orderTotal,
+      page: orderPage,
+      keyword: orderKeyword,
+      statusFilter: orderStatusFilter,
+      onKeywordChange: setOrderKeyword,
+      onStatusChange: (value) => {
+        setOrderStatusFilter(value);
+        void loadOrders(session, 1, { keyword: orderKeyword, status: value });
+      },
+      onOpenRedeem: () => setOrderRedeemScanOpen(true),
+      onLoad: (page) => void loadOrders(session, page),
+      onReset: () => resetOrderFilters(),
+    },
+    trials: {
+      isAdmin,
+      trials: visibleTrials,
+      trialColumns,
+      trialsLoading,
+      trialPage,
+      trialTotal,
+      applications: trialApplications,
+      applicationColumns: trialApplicationColumns,
+      applicationsLoading: trialApplicationsLoading,
+      applicationPage: trialApplicationPage,
+      applicationTotal: trialApplicationTotal,
+      onPublish: () => void openPublishTrial(),
+      onOpenRedeem: () => setRedeemScanOpen(true),
+      onLoadTrials: (page) => void loadTrials(session, page),
+      onLoadApplications: (page) => void loadTrialApplications(session, page),
+    },
+    reports: {
+      reports: visibleReports,
+      columns: reportColumns,
+      loading: reportsLoading,
+      page: reportPage,
+      total: reportTotal,
+      onLoad: (page) => void loadReports(session, page),
+    },
+    merchants: {
+      merchants,
+      loading: merchantsLoading,
+      page: merchantPage,
+      total: merchantTotal,
+      onLoad: (page) => void loadMerchants(page),
+      onOpenDetail: (merchant) => void handleOpenMerchantDetail(merchant),
+      onAudit: handleOpenAuditMerchant,
+      onToggleStatus: (merchant) => void handleToggleMerchantStatus(merchant),
+    },
+  };
+
   const handleNavClick = (key: NavKey) => {
-    setActiveNav(key);
+    if (key !== activeNav) navigate(adminNavPaths[key]);
     setMobileMenuOpen(false);
   };
 
   return (
-    <>
+    <AdminPageContext.Provider value={pageProps}>
+      <>
       <Layout className={styles.appShell}>
         <Sider width={232} className={styles.sider} breakpoint="md" collapsedWidth={0} trigger={null}>
           <div className={styles.logoBlock}>
@@ -1761,130 +1873,7 @@ function AdminWorkspace() {
           </Header>
 
           <Content className={styles.content}>
-            {activeNav === 'dashboard' && <DashboardModule summary={dashboardSummary} isAdmin={isAdmin} />}
-
-            {activeNav === 'users' && isAdmin && (
-              <UsersModule
-                users={shopUsers}
-                columns={shopUserColumns}
-                loading={shopUsersLoading}
-                total={shopUserTotal}
-                page={userPage}
-                keyword={userKeyword}
-                status={userStatus}
-                levelId={userLevelId}
-                levels={memberLevels}
-                onKeywordChange={setUserKeyword}
-                onStatusChange={setUserStatus}
-                onLevelChange={setUserLevelId}
-                onLoad={(page) => void loadShopUsers(page)}
-                onReset={resetShopUserFilters}
-              />
-            )}
-
-            {activeNav === 'coupons' && <CouponModule session={session} />}
-
-            {activeNav === 'products' && (
-              <ProductsModule
-                isAdmin={isAdmin}
-                canEditCategory={hasPermission('shop:category:edit')}
-                canAddProduct={hasPermission('shop:product:add')}
-                products={filteredProducts}
-                columns={productColumns}
-                loading={productsLoading}
-                total={productTotal}
-                page={productPage}
-                keyword={productKeyword}
-                categoryFilter={productCategoryFilter}
-                statusFilter={productStatusFilter}
-                categories={productCategories}
-                onKeywordChange={setProductKeyword}
-                onCategoryChange={(value) => {
-                  setProductCategoryFilter(value);
-                  void loadProducts(session, 1, {
-                    keyword: productKeyword,
-                    category: value,
-                    status: productStatusFilter,
-                  });
-                }}
-                onStatusChange={(value) => {
-                  setProductStatusFilter(value);
-                  void loadProducts(session, 1, {
-                    keyword: productKeyword,
-                    category: productCategoryFilter,
-                    status: value,
-                  });
-                }}
-                onSearch={(page) => void loadProducts(session, page)}
-                onReset={() => resetProductFilters()}
-                onOpenCategorySettings={() => void openCategorySettings()}
-                onCreateProduct={openCreateProduct}
-              />
-            )}
-
-            {activeNav === 'orders' && (
-              <OrdersModule
-                isAdmin={isAdmin}
-                orders={filteredOrders}
-                columns={orderColumns}
-                loading={ordersLoading}
-                total={orderTotal}
-                page={orderPage}
-                keyword={orderKeyword}
-                statusFilter={orderStatusFilter}
-                onKeywordChange={setOrderKeyword}
-                onStatusChange={(value) => {
-                  setOrderStatusFilter(value);
-                  void loadOrders(session, 1, { keyword: orderKeyword, status: value });
-                }}
-                onLoad={(page) => void loadOrders(session, page)}
-                onReset={() => resetOrderFilters()}
-              />
-            )}
-
-            {activeNav === 'trials' && (
-              <TrialsModule
-                isAdmin={isAdmin}
-                trials={visibleTrials}
-                trialColumns={trialColumns}
-                trialsLoading={trialsLoading}
-                trialPage={trialPage}
-                trialTotal={trialTotal}
-                applications={trialApplications}
-                applicationColumns={trialApplicationColumns}
-                applicationsLoading={trialApplicationsLoading}
-                applicationPage={trialApplicationPage}
-                applicationTotal={trialApplicationTotal}
-                onPublish={() => void openPublishTrial()}
-                onOpenRedeem={() => setRedeemScanOpen(true)}
-                onLoadTrials={(page) => void loadTrials(session, page)}
-                onLoadApplications={(page) => void loadTrialApplications(session, page)}
-              />
-            )}
-
-            {activeNav === 'reports' && (
-              <ReportsModule
-                reports={visibleReports}
-                columns={reportColumns}
-                loading={reportsLoading}
-                page={reportPage}
-                total={reportTotal}
-                onLoad={(page) => void loadReports(session, page)}
-              />
-            )}
-
-            {activeNav === 'merchants' && isAdmin && (
-              <MerchantsModule
-                merchants={merchants}
-                loading={merchantsLoading}
-                page={merchantPage}
-                total={merchantTotal}
-                onLoad={(page) => void loadMerchants(page)}
-                onOpenDetail={(merchant) => void handleOpenMerchantDetail(merchant)}
-                onAudit={handleOpenAuditMerchant}
-                onToggleStatus={(merchant) => void handleToggleMerchantStatus(merchant)}
-              />
-            )}
+            <Outlet />
           </Content>
         </Layout>
       </Layout>
@@ -2004,7 +1993,8 @@ function AdminWorkspace() {
         detailMerchant={detailMerchant}
         onDetailClose={() => setDetailMerchant(null)}
       />
-    </>
+      </>
+    </AdminPageContext.Provider>
   );
 }
 

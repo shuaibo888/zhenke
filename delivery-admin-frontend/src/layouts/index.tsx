@@ -1,4 +1,4 @@
-import { Outlet } from 'umi';
+import { Outlet } from '@umijs/renderer-react';
 import './index.less';
 
 export default function Layout() {

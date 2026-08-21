@@ -1,5 +1,5 @@
-import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
-import { Button, Input, Select, Table } from 'antd';
+import { ReloadOutlined, ScanOutlined, SearchOutlined } from '@ant-design/icons';
+import { Button, Input, Select, Space, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { ManagedOrder } from '@/types';
 import type { OrderStatusFilter } from '@/utils/orderManagement';
@@ -16,6 +16,7 @@ export interface OrdersModuleProps {
   statusFilter: OrderStatusFilter;
   onKeywordChange: (value: string) => void;
   onStatusChange: (value: OrderStatusFilter) => void;
+  onOpenRedeem: () => void;
   onLoad: (page: number) => void;
   onReset: () => void;
 }
@@ -30,7 +31,12 @@ export default function OrdersModule(props: OrdersModuleProps) {
           </p>
           <h3>订单管理</h3>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={() => props.onLoad(props.page)}>刷新订单</Button>
+        <Space wrap size={8}>
+          <Button type="primary" icon={<ScanOutlined />} onClick={props.onOpenRedeem}>
+            核销
+          </Button>
+          <Button icon={<ReloadOutlined />} onClick={() => props.onLoad(props.page)}>刷新订单</Button>
+        </Space>
       </div>
       <div className={styles.productToolbar}>
         <Input

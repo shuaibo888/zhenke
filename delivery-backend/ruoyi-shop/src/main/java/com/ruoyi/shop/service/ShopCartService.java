@@ -4,7 +4,6 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.common.exception.ServiceException;
-import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.shop.domain.ShopCartItem;
 import com.ruoyi.shop.domain.ShopProduct;
 import com.ruoyi.shop.domain.dto.ShopCartItemBody;
@@ -34,7 +33,7 @@ public class ShopCartService
         long userId = ShopAccountIdentity.requireShopUserId();
         lockUser(userId);
         ShopProduct product = requireOrderableProduct(body.getProductId());
-        String fulfillmentType = resolveFulfillment(product, body.getFulfillmentType());
+        requireOnlineFulfillment(product);
         validateSourceReport(body.getSourceReportId(), body.getProductId());
         ShopCartItem existing = cartMapper.selectUserProduct(userId, body.getProductId());
         int quantity = body.getQuantity() + (existing == null ? 0 : existing.getQuantity());
@@ -50,7 +49,6 @@ public class ShopCartService
             item.setProductId(body.getProductId());
             item.setSourceReportId(body.getSourceReportId());
             item.setQuantity(quantity);
-            item.setFulfillmentType(fulfillmentType);
             if (cartMapper.insert(item) == 0)
             {
                 throw new ServiceException("加入购物车失败");
@@ -58,7 +56,7 @@ public class ShopCartService
             return requireItem(userId, item.getCartItemId());
         }
         requireUpdated(cartMapper.updateQuantity(
-                userId, existing.getCartItemId(), quantity, body.getSourceReportId(), fulfillmentType));
+                userId, existing.getCartItemId(), quantity, body.getSourceReportId()));
         return requireItem(userId, existing.getCartItemId());
     }
 
@@ -69,8 +67,9 @@ public class ShopCartService
         lockUser(userId);
         ShopCartItem item = requireItem(userId, cartItemId);
         ShopProduct product = requireOrderableProduct(item.getProductId());
+        requireOnlineFulfillment(product);
         requireAvailableStock(product, quantity);
-        requireUpdated(cartMapper.updateQuantity(userId, cartItemId, quantity, null, null));
+        requireUpdated(cartMapper.updateQuantity(userId, cartItemId, quantity, null));
         return requireItem(userId, cartItemId);
     }
 
@@ -111,26 +110,12 @@ public class ShopCartService
         }
     }
 
-    private String resolveFulfillment(ShopProduct product, String requested)
+    private void requireOnlineFulfillment(ShopProduct product)
     {
-        boolean online = "1".equals(product.getSupportsOnline());
-        boolean offline = "1".equals(product.getSupportsOffline());
-        String normalized = StringUtils.trim(requested);
-        if (ShopProductService.FULFILLMENT_ONLINE.equals(normalized) && online)
+        if (!"1".equals(product.getSupportsOnline()))
         {
-            return ShopProductService.FULFILLMENT_ONLINE;
+            throw new ServiceException("线下核销商品不支持加入购物车，请直接购买");
         }
-        if (ShopProductService.FULFILLMENT_OFFLINE.equals(normalized) && offline)
-        {
-            return ShopProductService.FULFILLMENT_OFFLINE;
-        }
-        if (!online && !offline)
-        {
-            throw new ServiceException("商品暂不支持购买");
-        }
-        // 未指定或指定不合法时回退：仅支持一种则用该种，都支持则默认线上
-        if (online) return ShopProductService.FULFILLMENT_ONLINE;
-        return ShopProductService.FULFILLMENT_OFFLINE;
     }
 
     private void validateSourceReport(Long sourceReportId, long productId)

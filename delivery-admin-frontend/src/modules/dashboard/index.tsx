@@ -51,10 +51,12 @@ function formatMoney(value: number) {
   return `¥${value.toFixed(2)}`;
 }
 
-export default function DashboardModule({ summary, isAdmin }: {
+export interface DashboardModuleProps {
   summary: DashboardSummaryDto;
   isAdmin: boolean;
-}) {
+}
+
+export default function DashboardModule({ summary, isAdmin }: DashboardModuleProps) {
   const orderStatusChartData = summary.orderStatusCounts.map((item) => ({
     status: orderStatusLabels[item.code] ?? item.code,
     count: item.count,

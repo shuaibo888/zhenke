@@ -7,7 +7,9 @@ import {
   RightOutlined,
   SafetyCertificateOutlined,
   ShareAltOutlined,
+  ShopOutlined,
   ShoppingCartOutlined,
+  TruckOutlined,
 } from '@ant-design/icons';
 import { Button, Drawer, Form, Input, Modal, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -111,7 +113,6 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   const [addressOpen, setAddressOpen] = useState(false);
   const [pendingAddressAction, setPendingAddressAction] = useState<PendingAddressAction>(null);
   const [cartSubmitting, setCartSubmitting] = useState(false);
-  const [purchaseFulfillment, setPurchaseFulfillment] = useState<'ONLINE' | 'OFFLINE'>('ONLINE');
   const [shareOpen, setShareOpen] = useState(false);
   const [wechatShareGuideOpen, setWechatShareGuideOpen] = useState(false);
   const [productContentTab, setProductContentTab] = useState<'DETAIL' | 'REPORT'>('DETAIL');
@@ -172,10 +173,6 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
 
   const supportsOnlinePurchase = product?.supportsOnline === '1';
   const supportsOfflinePurchase = product?.supportsOffline === '1';
-  useEffect(() => {
-    if (supportsOnlinePurchase) setPurchaseFulfillment('ONLINE');
-    else if (supportsOfflinePurchase) setPurchaseFulfillment('OFFLINE');
-  }, [supportsOnlinePurchase, supportsOfflinePurchase]);
 
   const campaigns = useMemo(() => feed.filter((item) => item.contentType === 'TRIAL' && item.trial), [feed]);
   const productGallery = useMemo(() => {
@@ -248,10 +245,14 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
 
   const addCart = async () => {
     if (!requireLogin() || !product) return;
+    if (!supportsOnlinePurchase) {
+      message.info('该商品仅支持线下核销，请直接购买');
+      return;
+    }
     setCartSubmitting(true);
     try {
-      await addToCart(product.productId, 1, validSourceReportId, purchaseFulfillment);
-      message.success('已加入购物车');
+      await addToCart(product.productId, 1, validSourceReportId);
+      message.success('已按快递物流加入购物车');
     } catch (error) {
       message.error(error instanceof Error ? error.message : '加入购物车失败');
     } finally {
@@ -266,7 +267,6 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
       quantity: '1',
     });
     if (validSourceReportId) params.set('sourceReportId', String(validSourceReportId));
-    params.set('fulfillmentType', purchaseFulfillment);
     navigate(`/checkout?${params.toString()}`);
   };
 
@@ -418,7 +418,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
           <button type="button" className={styles.reportDetailBack} aria-label="返回" onClick={() => navigate(-1)}>
             <ArrowLeftOutlined />
           </button>
-          <span className={styles.trialDetailTitle}>{primaryCampaign ? '试用招募' : '商品详情'}</span>
+          <span className={styles.trialDetailTitle}>{routeCampaign ? '试用招募' : '商品详情'}</span>
           <button type="button" className={styles.reportDetailShare} aria-label={routeCampaign ? '分享试用' : '分享商品'} onClick={handleShareClick}>
             <ShareAltOutlined />
           </button>
@@ -496,18 +496,41 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
             )}
           </div>
           <div className={styles.trialHeroBody}>
-            <div className={styles.productTagRow}>
-              <Tag color="green">{product.categoryName}</Tag>
+            <div className={styles.productIdentityTopline}>
+              <span className={styles.productCategoryBadge}>{product.categoryName}</span>
+              {routeCampaign?.trial && (
+                <span className={`${styles.productTrialBadge} ${routeCampaign.trial.trialType === 'ONLINE' ? styles.online : styles.offline}`}>
+                  {routeCampaign.trial.trialType === 'ONLINE' ? <TruckOutlined /> : <ShopOutlined />}
+                  {routeCampaign.trial.trialType === 'ONLINE' ? '线上试用' : '线下试用'}
+                </span>
+              )}
               {product.certificationStatus === 'PASSED' && (
                 <Tag color="cyan" icon={<SafetyCertificateOutlined />}>商家承诺正品</Tag>
               )}
             </div>
-            <div className={styles.productDetailTitleRow}>
-              <Tag color="gold">{product.brandName}</Tag>
+            <div className={styles.productIdentityTitle}>
+              <span className={styles.productBrandBadge}>{product.brandName}</span>
               <h1>{product.productName}</h1>
             </div>
-            <p>{product.subtitle}</p>
-            <strong className={styles.linkedProductPrice}>{formatPrice(product.price)}</strong>
+            {product.subtitle && <p className={styles.productIdentitySubtitle}>{product.subtitle}</p>}
+            <div className={styles.productFulfillmentSummary} aria-label="商品履约方式">
+              {supportsOnlinePurchase && (
+                <span className={`${styles.productFulfillmentItem} ${styles.online}`}>
+                  <TruckOutlined />
+                  <span><strong>快递物流</strong><small>送货上门</small></span>
+                </span>
+              )}
+              {supportsOfflinePurchase && (
+                <span className={`${styles.productFulfillmentItem} ${styles.offline}`}>
+                  <ShopOutlined />
+                  <span><strong>线下核销</strong><small>到店体验</small></span>
+                </span>
+              )}
+            </div>
+            <div className={styles.productIdentityPriceRow}>
+              <strong className={styles.linkedProductPrice}>{formatPrice(product.price)}</strong>
+              <small>{supportsOnlinePurchase && supportsOfflinePurchase ? '结算时选择履约方式' : '当前商品售价'}</small>
+            </div>
           </div>
         </section>
 
@@ -666,37 +689,16 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
           )}
         </section>
 
-        {supportsOnlinePurchase && supportsOfflinePurchase && (
-          <div style={{ display: 'flex', gap: 8, padding: '8px 16px', background: '#fff', borderTop: '1px solid #f0f0f0' }}>
-            {(['ONLINE', 'OFFLINE'] as const).map((type) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => setPurchaseFulfillment(type)}
-                style={{
-                  flex: 1,
-                  padding: '10px 0',
-                  borderRadius: 8,
-                  border: purchaseFulfillment === type ? '1px solid #1f6f5b' : '1px solid #e5e5e5',
-                  background: purchaseFulfillment === type ? '#eef6f2' : '#fff',
-                  color: purchaseFulfillment === type ? '#1f6f5b' : '#333',
-                  fontWeight: 600,
-                }}
-              >
-                {type === 'ONLINE' ? '快递配送' : '到店核销'}
-              </button>
-            ))}
-          </div>
-        )}
         <div className={`${styles.reportDetailBottomBar} ${styles.productFixedBar}`}>
           <Button
             size="large"
             className={styles.trialBuyGhost}
             icon={<ShoppingCartOutlined />}
             loading={cartSubmitting}
+            disabled={!supportsOnlinePurchase}
             onClick={() => void addCart()}
           >
-            加入购物车
+            {supportsOnlinePurchase ? '加入购物车' : '不支持购物车'}
           </Button>
           <Button type="primary" size="large" className={styles.reportDetailBuy} onClick={startBuy}>
             立即购买
