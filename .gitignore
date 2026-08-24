@@ -2,12 +2,13 @@
 /zhenke/
 /.deploy/
 **/*.docx
+/yanshi
 
 # Local documentation and test data
 /docs/
 
 # Local database snapshots with account or business data
-/delivery-backend/sql/delivery_platform.sql
+/delivery-backend/sql/
 
 # IDE metadata
 /.idea/
