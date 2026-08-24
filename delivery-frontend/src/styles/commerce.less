@@ -1785,12 +1785,50 @@ button.checkoutFulfillmentOption:focus-visible {
   }
 
   .checkoutFulfillmentOptions {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 
   .checkoutFulfillmentOption {
     min-height: 80px;
     padding: 12px;
+  }
+
+  .checkoutFulfillmentOptions .checkoutFulfillmentOption {
+    position: relative;
+    min-height: 138px;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
+    padding: 12px 10px;
+  }
+
+  .checkoutFulfillmentOptions .checkoutFulfillmentIcon {
+    flex-basis: 36px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 17px;
+  }
+
+  .checkoutFulfillmentOptions .checkoutFulfillmentCopy {
+    gap: 3px;
+  }
+
+  .checkoutFulfillmentOptions .checkoutFulfillmentCopy strong {
+    font-size: 14px;
+  }
+
+  .checkoutFulfillmentOptions .checkoutFulfillmentCopy small {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .checkoutFulfillmentOptions .checkoutFulfillmentCheck {
+    position: absolute;
+    top: 15px;
+    right: 10px;
+    font-size: 11px;
   }
 
   .checkoutProduct {
@@ -5262,6 +5300,24 @@ button.checkoutFulfillmentOption:focus-visible {
   object-fit: cover;
 }
 
+.reportPreviewImage,
+.reportDetailPreviewImage {
+  display: block !important;
+  width: 100%;
+}
+
+.imagePreviewMask {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.imagePreviewHidden {
+  display: none;
+}
+
 .reportDetail {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -5297,6 +5353,157 @@ button.checkoutFulfillmentOption:focus-visible {
   object-fit: contain;
 }
 
+.reportDetailVideoStage {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  padding: 0;
+  background: #080b0a;
+  border: 0;
+  cursor: pointer;
+}
+
+.reportDetailVideoStage video {
+  pointer-events: none;
+}
+
+.reportDetailVideoPlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  gap: 9px;
+  color: #fff;
+  background: linear-gradient(180deg, rgba(4, 10, 8, 0.12), rgba(4, 10, 8, 0.5));
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.65);
+}
+
+.reportDetailVideoPlay :global(.anticon) {
+  font-size: 52px;
+  filter: drop-shadow(0 5px 16px rgba(0, 0, 0, 0.38));
+}
+
+.reportDetailVideoPlay strong {
+  font-size: 14px;
+}
+
+.reportDetailVideoStage:hover .reportDetailVideoPlay,
+.reportDetailVideoStage:focus-visible .reportDetailVideoPlay {
+  background: linear-gradient(180deg, rgba(4, 10, 8, 0.04), rgba(13, 70, 52, 0.58));
+}
+
+.reportDetailVideoStage:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -4px;
+}
+
+.videoPreviewModal :global(.ant-modal-mask) {
+  background: rgba(0, 0, 0, 0.88);
+}
+
+.videoPreviewModal :global(.ant-modal-content) {
+  overflow: hidden;
+  padding: 0;
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 16px;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.62);
+}
+
+.videoPreviewPlayer {
+  position: relative;
+  display: grid;
+  width: 100%;
+  max-height: 82vh;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #000;
+  place-items: center;
+}
+
+.videoPreviewPlayer video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 82vh;
+  background: #000;
+  object-fit: contain;
+}
+
+.videoPreviewClose {
+  position: absolute;
+  top: max(18px, env(safe-area-inset-top));
+  right: max(18px, env(safe-area-inset-right));
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  color: #fff;
+  background: rgba(28, 31, 30, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  backdrop-filter: blur(8px);
+}
+
+.videoPreviewClose:hover,
+.videoPreviewClose:focus-visible {
+  background: rgba(39, 121, 94, 0.9);
+}
+
+.videoPreviewClose:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .videoPreviewModal :global(.ant-modal-wrap) {
+    overflow: hidden;
+  }
+
+  .videoPreviewModal :global(.ant-modal) {
+    top: 0;
+    width: 100vw !important;
+    max-width: none;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+  }
+
+  .videoPreviewModal :global(.ant-modal-content),
+  .videoPreviewModal :global(.ant-modal-body) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .videoPreviewModal :global(.ant-modal-content) {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .videoPreviewPlayer {
+    height: 100%;
+    max-height: none;
+    aspect-ratio: auto;
+  }
+
+  .videoPreviewPlayer video {
+    max-height: none;
+  }
+}
+
+.reportDetailPreviewImage :global(.ant-image-img) {
+  width: 100%;
+}
+
 .reportDetailMediaMissing {
   display: grid;
   min-height: 220px;
@@ -5316,6 +5523,7 @@ button.checkoutFulfillmentOption:focus-visible {
   border-radius: 14px;
   font-size: 12px;
   font-weight: 600;
+  pointer-events: none;
 }
 
 .reportDetailThumbs {
@@ -5767,6 +5975,17 @@ button.checkoutFulfillmentOption:focus-visible {
   object-fit: cover;
 }
 
+.productGalleryPreview {
+  display: block !important;
+  width: 100%;
+  height: 100%;
+}
+
+.productGalleryPreview :global(.ant-image-img) {
+  width: 100%;
+  height: 100%;
+}
+
 .productImageGallery {
   display: grid;
   gap: 10px;
@@ -5930,6 +6149,15 @@ button.checkoutFulfillmentOption:focus-visible {
   height: auto;
 }
 
+.productDetailPreview {
+  display: block !important;
+  width: 100%;
+}
+
+.productDetailPreview :global(.ant-image-img) {
+  width: 100%;
+}
+
 .trialHeroBody {
   position: relative;
   display: grid;
@@ -5955,7 +6183,6 @@ button.checkoutFulfillmentOption:focus-visible {
   margin: 0;
 }
 
-.productCategoryBadge,
 .productTrialBadge,
 .productBrandBadge {
   display: inline-flex;
@@ -5965,14 +6192,6 @@ button.checkoutFulfillmentOption:focus-visible {
   border-radius: 999px;
   font-weight: 800;
   line-height: 1;
-}
-
-.productCategoryBadge {
-  padding: 6px 10px;
-  color: #276a55;
-  background: #edf7ef;
-  border: 1px solid #cfe6d7;
-  font-size: 12px;
 }
 
 .productTrialBadge {
@@ -9447,6 +9666,7 @@ button.checkoutFulfillmentOption:focus-visible {
   min-height: var(--auth-sms-control-height) !important;
   box-sizing: border-box;
   padding-block: 0;
+  padding-inline: 16px;
   border-radius: 12px !important;
 }
 

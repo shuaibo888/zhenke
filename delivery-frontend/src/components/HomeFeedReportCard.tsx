@@ -1,5 +1,5 @@
-import { LikeFilled } from '@ant-design/icons';
-import { Button, Tag } from 'antd';
+import { LikeFilled, ZoomInOutlined } from '@ant-design/icons';
+import { Button, Image, Tag } from 'antd';
 import type { HomeFeedItemDto } from '@/services/shopContent';
 import styles from '@/styles/commerce.less';
 
@@ -22,9 +22,17 @@ export function HomeFeedReportCard({
   if (variant === 'preview') {
     return (
       <article className={styles.reportCard}>
-        <button className={styles.reportImageButton} type="button" onClick={onOpen}>
-          <img loading="lazy" decoding="async" src={item.coverUrl} alt={`${item.title}实拍`} />
-        </button>
+        <div className={styles.reportImageButton}>
+          <Image
+            rootClassName={styles.reportPreviewImage}
+            loading="lazy"
+            src={item.coverUrl}
+            alt={`${item.title}实拍`}
+            preview={{
+              mask: <span className={styles.imagePreviewMask}><ZoomInOutlined />点击放大</span>,
+            }}
+          />
+        </div>
         <div className={styles.reportMeta}>
           <Tag color="green">甄客验</Tag>
           <strong>{authorName}</strong>

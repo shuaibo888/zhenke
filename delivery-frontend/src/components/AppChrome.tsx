@@ -200,7 +200,19 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       suppressFloatingCartClickRef.current = true;
       floatingCartPositionPersistedRef.current = true;
       persistFloatingCartPosition(floatingCartPositionRef.current);
+      window.setTimeout(() => {
+        suppressFloatingCartClickRef.current = false;
+      }, 0);
     }
+  };
+
+  const openFloatingCart = () => {
+    if (suppressFloatingCartClickRef.current) {
+      suppressFloatingCartClickRef.current = false;
+      return;
+    }
+    if (user) setCartOpen(true);
+    else navigate('/auth');
   };
 
   const openProtected = (path: string) => {
@@ -402,6 +414,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           onPointerMove={moveFloatingCart}
           onPointerUp={endFloatingCartDrag}
           onPointerCancel={endFloatingCartDrag}
+          onClick={openFloatingCart}
         >
           <Badge count={cartCount} size="small">
             <Button
@@ -410,14 +423,6 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
               type="primary"
               shape="circle"
               icon={<ShoppingCartOutlined />}
-              onClick={() => {
-                if (suppressFloatingCartClickRef.current) {
-                  suppressFloatingCartClickRef.current = false;
-                  return;
-                }
-                if (user) setCartOpen(true);
-                else navigate('/auth');
-              }}
             />
           </Badge>
         </div>

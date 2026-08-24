@@ -1,13 +1,16 @@
 import {
   ArrowLeftOutlined,
+  CloseOutlined,
   DeleteOutlined,
   LikeFilled,
   LikeOutlined,
   LinkOutlined,
   MessageOutlined,
+  PlayCircleFilled,
   ShareAltOutlined,
+  ZoomInOutlined,
 } from '@ant-design/icons';
-import { Button, Drawer, Input, Modal, Spin, Tag, message } from 'antd';
+import { Button, Drawer, Image, Input, Modal, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -93,7 +96,8 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
   const [shareOpen, setShareOpen] = useState(false);
   const [wechatShareGuideOpen, setWechatShareGuideOpen] = useState(false);
   const [activeResourceIndex, setActiveResourceIndex] = useState(0);
-  useBodyScrollLock(shareOpen);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState('');
+  useBodyScrollLock(shareOpen || Boolean(videoPreviewUrl));
   const shareAuthorName = report ? (report.nickName || report.userName) : '';
   const sharePreviewImage = report?.resources?.find((item) => item.resourceType === 'IMAGE')?.resourceUrl
     || report?.productCoverUrl
@@ -279,8 +283,40 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
                 ? (
                   <>
                     {activeResource.resourceType === 'VIDEO'
-                      ? <video key={activeResource.resourceUrl} src={activeResource.resourceUrl} controls playsInline preload="metadata" />
-                      : <img src={activeResource.resourceUrl} alt={`${authorName}的实拍`} />}
+                      ? (
+                        <button
+                          type="button"
+                          className={styles.reportDetailVideoStage}
+                          aria-label="播放甄客视频"
+                          onClick={() => setVideoPreviewUrl(activeResource.resourceUrl)}
+                        >
+                          <video key={activeResource.resourceUrl} src={activeResource.resourceUrl} muted playsInline preload="metadata" />
+                          <span className={styles.reportDetailVideoPlay}>
+                            <PlayCircleFilled />
+                            <strong>播放视频</strong>
+                          </span>
+                        </button>
+                      )
+                      : (
+                        <Image.PreviewGroup>
+                          <Image
+                            key={activeResource.resourceUrl}
+                            rootClassName={styles.reportDetailPreviewImage}
+                            src={activeResource.resourceUrl}
+                            alt={`${authorName}的实拍`}
+                            preview={{
+                              mask: <span className={styles.imagePreviewMask}><ZoomInOutlined />点击放大</span>,
+                            }}
+                          />
+                          {reportResources
+                            .filter((resource) => resource.resourceType === 'IMAGE' && resource.resourceId !== activeResource.resourceId)
+                            .map((resource, index) => (
+                              <span className={styles.imagePreviewHidden} key={resource.resourceId}>
+                                <Image src={resource.resourceUrl} alt={`${authorName}的实拍 ${index + 2}`} />
+                              </span>
+                            ))}
+                        </Image.PreviewGroup>
+                      )}
                     <span className={styles.reportDetailPhotoBadge}>
                       {activeResource.resourceType === 'VIDEO' ? '甄客视频 · 可播放' : '甄客实拍'}
                     </span>
@@ -296,7 +332,10 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
                     key={`${resource.resourceId}-${resource.resourceUrl}`}
                     aria-label={`查看第 ${index + 1} 个体验资源`}
                     className={index === activeResourceIndex ? styles.reportDetailThumbActive : ''}
-                    onClick={() => setActiveResourceIndex(index)}
+                    onClick={() => {
+                      setActiveResourceIndex(index);
+                      if (resource.resourceType === 'VIDEO') setVideoPreviewUrl(resource.resourceUrl);
+                    }}
                   >
                     {resource.resourceType === 'VIDEO'
                       ? (
@@ -421,6 +460,33 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
           </Button>
         </div>
       </main>
+
+      <Modal
+        open={Boolean(videoPreviewUrl)}
+        onCancel={() => setVideoPreviewUrl('')}
+        footer={null}
+        closable={false}
+        maskClosable
+        width={960}
+        centered
+        destroyOnHidden
+        rootClassName={styles.videoPreviewModal}
+      >
+        <div className={styles.videoPreviewPlayer}>
+          <button
+            type="button"
+            className={styles.videoPreviewClose}
+            aria-label="退出全屏播放"
+            onClick={() => setVideoPreviewUrl('')}
+          >
+            <CloseOutlined />
+            关闭
+          </button>
+          {videoPreviewUrl && (
+            <video key={videoPreviewUrl} src={videoPreviewUrl} controls autoPlay playsInline preload="metadata" />
+          )}
+        </div>
+      </Modal>
 
       <Drawer
         title="分享甄客验"

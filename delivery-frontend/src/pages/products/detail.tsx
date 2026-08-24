@@ -10,8 +10,9 @@ import {
   ShopOutlined,
   ShoppingCartOutlined,
   TruckOutlined,
+  ZoomInOutlined,
 } from '@ant-design/icons';
-import { Button, Drawer, Form, Input, Modal, Spin, Tag, message } from 'antd';
+import { Button, Drawer, Form, Image, Input, Modal, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -252,7 +253,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
     setCartSubmitting(true);
     try {
       await addToCart(product.productId, 1, validSourceReportId);
-      message.success('已按快递物流加入购物车');
+      message.success('已加入购物车');
     } catch (error) {
       message.error(error instanceof Error ? error.message : '加入购物车失败');
     } finally {
@@ -439,12 +440,23 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
                 stepProductImage(endX < startX ? 1 : -1);
               }}
             >
-              <img
-                key={displayedProductImage}
-                className={styles.productGalleryImage}
-                src={displayedProductImage}
-                alt={product.productName}
-              />
+              <Image.PreviewGroup>
+                <Image
+                  key={displayedProductImage}
+                  rootClassName={styles.productGalleryPreview}
+                  className={styles.productGalleryImage}
+                  src={displayedProductImage}
+                  alt={product.productName}
+                  preview={{
+                    mask: <span className={styles.imagePreviewMask}><ZoomInOutlined />点击放大</span>,
+                  }}
+                />
+                {productGallery.filter((imageUrl) => imageUrl !== displayedProductImage).map((imageUrl, index) => (
+                  <span className={styles.imagePreviewHidden} key={imageUrl}>
+                    <Image src={imageUrl} alt={`${product.productName} 商品图 ${index + 2}`} />
+                  </span>
+                ))}
+              </Image.PreviewGroup>
               {productGallery.length > 1 && (
                 <>
                   <button
@@ -496,8 +508,12 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
             )}
           </div>
           <div className={styles.trialHeroBody}>
+            <div className={styles.productIdentityTitle}>
+              <span className={styles.productBrandBadge}>{product.brandName}</span>
+              <h1>{product.productName}</h1>
+            </div>
+            {(routeCampaign?.trial || product.certificationStatus === 'PASSED') && (
             <div className={styles.productIdentityTopline}>
-              <span className={styles.productCategoryBadge}>{product.categoryName}</span>
               {routeCampaign?.trial && (
                 <span className={`${styles.productTrialBadge} ${routeCampaign.trial.trialType === 'ONLINE' ? styles.online : styles.offline}`}>
                   {routeCampaign.trial.trialType === 'ONLINE' ? <TruckOutlined /> : <ShopOutlined />}
@@ -508,10 +524,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
                 <Tag color="cyan" icon={<SafetyCertificateOutlined />}>商家承诺正品</Tag>
               )}
             </div>
-            <div className={styles.productIdentityTitle}>
-              <span className={styles.productBrandBadge}>{product.brandName}</span>
-              <h1>{product.productName}</h1>
-            </div>
+            )}
             {product.subtitle && <p className={styles.productIdentitySubtitle}>{product.subtitle}</p>}
             <div className={styles.productFulfillmentSummary} aria-label="商品履约方式">
               {supportsOnlinePurchase && (
@@ -529,7 +542,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
             </div>
             <div className={styles.productIdentityPriceRow}>
               <strong className={styles.linkedProductPrice}>{formatPrice(product.price)}</strong>
-              <small>{supportsOnlinePurchase && supportsOfflinePurchase ? '结算时选择履约方式' : '当前商品售价'}</small>
+              <small>{product.categoryName}</small>
             </div>
           </div>
         </section>
@@ -635,15 +648,20 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
             >
               {(product.detailImageUrls?.length ?? 0) > 0 ? (
                 <div className={styles.productDetailImages}>
-                  {product.detailImageUrls?.map((imageUrl, index) => (
-                    <img
-                      key={imageUrl}
-                      src={imageUrl}
-                      alt={`${product.productName} 商品详情图 ${index + 1}`}
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ))}
+                  <Image.PreviewGroup>
+                    {product.detailImageUrls?.map((imageUrl, index) => (
+                      <Image
+                        key={imageUrl}
+                        rootClassName={styles.productDetailPreview}
+                        src={imageUrl}
+                        alt={`${product.productName} 商品详情图 ${index + 1}`}
+                        loading="lazy"
+                        preview={{
+                          mask: <span className={styles.imagePreviewMask}><ZoomInOutlined />点击放大</span>,
+                        }}
+                      />
+                    ))}
+                  </Image.PreviewGroup>
                 </div>
               ) : (
                 <p className={styles.productColumnEmpty}>商家暂未上传商品详情图。</p>
