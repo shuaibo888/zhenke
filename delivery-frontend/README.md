@@ -28,7 +28,11 @@ src/
 - `/products/:productId`：商品详情。
 - `/reports/:reportId`：甄客验详情。
 - `/profile/orders`：我的订单。
+- `/profile/orders/:orderId`：订单详情。
 - `/profile/trials`：我的试用。
+- `/profile/trials/:applicationId`：试用详情。
+- `/profile/coupons`：我的优惠券。
+- `/profile/coupons/:userCouponId`：优惠券详情、固定核销码和适用门店。
 - `/profile/reports`：我的甄客验。
 - `/?report=3`：兼容分享链接，直接加载报告 `3` 的真实详情。
 - `/?product=3`：兼容商品分享链接，直接加载商品 `3` 的真实详情。

@@ -27,10 +27,13 @@
         <id property="applicationId" column="application_id" />
         <result property="campaignId" column="campaign_id" />
         <result property="merchantId" column="merchant_id" />
+        <result property="merchantName" column="merchant_name" />
         <result property="productId" column="product_id" />
         <result property="trialType" column="trial_type" />
         <result property="productName" column="product_name" />
+        <result property="productCoverUrl" column="product_cover_url" />
         <result property="campaignTitle" column="campaign_title" />
+        <result property="campaignSummary" column="campaign_summary" />
         <result property="shopUserId" column="shop_user_id" />
         <result property="userName" column="user_name" />
         <result property="nickName" column="nick_name" />
@@ -50,6 +53,7 @@
         <result property="redeemedAt" column="redeemed_at" />
         <result property="createTime" column="application_create_time" />
         <result property="applicationDeadline" column="application_deadline" />
+        <result property="verificationReportId" column="verification_report_id" />
     </resultMap>
 
     <resultMap id="ShopReportResourceResult" type="ShopVerificationReportResource">
@@ -259,17 +263,22 @@
     </select>
 
     <sql id="selectApplication">
-        select a.application_id, a.campaign_id, c.merchant_id, c.product_id, c.trial_type,
-               p.product_name, c.campaign_title, a.shop_user_id, u.user_name, u.nick_name,
+        select a.application_id, a.campaign_id, c.merchant_id, m.shop_name as merchant_name,
+               c.product_id, c.trial_type, p.product_name, p.cover_url as product_cover_url,
+               c.campaign_title, c.campaign_summary, a.shop_user_id, u.user_name, u.nick_name,
                a.apply_reason, a.recipient_name, a.recipient_phone, a.shipping_address,
                a.status as application_status, a.audit_remark, a.carrier, a.tracking_no,
                a.audit_time, a.shipped_at, a.received_at, a.completed_at,
                a.redeem_code, a.redeemed_at,
-               a.create_time as application_create_time, c.application_deadline
+               a.create_time as application_create_time, c.application_deadline,
+               published.report_id as verification_report_id
         from shop_trial_application a
         inner join shop_trial_campaign c on c.campaign_id = a.campaign_id
         inner join shop_product p on p.product_id = c.product_id
+        inner join shop_merchant m on m.merchant_id = c.merchant_id
         inner join shop_user u on u.user_id = a.shop_user_id
+        left join shop_verification_report published
+          on published.trial_application_id = a.application_id and published.status = 'PUBLISHED'
     </sql>
 
     <select id="selectMerchantApplications" resultMap="ShopTrialApplicationResult">

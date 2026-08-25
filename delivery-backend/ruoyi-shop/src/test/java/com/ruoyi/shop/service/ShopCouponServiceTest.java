@@ -90,6 +90,7 @@ class ShopCouponServiceTest
         ShopCouponBody body = new ShopCouponBody();
         body.setCouponName("定向优惠券");
         body.setDescription("仅适用于管理员指定商家");
+        body.setUsageMode(ShopCouponService.USAGE_ORDER);
         body.setDiscountAmount(new BigDecimal("20.00"));
         body.setMinimumSpend(new BigDecimal("100.00"));
         body.setStartTime(Date.from(Instant.parse("2026-08-01T00:00:00Z")));

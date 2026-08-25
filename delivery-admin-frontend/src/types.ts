@@ -180,6 +180,10 @@ export interface ManagedCouponMerchant {
   couponId: number;
   merchantId: number;
   merchantName: string;
+  storeAddress?: string;
+  contactPhone?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface ManagedCoupon {
@@ -188,6 +192,8 @@ export interface ManagedCoupon {
   scopeType: 'MERCHANT_SPECIFIC' | 'PLATFORM_WIDE';
   couponName: string;
   description?: string;
+  usageMode: 'ORDER' | 'OFFLINE' | 'BOTH';
+  redeemInstructions?: string;
   discountAmount: number;
   minimumSpend: number;
   pointsCost?: number;
@@ -201,6 +207,40 @@ export interface ManagedCoupon {
   createTime?: string;
   updateBy?: string;
   updateTime?: string;
+}
+
+export interface CouponRedeemPreview {
+  userCouponId: number;
+  couponId: number;
+  shopUserId: number;
+  userName: string;
+  nickName?: string;
+  couponCode: string;
+  couponName: string;
+  usageMode: 'ORDER' | 'OFFLINE' | 'BOTH';
+  discountAmount: number;
+  minimumSpend: number;
+  startTime: string;
+  endTime: string;
+  merchants: ManagedCouponMerchant[];
+}
+
+export interface ManagedCouponRedemption {
+  redemptionId: number;
+  userCouponId: number;
+  couponId: number;
+  shopUserId: number;
+  userName: string;
+  nickName?: string;
+  merchantId: number;
+  merchantName: string;
+  couponName: string;
+  minimumSpend: number;
+  discountAmount: number;
+  consumptionAmount?: number;
+  actualAmount?: number;
+  operatorName: string;
+  redeemedAt: string;
 }
 
 export interface ManagedCouponGrant {

@@ -1,7 +1,7 @@
 import { GiftOutlined } from '@ant-design/icons';
 import { Spin, Tag } from 'antd';
 import { useMemo, useState } from 'react';
-import { Navigate } from 'umi';
+import { Navigate, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import type { ShopCouponDto } from '@/services/shopContent';
@@ -27,6 +27,7 @@ function formatDate(value: string) {
 
 export default function CouponsPage() {
   const { user, coupons, couponsLoading, refreshCoupons } = useShop();
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<CouponFilter>('all');
   useRefreshOnRoute('/profile/coupons', refreshCoupons, '优惠券刷新失败');
 
@@ -78,6 +79,12 @@ export default function CouponsPage() {
                 <article
                   className={`${styles.couponWalletCard} ${inactive ? styles.couponWalletCardInactive : ''}`}
                   key={coupon.userCouponId}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/profile/coupons/${coupon.userCouponId}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') navigate(`/profile/coupons/${coupon.userCouponId}`);
+                  }}
                 >
                   <div className={styles.couponWalletAmount}>
                     <span>{formatPrice(coupon.discountAmount)}</span>
@@ -89,6 +96,7 @@ export default function CouponsPage() {
                       <Tag color={meta.color}>{meta.label}</Tag>
                     </div>
                     <p>{coupon.description || '平台定向优惠券'}</p>
+                    <p>{coupon.usageMode === 'ORDER' ? '商城下单使用' : coupon.usageMode === 'OFFLINE' ? '到店出示核销码' : '商城下单或到店核销'}</p>
                     <dl>
                       <div>
                         <dt>适用范围</dt>

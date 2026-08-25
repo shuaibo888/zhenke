@@ -74,10 +74,12 @@ import {
   updateProductCategory,
   shipMerchantTrialApplication,
   redeemMerchantTrialApplication,
+  previewMerchantTrialApplicationRedeem,
   submitProductCertification,
   openProductCertificationMaterial,
   shipMerchantOrder,
   redeemShopOrder,
+  previewShopOrderRedeem,
   type CaptchaState,
   type DashboardSummaryDto,
   type ProductCertificationDto,
@@ -100,6 +102,7 @@ import TrialDialogs, {
   type TrialFormValues,
 } from '@/modules/trials/TrialDialogs';
 import RedeemScanModal from '@/modules/trials/RedeemScanModal';
+import RedeemConfirmModal from '@/modules/trials/RedeemConfirmModal';
 import { AdminPageContext, type AdminPagePropsMap } from '@/app/AdminPageContext';
 import { adminNavPaths, getAdminNavKey } from '@/app/adminRoutes';
 import { filterRowsForSession, getAvailableNavKeys, hasGlobalAccess } from '@/utils/access';
@@ -253,8 +256,10 @@ function AdminWorkspace() {
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [redeemScanOpen, setRedeemScanOpen] = useState(false);
   const [redeeming, setRedeeming] = useState(false);
+  const [trialRedeemPreview, setTrialRedeemPreview] = useState<{ code: string; application: ManagedTrialApplication } | null>(null);
   const [orderRedeemScanOpen, setOrderRedeemScanOpen] = useState(false);
   const [orderRedeeming, setOrderRedeeming] = useState(false);
+  const [orderRedeemPreview, setOrderRedeemPreview] = useState<{ code: string; order: ManagedOrder } | null>(null);
   const [merchants, setMerchants] = useState<MerchantAccount[]>([]);
   const [merchantsLoading, setMerchantsLoading] = useState(false);
   const [merchantPage, setMerchantPage] = useState(1);
@@ -1018,13 +1023,27 @@ function AdminWorkspace() {
     setRedeeming(true);
     try {
       if (!session) return;
-      await redeemMerchantTrialApplication(session, redeemCode);
-      message.success('核销成功，用户现在可以发布甄客验');
+      const application = await previewMerchantTrialApplicationRedeem(session, redeemCode);
       setRedeemScanOpen(false);
+      setTrialRedeemPreview({ code: redeemCode, application });
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '核销码识别失败');
+      throw error;
+    } finally {
+      setRedeeming(false);
+    }
+  };
+
+  const confirmTrialRedeem = async () => {
+    if (!session || !trialRedeemPreview) return;
+    setRedeeming(true);
+    try {
+      await redeemMerchantTrialApplication(session, trialRedeemPreview.code);
+      message.success('核销成功，用户现在可以发布甄客验');
+      setTrialRedeemPreview(null);
       await loadTrialApplications();
     } catch (error) {
       message.error(error instanceof Error ? error.message : '核销失败');
-      throw error;
     } finally {
       setRedeeming(false);
     }
@@ -1034,12 +1053,11 @@ function AdminWorkspace() {
     if (!session) return;
     setOrderRedeeming(true);
     try {
-      await redeemShopOrder(session, redeemCode);
-      message.success('线下订单已核销');
+      const order = await previewShopOrderRedeem(session, redeemCode);
       setOrderRedeemScanOpen(false);
-      await loadOrders(session);
+      setOrderRedeemPreview({ code: redeemCode, order });
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '核销失败');
+      message.error(error instanceof Error ? error.message : '核销码识别失败');
       throw error;
     } finally {
       setOrderRedeeming(false);
@@ -1825,6 +1843,21 @@ function AdminWorkspace() {
     },
   };
 
+  const confirmOrderRedeem = async () => {
+    if (!session || !orderRedeemPreview) return;
+    setOrderRedeeming(true);
+    try {
+      await redeemShopOrder(session, orderRedeemPreview.code);
+      message.success('线下订单已核销');
+      setOrderRedeemPreview(null);
+      await loadOrders(session);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '核销失败');
+    } finally {
+      setOrderRedeeming(false);
+    }
+  };
+
   const handleNavClick = (key: NavKey) => {
     if (key !== activeNav) navigate(adminNavPaths[key]);
     setMobileMenuOpen(false);
@@ -2009,16 +2042,45 @@ function AdminWorkspace() {
         open={redeemScanOpen}
         redeeming={redeeming}
         onClose={() => setRedeemScanOpen(false)}
-        onRedeemed={(code) => handleRedeem(code)}
+        onRecognized={(code) => handleRedeem(code)}
+      />
+
+      <RedeemConfirmModal
+        open={Boolean(trialRedeemPreview)}
+        title="确认核销线下试用"
+        loading={redeeming}
+        onCancel={() => setTrialRedeemPreview(null)}
+        onConfirm={() => void confirmTrialRedeem()}
+        items={trialRedeemPreview ? [
+          { label: '试用活动', value: trialRedeemPreview.application.campaignTitle },
+          { label: '试用商品', value: trialRedeemPreview.application.productName },
+          { label: '领取用户', value: `${trialRedeemPreview.application.nickName || trialRedeemPreview.application.userName}（${trialRedeemPreview.application.userName}）` },
+          { label: '试用方式', value: '到店试用' },
+        ] : []}
       />
 
       <RedeemScanModal
         open={orderRedeemScanOpen}
         redeeming={orderRedeeming}
         title="线下订单核销"
-        description="对准用户出示的订单核销码，识别成功后核销该线下订单，用户即可发布购买甄客验。"
+        description="对准用户出示的订单核销码，识别成功后先核对订单和用户信息，再确认核销。"
         onClose={() => setOrderRedeemScanOpen(false)}
-        onRedeemed={(code) => handleOrderRedeem(code)}
+        onRecognized={(code) => handleOrderRedeem(code)}
+      />
+
+      <RedeemConfirmModal
+        open={Boolean(orderRedeemPreview)}
+        title="确认核销线下订单"
+        loading={orderRedeeming}
+        onCancel={() => setOrderRedeemPreview(null)}
+        onConfirm={() => void confirmOrderRedeem()}
+        items={orderRedeemPreview ? [
+          { label: '订单编号', value: orderRedeemPreview.order.orderNo },
+          { label: '购买用户', value: orderRedeemPreview.order.buyerName },
+          { label: '商品', value: orderRedeemPreview.order.productTitles.join('、') },
+          { label: '数量', value: `${orderRedeemPreview.order.itemCount} 件` },
+          { label: '实付金额', value: `¥${orderRedeemPreview.order.amount.toFixed(2)}` },
+        ] : []}
       />
 
       <MerchantDetailDialog

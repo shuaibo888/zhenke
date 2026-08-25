@@ -134,7 +134,19 @@ export default function TrialsPage() {
                 const publishable = (trial.trialType === 'OFFLINE' && trial.status === 'REDEEMED')
                   || (trial.trialType === 'ONLINE' && trial.status === 'RECEIVED');
                 return (
-                  <article className={`${styles.orderCard} ${styles.trialCard}`} key={trial.applicationId}>
+                  <article
+                    className={`${styles.orderCard} ${styles.trialCard} ${styles.businessListCard}`}
+                    key={trial.applicationId}
+                    role="link"
+                    tabIndex={0}
+                    onClick={() => navigate(`/profile/trials/${trial.applicationId}`)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        navigate(`/profile/trials/${trial.applicationId}`);
+                      }
+                    }}
+                  >
                     <div className={styles.orderCardHead}>
                       <span className={styles.orderShop}>
                         <span className={styles.orderShopAvatar}>试</span>
@@ -143,7 +155,9 @@ export default function TrialsPage() {
                       <Tag color={statusMeta[trial.status].color}>{statusMeta[trial.status].label}</Tag>
                     </div>
                     <div className={styles.trialCardBody}>
-                      <span className={styles.trialProductMark}>验</span>
+                      {trial.productCoverUrl
+                        ? <img className={styles.orderThumb} src={trial.productCoverUrl} alt={trial.productName} />
+                        : <span className={styles.trialProductMark}>验</span>}
                       <div className={styles.orderThumbInfo}>
                         <p className={styles.orderThumbTitle}>{trial.productName}</p>
                         <p className={styles.orderThumbNo}>申请时间 {formatDateTime(trial.createTime)}</p>
@@ -155,7 +169,8 @@ export default function TrialsPage() {
                         {trial.auditRemark && <p className={styles.trialAuditRemark}>{trial.auditRemark}</p>}
                       </div>
                     </div>
-                    <div className={styles.orderCardFooter}>
+                    <div className={styles.orderCardFooter} onClick={(event) => event.stopPropagation()}>
+                      <Button size="small" onClick={() => navigate(`/profile/trials/${trial.applicationId}`)}>试用详情</Button>
                       {trial.trialType === 'ONLINE' && trial.trackingNo && ['SHIPPED', 'RECEIVED', 'COMPLETED'].includes(trial.status) && (
                         <Button size="small" onClick={() => void openLogistics(trial)}>查看物流</Button>
                       )}
@@ -174,6 +189,9 @@ export default function TrialsPage() {
                       )}
                       {publishable && (
                         <Button size="small" type="primary" onClick={() => setPublishTrial(trial)}>发布甄客验</Button>
+                      )}
+                      {trial.verificationReportId && (
+                        <Button size="small" type="primary" onClick={() => navigate(`/reports/${trial.verificationReportId}`)}>查看甄客验</Button>
                       )}
                     </div>
                   </article>

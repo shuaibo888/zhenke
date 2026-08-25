@@ -15,6 +15,8 @@ public class ShopCoupon extends BaseEntity
     private String scopeType;
     private String couponName;
     private String description;
+    private String usageMode;
+    private String redeemInstructions;
     private BigDecimal discountAmount;
     private BigDecimal minimumSpend;
     private Long pointsCost;
@@ -35,6 +37,10 @@ public class ShopCoupon extends BaseEntity
     public void setCouponName(String couponName) { this.couponName = couponName; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public String getUsageMode() { return usageMode; }
+    public void setUsageMode(String usageMode) { this.usageMode = usageMode; }
+    public String getRedeemInstructions() { return redeemInstructions; }
+    public void setRedeemInstructions(String redeemInstructions) { this.redeemInstructions = redeemInstructions; }
     public BigDecimal getDiscountAmount() { return discountAmount; }
     public void setDiscountAmount(BigDecimal discountAmount) { this.discountAmount = discountAmount; }
     public BigDecimal getMinimumSpend() { return minimumSpend; }

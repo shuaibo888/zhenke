@@ -7,6 +7,8 @@
         <result property="scopeType" column="scope_type" />
         <result property="couponName" column="coupon_name" />
         <result property="description" column="description" />
+        <result property="usageMode" column="usage_mode" />
+        <result property="redeemInstructions" column="redeem_instructions" />
         <result property="discountAmount" column="discount_amount" />
         <result property="minimumSpend" column="minimum_spend" />
         <result property="pointsCost" column="points_cost" />
@@ -25,6 +27,10 @@
         <id property="couponId" column="coupon_id" />
         <id property="merchantId" column="merchant_id" />
         <result property="merchantName" column="merchant_name" />
+        <result property="storeAddress" column="store_address" />
+        <result property="contactPhone" column="contact_phone" />
+        <result property="latitude" column="latitude" />
+        <result property="longitude" column="longitude" />
     </resultMap>
 
     <resultMap id="ShopCouponGrantResult" type="ShopCouponGrant">
@@ -52,6 +58,8 @@
         <result property="createTime" column="user_coupon_create_time" />
         <result property="couponName" column="coupon_name" />
         <result property="description" column="description" />
+        <result property="usageMode" column="usage_mode" />
+        <result property="redeemInstructions" column="redeem_instructions" />
         <result property="scopeType" column="scope_type" />
         <result property="discountAmount" column="discount_amount" />
         <result property="minimumSpend" column="minimum_spend" />
@@ -59,10 +67,36 @@
         <result property="endTime" column="end_time" />
         <result property="couponStatus" column="coupon_status" />
         <result property="availabilityStatus" column="availability_status" />
+        <result property="userName" column="user_name" />
+        <result property="nickName" column="nick_name" />
+        <result property="redeemedMerchantId" column="redeemed_merchant_id" />
+        <result property="redeemedMerchantName" column="redeemed_merchant_name" />
+        <result property="consumptionAmount" column="consumption_amount" />
+        <result property="actualAmount" column="actual_amount" />
+    </resultMap>
+
+    <resultMap id="ShopCouponRedemptionResult" type="ShopCouponRedemption">
+        <id property="redemptionId" column="redemption_id" />
+        <result property="userCouponId" column="user_coupon_id" />
+        <result property="couponId" column="coupon_id" />
+        <result property="shopUserId" column="shop_user_id" />
+        <result property="userName" column="user_name" />
+        <result property="nickName" column="nick_name" />
+        <result property="merchantId" column="merchant_id" />
+        <result property="merchantName" column="merchant_name" />
+        <result property="couponName" column="coupon_name_snapshot" />
+        <result property="minimumSpend" column="minimum_spend_snapshot" />
+        <result property="discountAmount" column="discount_amount_snapshot" />
+        <result property="consumptionAmount" column="consumption_amount" />
+        <result property="actualAmount" column="actual_amount" />
+        <result property="operatorId" column="operator_id" />
+        <result property="operatorName" column="operator_name" />
+        <result property="redeemedAt" column="redeemed_at" />
     </resultMap>
 
     <sql id="selectCoupon">
-        select coupon_id, owner_merchant_id, scope_type, coupon_name, description, discount_amount, minimum_spend,
+        select coupon_id, owner_merchant_id, scope_type, coupon_name, description, usage_mode,
+               redeem_instructions, discount_amount, minimum_spend,
                points_cost,
                start_time, end_time, status, total_stock, issued_count,
                create_by, create_time, update_by, update_time
@@ -116,7 +150,8 @@
     </select>
 
     <select id="selectMerchantScopes" resultMap="ShopCouponMerchantResult">
-        select cm.coupon_id, cm.merchant_id, m.shop_name as merchant_name
+        select cm.coupon_id, cm.merchant_id, m.shop_name as merchant_name,
+               m.company_address as store_address, m.contact_phone, m.latitude, m.longitude
         from shop_coupon_merchant cm
         inner join shop_merchant m on m.merchant_id = cm.merchant_id and m.del_flag = '0'
         where cm.coupon_id in
@@ -167,11 +202,13 @@
 
     <insert id="insertCoupon" parameterType="ShopCoupon" useGeneratedKeys="true" keyProperty="couponId">
         insert into shop_coupon
-        (owner_merchant_id, scope_type, coupon_name, description, discount_amount, minimum_spend, points_cost,
+        (owner_merchant_id, scope_type, coupon_name, description, usage_mode, redeem_instructions,
+         discount_amount, minimum_spend, points_cost,
          start_time, end_time,
          status, total_stock, issued_count, del_flag, create_by, create_time, update_by, update_time)
         values
-        (#{ownerMerchantId}, #{scopeType}, #{couponName}, #{description}, #{discountAmount}, #{minimumSpend},
+        (#{ownerMerchantId}, #{scopeType}, #{couponName}, #{description}, #{usageMode}, #{redeemInstructions},
+         #{discountAmount}, #{minimumSpend},
          #{pointsCost}, #{startTime}, #{endTime},
          #{status}, #{totalStock}, 0, '0', #{createBy}, sysdate(), #{updateBy}, sysdate())
     </insert>
@@ -179,6 +216,7 @@
     <update id="updateCoupon" parameterType="ShopCoupon">
         update shop_coupon
         set coupon_name = #{couponName}, description = #{description},
+            usage_mode = #{usageMode}, redeem_instructions = #{redeemInstructions},
             discount_amount = #{discountAmount}, minimum_spend = #{minimumSpend},
             scope_type = #{scopeType}, points_cost = #{pointsCost},
             start_time = #{startTime}, end_time = #{endTime}, status = #{status},
@@ -245,7 +283,8 @@
         select uc.user_coupon_id, uc.coupon_id, uc.shop_user_id, uc.grant_id,
                uc.coupon_code, uc.status as user_coupon_status, uc.used_order_id,
                uc.used_time, uc.create_time as user_coupon_create_time,
-               c.coupon_name, c.description, c.scope_type, c.discount_amount, c.minimum_spend,
+               c.coupon_name, c.description, c.scope_type, c.usage_mode, c.redeem_instructions,
+               c.discount_amount, c.minimum_spend,
                c.start_time, c.end_time, c.status as coupon_status
     </sql>
 
@@ -257,9 +296,14 @@
             when c.end_time &lt;= sysdate() then 'EXPIRED'
             when c.start_time &gt; sysdate() then 'PENDING'
             else 'AVAILABLE'
-        end as availability_status
+        end as availability_status,
+        redemption.merchant_id as redeemed_merchant_id,
+        redeemed_merchant.shop_name as redeemed_merchant_name,
+        redemption.consumption_amount, redemption.actual_amount
         from shop_user_coupon uc
         inner join shop_coupon c on c.coupon_id = uc.coupon_id
+        left join shop_coupon_redemption redemption on redemption.user_coupon_id = uc.user_coupon_id
+        left join shop_merchant redeemed_merchant on redeemed_merchant.merchant_id = redemption.merchant_id
         where uc.shop_user_id = #{userId}
         order by
             case
@@ -270,6 +314,26 @@
                 else 3
             end,
             c.end_time, uc.user_coupon_id desc
+    </select>
+
+    <select id="selectUserCoupon" resultMap="ShopUserCouponResult">
+        <include refid="selectUserCouponColumns" />,
+        case
+            when uc.status = 'USED' then 'USED'
+            when c.del_flag != '0' or c.status != 'ENABLED' then 'DISABLED'
+            when c.end_time &lt;= sysdate() then 'EXPIRED'
+            when c.start_time &gt; sysdate() then 'PENDING'
+            else 'AVAILABLE'
+        end as availability_status,
+        redemption.merchant_id as redeemed_merchant_id,
+        redeemed_merchant.shop_name as redeemed_merchant_name,
+        redemption.consumption_amount, redemption.actual_amount
+        from shop_user_coupon uc
+        inner join shop_coupon c on c.coupon_id = uc.coupon_id
+        left join shop_coupon_redemption redemption on redemption.user_coupon_id = uc.user_coupon_id
+        left join shop_merchant redeemed_merchant on redeemed_merchant.merchant_id = redemption.merchant_id
+        where uc.shop_user_id = #{userId} and uc.user_coupon_id = #{userCouponId}
+        limit 1
     </select>
 
     <select id="countAvailableUserCoupons" parameterType="Long" resultType="int">
@@ -292,6 +356,7 @@
           and c.status = 'ENABLED' and c.del_flag = '0'
           and c.start_time &lt;= sysdate() and c.end_time &gt; sysdate()
           and c.minimum_spend &lt;= #{subtotal}
+          and c.usage_mode in ('ORDER', 'BOTH')
           and (
               c.scope_type = 'PLATFORM_WIDE'
               or exists (
@@ -304,6 +369,37 @@
               )
           )
         order by c.discount_amount desc, c.end_time, uc.user_coupon_id
+    </select>
+
+    <select id="selectUserCouponByCodeForMerchant" resultMap="ShopUserCouponResult">
+        <include refid="selectUserCouponColumns" />,
+        'AVAILABLE' as availability_status,
+        u.user_name, u.nick_name
+        from shop_user_coupon uc
+        inner join shop_coupon c on c.coupon_id = uc.coupon_id
+        inner join shop_user u on u.user_id = uc.shop_user_id
+        where uc.coupon_code = #{redeemCode}
+          and exists (
+              select 1 from shop_coupon_merchant cm
+              where cm.coupon_id = c.coupon_id and cm.merchant_id = #{merchantId}
+          )
+        limit 1
+    </select>
+
+    <select id="selectUserCouponByCodeForMerchantForUpdate" resultMap="ShopUserCouponResult">
+        <include refid="selectUserCouponColumns" />,
+        'AVAILABLE' as availability_status,
+        u.user_name, u.nick_name
+        from shop_user_coupon uc
+        inner join shop_coupon c on c.coupon_id = uc.coupon_id
+        inner join shop_user u on u.user_id = uc.shop_user_id
+        where uc.coupon_code = #{redeemCode}
+          and exists (
+              select 1 from shop_coupon_merchant cm
+              where cm.coupon_id = c.coupon_id and cm.merchant_id = #{merchantId}
+          )
+        limit 1
+        for update
     </select>
 
     <select id="selectUserCouponForUpdate" resultMap="ShopUserCouponResult">
@@ -343,6 +439,38 @@
         set status = 'UNUSED', used_order_id = null, used_time = null, update_time = sysdate()
         where used_order_id = #{orderId} and status = 'USED'
     </update>
+
+    <update id="markUserCouponRedeemed" parameterType="Long">
+        update shop_user_coupon
+        set status = 'USED', used_order_id = null, used_time = sysdate(), update_time = sysdate()
+        where user_coupon_id = #{userCouponId} and status = 'UNUSED' and used_order_id is null
+    </update>
+
+    <insert id="insertRedemption" parameterType="ShopCouponRedemption" useGeneratedKeys="true" keyProperty="redemptionId">
+        insert into shop_coupon_redemption
+        (user_coupon_id, coupon_id, shop_user_id, merchant_id,
+         coupon_name_snapshot, minimum_spend_snapshot, discount_amount_snapshot,
+         consumption_amount, actual_amount, operator_id, operator_name, redeemed_at)
+        values
+        (#{userCouponId}, #{couponId}, #{shopUserId}, #{merchantId},
+         #{couponName}, #{minimumSpend}, #{discountAmount},
+         #{consumptionAmount}, #{actualAmount}, #{operatorId}, #{operatorName}, sysdate())
+    </insert>
+
+    <select id="selectMerchantRedemptions" parameterType="Long" resultMap="ShopCouponRedemptionResult">
+        select redemption.redemption_id, redemption.user_coupon_id, redemption.coupon_id,
+               redemption.shop_user_id, u.user_name, u.nick_name,
+               redemption.merchant_id, m.shop_name as merchant_name,
+               redemption.coupon_name_snapshot, redemption.minimum_spend_snapshot,
+               redemption.discount_amount_snapshot, redemption.consumption_amount,
+               redemption.actual_amount, redemption.operator_id, redemption.operator_name,
+               redemption.redeemed_at
+        from shop_coupon_redemption redemption
+        inner join shop_user u on u.user_id = redemption.shop_user_id
+        inner join shop_merchant m on m.merchant_id = redemption.merchant_id
+        where redemption.merchant_id = #{merchantId}
+        order by redemption.redemption_id desc
+    </select>
 
     <select id="selectExchangeableCoupons" parameterType="Long"
             resultType="com.ruoyi.shop.domain.vo.ShopCouponExchangeOption">

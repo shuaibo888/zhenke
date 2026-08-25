@@ -89,6 +89,13 @@ public class ShopTrialAdminController extends BaseController
         return AjaxResult.success(trialService.adminShipApplication(applicationId, body));
     }
 
+    @PreAuthorize("@ss.hasRole('admin')")
+    @PostMapping("/applications/redeem/preview")
+    public AjaxResult previewRedeem(@Valid @RequestBody ShopTrialRedeemBody body)
+    {
+        return AjaxResult.success(trialService.adminPreviewRedeemApplication(body.getRedeemCode()));
+    }
+
     @Log(title = "平台管理线下试用核销", businessType = BusinessType.UPDATE)
     @PreAuthorize("@ss.hasRole('admin')")
     @PostMapping("/applications/redeem")

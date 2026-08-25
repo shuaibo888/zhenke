@@ -4,6 +4,7 @@ import {
   PlusOutlined,
   ReloadOutlined,
   SearchOutlined,
+  ScanOutlined,
 } from '@ant-design/icons';
 import {
   App as AntApp,
@@ -27,8 +28,11 @@ import {
   fetchCouponGrants,
   fetchCouponUserOptions,
   fetchCoupons,
+  fetchCouponRedemptions,
   fetchMerchants,
   grantCoupon,
+  previewCouponRedemption,
+  redeemCoupon,
   updateCoupon,
   updateCouponStatus,
   type CouponWriteBody,
@@ -37,9 +41,13 @@ import type {
   AdminSession,
   ManagedCoupon,
   ManagedCouponGrant,
+  ManagedCouponRedemption,
+  CouponRedeemPreview,
   MerchantAccount,
   ShopUserAccount,
 } from '@/types';
+import RedeemScanModal from '@/modules/trials/RedeemScanModal';
+import RedeemConfirmModal from '@/modules/trials/RedeemConfirmModal';
 import styles from './index.less';
 
 const PAGE_SIZE = 10;
@@ -47,6 +55,8 @@ const PAGE_SIZE = 10;
 type CouponFormValues = {
   couponName: string;
   description?: string;
+  usageMode: 'ORDER' | 'OFFLINE' | 'BOTH';
+  redeemInstructions?: string;
   discountAmount: number;
   minimumSpend: number;
   scopeType: 'MERCHANT_SPECIFIC' | 'PLATFORM_WIDE';
@@ -121,6 +131,15 @@ export default function CouponModule({ session }: CouponModuleProps) {
   const [historyPage, setHistoryPage] = useState(1);
   const [historyTotal, setHistoryTotal] = useState(0);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [redeemScanOpen, setRedeemScanOpen] = useState(false);
+  const [redeemPreview, setRedeemPreview] = useState<{ code: string; coupon: CouponRedeemPreview } | null>(null);
+  const [consumptionAmount, setConsumptionAmount] = useState<number>();
+  const [redeeming, setRedeeming] = useState(false);
+  const [redemptionHistoryOpen, setRedemptionHistoryOpen] = useState(false);
+  const [redemptions, setRedemptions] = useState<ManagedCouponRedemption[]>([]);
+  const [redemptionPage, setRedemptionPage] = useState(1);
+  const [redemptionTotal, setRedemptionTotal] = useState(0);
+  const [redemptionLoading, setRedemptionLoading] = useState(false);
 
   const loadCoupons = async (
     nextPage = page,
@@ -194,12 +213,20 @@ export default function CouponModule({ session }: CouponModuleProps) {
     void loadCoupons(1);
   }, [session.id]);
 
+  useEffect(() => {
+    if (isAdmin && selectedScopeType === 'PLATFORM_WIDE') {
+      couponForm.setFieldValue('usageMode', 'ORDER');
+    }
+  }, [couponForm, isAdmin, selectedScopeType]);
+
   const openCreate = () => {
     setEditingCoupon(null);
     setMerchantOptions([]);
     couponForm.setFieldsValue({
       couponName: '',
       description: '',
+      usageMode: 'ORDER',
+      redeemInstructions: '',
       discountAmount: 1,
       minimumSpend: 0,
       scopeType: 'MERCHANT_SPECIFIC',
@@ -231,6 +258,8 @@ export default function CouponModule({ session }: CouponModuleProps) {
     couponForm.setFieldsValue({
       couponName: coupon.couponName,
       description: coupon.description,
+      usageMode: coupon.usageMode,
+      redeemInstructions: coupon.redeemInstructions,
       discountAmount: coupon.discountAmount,
       minimumSpend: coupon.minimumSpend,
       scopeType: coupon.scopeType,
@@ -261,6 +290,8 @@ export default function CouponModule({ session }: CouponModuleProps) {
     const body: CouponWriteBody = {
       couponName: values.couponName.trim(),
       description: values.description?.trim(),
+      usageMode: isAdmin && values.scopeType === 'PLATFORM_WIDE' ? 'ORDER' : values.usageMode,
+      redeemInstructions: values.redeemInstructions?.trim(),
       discountAmount: values.discountAmount,
       minimumSpend: isAdmin && values.scopeType === 'PLATFORM_WIDE' ? 0 : values.minimumSpend,
       scopeType: isAdmin ? values.scopeType : undefined,
@@ -355,6 +386,55 @@ export default function CouponModule({ session }: CouponModuleProps) {
     void loadHistory(coupon, 1);
   };
 
+  const recognizeCouponCode = async (code: string) => {
+    setRedeeming(true);
+    try {
+      const coupon = await previewCouponRedemption(code);
+      setRedeemScanOpen(false);
+      setConsumptionAmount(coupon.minimumSpend > 0 ? coupon.minimumSpend : undefined);
+      setRedeemPreview({ code, coupon });
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '优惠券核销码识别失败');
+      throw error;
+    } finally {
+      setRedeeming(false);
+    }
+  };
+
+  const confirmCouponRedeem = async () => {
+    if (!redeemPreview) return;
+    if (redeemPreview.coupon.minimumSpend > 0 && (consumptionAmount == null || consumptionAmount < redeemPreview.coupon.minimumSpend)) {
+      message.warning(`本次消费金额不能低于 ${formatMoney(redeemPreview.coupon.minimumSpend)}`);
+      return;
+    }
+    setRedeeming(true);
+    try {
+      await redeemCoupon(redeemPreview.code, consumptionAmount);
+      message.success('优惠券已核销');
+      setRedeemPreview(null);
+      setConsumptionAmount(undefined);
+      await loadCoupons();
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '优惠券核销失败');
+    } finally {
+      setRedeeming(false);
+    }
+  };
+
+  const loadRedemptions = async (nextPage = redemptionPage) => {
+    setRedemptionLoading(true);
+    try {
+      const result = await fetchCouponRedemptions(nextPage, PAGE_SIZE);
+      setRedemptions(result.rows);
+      setRedemptionTotal(result.total);
+      setRedemptionPage(nextPage);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '核销记录加载失败');
+    } finally {
+      setRedemptionLoading(false);
+    }
+  };
+
   const columns: ColumnsType<ManagedCoupon> = [
     {
       title: '优惠券',
@@ -372,6 +452,11 @@ export default function CouponModule({ session }: CouponModuleProps) {
           )}
         </div>
       ),
+    },
+    {
+      title: '使用方式',
+      key: 'usageMode',
+      render: (_, coupon) => ({ ORDER: '商城下单', OFFLINE: '到店核销', BOTH: '下单/到店' }[coupon.usageMode]),
     },
     {
       title: '适用范围',
@@ -449,7 +534,11 @@ export default function CouponModule({ session }: CouponModuleProps) {
             <p className={styles.eyebrow}>{isAdmin ? '平台可创建指定商家券或全平台积分兑换券' : '本店优惠券可选择多个商城用户'}</p>
             <h3>优惠券管理</h3>
           </div>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>创建优惠券</Button>
+          <Space wrap>
+            {!isAdmin && <Button icon={<ScanOutlined />} onClick={() => setRedeemScanOpen(true)}>优惠券核销</Button>}
+            {!isAdmin && <Button onClick={() => { setRedemptionHistoryOpen(true); void loadRedemptions(1); }}>核销记录</Button>}
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>创建优惠券</Button>
+          </Space>
         </div>
         <div className={styles.toolbar}>
           <Input
@@ -520,6 +609,7 @@ export default function CouponModule({ session }: CouponModuleProps) {
             discountAmount: 1,
             totalStock: 100,
             scopeType: 'MERCHANT_SPECIFIC',
+            usageMode: 'ORDER',
           }}
         >
           <Form.Item name="couponName" label="优惠券名称" rules={[{ required: true, message: '请输入优惠券名称' }, { max: 100 }]}>
@@ -528,6 +618,21 @@ export default function CouponModule({ session }: CouponModuleProps) {
           <Form.Item name="description" label="优惠券说明" rules={[{ max: 500 }]}>
             <Input.TextArea rows={3} maxLength={500} showCount placeholder="说明适用场景或活动口径" />
           </Form.Item>
+          <div className={styles.formGrid}>
+            <Form.Item name="usageMode" label="使用方式" rules={[{ required: true, message: '请选择使用方式' }]}>
+              <Select
+                disabled={isAdmin && selectedScopeType === 'PLATFORM_WIDE'}
+                options={[
+                  { label: '商城下单使用', value: 'ORDER' },
+                  { label: '到店出示核销码', value: 'OFFLINE' },
+                  { label: '商城下单或到店核销', value: 'BOTH' },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item name="redeemInstructions" label="到店核销说明" rules={[{ max: 500 }]}>
+              <Input maxLength={500} placeholder="例如：到店后向前台出示核销码" />
+            </Form.Item>
+          </div>
           <div className={styles.formGrid}>
             <Form.Item name="discountAmount" label="固定优惠金额" rules={[{ required: true, message: '请输入优惠金额' }]}>
               <InputNumber min={0.01} max={99999999.99} precision={2} prefix="¥" style={{ width: '100%' }} />
@@ -716,6 +821,89 @@ export default function CouponModule({ session }: CouponModuleProps) {
             showSizeChanger: false,
             showTotal: (count) => `共 ${count} 次`,
             onChange: (nextPage) => historyTarget && void loadHistory(historyTarget, nextPage),
+          }}
+        />
+      </Modal>
+
+      {!isAdmin && (
+        <RedeemScanModal
+          open={redeemScanOpen}
+          redeeming={redeeming}
+          title="优惠券到店核销"
+          description="扫描用户优惠券详情中的固定核销码，识别后先核对用户、券规则和消费金额。"
+          onClose={() => setRedeemScanOpen(false)}
+          onRecognized={recognizeCouponCode}
+        />
+      )}
+
+      <RedeemConfirmModal
+        open={Boolean(redeemPreview)}
+        title="确认核销优惠券"
+        loading={redeeming}
+        onCancel={() => { setRedeemPreview(null); setConsumptionAmount(undefined); }}
+        onConfirm={() => void confirmCouponRedeem()}
+        items={redeemPreview ? [
+          { label: '优惠券', value: redeemPreview.coupon.couponName },
+          { label: '持券用户', value: `${redeemPreview.coupon.nickName || redeemPreview.coupon.userName}（${redeemPreview.coupon.userName}）` },
+          {
+            label: '优惠规则',
+            value: redeemPreview.coupon.minimumSpend > 0
+              ? `满 ${formatMoney(redeemPreview.coupon.minimumSpend)} 减 ${formatMoney(redeemPreview.coupon.discountAmount)}`
+              : `无门槛减 ${formatMoney(redeemPreview.coupon.discountAmount)}`,
+          },
+          {
+            label: '本次消费金额',
+            value: (
+              <InputNumber
+                min={redeemPreview.coupon.minimumSpend}
+                precision={2}
+                prefix="¥"
+                placeholder={redeemPreview.coupon.minimumSpend > 0 ? '必填' : '选填'}
+                value={consumptionAmount}
+                onChange={(value) => setConsumptionAmount(value == null ? undefined : value)}
+                style={{ width: '100%' }}
+              />
+            ),
+          },
+          {
+            label: '优惠后金额',
+            value: consumptionAmount == null
+              ? '-'
+              : formatMoney(Math.max(0, consumptionAmount - redeemPreview.coupon.discountAmount)),
+          },
+        ] : []}
+      />
+
+      <Modal
+        rootClassName={styles.responsiveModal}
+        title="优惠券核销记录"
+        open={redemptionHistoryOpen}
+        onCancel={() => setRedemptionHistoryOpen(false)}
+        footer={null}
+        width={900}
+        destroyOnHidden
+      >
+        <Table
+          rowKey="redemptionId"
+          loading={redemptionLoading}
+          dataSource={redemptions}
+          scroll={{ x: 'max-content' }}
+          columns={[
+            { title: '核销时间', dataIndex: 'redeemedAt', render: (value: string) => formatDateTime(value) },
+            { title: '优惠券', dataIndex: 'couponName' },
+            { title: '用户', render: (_, row: ManagedCouponRedemption) => `${row.nickName || row.userName}（${row.userName}）` },
+            { title: '优惠金额', dataIndex: 'discountAmount', render: (value: number) => formatMoney(value) },
+            { title: '消费金额', dataIndex: 'consumptionAmount', render: (value?: number) => value == null ? '-' : formatMoney(value) },
+            { title: '优惠后', dataIndex: 'actualAmount', render: (value?: number) => value == null ? '-' : formatMoney(value) },
+            { title: '操作人', dataIndex: 'operatorName' },
+          ]}
+          pagination={{
+            current: redemptionPage,
+            pageSize: PAGE_SIZE,
+            total: redemptionTotal,
+            showSizeChanger: false,
+            showTotal: (count) => `共 ${count} 条`,
+            onChange: (nextPage) => void loadRedemptions(nextPage),
           }}
         />
       </Modal>

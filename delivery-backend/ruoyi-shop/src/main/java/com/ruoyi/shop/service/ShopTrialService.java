@@ -264,6 +264,12 @@ public class ShopTrialService
         return trialMapper.selectUserApplications(ShopAccountIdentity.requireShopUserId());
     }
 
+    public ShopTrialApplication myApplication(long applicationId)
+    {
+        return requireApplication(trialMapper.selectUserApplication(
+                ShopAccountIdentity.requireShopUserId(), applicationId));
+    }
+
     public ShopLogisticsTrace myApplicationLogistics(long applicationId)
     {
         long shopUserId = ShopAccountIdentity.requireShopUserId();
@@ -409,6 +415,12 @@ public class ShopTrialService
         return redeemApplicationForMerchant(merchant.getMerchantId(), redeemCode);
     }
 
+    public ShopTrialApplication previewRedeemApplication(String redeemCode)
+    {
+        ShopMerchant merchant = merchantService.currentMerchantAccount();
+        return previewRedeemApplicationForMerchant(merchant.getMerchantId(), redeemCode);
+    }
+
     @Transactional
     public ShopTrialApplication adminRedeemApplication(String redeemCode)
     {
@@ -416,6 +428,34 @@ public class ShopTrialService
         ShopTrialApplication application = requireApplication(
                 trialMapper.selectAdminApplicationByRedeemCode(normalized));
         return redeemApplicationForMerchant(application.getMerchantId(), normalized);
+    }
+
+    public ShopTrialApplication adminPreviewRedeemApplication(String redeemCode)
+    {
+        String normalized = StringUtils.trim(redeemCode);
+        ShopTrialApplication application = requireApplication(
+                trialMapper.selectAdminApplicationByRedeemCode(normalized));
+        return previewRedeemApplicationForMerchant(application.getMerchantId(), normalized);
+    }
+
+    private ShopTrialApplication previewRedeemApplicationForMerchant(long merchantId, String redeemCode)
+    {
+        String normalized = StringUtils.trim(redeemCode);
+        if (StringUtils.isEmpty(normalized))
+        {
+            throw new ServiceException("核销码不能为空");
+        }
+        ShopTrialApplication application = trialMapper.selectMerchantApplicationByRedeemCode(
+                merchantId, normalized);
+        if (application == null)
+        {
+            throw new ServiceException("核销码无效或不属于当前商家");
+        }
+        if (!OFFLINE.equals(application.getTrialType()) || !PENDING_REDEMPTION.equals(application.getStatus()))
+        {
+            throw new ServiceException("该试用申请当前不能核销");
+        }
+        return application;
     }
 
     private ShopTrialApplication redeemApplicationForMerchant(long merchantId, String redeemCode)

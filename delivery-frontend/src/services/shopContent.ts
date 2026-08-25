@@ -166,10 +166,13 @@ export interface TrialApplicationDto {
   applicationId: number;
   campaignId: number;
   merchantId: number;
+  merchantName: string;
   productId: number;
   productName: string;
+  productCoverUrl: string;
   trialType: 'ONLINE' | 'OFFLINE';
   campaignTitle: string;
+  campaignSummary?: string;
   shopUserId: number;
   applyReason: string;
   recipientName?: string;
@@ -187,6 +190,8 @@ export interface TrialApplicationDto {
   redeemedAt?: string;
   createTime?: string;
   applicationDeadline?: string;
+  auditTime?: string;
+  verificationReportId?: number;
 }
 
 export interface ShopCartItemDto {
@@ -217,6 +222,8 @@ export interface ShopCouponDto {
   createTime: string;
   couponName: string;
   description?: string;
+  usageMode: 'ORDER' | 'OFFLINE' | 'BOTH';
+  redeemInstructions?: string;
   discountAmount: number;
   minimumSpend: number;
   startTime: string;
@@ -224,10 +231,18 @@ export interface ShopCouponDto {
   couponStatus: 'ENABLED' | 'DISABLED';
   scopeType: 'MERCHANT_SPECIFIC' | 'PLATFORM_WIDE';
   availabilityStatus: 'AVAILABLE' | 'PENDING' | 'USED' | 'EXPIRED' | 'DISABLED';
+  redeemedMerchantId?: number;
+  redeemedMerchantName?: string;
+  consumptionAmount?: number;
+  actualAmount?: number;
   merchants: Array<{
     couponId: number;
     merchantId: number;
     merchantName: string;
+    storeAddress?: string;
+    contactPhone?: string;
+    latitude?: number;
+    longitude?: number;
   }>;
 }
 
@@ -500,6 +515,16 @@ export async function fetchMyTrialApplications() {
   return result.data ?? [];
 }
 
+export async function fetchMyTrialApplication(applicationId: number) {
+  const result = await requestApi<ApiResponse<TrialApplicationDto>>(
+    `/shop/trials/me/applications/${applicationId}`,
+    {},
+    true,
+  );
+  if (!result.data) throw new Error('试用申请不存在');
+  return result.data;
+}
+
 export async function fetchTrialRedeemCode(applicationId: number) {
   const result = await requestApi<ApiResponse<TrialApplicationDto>>(
     `/shop/trials/me/applications/${applicationId}/redeem-code`,
@@ -553,6 +578,12 @@ export async function fetchShopOrder(orderId: number) {
 export async function fetchMyCoupons() {
   const result = await requestApi<ApiResponse<ShopCouponDto[]>>('/shop/coupons', {}, true);
   return Array.isArray(result.data) ? result.data : [];
+}
+
+export async function fetchMyCoupon(userCouponId: number) {
+  const result = await requestApi<ApiResponse<ShopCouponDto>>(`/shop/coupons/${userCouponId}`, {}, true);
+  if (!result.data) throw new Error('优惠券不存在');
+  return result.data;
 }
 
 export async function fetchAvailableCoupons(merchantId: number, subtotal: number) {

@@ -1,4 +1,4 @@
-import type { AdminSession, ManagedCoupon, ManagedCouponGrant, ManagedLogisticsTrace, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, MerchantAuditLog, ProductCategoryOption, ShopMemberLevel, ShopUserAccount } from '@/types';
+import type { AdminSession, CouponRedeemPreview, ManagedCoupon, ManagedCouponGrant, ManagedCouponRedemption, ManagedLogisticsTrace, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, MerchantAuditLog, ProductCategoryOption, ShopMemberLevel, ShopUserAccount } from '@/types';
 
 const tokenStorageKey = 'zhenke_admin_access_token';
 
@@ -563,6 +563,11 @@ export async function fetchAllProductCategories() {
   return result.data ?? [];
 }
 
+interface CouponRedemptionListResponse extends ApiResponse {
+  rows: ManagedCouponRedemption[];
+  total: number;
+}
+
 export async function createProductCategory(
   body: { categoryName: string; categorySort: number; status: '0' | '1' },
 ) {
@@ -602,6 +607,8 @@ export interface ManagedPageQuery {
 export interface CouponWriteBody {
   couponName: string;
   description?: string;
+  usageMode: 'ORDER' | 'OFFLINE' | 'BOTH';
+  redeemInstructions?: string;
   discountAmount: number;
   minimumSpend: number;
   scopeType?: 'MERCHANT_SPECIFIC' | 'PLATFORM_WIDE';
@@ -611,6 +618,49 @@ export interface CouponWriteBody {
   status: 'ENABLED' | 'DISABLED';
   totalStock: number;
   merchantIds?: number[];
+}
+
+export async function previewCouponRedemption(redeemCode: string) {
+  const result = await requestApi<ApiResponse<CouponRedeemPreview>>(
+    '/shop/merchant/coupons/redemptions/preview',
+    { method: 'POST', body: JSON.stringify({ redeemCode }) },
+    true,
+  );
+  if (!result.data) throw new Error('优惠券核销码无效');
+  return {
+    ...result.data,
+    discountAmount: Number(result.data.discountAmount),
+    minimumSpend: Number(result.data.minimumSpend),
+  };
+}
+
+export async function redeemCoupon(redeemCode: string, consumptionAmount?: number) {
+  const result = await requestApi<ApiResponse<ManagedCouponRedemption>>(
+    '/shop/merchant/coupons/redemptions',
+    { method: 'POST', body: JSON.stringify({ redeemCode, consumptionAmount }) },
+    true,
+  );
+  if (!result.data) throw new Error('优惠券核销失败');
+  return result.data;
+}
+
+export async function fetchCouponRedemptions(pageNum = 1, pageSize = 10) {
+  const params = new URLSearchParams({ pageNum: String(pageNum), pageSize: String(pageSize) });
+  const result = await requestApi<CouponRedemptionListResponse>(
+    `/shop/merchant/coupons/redemptions?${params.toString()}`,
+    {},
+    true,
+  );
+  return {
+    rows: (Array.isArray(result.rows) ? result.rows : []).map((item) => ({
+      ...item,
+      minimumSpend: Number(item.minimumSpend),
+      discountAmount: Number(item.discountAmount),
+      consumptionAmount: item.consumptionAmount == null ? undefined : Number(item.consumptionAmount),
+      actualAmount: item.actualAmount == null ? undefined : Number(item.actualAmount),
+    })),
+    total: Number(result.total ?? 0),
+  };
 }
 
 export async function fetchCouponUserOptions(session: AdminSession, keyword?: string) {
@@ -863,6 +913,17 @@ export async function redeemShopOrder(session: AdminSession, redeemCode: string)
   return toManagedOrder(result.data);
 }
 
+export async function previewShopOrderRedeem(session: AdminSession, redeemCode: string) {
+  const path = session.loginType === 'merchant' ? '/shop/merchant/orders' : '/shop/admin/orders';
+  const result = await requestApi<ApiResponse<ShopOrderDto>>(
+    `${path}/redeem/preview`,
+    { method: 'POST', body: JSON.stringify({ redeemCode }) },
+    true,
+  );
+  if (!result.data) throw new Error('订单核销码无效');
+  return toManagedOrder(result.data);
+}
+
 function toManagedTrial(dto: TrialCampaignDto): ManagedTrialRecruitment {
   return {
     id: dto.campaignId,
@@ -1085,6 +1146,16 @@ export async function redeemMerchantTrialApplication(session: AdminSession, rede
     { method: 'POST', body: JSON.stringify({ redeemCode }) },
     true,
   );
+}
+
+export async function previewMerchantTrialApplicationRedeem(session: AdminSession, redeemCode: string) {
+  const result = await requestApi<ApiResponse<ManagedTrialApplication>>(
+    `${session.loginType === 'merchant' ? '/shop/merchant/trials' : '/shop/admin/trials'}/applications/redeem/preview`,
+    { method: 'POST', body: JSON.stringify({ redeemCode }) },
+    true,
+  );
+  if (!result.data) throw new Error('试用核销码无效');
+  return result.data;
 }
 
 export async function uploadAdminFile(

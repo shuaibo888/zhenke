@@ -878,6 +878,12 @@
   border: 1px solid rgba(31, 111, 91, 0.16);
   border-radius: 16px;
   box-shadow: 0 8px 22px rgba(23, 61, 52, 0.06);
+  cursor: pointer;
+}
+
+.couponWalletCard:focus-visible {
+  outline: 3px solid rgba(8, 114, 70, 0.28);
+  outline-offset: 2px;
 }
 
 .couponWalletAmount {
@@ -1029,6 +1035,175 @@
 
 .couponWalletEmpty p {
   margin: 0;
+}
+
+.couponDetailPage {
+  display: grid;
+  max-width: 760px;
+  gap: 14px;
+}
+
+.couponDetailHero,
+.couponCodePanel,
+.couponDetailPanel {
+  border: 1px solid rgba(31, 111, 91, 0.13);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(23, 61, 52, 0.08);
+}
+
+.couponDetailHero {
+  display: grid;
+  justify-items: center;
+  padding: 30px 20px;
+  color: #fff;
+  text-align: center;
+  background: linear-gradient(145deg, #173d34, #087246);
+}
+
+.couponDetailHero strong {
+  margin-top: 14px;
+  font-size: 42px;
+  line-height: 1;
+}
+
+.couponDetailHero h1 {
+  margin: 12px 0 4px;
+  color: #fff;
+  font-size: 23px;
+}
+
+.couponDetailHero p,
+.couponCodePanel p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.couponCodePanel {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 24px 18px;
+  text-align: center;
+}
+
+.couponCodePanel h2,
+.couponDetailPanel h2 {
+  margin: 0;
+  color: #213d32;
+  font-size: 18px;
+}
+
+.couponCodePanel p {
+  color: #718078;
+  font-size: 13px;
+}
+
+.couponCodePanel code {
+  max-width: 100%;
+  padding: 8px 10px;
+  overflow-wrap: anywhere;
+  border-radius: 8px;
+  color: #235b47;
+  background: #eef7f2;
+}
+
+.couponDetailPanel {
+  padding: 20px;
+}
+
+.couponDetailPanel dl {
+  margin: 10px 0 0;
+}
+
+.couponDetailPanel dl > div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 14px;
+  padding: 13px 0;
+  border-bottom: 1px solid #edf2ef;
+}
+
+.couponDetailPanel dl > div:last-child {
+  border-bottom: 0;
+}
+
+.couponDetailPanel dt,
+.couponDetailPanel dd {
+  margin: 0;
+}
+
+.couponDetailPanel dt {
+  color: #7d8f87;
+}
+
+.couponDetailPanel dd {
+  color: #243a31;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.couponMerchantList {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.couponMerchantList article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px;
+  border-radius: 14px;
+  background: #f5faf7;
+}
+
+.couponMerchantList article > button {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  color: #2f7258;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.couponMerchantList article > button > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.couponMerchantList small {
+  overflow: hidden;
+  color: #7c8d85;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.couponMerchantList article > div {
+  display: flex;
+  gap: 7px;
+}
+
+@media (max-width: 640px) {
+  .couponDetailHero {
+    padding: 24px 16px;
+  }
+
+  .couponMerchantList article {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .couponMerchantList article > div :global(.ant-btn) {
+    flex: 1;
+  }
 }
 
 .checkoutPage {
@@ -12066,6 +12241,413 @@ button.checkoutFulfillmentOption:focus-visible {
     border-color: rgba(31, 111, 91, 0.3);
     box-shadow: 0 8px 18px rgba(23, 75, 62, 0.16);
     transform: scale(1.1);
+  }
+}
+
+.businessListCard {
+  cursor: pointer;
+  outline: none;
+}
+
+.businessListCard:focus-visible {
+  border-color: rgba(31, 111, 91, 0.55);
+  box-shadow: 0 0 0 3px rgba(31, 111, 91, 0.12), 0 18px 44px rgba(23, 61, 52, 0.1);
+}
+
+.businessDetailPage {
+  width: min(960px, calc(100% - 40px));
+  min-height: 52vh;
+  margin: 0 auto;
+  padding-bottom: 118px;
+}
+
+.businessDetailPage > :global(.ant-spin) {
+  display: block;
+  margin: 120px auto;
+}
+
+.businessStatusHero {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-height: 170px;
+  margin-bottom: 18px;
+  padding: 34px 38px;
+  overflow: hidden;
+  color: #ffffff;
+  background:
+    radial-gradient(circle at 84% 16%, rgba(255, 255, 255, 0.2), transparent 28%),
+    linear-gradient(135deg, #1f795f 0%, #123f35 100%);
+  border-radius: 26px;
+  box-shadow: 0 22px 50px rgba(18, 63, 53, 0.18);
+}
+
+.businessStatusHero::after {
+  position: absolute;
+  right: -45px;
+  bottom: -90px;
+  width: 230px;
+  height: 230px;
+  content: '';
+  border: 32px solid rgba(255, 255, 255, 0.06);
+  border-radius: 50%;
+}
+
+.businessStatusHero .eyebrow {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.businessStatusHero h2 {
+  margin: 9px 0 6px;
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.15;
+}
+
+.businessStatusHero p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 14px;
+}
+
+.businessStatusHero :global(.ant-tag) {
+  position: relative;
+  z-index: 1;
+  margin: 3px 0 0;
+  padding: 5px 13px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 0;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.businessInfoCard {
+  margin-top: 16px;
+  padding: 24px 28px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(23, 75, 62, 0.08);
+  border-radius: 22px;
+  box-shadow: 0 12px 34px rgba(23, 61, 52, 0.07);
+}
+
+.businessSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  color: #1f6f5b;
+}
+
+.businessSectionTitle > :global(.anticon) {
+  font-size: 18px;
+}
+
+.businessSectionTitle h3 {
+  margin: 0;
+  color: #173d34;
+  font-size: 17px;
+}
+
+.businessAddress strong {
+  color: #183d34;
+  font-size: 16px;
+}
+
+.businessAddress strong span {
+  margin-left: 8px;
+  color: #7b8984;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.businessAddress p,
+.businessSummary {
+  margin: 8px 0 0;
+  color: #63716c;
+  line-height: 1.7;
+}
+
+.businessProductList {
+  display: grid;
+  gap: 2px;
+}
+
+.businessProductRow,
+.businessTrialProduct {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 14px 0;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.businessProductRow + .businessProductRow {
+  border-top: 1px solid #edf1ef;
+}
+
+.businessProductRow img,
+.businessTrialProduct img,
+.businessTrialProduct > span:first-child {
+  width: 76px;
+  height: 76px;
+  flex: 0 0 76px;
+  object-fit: cover;
+  border-radius: 14px;
+}
+
+.businessTrialProduct > span:first-child {
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: linear-gradient(135deg, #38a57f, #1e6553);
+  font-size: 25px;
+  font-weight: 800;
+}
+
+.businessProductCopy,
+.businessTrialProduct > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 8px;
+  margin: 0 16px;
+}
+
+.businessProductCopy strong,
+.businessTrialProduct strong {
+  overflow: hidden;
+  color: #213f37;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.businessProductCopy small,
+.businessTrialProduct small {
+  color: #89948f;
+}
+
+.businessProductRow > b {
+  margin-right: 14px;
+  color: #173d34;
+}
+
+.businessProductRow > :global(.anticon) {
+  color: #a0aca7;
+}
+
+.businessInlineAction {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 0;
+  border-top: 1px solid #edf1ef;
+}
+
+.businessInlineAction span {
+  overflow: hidden;
+  color: #586963;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.businessDefinitionList {
+  display: grid;
+  gap: 13px;
+  margin: 0;
+}
+
+.businessDefinitionList > div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.businessDefinitionList dt {
+  flex: 0 0 auto;
+  color: #89948f;
+}
+
+.businessDefinitionList dd {
+  margin: 0;
+  color: #314c44;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.businessDefinitionList .businessDiscount,
+.businessDefinitionList .businessTotalRow dd {
+  color: #d0523c;
+}
+
+.businessDefinitionList .businessTotalRow {
+  margin-top: 3px;
+  padding-top: 14px;
+  border-top: 1px solid #edf1ef;
+}
+
+.businessDefinitionList .businessTotalRow dd {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.businessLongValue dd {
+  max-width: 68%;
+  line-height: 1.65;
+}
+
+.businessTimeline {
+  display: grid;
+  margin-bottom: 22px;
+}
+
+.businessTimeline > div {
+  position: relative;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  gap: 12px;
+  min-height: 58px;
+  color: #76847e;
+}
+
+.businessTimeline > div:not(:last-child)::before {
+  position: absolute;
+  top: 17px;
+  bottom: -1px;
+  left: 6px;
+  width: 2px;
+  content: '';
+  background: #dce6e2;
+}
+
+.businessTimeline i {
+  z-index: 1;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  background: #d6e1dd;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #d6e1dd;
+}
+
+.businessTimeline span {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+}
+
+.businessTimeline strong {
+  color: #52645d;
+  font-size: 14px;
+}
+
+.businessTimeline small {
+  color: #93a09b;
+}
+
+.businessTimeline time {
+  color: #9aa6a1;
+  font-size: 12px;
+}
+
+.businessTimeline .businessTimelineCurrent i {
+  background: #29906e;
+  box-shadow: 0 0 0 2px rgba(41, 144, 110, 0.17);
+}
+
+.businessTimeline .businessTimelineCurrent strong {
+  color: #1f6f5b;
+}
+
+.businessActionBar {
+  position: sticky;
+  z-index: 8;
+  bottom: 18px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(23, 75, 62, 0.1);
+  border-radius: 18px;
+  box-shadow: 0 18px 42px rgba(23, 61, 52, 0.14);
+  backdrop-filter: blur(18px);
+}
+
+@media (max-width: 640px) {
+  .businessDetailPage {
+    width: calc(100% - 24px);
+    padding-bottom: 104px;
+  }
+
+  .businessStatusHero {
+    min-height: 145px;
+    padding: 26px 22px;
+    border-radius: 20px;
+  }
+
+  .businessInfoCard {
+    padding: 20px 18px;
+    border-radius: 18px;
+  }
+
+  .businessProductRow img,
+  .businessTrialProduct img,
+  .businessTrialProduct > span:first-child {
+    width: 64px;
+    height: 64px;
+    flex-basis: 64px;
+  }
+
+  .businessProductCopy,
+  .businessTrialProduct > span:nth-child(2) {
+    margin: 0 10px;
+  }
+
+  .businessTrialProduct :global(.ant-tag) {
+    display: none;
+  }
+
+  .businessDefinitionList > div {
+    gap: 16px;
+  }
+
+  .businessLongValue {
+    flex-direction: column;
+    gap: 7px !important;
+  }
+
+  .businessLongValue dd {
+    max-width: none;
+    text-align: left;
+  }
+
+  .businessTimeline > div {
+    grid-template-columns: 16px minmax(0, 1fr);
+  }
+
+  .businessTimeline time {
+    grid-column: 2;
+    margin-top: -20px;
+  }
+
+  .businessActionBar {
+    bottom: calc(78px + env(safe-area-inset-bottom));
+    flex-wrap: wrap;
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .businessActionBar :global(.ant-btn) {
+    flex: 1 1 auto;
   }
 }
 

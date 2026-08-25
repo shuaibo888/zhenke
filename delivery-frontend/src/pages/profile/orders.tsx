@@ -189,7 +189,19 @@ export default function OrdersPage() {
           </div>
           <Spin spinning={ordersLoading}>
             {filtered.map((order) => (
-              <article className={styles.orderCard} key={order.orderId}>
+              <article
+                className={`${styles.orderCard} ${styles.businessListCard}`}
+                key={order.orderId}
+                role="link"
+                tabIndex={0}
+                onClick={() => navigate(`/profile/orders/${order.orderId}`)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    navigate(`/profile/orders/${order.orderId}`);
+                  }
+                }}
+              >
                 <div className={styles.orderCardHead}>
                   <span className={styles.orderShop}>
                     <span className={styles.orderShopAvatar}>{(order.merchantName || '店').slice(0, 1)}</span>
@@ -221,7 +233,7 @@ export default function OrdersPage() {
                   <p className={styles.paymentCountdown}>{countdown(order.paymentExpireTime)}</p>
                 )}
                 {order.status === 'RECEIVED' && order.items.map((item) => (
-                  <div className={styles.orderReviewLine} key={item.orderItemId}>
+                  <div className={styles.orderReviewLine} key={item.orderItemId} onClick={(event) => event.stopPropagation()}>
                     <span>{item.productName}</span>
                     <Button
                       size="small"
@@ -233,7 +245,8 @@ export default function OrdersPage() {
                     </Button>
                   </div>
                 ))}
-                <div className={styles.orderCardFooter}>
+                <div className={styles.orderCardFooter} onClick={(event) => event.stopPropagation()}>
+                  <Button size="small" onClick={() => navigate(`/profile/orders/${order.orderId}`)}>订单详情</Button>
                   {order.status === 'PAID' && order.fulfillmentType === 'OFFLINE' && (
                     <Button size="small" type="primary" onClick={() => setRedeemOrder(order)}>出示核销码</Button>
                   )}

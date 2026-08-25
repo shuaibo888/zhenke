@@ -19,8 +19,10 @@ import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.shop.domain.ShopCoupon;
 import com.ruoyi.shop.domain.ShopCouponGrant;
+import com.ruoyi.shop.domain.ShopCouponRedemption;
 import com.ruoyi.shop.domain.dto.ShopCouponBody;
 import com.ruoyi.shop.domain.dto.ShopCouponGrantBody;
+import com.ruoyi.shop.domain.dto.ShopCouponRedeemBody;
 import com.ruoyi.shop.domain.dto.ShopCouponStatusBody;
 import com.ruoyi.shop.service.ShopCouponService;
 import com.ruoyi.shop.service.ShopMerchantService;
@@ -93,5 +95,28 @@ public class ShopMerchantCouponController extends BaseController
         PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(pageSize, 50)));
         List<ShopCouponGrant> grants = couponService.grants(couponId);
         return getDataTable(grants);
+    }
+
+    @PostMapping("/redemptions/preview")
+    public AjaxResult previewRedemption(@Valid @RequestBody ShopCouponRedeemBody body)
+    {
+        return AjaxResult.success(couponService.previewMerchantRedemption(body.getRedeemCode()));
+    }
+
+    @Log(title = "优惠券到店核销", businessType = BusinessType.UPDATE)
+    @PostMapping("/redemptions")
+    public AjaxResult redeem(@Valid @RequestBody ShopCouponRedeemBody body)
+    {
+        return AjaxResult.success("优惠券核销成功", couponService.redeemAtMerchant(body, getUsername()));
+    }
+
+    @GetMapping("/redemptions")
+    public TableDataInfo redemptions(@RequestParam(defaultValue = "1") int pageNum,
+                                     @RequestParam(defaultValue = "10") int pageSize)
+    {
+        long merchantId = merchantService.currentMerchantAccount().getMerchantId();
+        PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(pageSize, 50)));
+        List<ShopCouponRedemption> rows = couponService.merchantRedemptions(merchantId);
+        return getDataTable(rows);
     }
 }

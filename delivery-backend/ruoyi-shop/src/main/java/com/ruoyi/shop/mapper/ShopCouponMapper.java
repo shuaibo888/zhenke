@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Param;
 import com.ruoyi.shop.domain.ShopCoupon;
 import com.ruoyi.shop.domain.ShopCouponGrant;
 import com.ruoyi.shop.domain.ShopCouponMerchant;
+import com.ruoyi.shop.domain.ShopCouponRedemption;
 import com.ruoyi.shop.domain.ShopUserCoupon;
 import com.ruoyi.shop.domain.vo.ShopCouponExchangeOption;
 import com.ruoyi.shop.domain.vo.ShopCouponUserOption;
@@ -38,15 +39,24 @@ public interface ShopCouponMapper
     int insertUserCoupons(@Param("coupons") List<ShopUserCoupon> coupons);
     List<ShopCouponGrant> selectGrants(Long couponId);
     List<ShopUserCoupon> selectUserCoupons(Long userId);
+    ShopUserCoupon selectUserCoupon(@Param("userId") Long userId,
+            @Param("userCouponId") Long userCouponId);
     int countAvailableUserCoupons(Long userId);
     List<ShopUserCoupon> selectAvailableUserCoupons(@Param("userId") Long userId,
             @Param("merchantId") Long merchantId, @Param("subtotal") BigDecimal subtotal);
     ShopUserCoupon selectUserCouponForUpdate(@Param("userId") Long userId,
             @Param("userCouponId") Long userCouponId);
+    ShopUserCoupon selectUserCouponByCodeForMerchant(@Param("merchantId") Long merchantId,
+            @Param("redeemCode") String redeemCode);
+    ShopUserCoupon selectUserCouponByCodeForMerchantForUpdate(@Param("merchantId") Long merchantId,
+            @Param("redeemCode") String redeemCode);
     int countCouponMerchant(@Param("couponId") Long couponId, @Param("merchantId") Long merchantId);
     int markUserCouponUsed(@Param("userId") Long userId, @Param("userCouponId") Long userCouponId,
             @Param("orderId") Long orderId);
     int releaseUserCouponByOrder(Long orderId);
+    int markUserCouponRedeemed(Long userCouponId);
+    int insertRedemption(ShopCouponRedemption redemption);
+    List<ShopCouponRedemption> selectMerchantRedemptions(Long merchantId);
     List<ShopCouponExchangeOption> selectExchangeableCoupons(Long userId);
     int countCouponExchange(@Param("couponId") Long couponId, @Param("userId") Long userId);
     int insertCouponExchange(@Param("couponId") Long couponId, @Param("userId") Long userId,

@@ -22,6 +22,13 @@ public class ShopCouponBody
     @Size(max = 500, message = "优惠券说明不能超过500个字符")
     private String description;
 
+    @NotBlank(message = "请选择优惠券使用方式")
+    @Pattern(regexp = "ORDER|OFFLINE|BOTH", message = "优惠券使用方式无效")
+    private String usageMode;
+
+    @Size(max = 500, message = "到店使用说明不能超过500个字符")
+    private String redeemInstructions;
+
     @NotNull(message = "请输入优惠金额")
     @DecimalMin(value = "0.01", message = "优惠金额必须大于0")
     @Digits(integer = 8, fraction = 2, message = "优惠金额最多8位整数和2位小数")
@@ -62,6 +69,10 @@ public class ShopCouponBody
     public void setCouponName(String couponName) { this.couponName = couponName; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public String getUsageMode() { return usageMode; }
+    public void setUsageMode(String usageMode) { this.usageMode = usageMode; }
+    public String getRedeemInstructions() { return redeemInstructions; }
+    public void setRedeemInstructions(String redeemInstructions) { this.redeemInstructions = redeemInstructions; }
     public BigDecimal getDiscountAmount() { return discountAmount; }
     public void setDiscountAmount(BigDecimal discountAmount) { this.discountAmount = discountAmount; }
     public BigDecimal getMinimumSpend() { return minimumSpend; }

@@ -3,7 +3,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from '@/pages/index.less';
 
-const REDEEM_CODE_PATTERN = /^[0-9a-f]{32}$/i;
+const REDEEM_CODE_PATTERN = /^(?:[0-9a-f]{32}|CP[0-9a-f]{32})$/i;
 const QR_READER_ID = 'redeem-qr-reader';
 
 function describeCameraError(error: unknown) {
@@ -30,7 +30,7 @@ export interface RedeemScanModalProps {
   open: boolean;
   redeeming: boolean;
   onClose: () => void;
-  onRedeemed: (redeemCode: string) => Promise<void>;
+  onRecognized: (redeemCode: string) => Promise<void>;
   title?: string;
   description?: string;
 }
@@ -39,9 +39,9 @@ export default function RedeemScanModal({
   open,
   redeeming,
   onClose,
-  onRedeemed,
+  onRecognized,
   title = '线下试用核销',
-  description = '对准用户出示的核销码，识别成功后自动核销该线下试用申请。',
+  description = '对准用户出示的核销码，识别成功后先核对信息，再确认核销。',
 }: RedeemScanModalProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const busyRef = useRef(false);
@@ -90,7 +90,7 @@ export default function RedeemScanModal({
         await stopScanner();
         setCamStopped(true);
         try {
-          await onRedeemed(code);
+          await onRecognized(code);
         } catch {
           // 父级已提示错误，展示重试入口
         } finally {
@@ -132,7 +132,7 @@ export default function RedeemScanModal({
       }
     }
     setCamError(describeCameraError(lastError));
-  }, [onRedeemed, stopScanner]);
+  }, [onRecognized, stopScanner]);
 
   useEffect(() => () => { void stopScanner(); }, [stopScanner]);
 
@@ -150,7 +150,7 @@ export default function RedeemScanModal({
       if (!REDEEM_CODE_PATTERN.test(code)) {
         throw new Error('未识别到有效的核销码');
       }
-      await onRedeemed(code);
+      await onRecognized(code);
     } catch (error) {
       message.error(error instanceof Error ? error.message : '二维码识别失败');
     } finally {
@@ -168,7 +168,7 @@ export default function RedeemScanModal({
     if (busyRef.current) return;
     busyRef.current = true;
     try {
-      await onRedeemed(code);
+      await onRecognized(code);
     } finally {
       busyRef.current = false;
     }
@@ -243,11 +243,11 @@ export default function RedeemScanModal({
           <Input
             placeholder="手动输入核销码"
             value={manualCode}
-            maxLength={32}
+            maxLength={34}
             onChange={(event) => setManualCode(event.target.value)}
             onPressEnter={() => void submitManual()}
           />
-          <Button onClick={() => void submitManual()}>核销</Button>
+          <Button onClick={() => void submitManual()}>下一步</Button>
         </div>
       </div>
     </Modal>

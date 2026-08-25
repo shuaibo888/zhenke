@@ -101,6 +101,13 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const mallActive = location.pathname.startsWith('/mall');
   const profileLanding = location.pathname === '/profile';
   const profileSubPage = location.pathname.startsWith('/profile/');
+  const profileBackTarget = /^\/profile\/orders\/[^/]+$/.test(location.pathname)
+    ? '/profile/orders'
+    : /^\/profile\/trials\/[^/]+$/.test(location.pathname)
+      ? '/profile/trials'
+      : /^\/profile\/coupons\/[^/]+$/.test(location.pathname)
+        ? '/profile/coupons'
+        : '/profile';
   const profileActive = location.pathname.startsWith('/profile')
     || location.pathname.startsWith('/checkout')
     || isPaymentReturn;
@@ -311,7 +318,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
               </div>
             ) : profileSubPage ? (
               <div className={styles.mastheadBrandGroup}>
-                <ProfileBackButton onClick={() => navigate('/profile')} />
+                <ProfileBackButton onClick={() => navigate(profileBackTarget)} />
                 <button type="button" className={styles.brandLockup} onClick={() => navigate('/')}>
                   <h1>㤫者商城</h1>
                 </button>

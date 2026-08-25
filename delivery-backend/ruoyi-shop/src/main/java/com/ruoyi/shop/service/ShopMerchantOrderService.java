@@ -117,6 +117,12 @@ public class ShopMerchantOrderService
         return redeemForMerchant(merchant.getMerchantId(), redeemCode);
     }
 
+    public ShopOrder previewRedeem(String redeemCode)
+    {
+        ShopMerchant merchant = merchantService.currentMerchantAccount();
+        return previewRedeemForMerchant(merchant.getMerchantId(), redeemCode);
+    }
+
     @Transactional
     public ShopOrder adminRedeem(String redeemCode)
     {
@@ -127,6 +133,36 @@ public class ShopMerchantOrderService
             throw new ServiceException("核销码无效");
         }
         return redeemForMerchant(order.getMerchantId(), normalized);
+    }
+
+    public ShopOrder adminPreviewRedeem(String redeemCode)
+    {
+        String normalized = StringUtils.trim(redeemCode);
+        ShopOrder order = orderMapper.selectAdminOrderByRedeemCode(normalized);
+        if (order == null)
+        {
+            throw new ServiceException("核销码无效");
+        }
+        return previewRedeemForMerchant(order.getMerchantId(), normalized);
+    }
+
+    private ShopOrder previewRedeemForMerchant(long merchantId, String redeemCode)
+    {
+        String normalized = StringUtils.trim(redeemCode);
+        if (StringUtils.isEmpty(normalized))
+        {
+            throw new ServiceException("核销码不能为空");
+        }
+        ShopOrder order = orderMapper.selectMerchantOrderByRedeemCode(merchantId, normalized);
+        if (order == null)
+        {
+            throw new ServiceException("核销码无效或不属于当前商家");
+        }
+        if (!ShopOrderService.PAID.equals(order.getStatus()) || !"OFFLINE".equals(order.getFulfillmentType()))
+        {
+            throw new ServiceException("该订单当前不能核销");
+        }
+        return hydrate(order);
     }
 
     private ShopOrder redeemForMerchant(long merchantId, String redeemCode)

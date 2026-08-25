@@ -111,6 +111,13 @@ public class ShopMerchantTrialController extends BaseController
         return AjaxResult.success(trialService.shipApplication(applicationId, body));
     }
 
+    @PreAuthorize("@ss.hasPermi('shop:trial:audit')")
+    @PostMapping("/applications/redeem/preview")
+    public AjaxResult previewRedeem(@Valid @RequestBody ShopTrialRedeemBody body)
+    {
+        return AjaxResult.success(trialService.previewRedeemApplication(body.getRedeemCode()));
+    }
+
     @Log(title = "线下试用核销", businessType = BusinessType.UPDATE)
     @PreAuthorize("@ss.hasPermi('shop:trial:audit')")
     @PostMapping("/applications/redeem")

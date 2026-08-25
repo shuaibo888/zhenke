@@ -74,6 +74,11 @@ public class ShopMerchantOrderController extends BaseController {
         return AjaxResult.success(order);
     }
 
+    @PostMapping("/redeem/preview")
+    public AjaxResult previewRedeem(@Valid @RequestBody ShopOrderRedeemBody body) {
+        return AjaxResult.success(orderService.previewRedeem(body.getRedeemCode()));
+    }
+
     @Log(title = "线下订单核销", businessType = BusinessType.UPDATE)
     @PostMapping("/redeem")
     public AjaxResult redeem(@Valid @RequestBody ShopOrderRedeemBody body) {
