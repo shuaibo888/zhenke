@@ -15,7 +15,7 @@ export interface PublicMerchantDto {
 
 export interface ProductCategoryDto {
   categoryId: number;
-  categoryCode: `CATEGORY_${1 | 2 | 3 | 4}`;
+  categoryCode: string;
   categoryName: string;
   categorySort: number;
   status: '0' | '1';

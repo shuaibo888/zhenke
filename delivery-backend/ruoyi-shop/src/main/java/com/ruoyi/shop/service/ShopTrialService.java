@@ -576,7 +576,7 @@ public class ShopTrialService
             throw new ServiceException("试用方式筛选仅适用于试用招募");
         }
         String category = StringUtils.trim(categoryCode);
-        if (StringUtils.isNotEmpty(category) && !category.matches("CATEGORY_[1-4]"))
+        if (StringUtils.isNotEmpty(category) && !category.matches("CATEGORY_[A-Za-z0-9_-]{1,23}"))
         {
             throw new ServiceException("商品分类编码无效");
         }

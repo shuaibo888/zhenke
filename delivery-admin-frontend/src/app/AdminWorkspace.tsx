@@ -37,8 +37,10 @@ import {
   auditMerchantOrderRefund,
   auditMerchantTrialApplication,
   createMerchantProduct,
+  createProductCategory,
   createMerchantTrial,
   deleteAdminReport,
+  deleteProductCategory,
   fetchAdminCaptcha,
   fetchAvailableTrialTypes,
   fetchDashboardSummary,
@@ -655,6 +657,26 @@ function AdminWorkspace() {
     }
   };
 
+  const refreshProductCategories = async () => {
+    const [allCategories, enabledCategories] = await Promise.all([
+      fetchAllProductCategories(),
+      fetchProductCategories(),
+    ]);
+    setCategoryDrafts(allCategories);
+    setProductCategories(enabledCategories);
+  };
+
+  const createCategory = async (values: { categoryName: string; categorySort: number; status: '0' | '1' }) => {
+    try {
+      await createProductCategory({ ...values, categoryName: values.categoryName.trim() });
+      await refreshProductCategories();
+      message.success('分类已新增');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '分类新增失败');
+      throw error;
+    }
+  };
+
   const saveCategory = async (categoryItem: ProductCategoryOption) => {
     try {
       await updateProductCategory(categoryItem.categoryId, {
@@ -662,15 +684,23 @@ function AdminWorkspace() {
         categorySort: categoryItem.categorySort,
         status: categoryItem.status,
       });
-      const [allCategories, enabledCategories] = await Promise.all([
-        fetchAllProductCategories(),
-        fetchProductCategories(),
-      ]);
-      setCategoryDrafts(allCategories);
-      setProductCategories(enabledCategories);
+      await refreshProductCategories();
       message.success('分类设置已保存，商品关联保持不变');
     } catch (error) {
       message.error(error instanceof Error ? error.message : '分类保存失败');
+    }
+  };
+
+  const removeCategory = async (categoryItem: ProductCategoryOption) => {
+    try {
+      await deleteProductCategory(categoryItem.categoryId);
+      await refreshProductCategories();
+      if (productCategoryFilter === categoryItem.categoryCode) {
+        setProductCategoryFilter('all');
+      }
+      message.success('分类已删除');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '分类删除失败');
     }
   };
 
@@ -1884,7 +1914,9 @@ function AdminWorkspace() {
         categoryDrafts={categoryDrafts}
         onCategoryModalClose={() => setCategoryModalOpen(false)}
         onCategoryDraftsChange={setCategoryDrafts}
+        onCreateCategory={createCategory}
         onSaveCategory={(item) => void saveCategory(item)}
+        onDeleteCategory={(item) => void removeCategory(item)}
         editingProductId={editingProductId}
         productDrawerOpen={productDrawerOpen}
         productForm={productForm}

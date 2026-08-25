@@ -1,6 +1,6 @@
 export type LoginType = 'admin' | 'merchant';
 
-export type ProductCategory = 'verified' | 'local' | 'other' | `CATEGORY_${1 | 2 | 3 | 4}`;
+export type ProductCategory = string;
 
 export type ProductStatus = 'draft' | 'onSale' | 'offSale';
 
@@ -126,7 +126,7 @@ export interface ManagedProduct {
 
 export interface ProductCategoryOption {
   categoryId: number;
-  categoryCode: `CATEGORY_${1 | 2 | 3 | 4}`;
+  categoryCode: string;
   categoryName: string;
   categorySort: number;
   status: '0' | '1';

@@ -1,4 +1,4 @@
-import { CheckCircleOutlined, UploadOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, DeleteOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import {
   App as AntApp,
   Button,
@@ -8,6 +8,7 @@ import {
   Input,
   InputNumber,
   Modal,
+  Popconfirm,
   Select,
   Space,
   Switch,
@@ -15,7 +16,7 @@ import {
   Upload,
 } from 'antd';
 import type { FormInstance, UploadFile } from 'antd';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AdminSession, ProductCategoryOption } from '@/types';
 import { uploadAdminFile } from '@/services/adminApi';
 import styles from '@/pages/index.less';
@@ -42,7 +43,9 @@ export interface ProductDialogsProps {
   onCategoryDraftsChange: (
     updater: (rows: ProductCategoryOption[]) => ProductCategoryOption[],
   ) => void;
+  onCreateCategory: (values: { categoryName: string; categorySort: number; status: '0' | '1' }) => Promise<void>;
   onSaveCategory: (item: ProductCategoryOption) => void;
+  onDeleteCategory: (item: ProductCategoryOption) => void;
   editingProductId: number | null;
   productDrawerOpen: boolean;
   productForm: FormInstance<ProductFormValues>;
@@ -143,18 +146,73 @@ function ProductImageUploader({ kind, maxCount, value, onChange, session, produc
 }
 
 export default function ProductDialogs(props: ProductDialogsProps) {
+  const { message } = AntApp.useApp();
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategorySort, setNewCategorySort] = useState(1);
+  const [creatingCategory, setCreatingCategory] = useState(false);
+
+  useEffect(() => {
+    if (props.categoryModalOpen && !props.categoriesLoading) {
+      const nextSort = Math.min(9999, Math.max(0, ...props.categoryDrafts.map((item) => item.categorySort)) + 1);
+      setNewCategoryName('');
+      setNewCategorySort(nextSort);
+    }
+  }, [props.categoryModalOpen, props.categoriesLoading]);
+
+  const handleCreateCategory = async () => {
+    const categoryName = newCategoryName.trim();
+    if (!categoryName) {
+      message.warning('请输入分类名称');
+      return;
+    }
+    setCreatingCategory(true);
+    try {
+      await props.onCreateCategory({ categoryName, categorySort: newCategorySort, status: '0' });
+      setNewCategoryName('');
+      setNewCategorySort((current) => Math.min(9999, current + 1));
+    } catch {
+      // 具体失败原因由上层统一提示，保留输入便于超管修正后重试。
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
+
   return (
     <>
       <Modal
         {...responsiveModalProps}
-        title="固定四分类设置"
+        title="商品分类管理"
         open={props.categoryModalOpen}
         onCancel={props.onCategoryModalClose}
         footer={null}
         width={760}
         destroyOnHidden
       >
-        <p className={styles.subText}>分类编码永久稳定；修改显示名称、排序或启停不会改变已有商品关联。</p>
+        <p className={styles.subText}>可新增、修改、启停或删除分类；已关联商品的分类需先调整商品后才能删除。</p>
+        <div className={styles.categoryCreator}>
+          <Input
+            value={newCategoryName}
+            maxLength={50}
+            placeholder="输入新分类名称"
+            onChange={(event) => setNewCategoryName(event.target.value)}
+            onPressEnter={() => void handleCreateCategory()}
+          />
+          <InputNumber
+            min={1}
+            max={9999}
+            value={newCategorySort}
+            aria-label="新分类排序"
+            onChange={(value) => setNewCategorySort(value ?? 1)}
+          />
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            loading={creatingCategory}
+            onClick={() => void handleCreateCategory()}
+          >
+            新增分类
+          </Button>
+        </div>
         <Table
           loading={props.categoriesLoading}
           rowKey="categoryId"
@@ -207,9 +265,21 @@ export default function ProductDialogs(props: ProductDialogsProps) {
             {
               title: '操作',
               key: 'action',
-              width: 90,
+              width: 150,
               render: (_, item: ProductCategoryOption) => (
-                <Button type="primary" size="small" onClick={() => props.onSaveCategory(item)}>保存</Button>
+                <Space size={8}>
+                  <Button type="primary" size="small" onClick={() => props.onSaveCategory(item)}>保存</Button>
+                  <Popconfirm
+                    title={`确定删除“${item.categoryName}”吗？`}
+                    description="已关联商品的分类无法删除。"
+                    okText="删除"
+                    cancelText="取消"
+                    okButtonProps={{ danger: true }}
+                    onConfirm={() => props.onDeleteCategory(item)}
+                  >
+                    <Button danger size="small" aria-label={`删除${item.categoryName}`} icon={<DeleteOutlined />} />
+                  </Popconfirm>
+                </Space>
               ),
             },
           ]}

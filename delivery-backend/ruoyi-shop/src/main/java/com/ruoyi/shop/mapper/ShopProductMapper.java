@@ -10,7 +10,12 @@ public interface ShopProductMapper
 {
     List<ShopProductCategory> selectCategories(@Param("enabledOnly") boolean enabledOnly);
     ShopProductCategory selectCategoryById(Long categoryId);
+    ShopProductCategory selectCategoryByName(@Param("categoryName") String categoryName,
+            @Param("excludeCategoryId") Long excludeCategoryId);
+    int insertCategory(ShopProductCategory category);
     int updateCategory(ShopProductCategory category);
+    int countProductsByCategoryId(Long categoryId);
+    int deleteCategory(Long categoryId);
 
     List<ShopProduct> selectMerchantProducts(@Param("merchantId") Long merchantId,
             @Param("query") ShopProduct query);

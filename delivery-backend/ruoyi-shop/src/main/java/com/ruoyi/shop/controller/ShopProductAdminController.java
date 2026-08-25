@@ -4,6 +4,7 @@ import java.util.List;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -95,6 +96,14 @@ public class ShopProductAdminController extends BaseController
         return AjaxResult.success(productService.allCategories());
     }
 
+    @Log(title = "商品分类", businessType = BusinessType.INSERT)
+    @PreAuthorize("@ss.hasRole('admin')")
+    @PostMapping("/categories")
+    public AjaxResult createCategory(@Valid @RequestBody ShopProductCategoryBody body)
+    {
+        return AjaxResult.success(productService.createCategory(body, getUsername()));
+    }
+
     @Log(title = "商品分类", businessType = BusinessType.UPDATE)
     @PreAuthorize("@ss.hasRole('admin')")
     @PutMapping("/categories/{categoryId}")
@@ -102,5 +111,13 @@ public class ShopProductAdminController extends BaseController
             @Valid @RequestBody ShopProductCategoryBody body)
     {
         return toAjax(productService.updateCategory(categoryId, body, getUsername()));
+    }
+
+    @Log(title = "商品分类", businessType = BusinessType.DELETE)
+    @PreAuthorize("@ss.hasRole('admin')")
+    @DeleteMapping("/categories/{categoryId}")
+    public AjaxResult deleteCategory(@PathVariable long categoryId)
+    {
+        return toAjax(productService.deleteCategory(categoryId));
     }
 }

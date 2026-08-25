@@ -1,8 +1,12 @@
 package com.ruoyi.shop.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -15,6 +19,8 @@ import com.ruoyi.shop.domain.ShopProduct;
 import com.ruoyi.shop.domain.ShopProductCategory;
 import com.ruoyi.shop.domain.ShopProductImage;
 import com.ruoyi.shop.domain.dto.ShopProductBody;
+import com.ruoyi.shop.domain.dto.ShopProductCategoryBody;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.shop.mapper.ShopProductMapper;
 
 class ShopProductServiceTest
@@ -71,6 +77,38 @@ class ShopProductServiceTest
                 insertedImages.stream().map(ShopProductImage::getImageUrl).toList());
     }
 
+    @Test
+    void createsDynamicCategoryWithStableGeneratedCode()
+    {
+        AtomicReference<ShopProductCategory> insertedCategory = new AtomicReference<>();
+        when(productMapper.insertCategory(any(ShopProductCategory.class))).thenAnswer(invocation -> {
+            ShopProductCategory category = invocation.getArgument(0);
+            category.setCategoryId(5L);
+            insertedCategory.set(category);
+            return 1;
+        });
+        when(productMapper.selectCategoryById(5L)).thenAnswer(ignored -> insertedCategory.get());
+
+        ShopProductCategoryBody body = categoryBody("  新分类  ");
+        ShopProductCategory created = productService.createCategory(body, "admin");
+
+        assertEquals("新分类", created.getCategoryName());
+        assertEquals(32, created.getCategoryCode().length());
+        assertTrue(created.getCategoryCode().matches("CATEGORY_[0-9a-f]{23}"));
+    }
+
+    @Test
+    void refusesToDeleteCategoryReferencedByProducts()
+    {
+        ShopProductCategory category = new ShopProductCategory();
+        category.setCategoryId(1L);
+        when(productMapper.selectCategoryById(1L)).thenReturn(category);
+        when(productMapper.countProductsByCategoryId(1L)).thenReturn(1);
+
+        assertThrows(ServiceException.class, () -> productService.deleteCategory(1L));
+        verify(productMapper, never()).deleteCategory(1L);
+    }
+
     private ShopProductBody validBody()
     {
         ShopProductBody body = new ShopProductBody();
@@ -80,6 +118,15 @@ class ShopProductServiceTest
         body.setSubtitle("Subtitle");
         body.setPrice(new BigDecimal("99.00"));
         body.setStock(10);
+        return body;
+    }
+
+    private ShopProductCategoryBody categoryBody(String categoryName)
+    {
+        ShopProductCategoryBody body = new ShopProductCategoryBody();
+        body.setCategoryName(categoryName);
+        body.setCategorySort(5);
+        body.setStatus("0");
         return body;
     }
 }

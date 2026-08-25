@@ -5,6 +5,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.common.exception.ServiceException;
@@ -51,20 +52,53 @@ public class ShopProductService
         return productMapper.selectCategories(false);
     }
 
+    @Transactional
+    public ShopProductCategory createCategory(ShopProductCategoryBody body, String operator)
+    {
+        String categoryName = normalizedCategoryName(body.getCategoryName());
+        requireUniqueCategoryName(categoryName, null);
+        ShopProductCategory category = new ShopProductCategory();
+        category.setCategoryCode(newCategoryCode());
+        category.setCategoryName(categoryName);
+        category.setCategorySort(body.getCategorySort());
+        category.setStatus(body.getStatus());
+        category.setCreateBy(operator);
+        category.setUpdateBy(operator);
+        productMapper.insertCategory(category);
+        return productMapper.selectCategoryById(category.getCategoryId());
+    }
+
+    @Transactional
     public int updateCategory(long categoryId, ShopProductCategoryBody body, String operator)
     {
         ShopProductCategory existing = productMapper.selectCategoryById(categoryId);
-        if (existing == null || !isFixedCategory(existing.getCategoryCode()))
+        if (existing == null)
         {
             throw new ServiceException("商品分类不存在");
         }
+        String categoryName = normalizedCategoryName(body.getCategoryName());
+        requireUniqueCategoryName(categoryName, categoryId);
         ShopProductCategory category = new ShopProductCategory();
         category.setCategoryId(categoryId);
-        category.setCategoryName(StringUtils.trim(body.getCategoryName()));
+        category.setCategoryName(categoryName);
         category.setCategorySort(body.getCategorySort());
         category.setStatus(body.getStatus());
         category.setUpdateBy(operator);
         return productMapper.updateCategory(category);
+    }
+
+    @Transactional
+    public int deleteCategory(long categoryId)
+    {
+        if (productMapper.selectCategoryById(categoryId) == null)
+        {
+            throw new ServiceException("商品分类不存在");
+        }
+        if (productMapper.countProductsByCategoryId(categoryId) > 0)
+        {
+            throw new ServiceException("该分类已关联商品，请先调整商品分类后再删除");
+        }
+        return productMapper.deleteCategory(categoryId);
     }
 
     public List<ShopProduct> merchantProducts(long merchantId, ShopProduct query)
@@ -349,15 +383,28 @@ public class ShopProductService
     private ShopProductCategory requireEnabledCategory(Long categoryId)
     {
         ShopProductCategory category = productMapper.selectCategoryById(categoryId);
-        if (category == null || !"0".equals(category.getStatus()) || !isFixedCategory(category.getCategoryCode()))
+        if (category == null || !"0".equals(category.getStatus()))
         {
             throw new ServiceException("商品分类不存在或已停用");
         }
         return category;
     }
 
-    private boolean isFixedCategory(String categoryCode)
+    private String normalizedCategoryName(String categoryName)
     {
-        return categoryCode != null && categoryCode.matches("CATEGORY_[1-4]");
+        return StringUtils.trim(categoryName);
+    }
+
+    private void requireUniqueCategoryName(String categoryName, Long excludeCategoryId)
+    {
+        if (productMapper.selectCategoryByName(categoryName, excludeCategoryId) != null)
+        {
+            throw new ServiceException("商品分类名称已存在");
+        }
+    }
+
+    private String newCategoryCode()
+    {
+        return "CATEGORY_" + UUID.randomUUID().toString().replace("-", "").substring(0, 23);
     }
 }

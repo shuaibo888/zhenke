@@ -563,6 +563,18 @@ export async function fetchAllProductCategories() {
   return result.data ?? [];
 }
 
+export async function createProductCategory(
+  body: { categoryName: string; categorySort: number; status: '0' | '1' },
+) {
+  const result = await requestApi<ApiResponse<ProductCategoryOption>>(
+    '/shop/admin/products/categories',
+    { method: 'POST', body: JSON.stringify(body) },
+    true,
+  );
+  if (!result.data) throw new Error('分类新增失败');
+  return result.data;
+}
+
 export async function updateProductCategory(
   categoryId: number,
   body: { categoryName: string; categorySort: number; status: '0' | '1' },
@@ -570,6 +582,14 @@ export async function updateProductCategory(
   return requestApi<ApiResponse>(
     `/shop/admin/products/categories/${categoryId}`,
     { method: 'PUT', body: JSON.stringify(body) },
+    true,
+  );
+}
+
+export async function deleteProductCategory(categoryId: number) {
+  return requestApi<ApiResponse>(
+    `/shop/admin/products/categories/${categoryId}`,
+    { method: 'DELETE' },
     true,
   );
 }

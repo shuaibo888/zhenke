@@ -102,13 +102,37 @@
         from shop_product_category where category_id = #{categoryId}
     </select>
 
+    <select id="selectCategoryByName" resultMap="ShopProductCategoryResult">
+        select category_id, category_code, category_name, category_sort,
+               status as category_status, create_time as category_create_time,
+               update_time as category_update_time
+        from shop_product_category
+        where category_name = #{categoryName}
+        <if test="excludeCategoryId != null">and category_id != #{excludeCategoryId}</if>
+        limit 1
+    </select>
+
+    <insert id="insertCategory" parameterType="ShopProductCategory" useGeneratedKeys="true" keyProperty="categoryId">
+        insert into shop_product_category
+        (category_code, category_name, category_sort, status, create_by, create_time, update_by, update_time)
+        values
+        (#{categoryCode}, #{categoryName}, #{categorySort}, #{status}, #{createBy}, sysdate(), #{updateBy}, sysdate())
+    </insert>
+
     <update id="updateCategory" parameterType="ShopProductCategory">
         update shop_product_category
         set category_name = #{categoryName}, category_sort = #{categorySort}, status = #{status},
             update_by = #{updateBy}, update_time = sysdate()
         where category_id = #{categoryId}
-          and category_code in ('CATEGORY_1', 'CATEGORY_2', 'CATEGORY_3', 'CATEGORY_4')
     </update>
+
+    <select id="countProductsByCategoryId" parameterType="Long" resultType="int">
+        select count(1) from shop_product where category_id = #{categoryId}
+    </select>
+
+    <delete id="deleteCategory" parameterType="Long">
+        delete from shop_product_category where category_id = #{categoryId}
+    </delete>
 
     <select id="selectMerchantProducts" resultMap="ShopProductResult">
         <include refid="selectProduct" />
