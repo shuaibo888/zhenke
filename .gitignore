@@ -4,8 +4,10 @@
 **/*.docx
 /yanshi
 
-# Local documentation and test data
-/docs/
+# Local documentation and test data. The main handoff is intentionally tracked
+# because Codex Cloud must receive the current product and engineering context.
+/docs/*
+!/docs/项目交接文档.md
 
 # Local database snapshots with account or business data
 /delivery-backend/sql/
