@@ -1,6 +1,7 @@
 import { defineConfig } from 'umi';
 
 export default defineConfig({
+  title: '㤫者商城',
   routes: [
     { path: '/', component: '@/pages/home' },
     { path: '/mall', component: '@/pages/mall' },
