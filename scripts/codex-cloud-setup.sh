@@ -39,6 +39,7 @@ install_node_project "delivery-admin-frontend"
 echo "== Prefetching backend Maven dependencies =="
 mvn --batch-mode --no-transfer-progress \
   -f delivery-backend/pom.xml \
+  -Dcodex.cloud=true \
   -DskipTests \
   dependency:go-offline
 

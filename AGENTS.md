@@ -41,6 +41,8 @@ bash scripts/codex-cloud-maintenance.sh
 
 两份脚本只安装锁定依赖并预取 Maven 依赖，不启动服务、不访问生产数据库，也不执行数据库迁移。
 
+`ruoyi-admin` 的 PCC Starter 来自独立私有仓库，只负责运行时加载私密配置。普通本地和生产 Maven 构建默认包含它；Codex Cloud 没有生产配置和密钥，因此所有 Cloud Maven 命令必须增加 `-Dcodex.cloud=true`，仅在云端验证中排除该运行时依赖。不要把这个参数用于生产打包，也不要因此删除或复制 PCC 源码。
+
 ## 常用验证命令
 
 根据改动范围选择最小但充分的验证；用户明确要求“只改代码、不运行测试”时服从该要求并在结果中说明未验证项。
@@ -54,11 +56,11 @@ npm --prefix delivery-frontend run build
 npm --prefix delivery-admin-frontend run typecheck
 npm --prefix delivery-admin-frontend run build
 
-# 后端商城模块及其依赖
-mvn -f delivery-backend/pom.xml -pl ruoyi-shop -am test
+# 后端商城模块及其依赖（Cloud）
+mvn -f delivery-backend/pom.xml -Dcodex.cloud=true -pl ruoyi-shop -am test
 
-# 后端完整打包
-mvn -f delivery-backend/pom.xml clean package
+# 后端完整打包（Cloud 验证产物，不得用于生产部署）
+mvn -f delivery-backend/pom.xml -Dcodex.cloud=true clean package
 
 # 通用静态检查
 git diff --check

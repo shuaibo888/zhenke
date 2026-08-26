@@ -43,6 +43,7 @@ if [[ ! -d "$HOME/.m2/repository" || "$current_pom_hash" != "$cached_pom_hash" ]
   echo "== Refreshing backend Maven dependencies =="
   mvn --batch-mode --no-transfer-progress \
     -f delivery-backend/pom.xml \
+    -Dcodex.cloud=true \
     -DskipTests \
     dependency:go-offline
   printf '%s\n' "$current_pom_hash" > "$stamp_file"
