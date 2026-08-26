@@ -10,6 +10,19 @@ npm --version
 java -version
 mvn -version
 
+node_major="$(node -p "process.versions.node.split('.')[0]")"
+java_major="$(java -XshowSettings:properties -version 2>&1 | awk -F= '/java.specification.version/ { gsub(/[[:space:]]/, "", $2); print $2; exit }')"
+
+if [[ "$node_major" != "20" ]]; then
+  echo "Expected Node.js 20, but found major version $node_major" >&2
+  exit 1
+fi
+
+if [[ "$java_major" != "17" ]]; then
+  echo "Expected Java 17, but found specification version $java_major" >&2
+  exit 1
+fi
+
 install_node_project() {
   local project_dir="$1"
   local lock_file="$project_dir/package-lock.json"
