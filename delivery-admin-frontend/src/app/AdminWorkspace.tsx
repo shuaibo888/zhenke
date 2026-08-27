@@ -109,7 +109,7 @@ import RedeemConfirmModal from '@/modules/trials/RedeemConfirmModal';
 import { AdminPageContext, type AdminPagePropsMap } from '@/app/AdminPageContext';
 import { adminNavPaths, getAdminNavKey } from '@/app/adminRoutes';
 import { filterRowsForSession, getAvailableNavKeys, hasGlobalAccess } from '@/utils/access';
-import { type OrderStatusFilter } from '@/utils/orderManagement';
+import { getManagedOrderStatusMeta, type OrderStatusFilter } from '@/utils/orderManagement';
 import { type ProductCategoryFilter, type ProductStatusFilter } from '@/utils/productFilters';
 import styles from '@/pages/index.less';
 
@@ -171,16 +171,6 @@ const productStatusMeta: Record<ProductStatus, { label: string; color: string }>
   draft: { label: '草稿', color: 'gold' },
   onSale: { label: '在售', color: 'green' },
   offSale: { label: '已下架', color: 'default' },
-};
-
-const orderStatusMeta: Record<ManagedOrder['status'], { label: string; color: string }> = {
-  unpaid: { label: '待付款', color: 'default' },
-  paid: { label: '待发货', color: 'gold' },
-  shipped: { label: '待收货', color: 'blue' },
-  completed: { label: '已完成', color: 'green' },
-  canceled: { label: '已取消', color: 'red' },
-  refunding: { label: '退款中', color: 'blue' },
-  refunded: { label: '已退款', color: 'purple' },
 };
 
 function formatMoney(value: number) {
@@ -1466,7 +1456,10 @@ function AdminWorkspace() {
     {
       title: '状态',
       dataIndex: 'status',
-      render: (status: ManagedOrder['status']) => <Tag color={orderStatusMeta[status].color}>{orderStatusMeta[status].label}</Tag>,
+      render: (_, order) => {
+        const statusMeta = getManagedOrderStatusMeta(order);
+        return <Tag color={statusMeta.color}>{statusMeta.label}</Tag>;
+      },
     },
     {
       title: '退款状态',

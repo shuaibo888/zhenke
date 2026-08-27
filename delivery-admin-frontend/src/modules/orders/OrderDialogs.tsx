@@ -2,6 +2,7 @@ import { TruckOutlined } from '@ant-design/icons';
 import { Button, Drawer, Form, Input, Modal, Select, Space, Table, Tag } from 'antd';
 import type { FormInstance } from 'antd';
 import type { ManagedLogisticsTrace, ManagedOrder } from '@/types';
+import { getManagedOrderStatusMeta } from '@/utils/orderManagement';
 import styles from '@/pages/index.less';
 
 export interface OrderShipFormValues {
@@ -44,16 +45,6 @@ export interface OrderDialogsProps {
 const responsiveModalProps = { rootClassName: styles.responsiveModal } as const;
 const responsiveDrawerProps = { rootClassName: styles.responsiveDrawer } as const;
 
-const orderStatusMeta: Record<ManagedOrder['status'], { label: string; color: string }> = {
-  unpaid: { label: '待付款', color: 'default' },
-  paid: { label: '待发货', color: 'gold' },
-  shipped: { label: '待收货', color: 'blue' },
-  completed: { label: '已完成', color: 'green' },
-  canceled: { label: '已取消', color: 'red' },
-  refunding: { label: '退款中', color: 'blue' },
-  refunded: { label: '已退款', color: 'purple' },
-};
-
 const logisticsStateMeta: Record<ManagedLogisticsTrace['state'], { label: string; color: string }> = {
   PREPARING: { label: '商家备货中', color: 'default' },
   IN_TRANSIT: { label: '运输中', color: 'processing' },
@@ -84,8 +75,8 @@ export default function OrderDialogs(props: OrderDialogsProps) {
                 <p className={styles.eyebrow}>订单号</p>
                 <h3>{props.detailOrder.orderNo}</h3>
               </div>
-              <Tag color={orderStatusMeta[props.detailOrder.status].color}>
-                {orderStatusMeta[props.detailOrder.status].label}
+              <Tag color={getManagedOrderStatusMeta(props.detailOrder).color}>
+                {getManagedOrderStatusMeta(props.detailOrder).label}
               </Tag>
             </div>
 
@@ -158,10 +149,33 @@ export default function OrderDialogs(props: OrderDialogsProps) {
               <p className={styles.feeNote}>当前阶段订单金额全部计入商家实收。</p>
             </section>
 
-            <section>
-              <h4>收货地址</h4>
-              <p className={styles.addressText}>{props.detailOrder.address}</p>
-            </section>
+            {props.detailOrder.fulfillmentType === 'OFFLINE' ? (
+              <section>
+                <h4>核销信息</h4>
+                <div className={styles.feeBreakdown}>
+                  <div className={styles.feeRow}>
+                    <span className={styles.feeLabel}>使用方式</span>
+                    <span className={styles.feeValue}>到店或现场核销</span>
+                  </div>
+                  <div className={styles.feeRow}>
+                    <span className={styles.feeLabel}>核销状态</span>
+                    <span className={styles.feeValue}>{getManagedOrderStatusMeta(props.detailOrder).label}</span>
+                  </div>
+                  {props.detailOrder.redeemedAt && (
+                    <div className={styles.feeRow}>
+                      <span className={styles.feeLabel}>核销时间</span>
+                      <span className={styles.feeValue}>{props.detailOrder.redeemedAt}</span>
+                    </div>
+                  )}
+                </div>
+                <p className={styles.feeNote}>核销前请核对用户出示的订单信息，通过订单管理中的核销入口完成操作。</p>
+              </section>
+            ) : (
+              <section>
+                <h4>收货地址</h4>
+                <p className={styles.addressText}>{props.detailOrder.address}</p>
+              </section>
+            )}
 
             {props.detailOrder.trackingNo && (
               <section>
@@ -188,7 +202,11 @@ export default function OrderDialogs(props: OrderDialogsProps) {
               <section>
                 <div className={styles.fulfillmentHeading}>
                   <h4>订单履约记录</h4>
-                  <span>记录平台内发货、确认收货等操作，不代表包裹实际运输进度</span>
+                  <span>
+                    {props.detailOrder.fulfillmentType === 'OFFLINE'
+                      ? '记录平台内支付、核销等履约状态变化'
+                      : '记录平台内发货、确认收货等操作，不代表包裹实际运输进度'}
+                  </span>
                 </div>
                 <div className={styles.logisticsTimeline}>
                   {(props.detailOrder.logisticsEvents ?? []).map((event) => (
