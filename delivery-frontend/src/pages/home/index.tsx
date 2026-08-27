@@ -157,7 +157,7 @@ export default function HomePage() {
           <div>
             <span className={styles.eyebrow}>LOCAL LIFE</span>
             <h2>从一篇真实分享，认识一座城。</h2>
-            <p>看地点、读体验，也可以进入商城购买商家提供的真实套餐。</p>
+            <p>看地点、读体验，也可以进入交易模块购买原商城商品或本地生活套餐。</p>
           </div>
           <div className={styles.quickLinks}>
             <button type="button" className={styles.quickLink} onClick={() => navigate('/posts')}>
@@ -168,7 +168,7 @@ export default function HomePage() {
             <button type="button" className={styles.quickLink} onClick={() => navigate('/mall')}>
               <span><AppstoreOutlined /></span>
               <strong>去商城</strong>
-              <small>套餐到店核销</small>
+              <small>商品配送 · 套餐核销</small>
             </button>
           </div>
         </aside>

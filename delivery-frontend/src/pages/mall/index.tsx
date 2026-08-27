@@ -281,7 +281,7 @@ export default function MallPage() {
           </div>
           <div className={styles.promiseItem}>
             <span><QrcodeOutlined /></span>
-            <div><strong>统一核销码</strong><small>支付后在订单详情查看</small></div>
+            <div><strong>配送与核销并存</strong><small>商城原履约保留，本地套餐到店使用</small></div>
           </div>
           <div className={styles.promiseItem}>
             <span><FieldTimeOutlined /></span>
