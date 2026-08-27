@@ -104,7 +104,9 @@ class ShopZhenkeServiceTest {
               ((ShopZhenkePost) invocation.getArgument(0)).setPostId(44L);
               return 1;
             });
-    when(mapper.claimPendingUpload(18L, "/profile/upload/photo.png", "IMAGE", 44L)).thenReturn(1);
+    when(mapper.claimPendingUpload(
+            18L, "/profile/upload/report/user-18/photo.png", "IMAGE", 44L))
+        .thenReturn(1);
     when(mapper.insertResource(any())).thenReturn(1);
     ShopZhenkePost saved = new ShopZhenkePost();
     saved.setPostId(44L);
@@ -118,7 +120,8 @@ class ShopZhenkeServiceTest {
     verify(mapper).insertPlace(place.capture());
     assertEquals("服务端地点", place.getValue().getPlaceName());
     assertEquals("服务端地址", place.getValue().getAddress());
-    verify(mapper).claimPendingUpload(18L, "/profile/upload/photo.png", "IMAGE", 44L);
+    verify(mapper)
+        .claimPendingUpload(18L, "/profile/upload/report/user-18/photo.png", "IMAGE", 44L);
   }
 
   @Test
@@ -198,13 +201,33 @@ class ShopZhenkeServiceTest {
     authenticateShopUser(18L);
     ShopZhenkePostBody body = postBody();
     body.getResources().get(0).setResourceType("VIDEO");
-    body.getResources().get(0).setResourceUrl("/profile/upload/clip.mp4");
+    body.getResources().get(0).setResourceUrl("/profile/upload/report/user-18/clip.mp4");
     stubExistingPlaceAndSavedPost(18L, 45L);
-    when(mapper.claimPendingUpload(18L, "/profile/upload/clip.mp4", "VIDEO", 45L)).thenReturn(1);
+    when(mapper.claimPendingUpload(
+            18L, "/profile/upload/report/user-18/clip.mp4", "VIDEO", 45L))
+        .thenReturn(1);
     ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
 
     assertEquals(45L, service.publish(body).getPostId());
-    verify(mapper).claimPendingUpload(18L, "/profile/upload/clip.mp4", "VIDEO", 45L);
+    verify(mapper)
+        .claimPendingUpload(18L, "/profile/upload/report/user-18/clip.mp4", "VIDEO", 45L);
+  }
+
+  @Test
+  void publishingAcceptsPublicUploadUrlButClaimsItsPersistedPlatformPath() {
+    authenticateShopUser(18L);
+    ShopZhenkePostBody body = postBody();
+    body.getResources().get(0).setResourceUrl(
+        "https://dzshop.vip/profile/upload/report/user-18/photo.png");
+    stubExistingPlaceAndSavedPost(18L, 46L);
+    when(mapper.claimPendingUpload(
+            18L, "/profile/upload/report/user-18/photo.png", "IMAGE", 46L))
+        .thenReturn(1);
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+
+    assertEquals(46L, service.publish(body).getPostId());
+    verify(mapper)
+        .claimPendingUpload(18L, "/profile/upload/report/user-18/photo.png", "IMAGE", 46L);
   }
 
   @Test
@@ -417,7 +440,7 @@ class ShopZhenkeServiceTest {
     body.setPlace(place);
     ShopZhenkePostBody.Resource resource = new ShopZhenkePostBody.Resource();
     resource.setResourceType("IMAGE");
-    resource.setResourceUrl("/profile/upload/photo.png");
+    resource.setResourceUrl("/profile/upload/report/user-18/photo.png");
     body.setResources(List.of(resource));
     return body;
   }

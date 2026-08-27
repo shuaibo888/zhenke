@@ -20,12 +20,17 @@ import org.springframework.web.multipart.MultipartFile;
 public class ShopZhenkeController extends BaseController {
   private final ShopZhenkeService service;
   private final ShopReportResourceService resources;
+  private final ShopPublicMediaService publicMedia;
   private final com.ruoyi.shop.map.TencentMapService map;
 
   public ShopZhenkeController(
-      ShopZhenkeService s, ShopReportResourceService r, com.ruoyi.shop.map.TencentMapService map) {
+      ShopZhenkeService s,
+      ShopReportResourceService r,
+      ShopPublicMediaService publicMedia,
+      com.ruoyi.shop.map.TencentMapService map) {
     service = s;
     resources = r;
+    this.publicMedia = publicMedia;
     this.map = map;
   }
 
@@ -37,25 +42,25 @@ public class ShopZhenkeController extends BaseController {
       @RequestParam(defaultValue = "1") int pageNum,
       @RequestParam(defaultValue = "12") int pageSize) {
     PageHelper.clearPage();
-    return getDataTable(service.posts(zone, placeId, pageNum, pageSize));
+    return getDataTable(publicMedia.posts(service.posts(zone, placeId, pageNum, pageSize)));
   }
 
   @Anonymous
   @GetMapping("/posts/{id}")
   public AjaxResult detail(@PathVariable long id) {
-    return AjaxResult.success(service.detail(id));
+    return AjaxResult.success(publicMedia.post(service.detail(id)));
   }
 
   @PostMapping("/posts")
   public AjaxResult publish(@Valid @RequestBody ShopZhenkePostBody b) {
-    return AjaxResult.success("发布成功", service.publish(b));
+    return AjaxResult.success("发布成功", publicMedia.post(service.publish(b)));
   }
 
   @GetMapping("/posts/me")
   public TableDataInfo mine(
       @RequestParam(defaultValue = "1") int pageNum,
       @RequestParam(defaultValue = "12") int pageSize) {
-    return getDataTable(service.myPosts(pageNum, pageSize));
+    return getDataTable(publicMedia.posts(service.myPosts(pageNum, pageSize)));
   }
 
   @DeleteMapping("/posts/{id}")
@@ -72,12 +77,12 @@ public class ShopZhenkeController extends BaseController {
   @Anonymous
   @GetMapping("/posts/{id}/comments")
   public AjaxResult comments(@PathVariable long id) {
-    return AjaxResult.success(service.comments(id));
+    return AjaxResult.success(publicMedia.comments(service.comments(id)));
   }
 
   @PostMapping("/posts/{id}/comments")
   public AjaxResult comment(@PathVariable long id, @Valid @RequestBody ShopZhenkeCommentBody b) {
-    return AjaxResult.success("评论成功", service.comment(id, b));
+    return AjaxResult.success("评论成功", publicMedia.comment(service.comment(id, b)));
   }
 
   @DeleteMapping("/posts/{id}/comments/{cid}")
@@ -89,7 +94,8 @@ public class ShopZhenkeController extends BaseController {
   @PostMapping("/resources")
   public AjaxResult upload(@RequestParam("file") MultipartFile file) {
     String path = resources.upload(file);
-    return AjaxResult.success("上传成功", service.registerUpload(path, file.getOriginalFilename()));
+    return AjaxResult.success(
+        "上传成功", publicMedia.publicUrl(service.registerUpload(path, file.getOriginalFilename())));
   }
 
   @Anonymous
@@ -129,6 +135,6 @@ public class ShopZhenkeController extends BaseController {
   @Anonymous
   @GetMapping("/banners")
   public AjaxResult banners() {
-    return AjaxResult.success(service.activeBanners());
+    return AjaxResult.success(publicMedia.banners(service.activeBanners()));
   }
 }

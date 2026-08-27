@@ -6,6 +6,7 @@ import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.shop.domain.dto.ShopHomeBannerBody;
+import com.ruoyi.shop.service.ShopPublicMediaService;
 import com.ruoyi.shop.service.ShopZhenkeService;
 import jakarta.validation.Valid;
 import java.util.Date;
@@ -18,9 +19,11 @@ import org.springframework.web.bind.annotation.*;
 @PreAuthorize("@ss.hasRole('admin')")
 public class ShopZhenkeAdminController extends BaseController {
   private final ShopZhenkeService s;
+  private final ShopPublicMediaService publicMedia;
 
-  public ShopZhenkeAdminController(ShopZhenkeService s) {
+  public ShopZhenkeAdminController(ShopZhenkeService s, ShopPublicMediaService publicMedia) {
     this.s = s;
+    this.publicMedia = publicMedia;
   }
 
   @GetMapping("/posts")
@@ -34,13 +37,14 @@ public class ShopZhenkeAdminController extends BaseController {
       @RequestParam(defaultValue = "1") int pageNum,
       @RequestParam(defaultValue = "10") int pageSize) {
     return getDataTable(
-        s.adminPosts(keyword, merchantId, status, publishedFrom, publishedTo, pageNum, pageSize));
+        publicMedia.posts(
+            s.adminPosts(keyword, merchantId, status, publishedFrom, publishedTo, pageNum, pageSize)));
   }
 
   @GetMapping("/posts/{id}")
   @PreAuthorize("@ss.hasRole('admin') and @ss.hasPermi('shop:zhenkePost:query')")
   public AjaxResult post(@PathVariable long id) {
-    return AjaxResult.success(s.adminDetail(id));
+    return AjaxResult.success(publicMedia.post(s.adminDetail(id)));
   }
 
   @Log(title = "删除甄客帖", businessType = BusinessType.DELETE)
@@ -54,19 +58,19 @@ public class ShopZhenkeAdminController extends BaseController {
   @GetMapping("/banners")
   @PreAuthorize("@ss.hasRole('admin') and @ss.hasPermi('shop:banner:list')")
   public AjaxResult banners() {
-    return AjaxResult.success(s.banners());
+    return AjaxResult.success(publicMedia.banners(s.banners()));
   }
 
   @PostMapping("/banners")
   @PreAuthorize("@ss.hasRole('admin') and @ss.hasPermi('shop:banner:add')")
   public AjaxResult add(@Valid @RequestBody ShopHomeBannerBody b) {
-    return AjaxResult.success(s.saveBanner(null, b, getUsername()));
+    return AjaxResult.success(publicMedia.banner(s.saveBanner(null, b, getUsername())));
   }
 
   @PutMapping("/banners/{id}")
   @PreAuthorize("@ss.hasRole('admin') and @ss.hasPermi('shop:banner:edit')")
   public AjaxResult edit(@PathVariable long id, @Valid @RequestBody ShopHomeBannerBody b) {
-    return AjaxResult.success(s.saveBanner(id, b, getUsername()));
+    return AjaxResult.success(publicMedia.banner(s.saveBanner(id, b, getUsername())));
   }
 
   @DeleteMapping("/banners/{id}")

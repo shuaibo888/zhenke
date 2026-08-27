@@ -116,7 +116,7 @@ public class ShopZhenkeService {
     }
     int sort = 1;
     for (var item : b.getResources()) {
-      String resourceUrl = StringUtils.trim(item.getResourceUrl());
+      String resourceUrl = normalizeClaimedResourceUrl(item.getResourceUrl());
       if (mapper.claimPendingUpload(uid, resourceUrl, item.getResourceType(), z.getPostId()) != 1) {
         throw new ServiceException("媒体未由当前账号上传、已被使用或已经过期");
       }
@@ -336,10 +336,34 @@ public class ShopZhenkeService {
     long videos = rs.stream().filter(x -> "VIDEO".equals(x.getResourceType())).count();
     if (videos > 1) throw new ServiceException("最多上传一个视频");
     for (var r : rs) {
-      String u = StringUtils.trim(r.getResourceUrl());
-      if (!u.startsWith("/profile/upload/") || u.contains(".."))
-        throw new ServiceException("媒体地址无效");
+      normalizeClaimedResourceUrl(r.getResourceUrl());
     }
+  }
+
+  private String normalizeClaimedResourceUrl(String rawUrl) {
+    String value = StringUtils.trim(rawUrl).replace('\\', '/');
+    try {
+      URI uri = URI.create(value);
+      if (uri.isAbsolute()) {
+        if (!("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme()))
+            || uri.getHost() == null
+            || uri.getUserInfo() != null
+            || uri.getRawQuery() != null
+            || uri.getRawFragment() != null) {
+          throw new ServiceException("媒体地址无效");
+        }
+        value = uri.getPath();
+      }
+    } catch (IllegalArgumentException e) {
+      throw new ServiceException("媒体地址无效");
+    }
+    if (!value.startsWith("/profile/upload/report/user-")
+        || value.contains("..")
+        || value.contains("?")
+        || value.contains("#")) {
+      throw new ServiceException("媒体地址无效");
+    }
+    return value;
   }
 
   private void validateBanner(ShopHomeBannerBody b) {
