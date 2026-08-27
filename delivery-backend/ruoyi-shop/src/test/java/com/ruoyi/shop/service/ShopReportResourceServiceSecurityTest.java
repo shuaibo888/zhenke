@@ -1,21 +1,28 @@
 package com.ruoyi.shop.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.shop.security.ShopAccountIdentity;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 class ShopReportResourceServiceSecurityTest {
   private final ShopReportResourceService service = new ShopReportResourceService();
+
+  @TempDir Path tempDirectory;
 
   @AfterEach
   void clearAuthentication() {
@@ -51,6 +58,29 @@ class ShopReportResourceServiceSecurityTest {
         new MockMultipartFile("file", "animation.gif", "image/gif", new byte[] { 'G', 'I', 'F' });
 
     assertThrows(ServiceException.class, () -> service.upload(gif));
+  }
+
+  @Test
+  void storesReportMediaInTheAuthenticatedUsersNamespaceAndVerifiesOwnership() {
+    String previousProfile = RuoYiConfig.getProfile();
+    try {
+      new RuoYiConfig().setProfile(tempDirectory.toString());
+      authenticateShopUser(18L);
+      MockMultipartFile image = new MockMultipartFile(
+          "file", "visit.jpg", "image/jpeg", new byte[] {(byte) 0xff, (byte) 0xd8, (byte) 0xff, 0});
+
+      String resourcePath = service.upload(image);
+
+      assertTrue(resourcePath.startsWith("/profile/upload/report/user-18/"));
+      assertEquals(resourcePath,
+          service.normalizeOwnedResourceUrl(18L, "IMAGE", "https://dzshop.vip" + resourcePath));
+      assertThrows(ServiceException.class,
+          () -> service.normalizeOwnedResourceUrl(19L, "IMAGE", resourcePath));
+      assertThrows(ServiceException.class,
+          () -> service.normalizeOwnedResourceUrl(18L, "VIDEO", resourcePath));
+    } finally {
+      new RuoYiConfig().setProfile(previousProfile);
+    }
   }
 
   private void authenticateShopUser(long userId) {

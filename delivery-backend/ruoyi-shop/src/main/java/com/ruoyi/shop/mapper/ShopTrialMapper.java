@@ -120,6 +120,7 @@ public interface ShopTrialMapper {
     List<ShopHomeFeedItem> selectHomeFeed(@Param("productId") Long productId,
                                           @Param("categoryCode") String categoryCode,
                                           @Param("contentType") String contentType, @Param("trialType") String trialType,
+                                          @Param("mallOnly") boolean mallOnly,
                                           @Param("viewerShopUserId") Long viewerShopUserId,
                                           @Param("keyword") String keyword);
 }

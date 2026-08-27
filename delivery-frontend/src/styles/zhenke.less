@@ -1638,6 +1638,90 @@
   gap: 16px;
 }
 
+.commerceFeedGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.commerceTrialCard {
+  min-width: 0;
+  overflow: hidden;
+  color: @ink;
+  background: @surface;
+  border: 1px solid @line;
+  border-radius: 20px;
+  box-shadow: @shadowSm;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.commerceTrialCard:hover,
+.commerceTrialCard:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: @shadowMd;
+  outline: none;
+}
+
+.commerceTrialCard > img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.commerceTrialCard > div {
+  padding: 14px;
+}
+
+.commerceTrialCard > div > span {
+  display: inline-flex;
+  padding: 4px 8px;
+  color: @primary;
+  background: #f8e8df;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.commerceTrialCard h3 {
+  min-height: 44px;
+  margin: 9px 0 5px;
+  overflow: hidden;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.commerceTrialCard p {
+  margin: 0;
+  overflow: hidden;
+  color: @muted;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commerceTrialCard footer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 13px;
+  font-size: 11px;
+}
+
+.commerceTrialCard footer strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commerceTrialCard footer em {
+  flex: none;
+  color: @primary;
+  font-style: normal;
+  font-weight: 800;
+}
+
 .productCard {
   min-width: 0;
   overflow: hidden;
@@ -1758,6 +1842,10 @@
   .productGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .commerceFeedGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 650px) {
@@ -1801,6 +1889,11 @@
   }
 
   .productGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .commerceFeedGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
   }

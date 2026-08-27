@@ -8,13 +8,19 @@ import {
 import { Button, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'umi';
+import { useShop } from '@/app/ShopContext';
+import { HomeFeedReportCard } from '@/components/HomeFeedReportCard';
 import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
 import {
+  fetchHomeFeed,
   fetchMallProducts,
   fetchProductCategories,
+  toggleReportUseful,
+  type HomeFeedItemDto,
   type MallProductDto,
   type ProductCategoryDto,
 } from '@/services/shopContent';
+import { buildLoginPath } from '@/utils/safeRedirect';
 import styles from '@/styles/zhenke.less';
 
 const PAGE_SIZE = 16;
@@ -37,6 +43,7 @@ function normalizeBusinessModule(value: string | null): BusinessModuleCode {
 
 export default function MallPage() {
   const navigate = useNavigate();
+  const { user } = useShop();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedRouteCode = searchParams.get('module') ?? searchParams.get('scene');
   const activeModule = normalizeBusinessModule(requestedRouteCode);
@@ -54,6 +61,12 @@ export default function MallPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
   const [categoryError, setCategoryError] = useState('');
+  const [commerceFeed, setCommerceFeed] = useState<HomeFeedItemDto[]>([]);
+  const [commerceFeedTotal, setCommerceFeedTotal] = useState(0);
+  const [commerceFeedPage, setCommerceFeedPage] = useState(1);
+  const [commerceFeedLoading, setCommerceFeedLoading] = useState(true);
+  const [commerceFeedLoadingMore, setCommerceFeedLoadingMore] = useState(false);
+  const [commerceFeedError, setCommerceFeedError] = useState('');
 
   useEffect(() => {
     setCategoryError('');
@@ -117,6 +130,41 @@ export default function MallPage() {
     void loadProducts();
   }, [loadProducts]);
 
+  const loadCommerceFeed = useCallback(async () => {
+    if (categoriesLoading) return;
+    if (activeModule !== 'MALL' && !activeCategoryId) {
+      setCommerceFeed([]);
+      setCommerceFeedTotal(0);
+      setCommerceFeedPage(1);
+      setCommerceFeedLoading(false);
+      return;
+    }
+    setCommerceFeedLoading(true);
+    setCommerceFeedError('');
+    try {
+      const result = await fetchHomeFeed({
+        categoryCode: activeCategory?.categoryCode,
+        businessModule: activeModule === 'MALL' ? 'MALL' : undefined,
+        keyword: keyword || undefined,
+        contentType: 'ALL',
+        trialType: 'ALL',
+        pageNum: 1,
+        pageSize: 8,
+      });
+      setCommerceFeed(result.rows);
+      setCommerceFeedTotal(result.total);
+      setCommerceFeedPage(1);
+    } catch (reason) {
+      setCommerceFeedError(reason instanceof Error ? reason.message : '商城试用与甄客验加载失败');
+    } finally {
+      setCommerceFeedLoading(false);
+    }
+  }, [activeCategory?.categoryCode, activeCategoryId, activeModule, categoriesLoading, keyword]);
+
+  useEffect(() => {
+    void loadCommerceFeed();
+  }, [loadCommerceFeed]);
+
   const selectModule = (code: BusinessModuleCode) => {
     const category = categories.find((item) => item.categoryCode === code);
     if (code !== 'MALL' && !category) {
@@ -163,6 +211,55 @@ export default function MallPage() {
       message.error(reason instanceof Error ? reason.message : '更多商城商品加载失败');
     } finally {
       setLoadingMore(false);
+    }
+  };
+
+  const loadMoreCommerceFeed = async () => {
+    setCommerceFeedLoadingMore(true);
+    try {
+      const nextPage = commerceFeedPage + 1;
+      const result = await fetchHomeFeed({
+        categoryCode: activeCategory?.categoryCode,
+        businessModule: activeModule === 'MALL' ? 'MALL' : undefined,
+        keyword: keyword || undefined,
+        contentType: 'ALL',
+        trialType: 'ALL',
+        pageNum: nextPage,
+        pageSize: 8,
+      });
+      setCommerceFeed((current) => {
+        const keys = new Set(current.map((item) => `${item.contentType}-${item.contentId}`));
+        return [...current, ...result.rows.filter((item) => !keys.has(`${item.contentType}-${item.contentId}`))];
+      });
+      setCommerceFeedTotal(result.total);
+      setCommerceFeedPage(nextPage);
+    } catch (reason) {
+      message.error(reason instanceof Error ? reason.message : '更多商城内容加载失败');
+    } finally {
+      setCommerceFeedLoadingMore(false);
+    }
+  };
+
+  const toggleUseful = async (item: HomeFeedItemDto) => {
+    if (!item.report) return;
+    if (!user) {
+      message.info('登录后可以标记有用');
+      navigate(buildLoginPath(`${window.location.pathname}${window.location.search}`));
+      return;
+    }
+    if (item.report.shopUserId === user.id) {
+      message.warning('不能给自己的甄客验标记有用');
+      return;
+    }
+    try {
+      const result = await toggleReportUseful(item.contentId);
+      setCommerceFeed((items) => items.map((current) => (
+        current.contentType === 'REPORT' && current.contentId === item.contentId && current.report
+          ? { ...current, report: { ...current.report, ...result } }
+          : current
+      )));
+    } catch (reason) {
+      message.error(reason instanceof Error ? reason.message : '操作失败');
     }
   };
 
@@ -324,6 +421,64 @@ export default function MallPage() {
             {products.length < total && (
               <div className={styles.loadMore}>
                 <Button size="large" loading={loadingMore} onClick={() => void loadMore()}>加载更多商品</Button>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      <ZkSectionTitle
+        title={`${activeCategory?.categoryName ?? businessModules.find((item) => item.code === activeModule)?.title ?? '商城'}试用与甄客验`}
+        description="保留原商城正在招募的试用和用户主动推荐的资格型真实体验；内容按当前营业分类筛选。"
+      />
+      <section>
+        {commerceFeedLoading ? (
+          <ZkState kind="loading" title="正在加载试用与甄客验" />
+        ) : commerceFeedError ? (
+          <ZkState kind="error" title="试用与甄客验暂时无法加载" description={commerceFeedError} onAction={() => void loadCommerceFeed()} />
+        ) : commerceFeed.length === 0 ? (
+          <ZkState
+            title="当前分类暂无试用或推荐甄客验"
+            description="商家发布真实试用、消费者完成收货或核销并主动推荐后，会展示在这里。"
+          />
+        ) : (
+          <>
+            <div className={styles.commerceFeedGrid}>
+              {commerceFeed.map((item) => item.contentType === 'REPORT' ? (
+                <HomeFeedReportCard
+                  key={`report-${item.contentId}`}
+                  item={item}
+                  onOpen={() => navigate(`/reports/${item.contentId}`)}
+                  onUseful={() => void toggleUseful(item)}
+                />
+              ) : (
+                <article
+                  key={`trial-${item.contentId}`}
+                  className={styles.commerceTrialCard}
+                  role="link"
+                  tabIndex={0}
+                  onClick={() => navigate(`/products/${item.productId}?campaign=${item.contentId}`)}
+                  onKeyDown={(event) => event.key === 'Enter'
+                    && navigate(`/products/${item.productId}?campaign=${item.contentId}`)}
+                >
+                  <img src={item.coverUrl} alt={item.title} loading="lazy" />
+                  <div>
+                    <span>{item.trial?.trialType === 'OFFLINE' ? '线下试用' : '线上试用'}</span>
+                    <h3>{item.title}</h3>
+                    <p>{item.summary || item.merchantName}</p>
+                    <footer>
+                      <strong>{item.merchantName}</strong>
+                      <em>{item.trial ? `剩余 ${Math.max(0, item.trial.targetCount - item.trial.approvedCount)} 份` : '查看详情'}</em>
+                    </footer>
+                  </div>
+                </article>
+              ))}
+            </div>
+            {commerceFeed.length < commerceFeedTotal && (
+              <div className={styles.loadMore}>
+                <Button size="large" loading={commerceFeedLoadingMore} onClick={() => void loadMoreCommerceFeed()}>
+                  加载更多试用与甄客验
+                </Button>
               </div>
             )}
           </>

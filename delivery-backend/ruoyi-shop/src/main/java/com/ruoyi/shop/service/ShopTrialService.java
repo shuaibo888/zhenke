@@ -1,8 +1,10 @@
 package com.ruoyi.shop.service;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -49,16 +51,18 @@ public class ShopTrialService
     private final ShopMerchantService merchantService;
     private final ShopProductService productService;
     private final AliyunLogisticsService logisticsService;
+    private final ShopReportResourceService resourceService;
 
     public ShopTrialService(ShopTrialMapper trialMapper, ShopUserMapper userMapper,
             ShopMerchantService merchantService, ShopProductService productService,
-            AliyunLogisticsService logisticsService)
+            AliyunLogisticsService logisticsService, ShopReportResourceService resourceService)
     {
         this.trialMapper = trialMapper;
         this.userMapper = userMapper;
         this.merchantService = merchantService;
         this.productService = productService;
         this.logisticsService = logisticsService;
+        this.resourceService = resourceService;
     }
 
     public List<ShopTrialCampaign> merchantCampaigns(long merchantId, ShopTrialCampaign query)
@@ -510,18 +514,31 @@ public class ShopTrialService
         report.setFitCrowd("");
         report.setRecommend(Boolean.TRUE.equals(body.getRecommend()) ? "0" : "1");
         report.setStatus("PUBLISHED");
-        trialMapper.insertReport(report);
+        if (trialMapper.insertReport(report) != 1)
+        {
+            throw new ServiceException("验证报告发布失败");
+        }
         int sort = 1;
+        Set<String> resourceUrls = new HashSet<>();
         if (body.getResources() != null)
         {
             for (ShopVerificationResourceBody item : body.getResources())
             {
+                String resourceUrl = resourceService.normalizeOwnedResourceUrl(
+                        shopUserId, item.getResourceType(), item.getResourceUrl());
+                if (!resourceUrls.add(resourceUrl))
+                {
+                    throw new ServiceException("同一甄客验不能重复使用同一个媒体");
+                }
                 ShopVerificationReportResource resource = new ShopVerificationReportResource();
                 resource.setReportId(report.getReportId());
                 resource.setResourceType(item.getResourceType());
-                resource.setResourceUrl(StringUtils.trim(item.getResourceUrl()));
+                resource.setResourceUrl(resourceUrl);
                 resource.setResourceSort(sort++);
-                trialMapper.insertReportResource(resource);
+                if (trialMapper.insertReportResource(resource) != 1)
+                {
+                    throw new ServiceException("甄客验媒体保存失败，请稍后重试");
+                }
             }
         }
         if (trialMapper.completeApplication(shopUserId, application.getApplicationId(), reportReadyStatus) == 0)
@@ -594,8 +611,9 @@ public class ShopTrialService
         return new ShopReportUsefulResult(reportId, trialMapper.countReportUseful(reportId), usefulByMe);
     }
 
-    public List<ShopHomeFeedItem> homeFeed(Long productId, String categoryCode, String contentType,
-                                           String trialType, int pageNum, int pageSize)
+    public List<ShopHomeFeedItem> homeFeed(Long productId, String categoryCode, String businessModule,
+                                           String contentType, String trialType, String keyword,
+                                           int pageNum, int pageSize)
     {
         if (productId != null && productId <= 0)
         {
@@ -616,9 +634,23 @@ public class ShopTrialService
             throw new ServiceException("试用方式筛选仅适用于试用招募");
         }
         String category = StringUtils.trim(categoryCode);
-        if (StringUtils.isNotEmpty(category) && !category.matches("CATEGORY_[A-Za-z0-9_-]{1,23}"))
+        if (StringUtils.isNotEmpty(category)
+                && !category.matches("CATEGORY_[A-Za-z0-9_-]{1,23}")
+                && !ShopProductService.LOCAL_LIFE_CATEGORY_CODES.contains(category))
         {
             throw new ServiceException("商品分类编码无效");
+        }
+        category = StringUtils.isEmpty(category) ? null : category;
+        String module = StringUtils.trim(businessModule);
+        if (StringUtils.isNotEmpty(module) && !"MALL".equalsIgnoreCase(module))
+        {
+            throw new ServiceException("营业模块参数无效");
+        }
+        boolean mallOnly = "MALL".equalsIgnoreCase(module);
+        String normalizedKeyword = StringUtils.trim(keyword);
+        if (StringUtils.isNotEmpty(normalizedKeyword) && normalizedKeyword.length() > 50)
+        {
+            throw new ServiceException("搜索关键词不能超过50个字符");
         }
         int safePageNum = Math.max(pageNum, 1);
         int safePageSize = Math.max(1, Math.min(pageSize, 24));
@@ -628,8 +660,9 @@ public class ShopTrialService
                 category,
                 type,
                 normalizedTrialType,
+                mallOnly,
                 ShopAccountIdentity.currentShopUserIdOrNull(),
-                null);
+                StringUtils.isEmpty(normalizedKeyword) ? null : normalizedKeyword);
     }
 
     public List<ShopHomeFeedItem> searchHomeFeed(String keyword, int pageNum, int pageSize)
@@ -651,6 +684,7 @@ public class ShopTrialService
                 null,
                 "ALL",
                 "ALL",
+                false,
                 ShopAccountIdentity.currentShopUserIdOrNull(),
                 normalizedKeyword);
     }

@@ -352,6 +352,8 @@ export interface LogisticsTraceDto {
 export interface HomeFeedQuery {
   productId?: number;
   categoryCode?: string;
+  businessModule?: 'MALL';
+  keyword?: string;
   contentType?: 'ALL' | 'TRIAL' | 'REPORT';
   trialType?: 'ALL' | 'ONLINE' | 'OFFLINE';
   pageNum?: number;
@@ -385,6 +387,8 @@ export async function fetchHomeFeed(query: HomeFeedQuery = {}) {
   });
   if (query.productId) params.set('productId', String(query.productId));
   if (query.categoryCode) params.set('categoryCode', query.categoryCode);
+  if (query.businessModule) params.set('businessModule', query.businessModule);
+  if (query.keyword?.trim()) params.set('keyword', query.keyword.trim());
   if (trialType !== 'ALL') params.set('trialType', trialType);
   const result = await requestApi<TableResponse<HomeFeedItemDto>>(
     `/shop/home/feed?${params.toString()}`,

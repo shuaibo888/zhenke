@@ -20,7 +20,7 @@ public class ShopVerificationReportBody
     @NotBlank(message = "请填写优化建议")
     @Size(max = 500, message = "优化建议不能超过500个字符")
     private String shortcoming;
-    @NotNull(message = "请选择是否在首页推荐")
+    @NotNull(message = "请选择是否推荐到商城内容流")
     private Boolean recommend;
     @Valid
     @NotEmpty(message = "请至少上传一张图片")

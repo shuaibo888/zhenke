@@ -1,5 +1,6 @@
 package com.ruoyi.shop.service;
 
+import java.util.HashSet;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,13 +24,15 @@ public class ShopPurchaseReportService
     private final ShopOrderMapper orderMapper;
     private final ShopTrialMapper trialMapper;
     private final ShopTrialService trialService;
+    private final ShopReportResourceService resourceService;
 
     public ShopPurchaseReportService(ShopOrderMapper orderMapper, ShopTrialMapper trialMapper,
-            ShopTrialService trialService)
+            ShopTrialService trialService, ShopReportResourceService resourceService)
     {
         this.orderMapper = orderMapper;
         this.trialMapper = trialMapper;
         this.trialService = trialService;
+        this.resourceService = resourceService;
     }
 
     @Transactional
@@ -89,16 +92,26 @@ public class ShopPurchaseReportService
         }
 
         int sort = 1;
+        Set<String> resourceUrls = new HashSet<>();
         if (body.getResources() != null)
         {
             for (ShopVerificationResourceBody item : body.getResources())
             {
+                String resourceUrl = resourceService.normalizeOwnedResourceUrl(
+                        shopUserId, item.getResourceType(), item.getResourceUrl());
+                if (!resourceUrls.add(resourceUrl))
+                {
+                    throw new ServiceException("同一甄客验不能重复使用同一个媒体");
+                }
                 ShopVerificationReportResource resource = new ShopVerificationReportResource();
                 resource.setReportId(report.getReportId());
                 resource.setResourceType(item.getResourceType());
-                resource.setResourceUrl(StringUtils.trim(item.getResourceUrl()));
+                resource.setResourceUrl(resourceUrl);
                 resource.setResourceSort(sort++);
-                trialMapper.insertReportResource(resource);
+                if (trialMapper.insertReportResource(resource) != 1)
+                {
+                    throw new ServiceException("甄客验媒体保存失败，请稍后重试");
+                }
             }
         }
         return trialService.publishedReport(report.getReportId());

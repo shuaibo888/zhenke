@@ -25,12 +25,14 @@ public class ShopHomeController extends BaseController {
     @GetMapping("/feed")
     public TableDataInfo feed(@RequestParam(required = false) Long productId,
                               @RequestParam(required = false) String categoryCode,
+                              @RequestParam(required = false) String businessModule,
                               @RequestParam(defaultValue = "ALL") String contentType,
                               @RequestParam(defaultValue = "ALL") String trialType,
+                              @RequestParam(required = false) String keyword,
                               @RequestParam(defaultValue = "1") int pageNum,
                               @RequestParam(defaultValue = "12") int pageSize) {
         List<ShopHomeFeedItem> rows = trialService.homeFeed(
-                productId, categoryCode, contentType, trialType, pageNum, pageSize);
+                productId, categoryCode, businessModule, contentType, trialType, keyword, pageNum, pageSize);
         return getDataTable(rows);
     }
 

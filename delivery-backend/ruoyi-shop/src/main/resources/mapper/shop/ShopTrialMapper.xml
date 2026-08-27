@@ -560,6 +560,9 @@
             and p.status = 'ON_SALE' and pc.status = '0'
             <if test="productId != null">and p.product_id = #{productId}</if>
             <if test="categoryCode != null and categoryCode != ''">and pc.category_code = #{categoryCode}</if>
+            <if test="mallOnly">
+              and pc.category_code not in ('ZHENKE_HOTEL', 'ZHENKE_RESTAURANT', 'ZHENKE_SCENIC')
+            </if>
             <if test="trialType != null and trialType != '' and trialType != 'ALL'">
               and c.trial_type = #{trialType}
             </if>
@@ -609,6 +612,9 @@
             <if test="productId == null and (keyword == null or keyword == '')">and r.recommend = '0'</if>
             <if test="productId != null">and p.product_id = #{productId}</if>
             <if test="categoryCode != null and categoryCode != ''">and pc.category_code = #{categoryCode}</if>
+            <if test="mallOnly">
+              and pc.category_code not in ('ZHENKE_HOTEL', 'ZHENKE_RESTAURANT', 'ZHENKE_SCENIC')
+            </if>
             <if test="keyword != null and keyword != ''">
               and (
                 instr(coalesce(r.report_title, ''), #{keyword}) &gt; 0

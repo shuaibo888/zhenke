@@ -25,8 +25,9 @@ class ShopPurchaseReportServiceTest {
   private final ShopOrderMapper orderMapper = mock(ShopOrderMapper.class);
   private final ShopTrialMapper trialMapper = mock(ShopTrialMapper.class);
   private final ShopTrialService trialService = mock(ShopTrialService.class);
+  private final ShopReportResourceService resourceService = mock(ShopReportResourceService.class);
   private final ShopPurchaseReportService service =
-      new ShopPurchaseReportService(orderMapper, trialMapper, trialService);
+      new ShopPurchaseReportService(orderMapper, trialMapper, trialService, resourceService);
 
   @AfterEach
   void clearSecurityContext() {
@@ -48,6 +49,8 @@ class ShopPurchaseReportServiceTest {
               return 1;
             });
     when(trialMapper.insertReportResource(any())).thenReturn(1);
+    when(resourceService.normalizeOwnedResourceUrl(18L, "IMAGE", "/profile/upload/report/photo.png"))
+        .thenReturn("/profile/upload/report/user-18/photo.png");
     ShopVerificationReport published = new ShopVerificationReport();
     published.setReportId(66L);
     when(trialService.publishedReport(66L)).thenReturn(published);
@@ -66,6 +69,28 @@ class ShopPurchaseReportServiceTest {
 
     assertThrows(ServiceException.class, () -> service.publish(reportBody()));
     verify(trialMapper, never()).insertReport(any());
+  }
+
+  @Test
+  void mediaWriteFailureRejectsTheWholePurchaseReportTransaction() {
+    authenticateShopUser(18L);
+    ShopOrderItem eligibleItem = new ShopOrderItem();
+    eligibleItem.setOrderItemId(91L);
+    eligibleItem.setProductId(12L);
+    when(orderMapper.selectUserReceivedOrderItemForUpdate(18L, 91L)).thenReturn(eligibleItem);
+    when(trialMapper.countReportByOrderItem(91L)).thenReturn(0);
+    when(trialMapper.insertReport(any(ShopVerificationReport.class)))
+        .thenAnswer(invocation -> {
+          ((ShopVerificationReport) invocation.getArgument(0)).setReportId(66L);
+          return 1;
+        });
+    when(resourceService.normalizeOwnedResourceUrl(18L, "IMAGE", "/profile/upload/report/photo.png"))
+        .thenReturn("/profile/upload/report/user-18/photo.png");
+    when(trialMapper.insertReportResource(any())).thenReturn(0);
+
+    assertThrows(ServiceException.class, () -> service.publish(reportBody()));
+
+    verify(trialService, never()).publishedReport(anyLong());
   }
 
   private ShopPurchaseReportBody reportBody() {

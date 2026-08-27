@@ -1,6 +1,10 @@
 package com.ruoyi.shop.service;
 
+import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,10 +21,12 @@ public class ShopReportResourceService
     private static final double MAX_VIDEO_SECONDS = 30D;
     private static final String[] IMAGE_EXTENSIONS = { "jpg", "jpeg", "png" };
     private static final String[] VIDEO_EXTENSIONS = { "mp4" };
+    private static final String RESOURCE_PREFIX = "/profile/";
+    private static final String REPORT_UPLOAD_PREFIX = "/profile/upload/report/user-";
 
     public String upload(MultipartFile file)
     {
-        ShopAccountIdentity.requireShopUserId();
+        long shopUserId = ShopAccountIdentity.requireShopUserId();
         if (file == null || file.isEmpty())
         {
             throw new ServiceException("请选择要上传的图片或视频");
@@ -32,14 +38,14 @@ public class ShopReportResourceService
             if (isImageExtension(extension))
             {
                 validateImage(file, extension);
-                return FileUploadUtils.upload(
-                        RuoYiConfig.getUploadPath(), file, IMAGE_EXTENSIONS, true);
+                return normalizeStoredPath(FileUploadUtils.upload(
+                        reportUploadDirectory(shopUserId), file, IMAGE_EXTENSIONS, true));
             }
             if ("mp4".equals(extension))
             {
                 validateVideo(file);
-                return FileUploadUtils.upload(
-                        RuoYiConfig.getUploadPath(), file, VIDEO_EXTENSIONS, true);
+                return normalizeStoredPath(FileUploadUtils.upload(
+                        reportUploadDirectory(shopUserId), file, VIDEO_EXTENSIONS, true));
             }
         }
         catch (ServiceException e)
@@ -51,6 +57,68 @@ public class ShopReportResourceService
             throw new ServiceException("媒体资源上传失败，请稍后重试");
         }
         throw new ServiceException("图片仅支持 JPG、PNG，视频仅支持 MP4");
+    }
+
+    public String normalizeOwnedResourceUrl(long shopUserId, String resourceType, String rawUrl)
+    {
+        String value = rawUrl == null ? "" : rawUrl.trim();
+        int pathIndex = value.indexOf(RESOURCE_PREFIX);
+        if (pathIndex < 0)
+        {
+            throw new ServiceException("甄客验媒体地址无效，请重新上传");
+        }
+        String resourcePath = value.substring(pathIndex).replace('\\', '/');
+        String ownerPrefix = REPORT_UPLOAD_PREFIX + shopUserId + "/";
+        if (!resourcePath.startsWith(ownerPrefix) || resourcePath.contains("?")
+                || resourcePath.contains("#") || resourcePath.contains(".."))
+        {
+            throw new ServiceException("只能使用当前账号刚上传的甄客验媒体");
+        }
+        String normalizedType = resourceType == null ? "" : resourceType.trim().toUpperCase(Locale.ROOT);
+        String lowerPath = resourcePath.toLowerCase(Locale.ROOT);
+        boolean typeMatches = "IMAGE".equals(normalizedType)
+                ? lowerPath.endsWith(".jpg") || lowerPath.endsWith(".jpeg") || lowerPath.endsWith(".png")
+                : "VIDEO".equals(normalizedType) && lowerPath.endsWith(".mp4");
+        if (!typeMatches)
+        {
+            throw new ServiceException("甄客验媒体类型与文件不一致");
+        }
+        requireStoredFile(resourcePath);
+        return resourcePath;
+    }
+
+    private String reportUploadDirectory(long shopUserId)
+    {
+        return RuoYiConfig.getUploadPath() + File.separator + "report"
+                + File.separator + "user-" + shopUserId;
+    }
+
+    private String normalizeStoredPath(String path)
+    {
+        return path == null ? null : path.replace('\\', '/');
+    }
+
+    private void requireStoredFile(String resourcePath)
+    {
+        try
+        {
+            Path profileRoot = Paths.get(RuoYiConfig.getProfile()).toRealPath();
+            String relativePath = resourcePath.substring(RESOURCE_PREFIX.length());
+            Path candidate = profileRoot.resolve(relativePath).normalize();
+            if (!candidate.startsWith(profileRoot) || !Files.isRegularFile(candidate)
+                    || !candidate.toRealPath().startsWith(profileRoot))
+            {
+                throw new ServiceException("甄客验媒体不存在或已失效，请重新上传");
+            }
+        }
+        catch (ServiceException e)
+        {
+            throw e;
+        }
+        catch (Exception e)
+        {
+            throw new ServiceException("甄客验媒体不存在或已失效，请重新上传");
+        }
     }
 
     private void validateImage(MultipartFile file, String extension) throws Exception

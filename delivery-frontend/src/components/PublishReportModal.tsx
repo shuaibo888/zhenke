@@ -54,6 +54,7 @@ export function PublishReportModal({
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const purchase = Boolean(purchaseItem);
+  const offlinePurchase = purchaseItem?.fulfillmentType === 'OFFLINE';
   useBodyScrollLock(open);
 
   const close = () => {
@@ -292,7 +293,7 @@ export function PublishReportModal({
         {purchase && (
           <div className={styles.reviewStarsRow}>
             <Form.Item className={styles.reviewStarItem} name="productQuality" label="商品质量"><Rate /></Form.Item>
-            <Form.Item className={styles.reviewStarItem} name="logisticsService" label="物流服务"><Rate /></Form.Item>
+            <Form.Item className={styles.reviewStarItem} name="logisticsService" label={offlinePurchase ? '核销体验' : '物流服务'}><Rate /></Form.Item>
             <Form.Item className={styles.reviewStarItem} name="serviceAttitude" label="服务态度"><Rate /></Form.Item>
           </div>
         )}
@@ -331,12 +332,12 @@ export function PublishReportModal({
         </div>
         <div className={styles.reviewRecommendField}>
           <div>
-            <strong>是否推荐到首页</strong>
-            <p>推荐后会进入首页展示；不推荐时仍会展示在商品详情的甄客验列表中。</p>
+            <strong>是否推荐到商城内容流</strong>
+            <p>推荐后会进入当前营业分类的试用与甄客验内容流；不推荐时仍会展示在商品详情中。</p>
           </div>
           <Form.Item name="recommend" noStyle rules={[{ required: true, message: '请选择是否在首页推荐' }]}>
             <Radio.Group>
-              <Radio value>推荐到首页</Radio>
+              <Radio value>推荐到商城内容流</Radio>
               <Radio value={false}>仅商品详情展示</Radio>
             </Radio.Group>
           </Form.Item>
