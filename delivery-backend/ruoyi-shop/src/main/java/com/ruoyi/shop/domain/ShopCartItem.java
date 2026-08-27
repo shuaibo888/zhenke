@@ -18,6 +18,8 @@ public class ShopCartItem
     private BigDecimal price;
     private Integer stock;
     private String productStatus;
+    private String supportsOnline;
+    private String supportsOffline;
 
     public Long getCartItemId() { return cartItemId; }
     public void setCartItemId(Long cartItemId) { this.cartItemId = cartItemId; }
@@ -47,4 +49,8 @@ public class ShopCartItem
     public void setStock(Integer stock) { this.stock = stock; }
     public String getProductStatus() { return productStatus; }
     public void setProductStatus(String productStatus) { this.productStatus = productStatus; }
+    public String getSupportsOnline() { return supportsOnline; }
+    public void setSupportsOnline(String supportsOnline) { this.supportsOnline = supportsOnline; }
+    public String getSupportsOffline() { return supportsOffline; }
+    public void setSupportsOffline(String supportsOffline) { this.supportsOffline = supportsOffline; }
 }

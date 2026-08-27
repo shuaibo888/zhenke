@@ -1,6 +1,6 @@
 import { CheckCircleFilled, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Cascader, Form, Input, Modal, Radio, Spin, Tag, message } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Cascader, Form, Input, Modal, Radio, Spin, Tag, message } from 'antd';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import pcaCode from 'china-division/dist/pca-code.json';
 import { useShop } from '@/app/ShopContext';
 import type { ShopShippingAddress, ShopShippingAddressBody } from '@/services/shopAuth';
@@ -41,13 +41,24 @@ export function AddressManager({
   const [editorOpen, setEditorOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [mutatingId, setMutatingId] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState('');
   useBodyScrollLock(open || editorOpen);
+
+  const loadAddresses = useCallback(async () => {
+    setLoadError('');
+    try {
+      await refreshAddresses();
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : '收货地址刷新失败';
+      setLoadError(reason);
+      message.error(reason);
+    }
+  }, [refreshAddresses]);
+
   useEffect(() => {
     if (!open || !user) return;
-    void refreshAddresses().catch((error) => {
-      message.error(error instanceof Error ? error.message : '收货地址刷新失败');
-    });
-  }, [open, refreshAddresses, user]);
+    void loadAddresses();
+  }, [loadAddresses, open, user]);
   const options = useMemo<RegionOption[]>(() => (pcaCode as RegionNode[]).map((province) => ({
     value: province.code,
     label: province.name,
@@ -132,8 +143,18 @@ export function AddressManager({
           </div>
         )}
         <Spin spinning={addressesLoading}>
+          {loadError && (
+            <Alert
+              type="error"
+              showIcon
+              message="收货地址暂时无法加载"
+              description={loadError}
+              action={<Button size="small" danger onClick={() => void loadAddresses()}>重新加载</Button>}
+              style={{ marginBottom: 16 }}
+            />
+          )}
           <div className={picker ? styles.addressPickerList : styles.addressList}>
-            {addresses.length === 0 ? (
+            {!loadError && addresses.length === 0 ? (
               <div className={styles.empty}>
                 <p>暂无保存的地址</p>
                 <Button type="primary" onClick={startCreate}>新增地址</Button>

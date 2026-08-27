@@ -108,6 +108,12 @@ const emptyPoints: ShopPointBalance = {
   lastTransferTime: null,
 };
 
+function paymentSuccessMessage(order: ShopOrderDto) {
+  return order.fulfillmentType === 'OFFLINE'
+    ? '微信支付成功，可前往订单详情查看核销码'
+    : '微信支付成功，等待商家发货';
+}
+
 export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -533,7 +539,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setOrders((items) => items.some((item) => item.orderId === orderId)
         ? items.map((item) => item.orderId === orderId ? refreshed : item)
         : [refreshed, ...items]);
-      message.success(refreshed.status === 'PAID' ? '微信支付成功，等待商家发货' : '微信正在确认支付结果，请稍后刷新');
+      message.success(refreshed.status === 'PAID' ? paymentSuccessMessage(refreshed) : '微信正在确认支付结果，请稍后刷新');
       if (refreshed.status === 'PAID') {
         history.replace(`/checkout/success?orderId=${orderId}`);
       }
@@ -563,7 +569,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
           setOrders((items) => items.some((item) => item.orderId === orderId)
             ? items.map((item) => item.orderId === orderId ? refreshed : item)
             : [refreshed, ...items]);
-          message.success(refreshed.status === 'PAID' ? '微信支付成功，等待商家发货' : '支付结果尚未确认，请稍后刷新订单');
+          message.success(refreshed.status === 'PAID' ? paymentSuccessMessage(refreshed) : '支付结果尚未确认，请稍后刷新订单');
           if (refreshed.status === 'PAID') {
             history.replace(`/checkout/success?orderId=${orderId}`);
           }

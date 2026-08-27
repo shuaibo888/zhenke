@@ -6,7 +6,7 @@ import {
   ShopOutlined,
   TruckOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Checkbox, Drawer, Modal, Spin, Tag, message } from 'antd';
+import { Alert, Button, Checkbox, Drawer, Modal, Space, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -37,10 +37,19 @@ type CheckoutLine = {
   price: number;
   quantity: number;
   categoryCode?: string;
+  supportsOnline?: '0' | '1';
+  supportsOffline?: '0' | '1';
+  stock?: number;
+  productStatus?: 'DRAFT' | 'ON_SALE' | 'OFF_SALE';
 };
 
 const minimumWechatPayment = 0.01;
 const localLifeCategoryCodes = new Set(['ZHENKE_HOTEL', 'ZHENKE_RESTAURANT', 'ZHENKE_SCENIC']);
+
+function cartLineFulfillment(line: CheckoutLine): 'ONLINE' | 'OFFLINE' {
+  if (line.categoryCode && localLifeCategoryCodes.has(line.categoryCode)) return 'OFFLINE';
+  return line.supportsOnline === '0' && line.supportsOffline === '1' ? 'OFFLINE' : 'ONLINE';
+}
 
 function addressText(address: ShopShippingAddress) {
   return `${address.region.join(' ')} ${address.detail}`.trim();
@@ -89,9 +98,17 @@ export default function CheckoutPage() {
   const [product, setProduct] = useState<PublicProductDto | null>(null);
   const [loadedPaymentOrder, setLoadedPaymentOrder] = useState<ShopOrderDto | null>(null);
   const [orderLoading, setOrderLoading] = useState(orderMode);
+  const [orderLoadError, setOrderLoadError] = useState('');
+  const [orderReloadVersion, setOrderReloadVersion] = useState(0);
   const [productLoading, setProductLoading] = useState(!orderMode && source === 'buy');
+  const [productLoadError, setProductLoadError] = useState('');
+  const [productReloadVersion, setProductReloadVersion] = useState(0);
+  const [checkoutRefreshError, setCheckoutRefreshError] = useState('');
+  const [checkoutRefreshVersion, setCheckoutRefreshVersion] = useState(0);
   const [availableCoupons, setAvailableCoupons] = useState<ShopCouponDto[]>([]);
   const [couponsLoading, setCouponsLoading] = useState(false);
+  const [couponLoadError, setCouponLoadError] = useState('');
+  const [couponReloadVersion, setCouponReloadVersion] = useState(0);
   const [selectedCouponIds, setSelectedCouponIds] = useState<number[]>([]);
   const [draftCouponIds, setDraftCouponIds] = useState<number[]>([]);
   const [couponOpen, setCouponOpen] = useState(false);
@@ -99,36 +116,42 @@ export default function CheckoutPage() {
   const [addressOpen, setAddressOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedFulfillmentType, setSelectedFulfillmentType] = useState<'ONLINE' | 'OFFLINE'>('ONLINE');
-  const paymentOrder = contextPaymentOrder ?? loadedPaymentOrder ?? undefined;
+  const paymentOrder = loadedPaymentOrder ?? contextPaymentOrder ?? undefined;
   useBodyScrollLock(addressOpen || couponOpen);
 
   useEffect(() => {
     if (!user || orderMode) return;
+    setCheckoutRefreshError('');
     const requests = [refreshAddresses(), refreshCoupons()];
     if (source === 'cart') requests.push(refreshCart());
     void Promise.all(requests).catch((error) => {
-      message.error(error instanceof Error ? error.message : '结算信息刷新失败');
+      const reason = error instanceof Error ? error.message : '结算信息刷新失败';
+      setCheckoutRefreshError(reason);
+      message.error(reason);
     });
-  }, [orderMode, refreshAddresses, refreshCart, refreshCoupons, source, user]);
+  }, [checkoutRefreshVersion, orderMode, refreshAddresses, refreshCart, refreshCoupons, source, user]);
 
   useEffect(() => {
     if (!orderMode || !orderId || !user) {
       setOrderLoading(false);
       setLoadedPaymentOrder(null);
-      return;
-    }
-    if (contextPaymentOrder) {
-      setOrderLoading(false);
+      setOrderLoadError('');
       return;
     }
     let mounted = true;
     setOrderLoading(true);
+    setOrderLoadError('');
+    setLoadedPaymentOrder(null);
     fetchShopOrder(orderId)
       .then((order) => {
         if (mounted) setLoadedPaymentOrder(order);
       })
       .catch((error) => {
-        if (mounted) message.error(error instanceof Error ? error.message : '订单加载失败');
+        if (mounted) {
+          const reason = error instanceof Error ? error.message : '订单加载失败';
+          setOrderLoadError(reason);
+          message.error(reason);
+        }
       })
       .finally(() => {
         if (mounted) setOrderLoading(false);
@@ -136,25 +159,34 @@ export default function CheckoutPage() {
     return () => {
       mounted = false;
     };
-  }, [contextPaymentOrder, orderId, orderMode, user]);
+  }, [orderId, orderMode, orderReloadVersion, user]);
 
   useEffect(() => {
     if (orderMode || source !== 'buy') {
       setProductLoading(false);
+      setProductLoadError('');
       return;
     }
     if (!Number.isSafeInteger(productId) || productId <= 0) {
+      setProduct(null);
+      setProductLoadError('商品编号无效');
       setProductLoading(false);
       return;
     }
     let mounted = true;
     setProductLoading(true);
+    setProduct(null);
+    setProductLoadError('');
     fetchPublicProduct(productId)
       .then((nextProduct) => {
         if (mounted) setProduct(nextProduct);
       })
       .catch((error) => {
-        if (mounted) message.error(error instanceof Error ? error.message : '商品加载失败');
+        if (mounted) {
+          const reason = error instanceof Error ? error.message : '商品加载失败';
+          setProductLoadError(reason);
+          message.error(reason);
+        }
       })
       .finally(() => {
         if (mounted) setProductLoading(false);
@@ -162,7 +194,7 @@ export default function CheckoutPage() {
     return () => {
       mounted = false;
     };
-  }, [orderMode, productId, source]);
+  }, [orderMode, productId, productReloadVersion, source]);
 
   useEffect(() => {
     if (selectedAddressId && addresses.some((address) => address.id === selectedAddressId)) return;
@@ -201,6 +233,10 @@ export default function CheckoutPage() {
         price: item.price,
         quantity: item.quantity,
         categoryCode: item.categoryCode,
+        supportsOnline: item.supportsOnline,
+        supportsOffline: item.supportsOffline,
+        stock: item.stock,
+        productStatus: item.productStatus,
       }));
     }
     return product ? [{
@@ -213,6 +249,8 @@ export default function CheckoutPage() {
       price: product.price,
       quantity,
       categoryCode: product.categoryCode,
+      supportsOnline: product.supportsOnline,
+      supportsOffline: product.supportsOffline,
     }] : [];
   }, [cart, paymentOrder, product, quantity, source, sourceReportId]);
 
@@ -223,6 +261,16 @@ export default function CheckoutPage() {
   const subtotal = paymentOrder?.originalAmount
     ?? lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
   const singleMerchant = merchants.length === 1;
+  const cartHasOffline = source === 'cart'
+    && lines.some((line) => cartLineFulfillment(line) === 'OFFLINE');
+  const cartHasOnline = source === 'cart'
+    && lines.some((line) => cartLineFulfillment(line) === 'ONLINE');
+  const mixedCartFulfillment = source === 'cart' && cartHasOnline && cartHasOffline;
+  const cartHasUnavailableItems = source === 'cart' && lines.some((line) => (
+    line.productStatus !== 'ON_SALE' || (line.stock ?? 0) < line.quantity
+  ));
+  const buyStockInsufficient = source === 'buy' && Boolean(product) && (product?.stock ?? 0) < quantity;
+  const singleCheckoutGroup = singleMerchant && !mixedCartFulfillment;
   const selectedCoupons = selectedCouponIds
     .map((couponId) => availableCoupons.find((coupon) => coupon.userCouponId === couponId))
     .filter((coupon): coupon is ShopCouponDto => Boolean(coupon));
@@ -231,19 +279,17 @@ export default function CheckoutPage() {
     ? toMoney(subtotal - minimumWechatPayment)
     : 0;
   const discount = paymentOrder?.discountAmount
-    ?? (singleMerchant ? Math.min(maximumCouponDiscount, toMoney(selectedCouponFaceAmount)) : 0);
+    ?? (singleCheckoutGroup ? Math.min(maximumCouponDiscount, toMoney(selectedCouponFaceAmount)) : 0);
   const payable = paymentOrder?.totalAmount
     ?? (subtotal > 0 ? Math.max(minimumWechatPayment, toMoney(subtotal - discount)) : 0);
   const selectedAddress = addresses.find((address) => address.id === selectedAddressId);
-  const cartHasOffline = source === 'cart'
-    && lines.some((line) => line.categoryCode && localLifeCategoryCodes.has(line.categoryCode));
-  const cartHasOnline = source === 'cart'
-    && lines.some((line) => !line.categoryCode || !localLifeCategoryCodes.has(line.categoryCode));
   const checkoutFulfillment = orderMode
     ? paymentOrder?.fulfillmentType ?? 'ONLINE'
-    : source === 'cart' && cartHasOffline && !cartHasOnline
-      ? 'OFFLINE'
-      : selectedFulfillmentType;
+    : mixedCartFulfillment
+      ? 'MIXED'
+      : source === 'cart' && cartHasOffline
+        ? 'OFFLINE'
+        : selectedFulfillmentType;
   const needsAddress = orderMode
     ? paymentOrder?.fulfillmentType === 'ONLINE'
     : source === 'cart'
@@ -251,7 +297,8 @@ export default function CheckoutPage() {
       : selectedFulfillmentType === 'ONLINE';
   const couponUnavailableReason = useMemo(() => {
     if (merchants.length > 1) return '购物车包含多个商家，优惠券仅支持单商家结算使用';
-    if (!singleMerchant || subtotal <= 0) return '暂无可结算商品';
+    if (mixedCartFulfillment) return '购物车将拆分为配送与核销订单，暂不能使用优惠券';
+    if (!singleCheckoutGroup || subtotal <= 0) return '暂无可结算商品';
     if (coupons.length === 0) return '暂无优惠券';
     const unused = coupons.filter((coupon) => coupon.status === 'UNUSED');
     if (unused.length === 0) return '暂无未使用的优惠券';
@@ -272,10 +319,10 @@ export default function CheckoutPage() {
       return '当前商品金额未达到优惠券使用条件';
     }
     return '当前订单暂无可用优惠券';
-  }, [coupons, merchants, singleMerchant, subtotal]);
+  }, [coupons, merchants, mixedCartFulfillment, singleCheckoutGroup, subtotal]);
 
   useEffect(() => {
-    if (orderMode || !user || !singleMerchant || subtotal <= 0) {
+    if (orderMode || !user || !singleCheckoutGroup || subtotal <= 0) {
       setAvailableCoupons([]);
       setSelectedCouponIds([]);
       setDraftCouponIds([]);
@@ -284,6 +331,10 @@ export default function CheckoutPage() {
     }
     let mounted = true;
     setCouponsLoading(true);
+    setCouponLoadError('');
+    setAvailableCoupons([]);
+    setSelectedCouponIds([]);
+    setDraftCouponIds([]);
     fetchAvailableCoupons(merchants[0][0], subtotal)
       .then((coupons) => {
         if (!mounted) return;
@@ -293,7 +344,11 @@ export default function CheckoutPage() {
         )));
       })
       .catch((error) => {
-        if (mounted) message.error(error instanceof Error ? error.message : '可用优惠券加载失败');
+        if (mounted) {
+          const reason = error instanceof Error ? error.message : '可用优惠券加载失败';
+          setCouponLoadError(reason);
+          message.error(reason);
+        }
       })
       .finally(() => {
         if (mounted) setCouponsLoading(false);
@@ -301,15 +356,16 @@ export default function CheckoutPage() {
     return () => {
       mounted = false;
     };
-  }, [merchants, orderMode, singleMerchant, subtotal, user]);
+  }, [couponReloadVersion, merchants, orderMode, singleCheckoutGroup, subtotal, user]);
 
   if (!user) {
     return <LoginRedirect />;
   }
 
   const pageLoading = productLoading || orderLoading
-    || (!orderMode && (addressesLoading || myCouponsLoading))
+    || (!orderMode && (myCouponsLoading || (needsAddress && addressesLoading)))
     || (!orderMode && source === 'cart' && cartLoading);
+  const showCheckoutContent = orderMode ? Boolean(paymentOrder) && !orderLoadError : lines.length > 0;
 
   const draftCoupons = draftCouponIds
     .map((couponId) => availableCoupons.find((coupon) => coupon.userCouponId === couponId))
@@ -381,11 +437,19 @@ export default function CheckoutPage() {
       message.warning(source === 'cart' ? '购物车为空' : '商品不存在或已下架');
       return;
     }
+    if (cartHasUnavailableItems) {
+      message.warning('购物车包含已下架或库存不足的商品，请返回购物车处理后再结算');
+      return;
+    }
+    if (buyStockInsufficient) {
+      message.warning('当前购买数量超过可售库存，请返回商品页调整数量');
+      return;
+    }
     const addressId = needsAddress ? (selectedAddress?.id ?? null) : null;
     setSubmitting(true);
     try {
       const created = source === 'cart'
-        ? await checkoutCart(addressId, singleMerchant ? selectedCouponIds : undefined)
+        ? await checkoutCart(addressId, singleCheckoutGroup ? selectedCouponIds : undefined)
         : await buyNow(addressId, productId, quantity, sourceReportId, selectedCouponIds, selectedFulfillmentType);
       if (created.length === 1) {
         const createdOrder = created[0];
@@ -429,14 +493,78 @@ export default function CheckoutPage() {
           paymentOnly={orderMode}
         />
 
+        {!orderMode && checkoutRefreshError && (
+          <Alert
+            className={styles.checkoutOrderState}
+            type="error"
+            showIcon
+            message="结算所需信息未能完整加载"
+            description={checkoutRefreshError}
+            action={<Button danger onClick={() => setCheckoutRefreshVersion((value) => value + 1)}>重新加载</Button>}
+          />
+        )}
+
         <Spin spinning={pageLoading}>
-          {orderMode && !pageLoading && !paymentOrder && (
+          {orderMode && !pageLoading && (!paymentOrder || orderLoadError) && (
             <Alert
               className={styles.checkoutOrderState}
               type="error"
               showIcon
-              message="订单不存在或无权查看"
-              action={<Button onClick={() => navigate('/profile/orders')}>返回订单</Button>}
+              message="订单暂时无法加载"
+              description={orderLoadError || '订单不存在、无权查看或状态已经变化。'}
+              action={(
+                <Space wrap>
+                  {orderLoadError && <Button danger onClick={() => setOrderReloadVersion((value) => value + 1)}>重新加载</Button>}
+                  <Button onClick={() => navigate('/profile/orders')}>返回订单</Button>
+                </Space>
+              )}
+            />
+          )}
+          {!orderMode && source === 'buy' && !pageLoading && !product && (
+            <Alert
+              className={styles.checkoutOrderState}
+              type="error"
+              showIcon
+              message="商品暂时无法加载"
+              description={productLoadError || '商品不存在或已经下架。'}
+              action={(
+                <Space wrap>
+                  {Number.isSafeInteger(productId) && productId > 0 && (
+                    <Button danger onClick={() => setProductReloadVersion((value) => value + 1)}>重新加载</Button>
+                  )}
+                  <Button onClick={() => navigate('/mall')}>返回商城</Button>
+                </Space>
+              )}
+            />
+          )}
+          {!orderMode && source === 'cart' && !pageLoading && lines.length === 0 && !checkoutRefreshError && (
+            <Alert
+              className={styles.checkoutOrderState}
+              type="info"
+              showIcon
+              message="购物车还是空的"
+              description="请先从商城、酒店、景区或饭店选择需要购买的商品。"
+              action={<Button onClick={() => navigate('/mall')}>去逛逛</Button>}
+            />
+          )}
+          {!orderMode && cartHasUnavailableItems && (
+            <Alert
+              className={styles.checkoutOrderState}
+              type="warning"
+              showIcon
+              message="购物车包含不可结算商品"
+              description="部分商品已下架或库存不足，请返回商城打开购物车移除商品或调整数量。"
+              action={<Button onClick={() => navigate('/mall')}>返回商城</Button>}
+            />
+          )}
+          {!orderMode && buyStockInsufficient && (
+            <Alert
+              className={styles.checkoutOrderState}
+              type="warning"
+              showIcon
+              message="商品库存不足"
+              description={`当前仅剩 ${product?.stock ?? 0} 件，请返回商品页调整购买数量。`}
+              action={<Button onClick={() => navigate(`/products/${productId}`)}>返回商品</Button>}
             />
           )}
           {paymentOrder && paymentOrder.status !== 'PENDING_PAYMENT' && (
@@ -446,12 +574,14 @@ export default function CheckoutPage() {
               showIcon
               message={paymentOrder.status === 'PAID' ? '支付已完成' : '当前订单无需继续支付'}
               description={paymentOrder.status === 'PAID'
-                ? '支付结果已经由服务端确认，可前往我的订单查看发货进度。'
+                ? paymentOrder.fulfillmentType === 'OFFLINE'
+                  ? '支付结果已经由服务端确认，可前往订单详情查看核销码。'
+                  : '支付结果已经由服务端确认，可前往我的订单查看发货进度。'
                 : '订单状态已经变化，请前往我的订单查看详情。'}
               action={<Button onClick={() => navigate('/profile/orders')}>查看订单</Button>}
             />
           )}
-          <div className={styles.checkoutLayout}>
+          {showCheckoutContent && <div className={styles.checkoutLayout}>
             <div className={styles.checkoutMain}>
               {!orderMode && (source === 'cart' || product) && (
               <section className={styles.checkoutSection}>
@@ -595,19 +725,19 @@ export default function CheckoutPage() {
                       <small>订单提交后不能更换或补用优惠券</small>
                     </span>
                   </div>
-                ) : merchants.length > 1 && (
+                ) : !singleCheckoutGroup && lines.length > 0 && (
                   <Alert
                     className={styles.checkoutCouponAlert}
                     type="warning"
                     showIcon
-                    message="多商家订单无法使用优惠券"
-                    description="本次仍可按原价正常结算，系统会按商家拆分为多笔订单。"
+                    message={merchants.length > 1 ? '多商家订单无法使用优惠券' : '配送与核销混合订单无法使用优惠券'}
+                    description="本次仍可按原价正常结算，系统会按商家和履约方式拆分为多笔订单。"
                   />
                 )}
                 {!orderMode && <button
                   type="button"
                   className={styles.checkoutCouponTrigger}
-                  disabled={couponsLoading || availableCoupons.length === 0 || merchants.length > 1}
+                  disabled={couponsLoading || availableCoupons.length === 0 || !singleCheckoutGroup}
                   onClick={() => {
                     setDraftCouponIds(selectedCouponIds);
                     setCouponOpen(true);
@@ -632,8 +762,18 @@ export default function CheckoutPage() {
                       </>
                     )}
                   </span>
-                  {availableCoupons.length > 0 && merchants.length === 1 && <RightOutlined />}
+                  {availableCoupons.length > 0 && singleCheckoutGroup && <RightOutlined />}
                 </button>}
+                {!orderMode && couponLoadError && singleCheckoutGroup && (
+                  <Alert
+                    className={styles.checkoutCouponAlert}
+                    type="error"
+                    showIcon
+                    message="可用优惠券加载失败"
+                    description={couponLoadError}
+                    action={<Button size="small" danger onClick={() => setCouponReloadVersion((value) => value + 1)}>重试</Button>}
+                  />
+                )}
               </section>
             </div>
 
@@ -645,8 +785,8 @@ export default function CheckoutPage() {
                   {discount > 0 ? `-${formatPrice(discount)}` : formatPrice(0)}
                 </dd></div>
                 <div>
-                  <dt>{checkoutFulfillment === 'OFFLINE' ? '服务费' : '配送费'}</dt>
-                  <dd>{checkoutFulfillment === 'OFFLINE' ? formatPrice(0) : '免运费'}</dd>
+                  <dt>{checkoutFulfillment === 'MIXED' ? '配送/服务费' : checkoutFulfillment === 'OFFLINE' ? '服务费' : '配送费'}</dt>
+                  <dd>{checkoutFulfillment === 'MIXED' ? `免运费 / ${formatPrice(0)}` : checkoutFulfillment === 'OFFLINE' ? formatPrice(0) : '免运费'}</dd>
                 </div>
               </dl>
               <div className={styles.checkoutPayable}>
@@ -659,16 +799,18 @@ export default function CheckoutPage() {
                 size="large"
                 loading={submitting || payingOrderId === orderId}
                 disabled={pageLoading || lines.length === 0
+                  || cartHasUnavailableItems
+                  || buyStockInsufficient
                   || (orderMode && paymentOrder?.status !== 'PENDING_PAYMENT')}
                 onClick={() => void submit()}
               >
                 {orderMode
                   ? paymentOrder?.status === 'PENDING_PAYMENT' ? '立即支付' : '无需支付'
-                  : merchants.length > 1 ? '提交多笔订单' : '提交订单并支付'}
+                  : !singleCheckoutGroup ? '提交多笔订单' : '提交订单并支付'}
               </Button>
               <p>{orderMode ? '微信授权返回后会继续停留在本支付页面。' : '提交即表示确认商品、地址和优惠信息。'}</p>
             </aside>
-          </div>
+          </div>}
         </Spin>
       </main>
       <AddressManager

@@ -1,5 +1,5 @@
 import { CheckCircleFilled, SafetyCertificateOutlined } from '@ant-design/icons';
-import { Alert, Button, Spin, message } from 'antd';
+import { Alert, Button, Space, Spin, message } from 'antd';
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -16,22 +16,31 @@ export default function CheckoutSuccessPage() {
   const orderId = Number.isSafeInteger(orderIdValue) && orderIdValue > 0 ? orderIdValue : undefined;
   const contextOrder = orders.find((order) => order.orderId === orderId);
   const [loadedOrder, setLoadedOrder] = useState<ShopOrderDto | null>(null);
-  const [loading, setLoading] = useState(Boolean(orderId && !contextOrder));
-  const order = contextOrder ?? loadedOrder;
+  const [loading, setLoading] = useState(Boolean(orderId));
+  const [loadError, setLoadError] = useState('');
+  const [reloadVersion, setReloadVersion] = useState(0);
+  const order = loadedOrder ?? contextOrder;
 
   useEffect(() => {
-    if (!user || !orderId || contextOrder) {
+    if (!user || !orderId) {
       setLoading(false);
+      setLoadError('');
       return;
     }
     let mounted = true;
     setLoading(true);
+    setLoadError('');
+    setLoadedOrder(null);
     fetchShopOrder(orderId)
       .then((nextOrder) => {
         if (mounted) setLoadedOrder(nextOrder);
       })
       .catch((error) => {
-        if (mounted) message.error(error instanceof Error ? error.message : '支付订单加载失败');
+        if (mounted) {
+          const reason = error instanceof Error ? error.message : '支付订单加载失败';
+          setLoadError(reason);
+          message.error(reason);
+        }
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -39,7 +48,7 @@ export default function CheckoutSuccessPage() {
     return () => {
       mounted = false;
     };
-  }, [contextOrder, orderId, user]);
+  }, [orderId, reloadVersion, user]);
 
   if (!user) {
     return <LoginRedirect />;
@@ -51,7 +60,7 @@ export default function CheckoutSuccessPage() {
   return (
     <main className={styles.checkoutSuccessPage}>
       <Spin spinning={loading}>
-        {!loading && order?.status === 'PAID' ? (
+        {!loading && !loadError && order?.status === 'PAID' ? (
           <section className={styles.checkoutSuccessCard}>
             <span className={styles.checkoutSuccessIcon}><CheckCircleFilled /></span>
             <span className={styles.eyebrow}>PAYMENT SUCCESS</span>
@@ -81,6 +90,20 @@ export default function CheckoutSuccessPage() {
             </Button>
             <small><SafetyCertificateOutlined /> 支付结果已由服务端确认</small>
           </section>
+        ) : !loading && loadError ? (
+          <Alert
+            className={styles.checkoutSuccessError}
+            type="error"
+            showIcon
+            message="支付结果暂时无法查询"
+            description={loadError}
+            action={(
+              <Space wrap>
+                <Button danger onClick={() => setReloadVersion((value) => value + 1)}>重新查询</Button>
+                <Button onClick={() => navigate('/profile/orders')}>返回订单列表</Button>
+              </Space>
+            )}
+          />
         ) : !loading ? (
           <Alert
             className={styles.checkoutSuccessError}

@@ -215,6 +215,8 @@ export interface ShopCartItemDto {
   price: number;
   stock: number;
   productStatus: 'DRAFT' | 'ON_SALE' | 'OFF_SALE';
+  supportsOnline: '0' | '1';
+  supportsOffline: '0' | '1';
 }
 
 export interface ShopCouponDto {

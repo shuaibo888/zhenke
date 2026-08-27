@@ -11,10 +11,11 @@ export function CheckoutJourney({
   fulfillmentType,
   paymentOnly = false,
 }: {
-  fulfillmentType: "ONLINE" | "OFFLINE";
+  fulfillmentType: "ONLINE" | "OFFLINE" | "MIXED";
   paymentOnly?: boolean;
 }) {
   const offline = fulfillmentType === "OFFLINE";
+  const mixed = fulfillmentType === "MIXED";
   const steps = [
     {
       icon: <CheckOutlined />,
@@ -26,7 +27,13 @@ export function CheckoutJourney({
       title: "安全支付",
       copy: "支付结果以服务端回调为准",
     },
-    offline
+    mixed
+      ? {
+          icon: <ShopOutlined />,
+          title: "分别履约",
+          copy: "配送商品送货上门，核销商品到店或现场使用",
+        }
+      : offline
       ? {
           icon: <ShopOutlined />,
           title: "到店使用",
