@@ -45,6 +45,27 @@ class ShopOrderServiceTest {
         service.resolveFulfillment(product, ShopProductService.FULFILLMENT_ONLINE));
   }
 
+  @Test
+  void ordinaryProductStillKeepsExistingOfflineRedemptionCapability() {
+    ShopProduct product = product("GENERAL_OFFLINE", "0", "1");
+
+    assertEquals(
+        ShopProductService.FULFILLMENT_OFFLINE,
+        service.resolveFulfillment(product, ShopProductService.FULFILLMENT_OFFLINE));
+  }
+
+  @Test
+  void ordinaryProductWithBothCapabilitiesHonorsTheUsersFulfillmentChoice() {
+    ShopProduct product = product("GENERAL_DUAL", "1", "1");
+
+    assertEquals(
+        ShopProductService.FULFILLMENT_ONLINE,
+        service.resolveFulfillment(product, ShopProductService.FULFILLMENT_ONLINE));
+    assertEquals(
+        ShopProductService.FULFILLMENT_OFFLINE,
+        service.resolveFulfillment(product, ShopProductService.FULFILLMENT_OFFLINE));
+  }
+
   private ShopProduct product(String categoryCode, String online, String offline) {
     ShopProduct product = new ShopProduct();
     product.setCategoryCode(categoryCode);

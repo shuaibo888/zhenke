@@ -228,7 +228,7 @@ export default function HomePage() {
       />
       <div className={styles.businessModuleGrid}>
         <button type="button" className={styles.businessModuleCard} onClick={() => navigate('/mall?module=MALL')}>
-          <span>购</span><strong>商城</strong><p>原有商品 · 试用 · 配送与售后</p>
+          <span>购</span><strong>商城</strong><p>原有商品 · 试用 · 配送与核销</p>
         </button>
         <button type="button" className={styles.businessModuleCard} onClick={() => navigate('/mall?module=ZHENKE_HOTEL')}>
           <span>住</span><strong>酒店</strong><p>住宿套餐 · 到店核销</p>

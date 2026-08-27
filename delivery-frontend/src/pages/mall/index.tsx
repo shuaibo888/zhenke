@@ -25,7 +25,7 @@ import styles from '@/styles/zhenke.less';
 
 const PAGE_SIZE = 16;
 const businessModules = [
-  { code: 'MALL', title: '商城', caption: '原有好物 · 配送与售后', mark: '购' },
+  { code: 'MALL', title: '商城', caption: '原有业务 · 配送与核销', mark: '购' },
   { code: 'ZHENKE_HOTEL', title: '酒店', caption: '住宿套餐 · 到店核销', mark: '住' },
   { code: 'ZHENKE_SCENIC', title: '景区', caption: '门票线路 · 现场核销', mark: '游' },
   { code: 'ZHENKE_RESTAURANT', title: '饭店', caption: '餐券套餐 · 到店核销', mark: '食' },
@@ -271,7 +271,7 @@ export default function MallPage() {
           <h1>把看见的城市生活，变成一次安心消费。</h1>
           <p>
             酒店、饭店和景区使用现有统一商品、订单、支付与线下核销链路；
-            其他动态分类继续保留原有配送能力。
+            其他动态分类继续保留原有线上配送或线下核销能力。
           </p>
         </article>
         <aside className={`${styles.surface} ${styles.mallPromise}`}>
