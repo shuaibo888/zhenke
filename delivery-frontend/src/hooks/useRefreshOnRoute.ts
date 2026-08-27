@@ -1,5 +1,5 @@
 import { message } from 'antd';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'umi';
 import { AuthExpiredError } from '@/services/apiClient';
 
@@ -13,17 +13,29 @@ export function useRefreshOnRoute(
   errorMessage: string,
 ) {
   const location = useLocation();
+  const requestVersion = useRef(0);
+  const [refreshError, setRefreshError] = useState('');
+
+  const retry = useCallback(async () => {
+    const version = ++requestVersion.current;
+    setRefreshError('');
+    try {
+      await refresh();
+    } catch (error) {
+      if (requestVersion.current !== version || error instanceof AuthExpiredError) return;
+      const reason = error instanceof Error ? error.message : errorMessage;
+      setRefreshError(reason);
+      message.error(reason);
+    }
+  }, [errorMessage, refresh]);
 
   useEffect(() => {
     if (normalizedPath(location.pathname) !== normalizedPath(routePath)) return undefined;
-    let active = true;
-    void refresh().catch((error) => {
-      if (active && !(error instanceof AuthExpiredError)) {
-        message.error(error instanceof Error ? error.message : errorMessage);
-      }
-    });
+    void retry();
     return () => {
-      active = false;
+      requestVersion.current += 1;
     };
-  }, [errorMessage, location.pathname, refresh, routePath]);
+  }, [location.pathname, retry, routePath]);
+
+  return { refreshError, retry };
 }

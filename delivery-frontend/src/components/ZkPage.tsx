@@ -4,7 +4,7 @@ import {
   InboxOutlined,
   LoadingOutlined,
 } from "@ant-design/icons";
-import { Button, Spin } from "antd";
+import { Alert, Button, Spin } from "antd";
 import type { ReactNode } from "react";
 import { useNavigate } from "umi";
 import styles from "@/styles/zhenke.less";
@@ -116,5 +116,26 @@ export function ZkState(props: {
         )}
       </div>
     </div>
+  );
+}
+
+export function ZkRefreshError(props: {
+  error: string;
+  onRetry: () => void;
+}) {
+  if (!props.error) return null;
+  return (
+    <Alert
+      className={styles.refreshAlert}
+      type="error"
+      showIcon
+      message="数据暂时无法刷新"
+      description={props.error}
+      action={(
+        <Button size="small" danger onClick={props.onRetry}>
+          重新加载
+        </Button>
+      )}
+    />
   );
 }

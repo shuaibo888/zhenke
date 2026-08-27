@@ -3,7 +3,7 @@ import { Pagination, Spin, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LoginRedirect } from '@/components/LoginRedirect';
 import { useShop } from '@/app/ShopContext';
-import { ZkTaskHeader } from '@/components/ZkPage';
+import { ZkRefreshError, ZkTaskHeader } from '@/components/ZkPage';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import { fetchMyPointRecords, type ShopPointRecord } from '@/services/shopAuth';
 import styles from '@/styles/commerce.less';
@@ -42,7 +42,7 @@ export default function PointRecordsPage() {
     requestVersion.current += 1;
   }, []);
 
-  useRefreshOnRoute('/profile/point-records', refreshRecords, '积分记录刷新失败');
+  const { refreshError, retry } = useRefreshOnRoute('/profile/point-records', refreshRecords, '积分记录刷新失败');
 
   if (!user) {
     return <LoginRedirect />;
@@ -57,6 +57,7 @@ export default function PointRecordsPage() {
   return (
     <main className={`${styles.profileDetailPage} ${styles.pointsPage}`}>
         <ZkTaskHeader eyebrow="权益资产" title="积分明细" description="每一笔增加与扣减均来自真实业务记录。" backTo="/profile/points" />
+      <ZkRefreshError error={refreshError} onRetry={() => void retry()} />
       <section className={styles.orderPanel}>
         <div className={styles.orderPanelHeading}>
           <div>

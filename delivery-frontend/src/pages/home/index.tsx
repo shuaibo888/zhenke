@@ -183,9 +183,14 @@ export default function HomePage() {
                 role="link"
                 tabIndex={0}
                 onClick={() => openBanner(banner)}
-                onKeyDown={(event) => event.key === 'Enter' && openBanner(banner)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openBanner(banner);
+                  }
+                }}
               >
-                <img src={banner.imageUrl} alt="" />
+                <img src={banner.imageUrl} alt={`${banner.title}轮播图`} />
                 <div className={styles.bannerCopy}>
                   <span className={styles.eyebrow}>甄客行精选</span>
                   <h2>{banner.title}</h2>

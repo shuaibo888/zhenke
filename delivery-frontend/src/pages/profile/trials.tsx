@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
-import { ZkTaskHeader } from '@/components/ZkPage';
+import { ZkRefreshError, ZkTaskHeader } from '@/components/ZkPage';
 import { LogisticsModal } from '@/components/LogisticsModal';
 import { PublishReportModal } from '@/components/PublishReportModal';
 import { TrialRedeemCodeModal } from '@/components/TrialRedeemCodeModal';
@@ -52,7 +52,7 @@ export default function TrialsPage() {
   const [publishTrial, setPublishTrial] = useState<TrialApplicationDto | null>(null);
   const [redeemTrial, setRedeemTrial] = useState<TrialApplicationDto | null>(null);
   useBodyScrollLock(Boolean(logisticsTrial) || Boolean(publishTrial) || Boolean(redeemTrial));
-  useRefreshOnRoute('/profile/trials', refreshTrials, '试用记录刷新失败');
+  const { refreshError, retry } = useRefreshOnRoute('/profile/trials', refreshTrials, '试用记录刷新失败');
 
   const filtered = useMemo(() => trials.filter((trial) => {
     if (filter === 'all') return true;
@@ -103,6 +103,7 @@ export default function TrialsPage() {
     <>
       <main className={`${styles.profileDetailPage} ${styles.trialsPage}`}>
         <ZkTaskHeader eyebrow="参与服务" title="我的试用" description="查看申请、审核、配送或到店核销以及甄客验发布进度。" backTo="/profile" />
+        <ZkRefreshError error={refreshError} onRetry={() => void retry()} />
         <section className={styles.orderPanel}>
           <div className={styles.orderPanelHeading}>
             <div>

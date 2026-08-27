@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
-import { ZkTaskHeader } from '@/components/ZkPage';
+import { ZkRefreshError, ZkTaskHeader } from '@/components/ZkPage';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import {
   exchangePointCoupon,
@@ -51,7 +51,7 @@ export default function PointsPage() {
     await Promise.all([refreshPoints(), loadCoupons()]);
   }, [loadCoupons, refreshPoints]);
 
-  useRefreshOnRoute('/profile/points', refreshPage, '积分兑换信息刷新失败');
+  const { refreshError, retry } = useRefreshOnRoute('/profile/points', refreshPage, '积分兑换信息刷新失败');
 
   const queryTransferBalance = useCallback(async (sourceSystem: string) => {
     const querySequence = ++balanceQuerySequence.current;
@@ -175,6 +175,7 @@ export default function PointsPage() {
   return (
     <main className={`${styles.profileDetailPage} ${styles.pointsPage}`}>
         <ZkTaskHeader eyebrow="权益资产" title="积分中心" description="查看可用积分、来源划拨、兑换权益和每一笔变化记录。" backTo="/profile" />
+      <ZkRefreshError error={refreshError} onRetry={() => void retry()} />
       <section className={styles.pointBalancePanel}>
         <span className={styles.pointBalanceIcon}><TrophyOutlined /></span>
         <div className={styles.pointCurrentBalance}>

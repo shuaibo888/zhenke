@@ -21,6 +21,7 @@ import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
 import { AddressManager } from '@/components/AddressManager';
 import { AccountSecurityPanel } from '@/components/AccountSecurityPanel';
+import { ZkRefreshError } from '@/components/ZkPage';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import {
@@ -56,7 +57,7 @@ export default function ProfilePage() {
       setOverviewLoading(false);
     }
   }, []);
-  useRefreshOnRoute('/profile', loadOverview, '个人中心数据刷新失败');
+  const { refreshError, retry } = useRefreshOnRoute('/profile', loadOverview, '个人中心数据刷新失败');
 
   if (!user) {
     return <LoginRedirect />;
@@ -156,6 +157,8 @@ export default function ProfilePage() {
             </button>
           </div>
         </section>
+
+        <ZkRefreshError error={refreshError} onRetry={() => void retry()} />
 
         {(!user.usernameInitialized || !user.passwordInitialized) && (
           <div className={styles.setupNotice} role="status">

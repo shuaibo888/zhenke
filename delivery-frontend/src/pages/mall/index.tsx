@@ -399,7 +399,12 @@ export default function MallPage() {
                   role="link"
                   tabIndex={0}
                   onClick={() => navigate(`/products/${product.productId}`)}
-                  onKeyDown={(event) => event.key === 'Enter' && navigate(`/products/${product.productId}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      navigate(`/products/${product.productId}`);
+                    }
+                  }}
                 >
                   <span className={styles.productCover}>
                     <img src={product.coverUrl} alt={product.productName} loading="lazy" />
@@ -458,8 +463,12 @@ export default function MallPage() {
                   role="link"
                   tabIndex={0}
                   onClick={() => navigate(`/products/${item.productId}?campaign=${item.contentId}`)}
-                  onKeyDown={(event) => event.key === 'Enter'
-                    && navigate(`/products/${item.productId}?campaign=${item.contentId}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      navigate(`/products/${item.productId}?campaign=${item.contentId}`);
+                    }
+                  }}
                 >
                   <img src={item.coverUrl} alt={item.title} loading="lazy" />
                   <div>

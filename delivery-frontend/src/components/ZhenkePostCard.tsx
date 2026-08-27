@@ -37,7 +37,10 @@ export function ZhenkePostCard({ post, disabled = false }: { post: ZhenkePost; d
       aria-label={disabled ? `已删除的甄客帖：${post.title}` : `查看甄客帖：${post.title}`}
       onClick={disabled ? undefined : () => navigate(`/posts/${post.postId}`)}
       onKeyDown={(event) => {
-        if (!disabled && (event.key === 'Enter' || event.key === ' ')) navigate(`/posts/${post.postId}`);
+        if (!disabled && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault();
+          navigate(`/posts/${post.postId}`);
+        }
       }}
     >
       <div className={styles.postMedia}>
