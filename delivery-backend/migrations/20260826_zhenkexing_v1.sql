@@ -116,8 +116,8 @@ SELECT 'ZHENKE_SCENIC','甄客景区',30,'0','migration',NOW(),'migration',NOW()
 WHERE NOT EXISTS(SELECT 1 FROM shop_product_category WHERE category_code='ZHENKE_SCENIC');
 
 -- 超管菜单与按钮权限：只绑定管理员角色；绝不向商家角色批量授权。
-INSERT INTO sys_menu(menu_name,parent_id,order_num,path,component,query,route_name,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time,remark)
-SELECT '甄客帖管理',0,70,'zhenke-posts',NULL,NULL,'ZhenkePosts',1,0,'C','0','0','shop:zhenkePost:list','documentation','migration',NOW(),'甄客帖仅超管治理'
+INSERT INTO sys_menu(menu_name,parent_id,order_num,path,component,route_name,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time,remark)
+SELECT '甄客帖管理',0,70,'zhenke-posts',NULL,'ZhenkePosts',1,0,'C','0','0','shop:zhenkePost:list','documentation','migration',NOW(),'甄客帖仅超管治理'
 WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE perms='shop:zhenkePost:list');
 SET @post_menu=(SELECT menu_id FROM sys_menu WHERE perms='shop:zhenkePost:list' ORDER BY menu_id LIMIT 1);
 INSERT INTO sys_menu(menu_name,parent_id,order_num,path,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time)

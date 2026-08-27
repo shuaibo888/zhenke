@@ -77,7 +77,7 @@ public class EventSsoService
         catch (Exception exception)
         {
             log.warn("Event SSO ticket exchange failed, requestId={}: {}", requestId, exception.getMessage());
-            throw new ServiceException("赛事系统暂时无法连接，请稍后重新进入商城");
+            throw new ServiceException("赛事系统暂时无法连接，请稍后重新进入甄客行");
         }
     }
 
@@ -141,7 +141,7 @@ public class EventSsoService
         {
             return new ServiceException("单点登录服务认证失败，请联系管理员");
         }
-        return new ServiceException("赛事系统暂时无法完成登录，请稍后重新进入商城");
+        return new ServiceException("赛事系统暂时无法完成登录，请稍后重新进入甄客行");
     }
 
     private URI exchangeUri()

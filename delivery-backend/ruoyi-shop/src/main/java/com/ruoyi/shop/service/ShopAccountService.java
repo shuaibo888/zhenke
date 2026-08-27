@@ -55,9 +55,9 @@ public class ShopAccountService
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final String PHONE_PATTERN = "^1\\d{10}$";
 
-    /** 注册来源：商城自主注册（账号密码、手机号、H5 一键认证直接创建账号）。 */
+    /** 注册来源：甄客行自主注册（账号密码、手机号、H5 一键认证直接创建账号）。 */
     public static final String REGISTER_SOURCE_SELF = "SELF";
-    /** 注册来源：用户首次通过燃赛单点登录进入商城并因此自动创建账号。 */
+    /** 注册来源：用户首次通过燃赛单点登录进入甄客行并因此自动创建账号。 */
     public static final String REGISTER_SOURCE_RANSAI = "RANSAI";
 
     private final ShopUserMapper userMapper;

@@ -1,228 +1,113 @@
-# 㤫者商城 - Delivery Platform
+# 甄客行
 
-一个基于 React + Spring Boot 的电商平台，包含用户端、管理端和后端服务。
+甄客行是基于现有商城账号、商家、商品、订单、支付、退款、试用、核销和甄客验能力扩展的综合本地生活平台。用户端以首页、甄客帖和地点发现为主线，商城作为完整交易模块继续运行。
 
-## 项目架构
+## 第一版产品边界
 
-```
-㤫者商城-delivery/
-├── delivery-frontend/          # 用户端前端（甄客验平台）
-│   ├── src/
-│   │   ├── pages/              # 页面组件
-│   │   ├── layouts/            # 布局组件
-│   │   ├── mocks/              # Mock 数据
-│   │   ├── utils/              # 工具函数
-│   │   └── types.ts            # TypeScript 类型定义
-│   ├── public/                 # 静态资源
-│   ├── .umirc.ts               # Umi 配置
-│   └── package.json
-│
-├── delivery-admin-frontend/    # 管理端前端（商家/管理员后台）
-│   ├── src/
-│   │   ├── pages/              # 页面组件
-│   │   ├── layouts/            # 布局组件
-│   │   ├── mocks/              # Mock 数据
-│   │   ├── utils/              # 工具函数
-│   │   └── types.ts            # TypeScript 类型定义
-│   ├── public/                 # 静态资源
-│   ├── .umirc.ts               # Umi 配置（base: "/admin/")
-│   └── package.json
-│
-├── delivery-backend/          # 后端服务（Spring Boot）
-│   ├── src/main/java/
-│   │   └── com/delivery/mvp/   # Java 源代码
-│   ├── src/main/resources/
-│   │   └── application.properties
-│   └── pom.xml                 # Maven 配置
-│
-├── shop-frontend/              # 用户端打包产物
-├── shop-admin/                 # 管理端打包产物
-├── img/                        # 项目图片资源
-│
-└── 㤫者商城-前端部署流程.docx  # 部署文档
+- 交易入口包含“商城 / 酒店 / 景区 / 饭店”四个并列营业模块。
+- “商城”完整保留原有自营与商家商品、动态分类、试用、购物车、支付、线上购买与发货物流、已有线下核销、退款和甄客验能力。
+- 酒店、景区、饭店是新增的三个稳定商品分类，复用同一商品、订单、支付、核销和甄客验体系，第一版强制使用线下核销履约。
+- 甄客行是在原商城上扩展业务，不是把商城裁剪或替换成三个本地生活分类。
+- 现有 `shop_user` 就是甄客行用户；平台只有一个用户身份和一个统一“我的”。
+- 甄客帖是用户围绕所选地点自由发布的内容，与基于真实消费或试用资格的甄客验相互独立。
+
+完整需求、边界和验收门槛见：
+
+- [`docs/项目交接文档.md`](docs/项目交接文档.md)
+- [`CODEX_CLOUD_GOAL.md`](CODEX_CLOUD_GOAL.md)
+- [`AGENTS.md`](AGENTS.md)
+
+## 仓库结构
+
+```text
+delivery-main/
+├── delivery-frontend/          # 甄客行用户端，React 19 + Umi 4 + Ant Design 6
+├── delivery-admin-frontend/    # 超管与商家端，正式基路径 /admin/
+├── delivery-backend/           # Spring Boot 3.5、Java 17、Maven 多模块单体
+├── delivery-backend/migrations # 版本化人工增量 SQL
+├── yuanxing/                   # 非技术概念原型，仅作强制视觉基准
+├── scripts/                    # Codex Cloud 环境脚本
+└── docs/                       # 项目交接与其他文档
 ```
 
-## 技术栈
+`yuanxing/` 不能作为正式代码、接口或 Mock 数据来源。正式用户端需要继承其暖色、摄影卡片、圆角层级和移动端节奏，同时按真实业务契约在 React 工程中重新实现。
 
-### 前端
-- **框架**: React 19.2 + Umi 4.6
-- **UI 组件**: Ant Design 6.4
-- **图表**: @ant-design/charts（管理端数据看板）
-- **地区数据**: china-division（省市区三级联动）
-- **语言**: TypeScript 5.0
+## 本地环境
 
-### 后端
-- **框架**: Spring Boot 3.5
-- **语言**: Java 21
-- **数据库**: MySQL
-- **构建工具**: Maven
+- Node.js 20
+- npm（随 Node.js 20）
+- Java 17
+- Maven 3.8+
+- MySQL 8+
 
-## 功能模块
+不要提交 `.env`、本地配置、真实密钥、数据库快照、日志、`node_modules`、`dist`、`target` 或部署制品。
 
-### 用户端（delivery-frontend）
-
-| 模块 | 功能 |
-|------|------|
-| 商品浏览 | 商品列表、分类筛选、排序 |
-| 商品详情 | 商品信息、验证报告、溯源信息 |
-| 购物流程 | 加入购物车、下单、支付 |
-| 验证报告 | 发布报告、上传图片/视频、体验描述 |
-| 用户中心 | 个人信息、订单管理、收益明细、物流查询 |
-| 试用申请 | 申请试用资格、查看进度 |
-| 商家入驻 | 填写公司信息、上传资质、同意协议 |
-
-### 管理端（delivery-admin-frontend）
-
-| 模块 | 功能 |
-|------|------|
-| 数据看板 | 销售统计、订单趋势、商品状态分布 |
-| 商品管理 | 商品列表、新增/编辑、上架/下架 |
-| 试用招募 | 创建招募、查看申请、管理进度 |
-| 订单管理 | 订单列表、发货、退款处理 |
-| 验证报告 | 报告列表、审核、删除 |
-| 商家管理 | 商家列表、新增/编辑、启用/禁用 |
-
-## 本地开发启动流程
-
-### 前置要求
-
-- Node.js >= 18
-- npm >= 9
-- Java >= 21（后端）
-- Maven >= 3.8（后端）
-- MySQL >= 8.0（后端）
-
-### 1. 启动用户端前端
+## 安装与开发
 
 ```bash
-cd delivery-frontend
+# 用户端
+npm ci --prefix delivery-frontend
+npm --prefix delivery-frontend run dev
 
-# 安装依赖
-npm install
-
-# 启动开发服务器（端口 8000）
-npm run dev
+# 管理端
+npm ci --prefix delivery-admin-frontend
+npm --prefix delivery-admin-frontend run dev
 ```
 
-访问地址：http://localhost:8000
+后端运行需要本地数据库和 PCC 私密配置。普通本地与生产构建保留 PCC Starter；`-Dcodex.cloud=true` 只用于没有生产密钥的 Codex Cloud 验证，不能用于生产打包。
 
-### 2. 启动管理端前端
+## 验证
 
 ```bash
-cd delivery-admin-frontend
+# 用户端
+npm --prefix delivery-frontend run typecheck
+npm --prefix delivery-frontend run build
 
-# 安装依赖
-npm install
+# 管理端
+npm --prefix delivery-admin-frontend run typecheck
+npm --prefix delivery-admin-frontend run build
 
-# 启动开发服务器（端口 8001）
-npm run dev
+# Codex Cloud 后端验证
+mvn -f delivery-backend/pom.xml -Dcodex.cloud=true -pl ruoyi-shop -am test
+
+# 静态检查
+git diff --check
 ```
 
-访问地址：http://localhost:8001
+两个前端当前没有 `test` 脚本。构建成功不等于数据库迁移、地图、支付、核销或真实浏览器业务闭环已通过。
 
-### 3. 启动后端服务
+## 数据库变更
+
+甄客行第一版增量脚本位于：
+
+```text
+delivery-backend/migrations/20260826_zhenkexing_v1.sql
+```
+
+脚本由负责人在本地或目标环境人工执行。Codex Cloud 开发任务不得连接生产数据库，也不得自动执行迁移。
+
+## Codex Cloud
+
+首次创建 Cloud 环境执行：
 
 ```bash
-cd delivery-backend
-
-# 配置数据库连接（编辑 application.properties）
-# spring.datasource.url=jdbc:mysql://localhost:3306/delivery
-# spring.datasource.username=root
-# spring.datasource.password=your_password
-
-# 启动 Spring Boot
-mvn spring-boot:run
+bash scripts/codex-cloud-setup.sh
 ```
 
-后端默认端口：8080
-
-## 项目构建
-
-### 前端打包
+缓存恢复后的任务执行：
 
 ```bash
-# 用户端打包
-cd delivery-frontend
-npm run build
-# 输出目录：./dist（打包后可移动到 shop-frontend）
-
-# 管理端打包
-cd delivery-admin-frontend
-npm run build
-# 输出目录：./dist（打包后可移动到 shop-admin）
+bash scripts/codex-cloud-maintenance.sh
 ```
 
-### 后端打包
+Cloud 长任务必须先完整阅读 `AGENTS.md`、`CODEX_CLOUD_GOAL.md` 和 `docs/项目交接文档.md`，持续维护 `CODEX_CLOUD_PROGRESS.md`，并按完成门槛提供代码、测试和未验证事项的真实证据。
 
-```bash
-cd delivery-backend
-mvn clean package
-# 输出文件：target/delivery-backend-0.0.1-SNAPSHOT.jar
-```
+## 交付安全
 
-## 生产部署
-
-详见 `㤫者商城-前端部署流程.docx`，包含：
-
-1. Nginx 安装与配置
-2. 前端静态文件上传
-3. 端口放行与防火墙设置
-4. 常见问题排查
-
-### 访问地址
-
-| 端 | 本地开发 | 生产环境 |
-|----|---------|---------|
-| 用户端 | http://localhost:8000 | http://服务器IP |
-| 管理端 | http://localhost:8001 | http://服务器IP/admin/ |
-
-## 测试
-
-### 前端测试
-
-```bash
-# 用户端测试
-cd delivery-frontend
-npm run test
-
-# 管理端测试
-cd delivery-admin-frontend
-npm run test
-```
-
-测试覆盖：
-- 认证规则（authRules）
-- 商品筛选（productCatalog、productFilters）
-- 购物车（cart）
-- 订单管理（orders、orderManagement）
-- 数据看板（adminDashboard）
-
-## 响应式适配
-
-项目支持 H5 移动端和 PC 端，使用响应式布局：
-
-- **PC端**（>= 992px）：完整侧边栏、表格布局
-- **移动端**（< 992px）：抽屉式导航、卡片式布局、表格横向滚动
-
-## 账号信息
-
-### 用户端测试账号
-- 用户名：任意
-- 密码：任意（注册即可）
-
-### 管理端测试账号
-| 角色 | 用户名 | 密码 |
-|------|--------|------|
-| 管理员 | admin | 123456 |
-| 商家 | merchant_li | 123456 |
-
-## 开发规范
-
-- 使用 TypeScript 强类型
-- 组件使用 React Hooks
-- 样式使用 Less + CSS Modules
-- Mock 数据用于前端独立开发
-- 工具函数包含单元测试
+- 不自动执行 SQL，不部署生产，不自动合并主分支。
+- 不删除或隐藏原商城线上、线下、试用、退款及甄客验功能。
+- 不使用 Mock、静态数组或原型演示状态冒充正式全栈实现。
+- Git 只暂存已审查的任务文件，不使用 `git add -A`。
 
 ## License
 
