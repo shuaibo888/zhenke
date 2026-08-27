@@ -1,4 +1,4 @@
-import { Button, DatePicker, Descriptions, Image, Input, Modal, Select, Space, Table, Tag, message } from 'antd';
+import { Alert, Button, DatePicker, Descriptions, Image, Input, Modal, Select, Space, Table, Tag, message } from 'antd';
 import type { TablePaginationConfig } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { useCallback, useEffect, useState } from 'react';
@@ -32,9 +32,9 @@ type Post = {
 type MerchantOption = { merchantId: number; shopName: string };
 
 const perspectiveLabel = {
-  LOCAL: '本地视角',
-  TOURIST: '游客视角',
-  HOMETOWNER: '返乡视角',
+  LOCAL: '本地土著',
+  TOURIST: '外地游客',
+  HOMETOWNER: '在外家乡人',
 } as const;
 
 export default function ZhenkePostsPage() {
@@ -43,6 +43,7 @@ export default function ZhenkePostsPage() {
   const [data, setData] = useState<Post[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [keyword, setKeyword] = useState('');
   const [status, setStatus] = useState<string>();
   const [merchantId, setMerchantId] = useState<number>();
@@ -55,6 +56,7 @@ export default function ZhenkePostsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const query = new URLSearchParams({ pageNum: String(page), pageSize: String(pageSize) });
       if (keyword.trim()) query.set('keyword', keyword.trim());
@@ -72,7 +74,9 @@ export default function ZhenkePostsPage() {
       setData(result.rows ?? []);
       setTotal(result.total ?? 0);
     } catch (error) {
-      message.error((error as Error).message);
+      const reason = error instanceof Error ? error.message : '甄客帖列表加载失败';
+      setLoadError(reason);
+      message.error(reason);
     } finally {
       setLoading(false);
     }
@@ -89,7 +93,8 @@ export default function ZhenkePostsPage() {
       );
       setMerchantOptions(result.data ?? []);
     } catch (error) {
-      message.error((error as Error).message);
+      const reason = error instanceof Error ? error.message : '关联商家搜索失败';
+      message.error(reason);
     } finally {
       setMerchantSearching(false);
     }
@@ -116,9 +121,14 @@ export default function ZhenkePostsPage() {
       okButtonProps: { danger: true },
       cancelText: '取消',
       async onOk() {
-        await requestApi(`/shop/admin/zhenke/posts/${post.postId}`, { method: 'DELETE' }, true);
-        message.success('帖子已逻辑删除');
-        await load();
+        try {
+          await requestApi(`/shop/admin/zhenke/posts/${post.postId}`, { method: 'DELETE' }, true);
+          message.success('帖子已逻辑删除');
+          await load();
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : '帖子删除失败');
+          throw error;
+        }
       },
     });
   };
@@ -178,12 +188,24 @@ export default function ZhenkePostsPage() {
         </Space>
       </div>
 
+      {loadError && (
+        <Alert
+          type="error"
+          showIcon
+          message="甄客帖列表暂时无法加载"
+          description={loadError}
+          action={<Button size="small" danger onClick={() => void load()}>重新加载</Button>}
+          style={{ marginBottom: 16 }}
+        />
+      )}
+
       <Table<Post>
         rowKey="postId"
         loading={loading}
         dataSource={data}
         onChange={changePage}
         scroll={{ x: 1080 }}
+        locale={{ emptyText: loadError ? '加载失败，请重试' : '暂无甄客帖' }}
         pagination={{ current: page, pageSize, total, showSizeChanger: true, showTotal: (value) => `共 ${value} 条` }}
         columns={[
           { title: '标题', dataIndex: 'title', width: 240, ellipsis: true },

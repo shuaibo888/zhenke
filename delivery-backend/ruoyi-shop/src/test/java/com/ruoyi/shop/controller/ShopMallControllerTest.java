@@ -51,4 +51,16 @@ class ShopMallControllerTest
 
         verify(productService, never()).publicProducts(any(ShopProduct.class));
     }
+
+    @Test
+    void keepsTotalCountEnabledOnLaterPagesForLoadMoreContract()
+    {
+        when(productService.publicProducts(any(ShopProduct.class))).thenReturn(List.of());
+
+        controller.products(null, null, null, "MALL", 3, 12);
+
+        assertTrue(PageHelper.getLocalPage().isCount());
+        assertEquals(3, PageHelper.getLocalPage().getPageNum());
+        assertEquals(12, PageHelper.getLocalPage().getPageSize());
+    }
 }

@@ -38,6 +38,7 @@ export default function CouponDetailPage() {
   const [coupon, setCoupon] = useState<ShopCouponDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   const loadCoupon = useCallback(async (quiet = false) => {
     if (!Number.isSafeInteger(userCouponId) || userCouponId <= 0) {
@@ -45,15 +46,23 @@ export default function CouponDetailPage() {
       setLoading(false);
       return;
     }
+    if (!quiet) {
+      setLoading(true);
+      setLoadError('');
+    }
     try {
       const next = await fetchMyCoupon(userCouponId);
       setCoupon(next);
+      setNotFound(false);
       if (next.status === 'USED') void refreshCoupons().catch(() => undefined);
     } catch (error) {
-      if (!quiet) message.error(error instanceof Error ? error.message : '优惠券详情加载失败');
-      setNotFound(true);
+      if (!quiet) {
+        const reason = error instanceof Error ? error.message : '优惠券详情加载失败';
+        setLoadError(reason);
+        message.error(reason);
+      }
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, [refreshCoupons, userCouponId]);
 
@@ -66,6 +75,21 @@ export default function CouponDetailPage() {
 
   if (!user) return <LoginRedirect />;
   if (loading) return <main className={`${styles.profileDetailPage} ${styles.couponDetailPage}`}><Spin size="large" /></main>;
+  if (loadError && !coupon) {
+    return (
+      <main className={`${styles.profileDetailPage} ${styles.couponDetailPage}`}>
+        <Result
+          status="error"
+          title="优惠券详情暂时无法加载"
+          subTitle={loadError}
+          extra={[
+            <Button type="primary" key="retry" onClick={() => void loadCoupon()}>重新加载</Button>,
+            <Button key="back" onClick={() => navigate('/profile/coupons')}>返回我的优惠券</Button>,
+          ]}
+        />
+      </main>
+    );
+  }
   if (notFound || !coupon) {
     return <main className={`${styles.profileDetailPage} ${styles.couponDetailPage}`}><Result status="404" title="优惠券不存在" extra={<Button onClick={() => navigate('/profile/coupons')}>返回我的优惠券</Button>} /></main>;
   }

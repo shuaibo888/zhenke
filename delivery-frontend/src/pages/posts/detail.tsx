@@ -151,9 +151,10 @@ export default function PostDetailPage() {
           kind="error"
           title="这篇甄客帖已不可见"
           description={error || '可能已被作者或平台删除。媒体与正文不会继续通过旧分享链接展示。'}
-          actionText="返回甄客帖"
-          onAction={() => navigate('/posts')}
+          actionText={Number.isSafeInteger(postId) && postId > 0 ? '重新加载' : '返回甄客帖'}
+          onAction={Number.isSafeInteger(postId) && postId > 0 ? () => void load() : () => navigate('/posts')}
         />
+        {Number.isSafeInteger(postId) && postId > 0 && <Button block onClick={() => navigate('/posts')}>返回甄客帖</Button>}
       </main>
     );
   }

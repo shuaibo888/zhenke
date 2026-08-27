@@ -4,7 +4,7 @@ import {
   ShopOutlined,
   TruckOutlined,
 } from '@ant-design/icons';
-import { Button, Result, Spin, Tag, message } from 'antd';
+import { Button, Result, Space, Spin, Tag, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -142,7 +142,14 @@ export default function TrialDetailPage() {
         <Result
           status="warning"
           title={error || '试用申请不存在'}
-          extra={<Button onClick={() => navigate('/profile/trials')}>返回我的试用</Button>}
+          extra={(
+            <Space wrap>
+              {Number.isSafeInteger(numericApplicationId) && numericApplicationId > 0 && (
+                <Button type="primary" onClick={() => void load()}>重新加载</Button>
+              )}
+              <Button onClick={() => navigate('/profile/trials')}>返回我的试用</Button>
+            </Space>
+          )}
         />
       </main>
     );

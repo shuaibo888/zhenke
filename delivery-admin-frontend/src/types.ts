@@ -54,8 +54,6 @@ export interface MerchantAccount {
   merchantId?: number;
   applicationNo?: string;
   username?: string;
-  /** 仅兼容旧演示数据；真实接口永不返回或回显密码。 */
-  password?: string;
   name: string;
   companyName?: string;
   ownerName: string;

@@ -10,13 +10,14 @@ import {
   ShareAltOutlined,
   ZoomInOutlined,
 } from '@ant-design/icons';
-import { Button, Drawer, Image, Input, Modal, Spin, Tag, message } from 'antd';
+import { Alert, Button, Drawer, Image, Input, Modal, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { WechatShareGuide } from '@/components/WechatShareGuide';
 import { MerchantInfoBar } from '@/components/MerchantInfoBar';
 import { VerificationProofStrip } from '@/components/VerificationProofStrip';
+import { ZkState } from '@/components/ZkPage';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
 import {
@@ -91,6 +92,9 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
   const [comments, setComments] = useState<ReportCommentDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [commentsLoading, setCommentsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [commentsError, setCommentsError] = useState('');
+  const [reloadVersion, setReloadVersion] = useState(0);
   const [comment, setComment] = useState('');
   const [replyingTo, setReplyingTo] = useState<ReportCommentDto | null>(null);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
@@ -116,8 +120,14 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
 
   useEffect(() => {
     setActiveResourceIndex(0);
+    setReport(null);
+    setProduct(null);
+    setLoadError('');
+    setCommentsError('');
     if (!Number.isSafeInteger(reportId) || reportId <= 0) {
+      setLoadError('甄客验链接无效');
       setLoading(false);
+      setCommentsLoading(false);
       return;
     }
     let mounted = true;
@@ -130,7 +140,11 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
         setProduct(nextProduct);
       })
       .catch((error) => {
-        if (mounted) message.error(error instanceof Error ? error.message : '甄客验加载失败');
+        if (mounted) {
+          const reason = error instanceof Error ? error.message : '甄客验加载失败';
+          setLoadError(reason);
+          message.error(reason);
+        }
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -141,7 +155,11 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
         if (mounted) setComments(rows);
       })
       .catch((error) => {
-        if (mounted) message.error(error instanceof Error ? error.message : '评论加载失败');
+        if (mounted) {
+          const reason = error instanceof Error ? error.message : '评论加载失败';
+          setCommentsError(reason);
+          message.error(reason);
+        }
       })
       .finally(() => {
         if (mounted) setCommentsLoading(false);
@@ -149,7 +167,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
     return () => {
       mounted = false;
     };
-  }, [reportId]);
+  }, [reloadVersion, reportId]);
 
   const commentCount = useMemo(
     () => comments.reduce((count, item) => count + 1 + (item.replies?.length ?? 0), 0),
@@ -157,7 +175,17 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
   );
 
   const refreshComments = async () => {
-    setComments(await fetchReportComments(reportId));
+    setCommentsLoading(true);
+    setCommentsError('');
+    try {
+      setComments(await fetchReportComments(reportId));
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : '评论加载失败';
+      setCommentsError(reason);
+      message.error(reason);
+    } finally {
+      setCommentsLoading(false);
+    }
   };
 
   const submitComment = async () => {
@@ -251,7 +279,13 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
   if (!report || !product) {
     return (
       <main className={styles.singleColumn}>
-        <p className={styles.empty}>这份甄客验不存在或暂不可见。</p>
+        <ZkState
+          kind="error"
+          title="甄客验暂时无法打开"
+          description={loadError || '这份甄客验不存在、已删除或暂不可见。'}
+          actionText="重新加载"
+          onAction={() => setReloadVersion((value) => value + 1)}
+        />
         <Button block onClick={() => navigate('/')}>返回首页</Button>
       </main>
     );
@@ -380,7 +414,15 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
 
         <section
           className={styles.linkedProductCard}
+          role="link"
+          tabIndex={0}
           onClick={() => navigate(`/products/${product.productId}?sourceReport=${report.reportId}`)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              navigate(`/products/${product.productId}?sourceReport=${report.reportId}`);
+            }
+          }}
         >
           <img src={product.coverUrl} alt={product.productName} />
           <div className={styles.linkedProductInfo}>
@@ -415,6 +457,16 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
             </Button>
           </div>
           <Spin spinning={commentsLoading}>
+            {commentsError && (
+              <Alert
+                type="error"
+                showIcon
+                message="评论暂时无法加载"
+                description={commentsError}
+                action={<Button size="small" danger onClick={() => void refreshComments()}>重新加载</Button>}
+                style={{ marginBottom: 16 }}
+              />
+            )}
             <div className={styles.commentList}>
               {comments.map((item) => (
                 <div key={item.commentId} className={styles.commentThread}>
@@ -438,7 +490,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
                   ))}
                 </div>
               ))}
-              {!commentsLoading && comments.length === 0 && <p className={styles.empty}>还没有评论，来发表第一条真实看法吧。</p>}
+              {!commentsLoading && !commentsError && comments.length === 0 && <p className={styles.empty}>还没有评论，来发表第一条真实看法吧。</p>}
             </div>
           </Spin>
         </section>

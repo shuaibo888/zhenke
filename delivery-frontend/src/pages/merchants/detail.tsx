@@ -69,7 +69,18 @@ export default function MerchantDetailPage() {
 
   if (loading) return <main className={styles.page}><ZkState kind="loading" title="正在打开商家" /></main>;
   if (!merchant || error) {
-    return <main className={styles.page}><ZkState kind="error" title="商家暂不可访问" description={error} actionText="返回商城" onAction={() => navigate('/mall')} /></main>;
+    return (
+      <main className={styles.page}>
+        <ZkState
+          kind="error"
+          title="商家暂不可访问"
+          description={error}
+          actionText={Number.isSafeInteger(merchantId) && merchantId > 0 ? '重新加载' : '返回商城'}
+          onAction={Number.isSafeInteger(merchantId) && merchantId > 0 ? () => void load() : () => navigate('/mall')}
+        />
+        {Number.isSafeInteger(merchantId) && merchantId > 0 && <Button block onClick={() => navigate('/mall')}>返回商城</Button>}
+      </main>
+    );
   }
 
   const navigateToStore = async () => {

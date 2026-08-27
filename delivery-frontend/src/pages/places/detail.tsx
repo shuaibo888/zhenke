@@ -61,7 +61,14 @@ export default function PlaceDetailPage() {
   if (!detail || error) {
     return (
       <main className={styles.page}>
-        <ZkState kind="error" title="这个地点暂时不可用" description={error} actionText="返回甄客帖" onAction={() => navigate('/posts')} />
+        <ZkState
+          kind="error"
+          title="这个地点暂时不可用"
+          description={error}
+          actionText={Number.isSafeInteger(placeId) && placeId > 0 ? '重新加载' : '返回甄客帖'}
+          onAction={Number.isSafeInteger(placeId) && placeId > 0 ? () => void load() : () => navigate('/posts')}
+        />
+        {Number.isSafeInteger(placeId) && placeId > 0 && <Button block onClick={() => navigate('/posts')}>返回甄客帖</Button>}
       </main>
     );
   }

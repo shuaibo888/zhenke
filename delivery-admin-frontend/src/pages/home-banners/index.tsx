@@ -1,5 +1,5 @@
 import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
-import { Button, DatePicker, Form, Image, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Upload, message } from 'antd';
+import { Alert, Button, DatePicker, Form, Image, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Upload, message } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useCallback, useEffect, useState } from 'react';
 import { requestApi, uploadBannerImage } from '@/services/adminApi';
@@ -30,6 +30,7 @@ export default function HomeBannersPage() {
   const canChangeStatus = useAdminPermission('shop:banner:status');
   const [data, setData] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [saving, setSaving] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<Banner>();
@@ -37,11 +38,14 @@ export default function HomeBannersPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const result = await requestApi<{ code: number; msg: string; data?: Banner[] }>('/shop/admin/zhenke/banners', {}, true);
       setData(result.data ?? []);
     } catch (error) {
-      message.error((error as Error).message);
+      const reason = error instanceof Error ? error.message : '轮播列表加载失败';
+      setLoadError(reason);
+      message.error(reason);
     } finally {
       setLoading(false);
     }
@@ -91,6 +95,7 @@ export default function HomeBannersPage() {
         true,
       );
       await load();
+      message.success(enabled ? '轮播已启用' : '轮播已停用');
     } catch (error) {
       message.error((error as Error).message);
     }
@@ -107,12 +112,24 @@ export default function HomeBannersPage() {
         {canAdd && <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>新增轮播</Button>}
       </div>
 
+      {loadError && (
+        <Alert
+          type="error"
+          showIcon
+          message="轮播列表暂时无法加载"
+          description={loadError}
+          action={<Button size="small" danger onClick={() => void load()}>重新加载</Button>}
+          style={{ marginBottom: 16 }}
+        />
+      )}
+
       <Table<Banner>
         rowKey="bannerId"
         loading={loading}
         dataSource={data}
         scroll={{ x: 1040 }}
         pagination={false}
+        locale={{ emptyText: loadError ? '加载失败，请重试' : '暂无首页轮播' }}
         columns={[
           { title: '图片', width: 150, render: (_, row) => <Image width={120} height={68} style={{ objectFit: 'cover', borderRadius: 8 }} src={row.imageUrl} /> },
           { title: '标题', dataIndex: 'title', width: 180, ellipsis: true },
@@ -131,9 +148,14 @@ export default function HomeBannersPage() {
                   title="确认删除轮播？"
                   description="删除后首页将不再展示此运营位。"
                   onConfirm={async () => {
-                    await requestApi(`/shop/admin/zhenke/banners/${row.bannerId}`, { method: 'DELETE' }, true);
-                    message.success('轮播已删除');
-                    await load();
+                    try {
+                      await requestApi(`/shop/admin/zhenke/banners/${row.bannerId}`, { method: 'DELETE' }, true);
+                      message.success('轮播已删除');
+                      await load();
+                    } catch (error) {
+                      message.error(error instanceof Error ? error.message : '轮播删除失败');
+                      throw error;
+                    }
                   }}
                 >
                   <Button type="link" danger>删除</Button>

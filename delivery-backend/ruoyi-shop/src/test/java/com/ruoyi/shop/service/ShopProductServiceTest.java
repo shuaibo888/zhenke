@@ -189,4 +189,41 @@ class ShopProductServiceTest
         ShopProduct created=productService.create(body,"merchant"); assertEquals("0",created.getSupportsOnline()); assertEquals("1",created.getSupportsOffline());
     }
 
+    @Test
+    void ordinaryMallCategoryPreservesExistingOnlineAndOfflineCapabilities()
+    {
+        ShopMerchant merchant = new ShopMerchant();
+        merchant.setMerchantId(1L);
+        when(merchantService.currentMerchantAccount()).thenReturn(merchant);
+
+        ShopProductCategory category = new ShopProductCategory();
+        category.setCategoryId(2L);
+        category.setCategoryCode("GENERAL_GOODS");
+        category.setStatus("0");
+        when(productMapper.selectCategoryById(2L)).thenReturn(category);
+
+        AtomicReference<ShopProduct> insertedProduct = new AtomicReference<>();
+        when(productMapper.insertProduct(any(ShopProduct.class))).thenAnswer(invocation -> {
+            ShopProduct product = invocation.getArgument(0);
+            product.setProductId(100L);
+            insertedProduct.set(product);
+            return 1;
+        });
+        when(productMapper.selectMerchantProduct(1L, 100L)).thenAnswer(ignored -> insertedProduct.get());
+        when(productMapper.selectImages(100L)).thenReturn(List.of());
+
+        ShopProductBody body = validBody();
+        body.setCategoryId(2L);
+        body.setCoverUrl("/profile/upload/product/merchant-1/cover.jpg");
+        body.setMainImageUrls(List.of("/profile/upload/product/merchant-1/main.jpg"));
+        body.setDetailImageUrls(List.of("/profile/upload/product/merchant-1/detail.jpg"));
+        body.setSupportsOnline(true);
+        body.setSupportsOffline(true);
+
+        ShopProduct created = productService.create(body, "merchant");
+
+        assertEquals("1", created.getSupportsOnline());
+        assertEquals("1", created.getSupportsOffline());
+    }
+
 }

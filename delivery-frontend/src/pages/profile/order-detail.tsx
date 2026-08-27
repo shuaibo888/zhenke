@@ -5,7 +5,7 @@ import {
   ShopOutlined,
   TruckOutlined,
 } from '@ant-design/icons';
-import { Button, Input, Modal, Result, Spin, Tag, message } from 'antd';
+import { Button, Input, Modal, Result, Space, Spin, Tag, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -205,7 +205,14 @@ export default function OrderDetailPage() {
         <Result
           status="warning"
           title={error || '订单不存在'}
-          extra={<Button onClick={() => navigate('/profile/orders')}>返回我的订单</Button>}
+          extra={(
+            <Space wrap>
+              {Number.isSafeInteger(numericOrderId) && numericOrderId > 0 && (
+                <Button type="primary" onClick={() => void load()}>重新加载</Button>
+              )}
+              <Button onClick={() => navigate('/profile/orders')}>返回我的订单</Button>
+            </Space>
+          )}
         />
       </main>
     );

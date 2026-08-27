@@ -52,7 +52,7 @@ public class ShopMallController extends BaseController
         query.setMallOnly("MALL".equals(normalizedModule));
         int safePageNum = Math.max(1, pageNum);
         int safePageSize = Math.max(1, Math.min(pageSize, 24));
-        PageHelper.startPage(safePageNum, safePageSize, safePageNum == 1);
+        PageHelper.startPage(safePageNum, safePageSize);
         List<ShopProduct> products = productService.publicProducts(query);
         return getDataTable(products);
     }
