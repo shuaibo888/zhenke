@@ -109,6 +109,47 @@ class ShopProductServiceTest
         verify(productMapper, never()).deleteCategory(1L);
     }
 
+    @Test
+    void refusesToDeleteStableLocalLifeCategory()
+    {
+        ShopProductCategory category = new ShopProductCategory();
+        category.setCategoryId(1L);
+        category.setCategoryCode("ZHENKE_HOTEL");
+        when(productMapper.selectCategoryById(1L)).thenReturn(category);
+
+        assertThrows(ServiceException.class, () -> productService.deleteCategory(1L));
+
+        verify(productMapper, never()).countProductsByCategoryId(1L);
+        verify(productMapper, never()).deleteCategory(1L);
+    }
+
+    @Test
+    void refusesToPublishIncompleteExistingLocalLifePackage()
+    {
+        ShopMerchant merchant = new ShopMerchant();
+        merchant.setMerchantId(1L);
+        when(merchantService.currentMerchantAccount()).thenReturn(merchant);
+
+        ShopProductCategory category = new ShopProductCategory();
+        category.setCategoryId(1L);
+        category.setCategoryCode("ZHENKE_HOTEL");
+        category.setStatus("0");
+        when(productMapper.selectCategoryById(1L)).thenReturn(category);
+
+        ShopProduct product = new ShopProduct();
+        product.setProductId(10L);
+        product.setMerchantId(1L);
+        product.setCategoryId(1L);
+        product.setCategoryCode("ZHENKE_HOTEL");
+        product.setStock(10);
+        product.setSupportsOffline("1");
+        when(productMapper.selectMerchantProduct(1L, 10L)).thenReturn(product);
+
+        assertThrows(ServiceException.class, () -> productService.updateStatus(10L, "ON_SALE", "merchant"));
+
+        verify(productMapper, never()).updateMerchantProductStatus(1L, 10L, "ON_SALE", "merchant");
+    }
+
     private ShopProductBody validBody()
     {
         ShopProductBody body = new ShopProductBody();

@@ -29,8 +29,9 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [bannerError, setBannerError] = useState('');
-  const [locationStatus, setLocationStatus] = useState<LocationStatus>(() => loadCurrentLocation() ? 'located' : 'idle');
-  const [currentArea, setCurrentArea] = useState(() => loadCurrentLocation()?.label ?? '选择当前市区');
+  const [initialLocation] = useState(loadCurrentLocation);
+  const [locationStatus, setLocationStatus] = useState<LocationStatus>(() => initialLocation ? 'located' : 'idle');
+  const [currentArea, setCurrentArea] = useState(() => initialLocation?.label ?? '选择当前市区');
   const [manualAreaOpen, setManualAreaOpen] = useState(false);
   const [manualArea, setManualArea] = useState('');
 
@@ -103,8 +104,8 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    locate();
-  }, [locate]);
+    if (!initialLocation) locate();
+  }, [initialLocation, locate]);
 
   const openBanner = (banner: Banner) => {
     if (banner.jumpType === 'INTERNAL') navigate(banner.jumpTarget);

@@ -152,16 +152,7 @@ public class TencentMapService {
   }
 
   public Map<String, Object> reverse(BigDecimal latitude, BigDecimal longitude) {
-    requireCoordinates(latitude, longitude);
-    JSONObject result =
-        requestJson(
-            GEOCODER_URL
-                + "?location="
-                + latitude
-                + ","
-                + longitude
-                + "&key="
-                + encode(requireKey()));
+    JSONObject result = requestJson(reverseGeocoderUri(latitude, longitude).toASCIIString());
     JSONObject address = result.getJSONObject("address_component");
     Map<String, Object> value = new LinkedHashMap<>();
     value.put("address", result.getString("address"));
@@ -169,6 +160,16 @@ public class TencentMapService {
     value.put("city", address == null ? null : address.getString("city"));
     value.put("district", address == null ? null : address.getString("district"));
     return value;
+  }
+
+  URI reverseGeocoderUri(BigDecimal latitude, BigDecimal longitude) {
+    requireCoordinates(latitude, longitude);
+    String query =
+        "location="
+            + encode(latitude.toPlainString() + "," + longitude.toPlainString())
+            + "&coord_type=1&key="
+            + encode(requireKey());
+    return URI.create(GEOCODER_URL + "?" + query);
   }
 
   public List<Map<String, Object>> search(String keyword) {

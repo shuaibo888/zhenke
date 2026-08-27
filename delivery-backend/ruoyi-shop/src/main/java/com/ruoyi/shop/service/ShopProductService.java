@@ -91,9 +91,15 @@ public class ShopProductService
     @Transactional
     public int deleteCategory(long categoryId)
     {
-        if (productMapper.selectCategoryById(categoryId) == null)
+        ShopProductCategory category = productMapper.selectCategoryById(categoryId);
+        if (category == null)
         {
             throw new ServiceException("商品分类不存在");
+        }
+        if (category.getCategoryCode() != null
+                && LOCAL_LIFE_CATEGORY_CODES.contains(category.getCategoryCode()))
+        {
+            throw new ServiceException("甄客酒店、饭店和景区是平台稳定分类，只能调整名称、排序或启停");
         }
         if (productMapper.countProductsByCategoryId(categoryId) > 0)
         {
@@ -220,7 +226,14 @@ public class ShopProductService
                 throw new ServiceException("库存大于0时才能上架商品");
             }
             requireEnabledCategory(product.getCategoryId());
-            if (LOCAL_LIFE_CATEGORY_CODES.contains(product.getCategoryCode()) && !"1".equals(product.getSupportsOffline())) throw new ServiceException("甄客酒店、饭店和景区商品只支持线下核销");
+            if (LOCAL_LIFE_CATEGORY_CODES.contains(product.getCategoryCode()))
+            {
+                validateLocalLifePackage(product);
+                if (!"1".equals(product.getSupportsOffline()))
+                {
+                    throw new ServiceException("甄客酒店、饭店和景区商品只支持线下核销");
+                }
+            }
         }
         if (!ON_SALE.equals(status) && !OFF_SALE.equals(status))
         {
@@ -253,15 +266,29 @@ public class ShopProductService
         product.setStock(body.getStock());
         applyFulfillment(product, body);
         ShopProductCategory category = productMapper.selectCategoryById(body.getCategoryId());
-        if (category != null && LOCAL_LIFE_CATEGORY_CODES.contains(category.getCategoryCode())) {
-            if (StringUtils.isEmpty(product.getPackageContent()) || StringUtils.isEmpty(product.getUsageNotice()) || StringUtils.isEmpty(product.getValidityDescription()) || StringUtils.isEmpty(product.getRefundExpiryRule())) throw new ServiceException("本地生活套餐需完整填写套餐内容、使用须知、有效期和退款/过期规则");
-            if ("1".equals(product.getReservationRequired())
-                    && StringUtils.isEmpty(product.getReservationNotice())) {
-                throw new ServiceException("需要预约的本地生活套餐必须填写预约说明");
-            }
-            product.setSupportsOnline("0"); product.setSupportsOffline("1");
+        if (category != null && LOCAL_LIFE_CATEGORY_CODES.contains(category.getCategoryCode()))
+        {
+            validateLocalLifePackage(product);
+            product.setSupportsOnline("0");
+            product.setSupportsOffline("1");
         }
         return product;
+    }
+
+    private void validateLocalLifePackage(ShopProduct product)
+    {
+        if (StringUtils.isEmpty(product.getPackageContent())
+                || StringUtils.isEmpty(product.getUsageNotice())
+                || StringUtils.isEmpty(product.getValidityDescription())
+                || StringUtils.isEmpty(product.getRefundExpiryRule()))
+        {
+            throw new ServiceException("本地生活套餐需完整填写套餐内容、使用须知、有效期和退款/过期规则");
+        }
+        if ("1".equals(product.getReservationRequired())
+                && StringUtils.isEmpty(product.getReservationNotice()))
+        {
+            throw new ServiceException("需要预约的本地生活套餐必须填写预约说明");
+        }
     }
 
     private void applyFulfillment(ShopProduct product, ShopProductBody body)

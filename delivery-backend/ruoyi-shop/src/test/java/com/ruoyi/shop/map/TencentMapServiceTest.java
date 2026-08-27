@@ -52,4 +52,20 @@ class TencentMapServiceTest {
     assertTrue(uri.contains("referer=zhenkexing-app"));
     assertFalse(uri.contains("server-secret-key"));
   }
+
+  @Test
+  void reverseGeocoderDeclaresBrowserGpsCoordinateType() {
+    TencentMapProperties properties = new TencentMapProperties();
+    properties.setKey("server-secret-key");
+    TencentMapService configuredService = new TencentMapService(properties);
+
+    String uri =
+        configuredService
+            .reverseGeocoderUri(new BigDecimal("31.230416"), new BigDecimal("121.473701"))
+            .toASCIIString();
+
+    assertTrue(uri.contains("coord_type=1"));
+    assertTrue(uri.contains("location=31.230416%2C121.473701"));
+    assertTrue(uri.contains("key=server-secret-key"));
+  }
 }

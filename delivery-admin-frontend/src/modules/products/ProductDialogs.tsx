@@ -13,6 +13,7 @@ import {
   Space,
   Switch,
   Table,
+  Tooltip,
   Upload,
 } from 'antd';
 import type { FormInstance, UploadFile } from 'antd';
@@ -64,6 +65,11 @@ export interface ProductDialogsProps {
 
 const responsiveModalProps = { rootClassName: styles.responsiveModal } as const;
 const responsiveDrawerProps = { rootClassName: styles.responsiveDrawer } as const;
+const stableLocalLifeCategoryCodes = new Set([
+  'ZHENKE_HOTEL',
+  'ZHENKE_RESTAURANT',
+  'ZHENKE_SCENIC',
+]);
 
 type ProductImageKind = 'COVER' | 'MAIN' | 'DETAIL';
 
@@ -282,21 +288,32 @@ export default function ProductDialogs(props: ProductDialogsProps) {
               title: '操作',
               key: 'action',
               width: 150,
-              render: (_, item: ProductCategoryOption) => (
-                <Space size={8}>
-                  <Button type="primary" size="small" onClick={() => props.onSaveCategory(item)}>保存</Button>
-                  <Popconfirm
-                    title={`确定删除“${item.categoryName}”吗？`}
-                    description="已关联商品的分类无法删除。"
-                    okText="删除"
-                    cancelText="取消"
-                    okButtonProps={{ danger: true }}
-                    onConfirm={() => props.onDeleteCategory(item)}
-                  >
-                    <Button danger size="small" aria-label={`删除${item.categoryName}`} icon={<DeleteOutlined />} />
-                  </Popconfirm>
-                </Space>
-              ),
+              render: (_, item: ProductCategoryOption) => {
+                const stable = stableLocalLifeCategoryCodes.has(item.categoryCode);
+                return (
+                  <Space size={8}>
+                    <Button type="primary" size="small" onClick={() => props.onSaveCategory(item)}>保存</Button>
+                    {stable ? (
+                      <Tooltip title="平台稳定分类不可删除，可调整显示名称、排序或启停">
+                        <span>
+                          <Button disabled danger size="small" aria-label={`${item.categoryName}为平台稳定分类，不可删除`} icon={<DeleteOutlined />} />
+                        </span>
+                      </Tooltip>
+                    ) : (
+                      <Popconfirm
+                        title={`确定删除“${item.categoryName}”吗？`}
+                        description="已关联商品的分类无法删除。"
+                        okText="删除"
+                        cancelText="取消"
+                        okButtonProps={{ danger: true }}
+                        onConfirm={() => props.onDeleteCategory(item)}
+                      >
+                        <Button danger size="small" aria-label={`删除${item.categoryName}`} icon={<DeleteOutlined />} />
+                      </Popconfirm>
+                    )}
+                  </Space>
+                );
+              },
             },
           ]}
         />
@@ -350,7 +367,23 @@ export default function ProductDialogs(props: ProductDialogsProps) {
               <Form.Item name="usageNotice" label="使用须知" rules={[{ required: true, message: '请填写到店使用须知' }, { max: 5000 }]}><Input.TextArea rows={3} /></Form.Item>
               <Form.Item name="validityDescription" label="有效期说明" rules={[{ required: true, message: '请填写有效期说明' }, { max: 500 }]}><Input /></Form.Item>
               <Form.Item name="reservationRequired" valuePropName="checked"><Checkbox>需要提前预约</Checkbox></Form.Item>
-              <Form.Item name="reservationNotice" label="预约说明" rules={[{ max: 500 }]}><Input placeholder="需要预约时，请写明提前时间与联系方式" /></Form.Item>
+              <Form.Item
+                name="reservationNotice"
+                label="预约说明"
+                dependencies={['reservationRequired']}
+                rules={[
+                  { max: 500 },
+                  ({ getFieldValue }) => ({
+                    validator: (_, value?: string) => (
+                      getFieldValue('reservationRequired') && !value?.trim()
+                        ? Promise.reject(new Error('勾选需要预约后，必须填写预约说明'))
+                        : Promise.resolve()
+                    ),
+                  }),
+                ]}
+              >
+                <Input placeholder="需要预约时，请写明提前时间与联系方式" />
+              </Form.Item>
               <Form.Item name="refundExpiryRule" label="退款与过期规则" rules={[{ required: true, message: '请填写退款与过期规则' }, { max: 1000 }]}><Input.TextArea rows={2} /></Form.Item>
             </section>
           )}
