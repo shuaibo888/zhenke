@@ -7,6 +7,7 @@ import { captureWechatEntryUrl } from '@/utils/wechatEntryUrl';
 import { useWechatBrowserChrome } from '@/hooks/useWechatBrowserChrome';
 import styles from '@/styles/commerce.less';
 import './index.less';
+import '@/styles/zhenke.less';
 
 captureWechatEntryUrl();
 

@@ -1,436 +1,231 @@
 import {
   AppstoreOutlined,
   DownOutlined,
+  EditOutlined,
   EnvironmentOutlined,
   HomeOutlined,
   LogoutOutlined,
-  CloseOutlined,
-  SearchOutlined,
+  ReadOutlined,
+  SettingOutlined,
   ShoppingCartOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Badge, Button, Dropdown, message } from 'antd';
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type FormEvent,
-  type PointerEvent as ReactPointerEvent,
-} from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'umi';
+import { Badge, Dropdown, message } from 'antd';
+import type { ReactNode } from 'react';
+import { useState } from 'react';
+import { useLocation, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { getCartCount } from '@/utils/shop';
 import { AddressManager } from './AddressManager';
 import { CartDrawer } from './CartDrawer';
 import { NativePayModal } from './NativePayModal';
-import { ProfileBackButton } from './ProfileBackButton';
-import styles from '@/styles/commerce.less';
+import styles from '@/styles/zhenke.less';
 
-const floatingCartPositionKey = 'zhenke_floating_cart_position';
-const floatingCartMargin = 12;
+type MainNavItem = {
+  key: 'home' | 'posts' | 'mall' | 'profile';
+  label: string;
+  path: string;
+  icon: ReactNode;
+  protected?: boolean;
+};
 
-type FloatingCartPosition = { x: number; y: number };
+const navItems: MainNavItem[] = [
+  { key: 'home', label: '首页', path: '/', icon: <HomeOutlined /> },
+  { key: 'posts', label: '甄客帖', path: '/posts', icon: <ReadOutlined /> },
+  { key: 'mall', label: '商城', path: '/mall', icon: <AppstoreOutlined /> },
+  { key: 'profile', label: '我的', path: '/profile', icon: <UserOutlined />, protected: true },
+];
 
-function readFloatingCartPosition(): FloatingCartPosition | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const value = JSON.parse(window.localStorage.getItem(floatingCartPositionKey) || 'null');
-    return Number.isFinite(value?.x) && Number.isFinite(value?.y)
-      ? { x: value.x, y: value.y }
-      : null;
-  } catch {
-    return null;
-  }
+function getActiveNav(pathname: string): MainNavItem['key'] {
+  if (pathname.startsWith('/posts') || pathname.startsWith('/places')) return 'posts';
+  if (pathname.startsWith('/mall') || pathname.startsWith('/products') || pathname.startsWith('/merchants')) return 'mall';
+  if (pathname.startsWith('/profile') || pathname.startsWith('/checkout')) return 'profile';
+  return 'home';
 }
 
-function persistFloatingCartPosition(position: FloatingCartPosition) {
-  try {
-    window.localStorage.setItem(floatingCartPositionKey, JSON.stringify(position));
-  } catch {
-    // 浏览器禁用本地存储时仍允许本次拖动，不影响购物车入口使用。
-  }
+function UserAvatar() {
+  const { user } = useShop();
+  if (!user) return null;
+  return (
+    <span className={styles.userAvatar}>
+      {user.avatarType === 'image' && user.avatarImage
+        ? <img src={user.avatarImage} alt="" />
+        : (user.name || user.username || '甄').slice(0, 1)}
+    </span>
+  );
 }
 
-function avatar(user: NonNullable<ReturnType<typeof useShop>['user']>) {
-  if (user.avatarType === 'image' && user.avatarImage) return <img src={user.avatarImage} alt={user.name} />;
-  return <span>{(user.name || user.username || '甄').slice(0, 1)}</span>;
-}
-
-export function AppChrome({ children }: { children: React.ReactNode }) {
+export function AppChrome({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
   const { user, cart, logout } = useShop();
   const [cartOpen, setCartOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
-  const [homeSearchOpen, setHomeSearchOpen] = useState(false);
-  const [homeSearchValue, setHomeSearchValue] = useState('');
-  const [floatingCartPosition, setFloatingCartPosition] = useState<FloatingCartPosition | null>(readFloatingCartPosition);
-  const [floatingCartDragging, setFloatingCartDragging] = useState(false);
-  const floatingCartRef = useRef<HTMLDivElement | null>(null);
-  const floatingCartPositionRef = useRef<FloatingCartPosition | null>(floatingCartPosition);
-  const floatingCartPositionPersistedRef = useRef(Boolean(floatingCartPosition));
-  const floatingCartDragRef = useRef<{
-    pointerId: number;
-    offsetX: number;
-    offsetY: number;
-    startX: number;
-    startY: number;
-    width: number;
-    height: number;
-    moved: boolean;
-  } | null>(null);
-  const suppressFloatingCartClickRef = useRef(false);
-  const reportQuery = searchParams.get('report');
-  const productQuery = searchParams.get('product');
-  const paymentOrderId = Number(searchParams.get('wechatPayOrderId'));
-  const isPaymentReturn = Number.isSafeInteger(paymentOrderId) && paymentOrderId > 0
-    && ((searchParams.has('code') && searchParams.has('state'))
-      || searchParams.get('wechatPayReturn') === '1');
-  const authPage = location.pathname.startsWith('/auth');
-  const checkoutPage = location.pathname.startsWith('/checkout');
-  const detailPage = location.pathname.startsWith('/reports/')
-    || location.pathname.startsWith('/products/')
-    || location.pathname.startsWith('/merchants/')
-    || checkoutPage
-    || (location.pathname === '/' && Boolean(reportQuery || productQuery));
-  const homePage = location.pathname === '/' && !detailPage;
-  const homeContent = searchParams.get('content')?.toUpperCase();
-  const homeKeyword = (searchParams.get('keyword') ?? '').trim();
-  const mallActive = location.pathname.startsWith('/mall');
-  const profileLanding = location.pathname === '/profile';
-  const profileSubPage = location.pathname.startsWith('/profile/');
-  const profileBackTarget = /^\/profile\/orders\/[^/]+$/.test(location.pathname)
-    ? '/profile/orders'
-    : /^\/profile\/trials\/[^/]+$/.test(location.pathname)
-      ? '/profile/trials'
-      : /^\/profile\/coupons\/[^/]+$/.test(location.pathname)
-        ? '/profile/coupons'
-        : '/profile';
-  const profileActive = location.pathname.startsWith('/profile')
-    || location.pathname.startsWith('/checkout')
-    || isPaymentReturn;
+  const activeNav = getActiveNav(location.pathname);
   const cartCount = getCartCount(cart);
+  const authPage = location.pathname.startsWith('/auth') || location.pathname.startsWith('/sso/');
+  const checkoutPage = location.pathname.startsWith('/checkout');
+  const publishPage = location.pathname === '/posts/publish';
+  const immersiveDetailPage = location.pathname.startsWith('/products/')
+    || location.pathname.startsWith('/reports/');
+  const hideMobileNav = authPage || checkoutPage || publishPage || immersiveDetailPage;
+  const showCartFloat = !authPage && !checkoutPage
+    && (activeNav === 'mall' || location.pathname.startsWith('/products'));
 
-  const clampFloatingCartPosition = useCallback((position: FloatingCartPosition, width: number, height: number) => {
-    const blockers = [styles.navBar, styles.productFixedBar]
-      .map((className) => document.querySelector<HTMLElement>(`.${className}`))
-      .filter((element): element is HTMLElement => Boolean(element))
-      .map((element) => element.getBoundingClientRect())
-      .filter((rect) => rect.width > 0 && rect.height > 0 && rect.top < window.innerHeight);
-    const bottomBoundary = blockers.reduce(
-      (boundary, rect) => Math.min(boundary, rect.top),
-      window.innerHeight - floatingCartMargin,
-    );
-    const maxX = Math.max(floatingCartMargin, window.innerWidth - width - floatingCartMargin);
-    const maxY = Math.max(floatingCartMargin, bottomBoundary - height - floatingCartMargin);
-    return {
-      x: Math.min(Math.max(position.x, floatingCartMargin), maxX),
-      y: Math.min(Math.max(position.y, floatingCartMargin), maxY),
-    };
-  }, []);
-
-  const updateFloatingCartPosition = useCallback((position: FloatingCartPosition, persist = false) => {
-    floatingCartPositionRef.current = position;
-    setFloatingCartPosition(position);
-    if (persist) {
-      floatingCartPositionPersistedRef.current = true;
-      persistFloatingCartPosition(position);
-    }
-  }, []);
-
-  useEffect(() => {
-    setHomeSearchValue(homeKeyword);
-    setHomeSearchOpen(Boolean(homeKeyword));
-  }, [homeKeyword]);
-
-  useEffect(() => {
-    const keepFloatingCartInView = () => {
-      const element = floatingCartRef.current;
-      const position = floatingCartPositionRef.current;
-      if (!element) return;
-      const rect = element.getBoundingClientRect();
-      updateFloatingCartPosition(clampFloatingCartPosition(
-        position ?? { x: rect.left, y: rect.top },
-        rect.width,
-        rect.height,
-      ), floatingCartPositionPersistedRef.current);
-    };
-    const frame = window.requestAnimationFrame(keepFloatingCartInView);
-    window.addEventListener('resize', keepFloatingCartInView);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener('resize', keepFloatingCartInView);
-    };
-  }, [clampFloatingCartPosition, location.pathname, location.search, updateFloatingCartPosition]);
-
-  const startFloatingCartDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.pointerType === 'mouse' && event.button !== 0) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    floatingCartDragRef.current = {
-      pointerId: event.pointerId,
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top,
-      startX: event.clientX,
-      startY: event.clientY,
-      width: rect.width,
-      height: rect.height,
-      moved: false,
-    };
-    suppressFloatingCartClickRef.current = false;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setFloatingCartDragging(true);
-  };
-
-  const moveFloatingCart = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const drag = floatingCartDragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 4) drag.moved = true;
-    if (!drag.moved) return;
-    event.preventDefault();
-    updateFloatingCartPosition(clampFloatingCartPosition({
-      x: event.clientX - drag.offsetX,
-      y: event.clientY - drag.offsetY,
-    }, drag.width, drag.height));
-  };
-
-  const endFloatingCartDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const drag = floatingCartDragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    floatingCartDragRef.current = null;
-    setFloatingCartDragging(false);
-    if (drag.moved && floatingCartPositionRef.current) {
-      suppressFloatingCartClickRef.current = true;
-      floatingCartPositionPersistedRef.current = true;
-      persistFloatingCartPosition(floatingCartPositionRef.current);
-      window.setTimeout(() => {
-        suppressFloatingCartClickRef.current = false;
-      }, 0);
-    }
-  };
-
-  const openFloatingCart = () => {
-    if (suppressFloatingCartClickRef.current) {
-      suppressFloatingCartClickRef.current = false;
+  const openPath = (item: MainNavItem) => {
+    if (item.protected && !user) {
+      message.info('登录后可查看内容、订单和权益');
+      navigate(`/auth?redirect=${encodeURIComponent(item.path)}`);
       return;
     }
-    if (user) setCartOpen(true);
-    else navigate('/auth');
+    navigate(item.path);
   };
 
-  const openProtected = (path: string) => {
+  const goPublish = () => {
     if (!user) {
-      message.info('请先登录');
-      navigate('/auth');
+      message.info('登录后才能发布甄客帖');
+      navigate(`/auth?redirect=${encodeURIComponent('/posts/publish')}`);
       return;
     }
-    navigate(path);
+    navigate('/posts/publish');
   };
 
-  const selectHomeContent = (content: 'REPORT' | 'TRIAL') => {
-    if (homeContent === content && !homeKeyword) {
-      navigate('/');
-    } else {
-      navigate(`/?content=${content}`);
-    }
-    setHomeSearchOpen(false);
-  };
-
-  const submitHomeSearch = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const keyword = homeSearchValue.trim();
-    if (!keyword) {
-      message.info('请输入搜索关键词');
-      return;
-    }
-    navigate(`/?keyword=${encodeURIComponent(keyword)}`);
-  };
-
-  const closeHomeSearch = () => {
-    setHomeSearchOpen(false);
-    setHomeSearchValue('');
-    if (homeKeyword) navigate('/');
-  };
+  const brand = (
+    <button type="button" className={styles.brand} onClick={() => navigate('/')} aria-label="返回甄客行首页">
+      <span className={styles.brandMark}>甄</span>
+      <span className={styles.brandCopy}>
+        <strong>甄客行</strong>
+        <small>城市生活 · 真实分享</small>
+      </span>
+    </button>
+  );
 
   return (
-    <>
-      <div className={`${styles.appShell} ${authPage ? styles.authPage : ''} ${profileLanding ? styles.profilePage : ''} ${mallActive ? styles.mallApp : ''}`}>
-        {!detailPage && !authPage && !mallActive && !profileLanding && (
-          <header
-            className={`${styles.masthead} ${homePage ? styles.homeMasthead : ''} ${profileSubPage ? styles.profileSubPageMasthead : ''}`}
-          >
-            {homePage && homeSearchOpen ? (
-              <form className={styles.homeGlobalSearchForm} role="search" onSubmit={submitHomeSearch}>
-                <SearchOutlined aria-hidden="true" />
-                <input
-                  autoFocus
-                  maxLength={50}
-                  value={homeSearchValue}
-                  aria-label="全局搜索"
-                  placeholder="搜索试用、甄客验、商品或商家"
-                  onChange={(event) => setHomeSearchValue(event.target.value)}
-                />
-                <button type="submit">搜索</button>
-                <button type="button" className={styles.homeSearchClose} aria-label="关闭搜索" onClick={closeHomeSearch}>
-                  <CloseOutlined />
-                </button>
-              </form>
-            ) : homePage ? (
-              <div className={styles.homeDiscoveryNav} aria-label="首页内容分类">
-                <div className={styles.homeNavRail}>
+    <div className={styles.appShell}>
+      {!authPage && (
+        <>
+          <header className={styles.desktopHeader}>
+            <div className={styles.headerInner}>
+              {brand}
+              <nav className={styles.desktopNav} aria-label="甄客行主导航">
+                {navItems.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    className={`${styles.navItem} ${activeNav === item.key ? styles.navActive : ''}`}
+                    aria-current={activeNav === item.key ? 'page' : undefined}
+                    onClick={() => openPath(item)}
+                  >
+                    {item.icon}
+                    {item.label}
+                  </button>
+                ))}
+              </nav>
+              <div className={styles.headerActions}>
+                {user && (
+                  <button type="button" className={styles.circleAction} aria-label="收货地址" onClick={() => setAddressOpen(true)}>
+                    <EnvironmentOutlined />
+                  </button>
+                )}
+                <Badge count={cartCount} size="small">
                   <button
                     type="button"
-                    className={`${styles.homeNavItem} ${styles.homeNavSide} ${homeContent === 'REPORT' ? styles.homeContentActive : ''}`}
-                    aria-pressed={homeContent === 'REPORT'}
-                    onClick={() => selectHomeContent('REPORT')}
+                    className={styles.circleAction}
+                    aria-label="购物车"
+                    onClick={() => user ? setCartOpen(true) : navigate('/auth?redirect=/mall')}
                   >
-                    <span>甄客验</span>
+                    <ShoppingCartOutlined />
                   </button>
-                  <button
-                    type="button"
-                    className={`${styles.homeNavItem} ${styles.homeNavSide} ${homeContent === 'TRIAL' ? styles.homeContentActive : ''}`}
-                    aria-pressed={homeContent === 'TRIAL'}
-                    onClick={() => selectHomeContent('TRIAL')}
-                  >
-                    <span>试用</span>
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  className={`${styles.homeNavItem} ${styles.homeNavBrand} ${!homeContent ? styles.homeContentActive : ''}`}
-                  aria-pressed={!homeContent}
-                  onClick={() => navigate('/')}
-                >
-                  <span className={styles.homeBrandDepth} data-text="㤫者商城">㤫者商城</span>
-                </button>
-                <button
-                  type="button"
-                  className={styles.homeSearchButton}
-                  aria-label="打开全局搜索"
-                  onClick={() => setHomeSearchOpen(true)}
-                >
-                  <SearchOutlined />
-                </button>
-              </div>
-            ) : profileSubPage ? (
-              <div className={styles.mastheadBrandGroup}>
-                <ProfileBackButton onClick={() => navigate(profileBackTarget)} />
-                <button type="button" className={styles.brandLockup} onClick={() => navigate('/')}>
-                  <h1>㤫者商城</h1>
-                </button>
-              </div>
-            ) : (
-              <button type="button" className={styles.brandLockup} onClick={() => navigate('/')}>
-                <h1>㤫者商城</h1>
-              </button>
-            )}
-            <div className={styles.headerActions}>
-              {user ? (
-                <>
-                  <Button icon={<ShoppingCartOutlined />} onClick={() => setCartOpen(true)}>
-                    购物车 {cartCount}
-                  </Button>
-                  <Button className={styles.addressButton} icon={<EnvironmentOutlined />} onClick={() => setAddressOpen(true)}>
-                    收货地址
-                  </Button>
-                  <div className={styles.accountMenu}>
-                    <Dropdown
-                      trigger={['hover', 'click']}
-                      placement="bottomRight"
-                      arrow
-                      classNames={{ root: styles.accountPopup }}
-                      menu={{
-                        items: [{ key: 'logout', danger: true, icon: <LogoutOutlined />, label: '退出登录' }],
-                        onClick: async () => {
+                </Badge>
+                {user ? (
+                  <Dropdown
+                    trigger={['click']}
+                    menu={{
+                      items: [
+                        { key: 'profile', icon: <SettingOutlined />, label: '账号与设置' },
+                        { type: 'divider' },
+                        { key: 'logout', danger: true, icon: <LogoutOutlined />, label: '退出登录' },
+                      ],
+                      onClick: async ({ key }) => {
+                        if (key === 'profile') navigate('/profile');
+                        if (key === 'logout') {
                           await logout();
                           navigate('/');
-                          message.success('已退出登录');
-                        },
-                      }}
-                    >
-                      <button type="button" className={styles.accountButton} aria-label="打开账号操作菜单">
-                        <span className={styles.accountAvatar}>{avatar(user)}</span>
-                        <span className={styles.accountText}>
-                          <span className={styles.accountName}>{user.name}</span>
-                          <span className={styles.accountRole}>{user.roleName || '甄客'}</span>
-                        </span>
-                        <DownOutlined className={styles.accountChevron} />
-                      </button>
-                    </Dropdown>
-                  </div>
-                </>
-              ) : (
-                <Button type="primary" onClick={() => navigate('/auth')}>登录 / 注册</Button>
+                          message.success('已安全退出');
+                        }
+                      },
+                    }}
+                  >
+                    <button type="button" className={styles.userAction}>
+                      <UserAvatar />
+                      <span>{user.name || user.username}</span>
+                      <DownOutlined />
+                    </button>
+                  </Dropdown>
+                ) : (
+                  <button type="button" className={styles.loginAction} onClick={() => navigate(`/auth?redirect=${encodeURIComponent(location.pathname)}`)}>
+                    登录 / 注册
+                  </button>
+                )}
+              </div>
+            </div>
+          </header>
+
+          <header className={styles.mobileTopbar}>
+            {brand}
+            <div className={styles.headerActions}>
+              <Badge count={cartCount} size="small">
+                <button
+                  type="button"
+                  className={styles.circleAction}
+                  aria-label="购物车"
+                  onClick={() => user ? setCartOpen(true) : navigate('/auth?redirect=/mall')}
+                >
+                  <ShoppingCartOutlined />
+                </button>
+              </Badge>
+              {!user && (
+                <button type="button" className={styles.loginAction} onClick={() => navigate(`/auth?redirect=${encodeURIComponent(location.pathname)}`)}>
+                  登录
+                </button>
               )}
             </div>
           </header>
-        )}
+        </>
+      )}
 
-        {!authPage && (
-          <nav className={styles.navBar} aria-label="主导航">
-            <div className={styles.topNav}>
-              <button
-                type="button"
-                className={!mallActive && !profileActive ? styles.activeTab : ''}
-                aria-current={!mallActive && !profileActive ? 'page' : undefined}
-                onClick={() => navigate('/')}
-              >
-                <span className={styles.dockIcon}><HomeOutlined /></span>
-                <span className={styles.dockLabel}>首页</span>
-              </button>
-              <button
-                type="button"
-                className={mallActive ? styles.activeTab : ''}
-                aria-current={mallActive ? 'page' : undefined}
-                onClick={() => navigate('/mall')}
-              >
-                <span className={styles.dockIcon}><AppstoreOutlined /></span>
-                <span className={styles.dockLabel}>商城</span>
-              </button>
-              <button
-                type="button"
-                className={profileActive ? styles.activeTab : ''}
-                aria-current={profileActive ? 'page' : undefined}
-                onClick={() => openProtected('/profile')}
-              >
-                <span className={styles.dockIcon}><UserOutlined /></span>
-                <span className={styles.dockLabel}>我的</span>
-              </button>
-            </div>
-          </nav>
-        )}
+      {children}
 
-        {children}
-      </div>
+      {!hideMobileNav && (
+        <nav className={styles.mobileNav} aria-label="移动端主导航">
+          {navItems.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={`${styles.mobileNavItem} ${activeNav === item.key ? styles.mobileNavActive : ''}`}
+              aria-current={activeNav === item.key ? 'page' : undefined}
+              onClick={() => openPath(item)}
+            >
+              <span>{item.icon}</span>
+              <small>{item.label}</small>
+            </button>
+          ))}
+        </nav>
+      )}
 
-      {!checkoutPage && !authPage && (
-        <div
-          ref={floatingCartRef}
-          className={`${styles.fixedCartBadge} ${floatingCartDragging ? styles.fixedCartDragging : ''}`}
-          style={floatingCartPosition ? {
-            top: floatingCartPosition.y,
-            right: 'auto',
-            bottom: 'auto',
-            left: floatingCartPosition.x,
-          } : undefined}
-          onPointerDown={startFloatingCartDrag}
-          onPointerMove={moveFloatingCart}
-          onPointerUp={endFloatingCartDrag}
-          onPointerCancel={endFloatingCartDrag}
-          onClick={openFloatingCart}
-        >
-          <Badge count={cartCount} size="small">
-            <Button
-              aria-label="打开购物车"
-              className={styles.fixedCartButton}
-              type="primary"
-              shape="circle"
-              icon={<ShoppingCartOutlined />}
-            />
+      {!authPage && !checkoutPage && !publishPage && !immersiveDetailPage && (
+        <button type="button" className={styles.floatingPublish} onClick={goPublish}>
+          <EditOutlined />
+          <span className={styles.floatingPublishText}>发布甄客帖</span>
+        </button>
+      )}
+
+      {showCartFloat && (
+        <div className={styles.cartFloat}>
+          <Badge count={cartCount}>
+            <button type="button" className={styles.circleAction} onClick={() => user ? setCartOpen(true) : navigate('/auth?redirect=/mall')}>
+              <ShoppingCartOutlined />
+            </button>
           </Badge>
         </div>
       )}
@@ -438,6 +233,6 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
       <AddressManager open={addressOpen} onClose={() => setAddressOpen(false)} />
       <NativePayModal />
-    </>
+    </div>
   );
 }

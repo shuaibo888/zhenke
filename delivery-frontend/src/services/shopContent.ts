@@ -31,6 +31,12 @@ export interface PublicProductDto {
   brandName: string;
   productName: string;
   subtitle?: string;
+  packageContent?: string;
+  usageNotice?: string;
+  validityDescription?: string;
+  reservationRequired?: '0' | '1';
+  reservationNotice?: string;
+  refundExpiryRule?: string;
   coverUrl: string;
   price: number;
   stock: number;
@@ -360,6 +366,7 @@ export interface HomeSearchQuery {
 
 export interface MallProductsQuery {
   categoryId?: number;
+  merchantId?: number;
   keyword?: string;
   pageNum?: number;
   pageSize?: number;
@@ -424,6 +431,7 @@ export async function fetchMallProducts(query: MallProductsQuery = {}) {
     pageSize: String(pageSize),
   });
   if (query.categoryId) params.set('categoryId', String(query.categoryId));
+  if (query.merchantId) params.set('merchantId', String(query.merchantId));
   const keyword = query.keyword?.trim();
   if (keyword) params.set('keyword', keyword);
   const result = await requestApi<TableResponse<MallProductDto>>(

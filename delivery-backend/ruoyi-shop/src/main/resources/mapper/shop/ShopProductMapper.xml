@@ -30,6 +30,7 @@
         <result property="productName" column="product_name" />
         <result property="subtitle" column="subtitle" />
         <result property="detail" column="detail" />
+        <result property="packageContent" column="package_content" /><result property="usageNotice" column="usage_notice" /><result property="validityDescription" column="validity_description" /><result property="reservationRequired" column="reservation_required" /><result property="reservationNotice" column="reservation_notice" /><result property="refundExpiryRule" column="refund_expiry_rule" />
         <result property="coverUrl" column="cover_url" />
         <result property="price" column="price" />
         <result property="stock" column="stock" />
@@ -58,7 +59,7 @@
     <sql id="selectProduct">
         select p.product_id, p.merchant_id, m.shop_name as merchant_name,
                p.category_id, c.category_code, c.category_name,
-               p.brand_name, p.product_name, p.subtitle, p.detail, p.cover_url, p.price,
+               p.brand_name, p.product_name, p.subtitle, p.detail, p.package_content, p.usage_notice, p.validity_description, p.reservation_required, p.reservation_notice, p.refund_expiry_rule, p.cover_url, p.price,
                p.stock, p.supports_online, p.supports_offline, coalesce((
                    select sum(oi.quantity)
                    from shop_order_item oi
@@ -225,6 +226,7 @@
             and m.audit_status = 'APPROVED' and m.status = '0'
             and c.status = '0'
             <if test="categoryId != null">and p.category_id = #{categoryId}</if>
+            <if test="merchantId != null">and p.merchant_id = #{merchantId}</if>
             <if test="keyword != null and keyword != ''">
                 and (
                     p.product_name like concat('%', #{keyword}, '%')
@@ -242,7 +244,7 @@
     <select id="selectPublicProduct" parameterType="Long" resultMap="ShopProductResult">
         select p.product_id, p.merchant_id, m.shop_name as merchant_name,
                p.category_id, c.category_code, c.category_name,
-               p.brand_name, p.product_name, p.subtitle, p.detail, p.cover_url, p.price, p.stock,
+               p.brand_name, p.product_name, p.subtitle, p.detail, p.package_content, p.usage_notice, p.validity_description, p.reservation_required, p.reservation_notice, p.refund_expiry_rule, p.cover_url, p.price, p.stock,
                p.supports_online, p.supports_offline, coalesce((
                    select sum(oi.quantity)
                    from shop_order_item oi
@@ -284,17 +286,17 @@
 
     <insert id="insertProduct" parameterType="ShopProduct" useGeneratedKeys="true" keyProperty="productId">
         insert into shop_product
-        (merchant_id, category_id, brand_name, product_name, subtitle, detail, cover_url,
+        (merchant_id, category_id, brand_name, product_name, subtitle, detail, package_content, usage_notice, validity_description, reservation_required, reservation_notice, refund_expiry_rule, cover_url,
          price, stock, supports_online, supports_offline, sales_count, status, del_flag, create_by, create_time, update_by, update_time)
         values
-        (#{merchantId}, #{categoryId}, #{brandName}, #{productName}, #{subtitle}, #{detail}, #{coverUrl},
+        (#{merchantId}, #{categoryId}, #{brandName}, #{productName}, #{subtitle}, #{detail}, #{packageContent}, #{usageNotice}, #{validityDescription}, #{reservationRequired}, #{reservationNotice}, #{refundExpiryRule}, #{coverUrl},
          #{price}, #{stock}, #{supportsOnline}, #{supportsOffline}, 0, 'DRAFT', '0', #{createBy}, sysdate(), #{updateBy}, sysdate())
     </insert>
 
     <update id="updateMerchantProduct" parameterType="ShopProduct">
         update shop_product
         set category_id = #{categoryId}, brand_name = #{brandName}, product_name = #{productName}, subtitle = #{subtitle},
-            detail = #{detail}, cover_url = #{coverUrl}, price = #{price}, stock = #{stock},
+            detail = #{detail}, package_content=#{packageContent}, usage_notice=#{usageNotice}, validity_description=#{validityDescription}, reservation_required=#{reservationRequired}, reservation_notice=#{reservationNotice}, refund_expiry_rule=#{refundExpiryRule}, cover_url = #{coverUrl}, price = #{price}, stock = #{stock},
             supports_online = #{supportsOnline}, supports_offline = #{supportsOffline},
             update_by = #{updateBy}, update_time = sysdate()
         where product_id = #{productId} and merchant_id = #{merchantId} and del_flag = '0'

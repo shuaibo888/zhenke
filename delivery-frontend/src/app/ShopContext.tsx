@@ -674,7 +674,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         title="登录状态已过期"
         footer={null}
         closable={false}
-        maskClosable={false}
+        mask={{ closable: false }}
         centered
         width={380}
       >

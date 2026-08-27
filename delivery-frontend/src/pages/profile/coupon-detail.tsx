@@ -7,6 +7,7 @@ import { Button, QRCode, Result, Spin, Tag, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { ZkTaskHeader } from '@/components/ZkPage';
 import {
   fetchMyCoupon,
   fetchPublicMerchant,
@@ -82,6 +83,7 @@ export default function CouponDetailPage() {
 
   return (
     <main className={`${styles.profileDetailPage} ${styles.couponDetailPage}`}>
+        <ZkTaskHeader eyebrow="权益资产" title="优惠券详情" description="核对适用商家、使用条件、有效期和真实核销状态。" backTo="/profile/coupons" />
       <section className={styles.couponDetailHero}>
         <Tag color={meta.color}>{meta.label}</Tag>
         <strong>{formatPrice(coupon.discountAmount)}</strong>

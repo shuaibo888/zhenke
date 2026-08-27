@@ -40,6 +40,13 @@ public class ShopProductBody
     @Max(value = 999999999, message = "商品库存过大")
     private Integer stock;
 
+    @Size(max = 5000) private String packageContent;
+    @Size(max = 5000) private String usageNotice;
+    @Size(max = 500) private String validityDescription;
+    private Boolean reservationRequired;
+    @Size(max = 500) private String reservationNotice;
+    @Size(max = 1000) private String refundExpiryRule;
+
     private Boolean supportsOnline;
     private Boolean supportsOffline;
 
@@ -63,6 +70,7 @@ public class ShopProductBody
     public void setPrice(BigDecimal price) { this.price = price; }
     public Integer getStock() { return stock; }
     public void setStock(Integer stock) { this.stock = stock; }
+    public String getPackageContent(){return packageContent;} public void setPackageContent(String v){packageContent=v;} public String getUsageNotice(){return usageNotice;} public void setUsageNotice(String v){usageNotice=v;} public String getValidityDescription(){return validityDescription;} public void setValidityDescription(String v){validityDescription=v;} public Boolean getReservationRequired(){return reservationRequired;} public void setReservationRequired(Boolean v){reservationRequired=v;} public String getReservationNotice(){return reservationNotice;} public void setReservationNotice(String v){reservationNotice=v;} public String getRefundExpiryRule(){return refundExpiryRule;} public void setRefundExpiryRule(String v){refundExpiryRule=v;}
     public Boolean getSupportsOnline() { return supportsOnline; }
     public void setSupportsOnline(Boolean supportsOnline) { this.supportsOnline = supportsOnline; }
     public Boolean getSupportsOffline() { return supportsOffline; }

@@ -9,130 +9,119 @@ import {
   ShopOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
-import { Spin, message } from 'antd';
-import { useEffect, useState } from 'react';
+import { Button } from 'antd';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
+import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
 import {
+  fetchMallProducts,
   fetchPublicMerchant,
+  type MallProductDto,
   type PublicMerchantDto,
 } from '@/services/shopContent';
-import styles from '@/styles/commerce.less';
 import { openMerchantNavigation } from '@/utils/merchantNavigation';
+import styles from '@/styles/zhenke.less';
 
 export default function MerchantDetailPage() {
   const navigate = useNavigate();
-  const params = useParams();
-  const merchantId = Number(params.merchantId);
-  const [merchant, setMerchant] = useState<PublicMerchantDto | null>(null);
+  const { merchantId: rawMerchantId } = useParams<{ merchantId: string }>();
+  const merchantId = Number(rawMerchantId);
+  const [merchant, setMerchant] = useState<PublicMerchantDto>();
+  const [products, setProducts] = useState<MallProductDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [openingNavigation, setOpeningNavigation] = useState(false);
 
-  const handleNavigation = async () => {
-    if (!merchant || openingNavigation) return;
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [merchantDetail, productResult] = await Promise.all([
+        fetchPublicMerchant(merchantId),
+        fetchMallProducts({ merchantId, pageNum: 1, pageSize: 12 }),
+      ]);
+      setMerchant(merchantDetail);
+      setProducts(productResult.rows);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '商家不存在或暂不可访问');
+    } finally {
+      setLoading(false);
+    }
+  }, [merchantId]);
+
+  useEffect(() => {
+    if (Number.isSafeInteger(merchantId) && merchantId > 0) void load();
+    else {
+      setLoading(false);
+      setError('商家链接无效');
+    }
+  }, [load, merchantId]);
+
+  if (loading) return <main className={styles.page}><ZkState kind="loading" title="正在打开商家" /></main>;
+  if (!merchant || error) {
+    return <main className={styles.page}><ZkState kind="error" title="商家暂不可访问" description={error} actionText="返回商城" onAction={() => navigate('/mall')} /></main>;
+  }
+
+  const navigateToStore = async () => {
+    if (openingNavigation) return;
     setOpeningNavigation(true);
     try {
       await openMerchantNavigation(merchant);
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : '导航打开失败');
     } finally {
       setOpeningNavigation(false);
     }
   };
 
-  useEffect(() => {
-    if (!Number.isSafeInteger(merchantId) || merchantId <= 0) {
-      setLoading(false);
-      return;
-    }
-    let mounted = true;
-    setLoading(true);
-    fetchPublicMerchant(merchantId)
-      .then((result) => {
-        if (mounted) setMerchant(result);
-      })
-      .catch((error) => {
-        if (mounted) message.error(error instanceof Error ? error.message : '商家详情加载失败');
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [merchantId]);
-
-  if (loading) return <main className={styles.sessionLoading}><Spin size="large" /></main>;
-  if (!merchant) {
-    return <main className={styles.singleColumn}><p className={styles.empty}>商家不存在或暂不可访问。</p></main>;
-  }
-
   return (
-    <main className={`${styles.journeyPage} ${styles.merchantDetailPage}`}>
-      <header className={styles.reportDetailBar}>
-        <button type="button" className={styles.reportDetailBack} aria-label="返回" onClick={() => navigate(-1)}>
+    <main className={styles.page}>
+      <div className={styles.detailTopbar}>
+        <button type="button" className={styles.backButton} onClick={() => navigate(-1)} aria-label="返回">
           <ArrowLeftOutlined />
         </button>
-        <span className={styles.trialDetailTitle}>商家详情</span>
-        <span className={styles.merchantDetailHeaderPlaceholder} />
-      </header>
+        <strong>入驻商家</strong>
+      </div>
 
-      <section className={styles.merchantDetailHero}>
-        <span className={styles.merchantDetailLogo}><ShopOutlined /></span>
-        <div>
-          <small>实体商家</small>
-          <h1>{merchant.shopName}</h1>
+      <section className={`${styles.placeHero} ${styles.surface}`}>
+        <span className={styles.locationLabel}><ShopOutlined /> 已审核入驻商家</span>
+        <h1>{merchant.shopName}</h1>
+        <p>{merchant.storeAddress}</p>
+        <div className={styles.placeFacts}>
+          <span><SafetyCertificateOutlined /> 入驻资料已审核</span>
+          <span><EnvironmentOutlined /> 可导航实体地址</span>
+        </div>
+        <Button type="primary" size="large" icon={<CompassOutlined />} loading={openingNavigation} onClick={() => void navigateToStore()}>
+          导航到店
+        </Button>
+      </section>
+
+      <section className={`${styles.surface} ${styles.profileGroup}`} style={{ marginTop: 16 }}>
+        <header className={styles.profileGroupHeader}>
+          <h2>商家公开信息</h2>
+          <p>普通地图地点不等于已入驻商家；以下主体来自现有 shop_merchant 审核资料。</p>
+        </header>
+        <div className={styles.profileEntryGrid}>
+          <div className={styles.profileEntry}><span className={styles.profileEntryIcon}><BankOutlined /></span><span className={styles.profileEntryCopy}><strong>营业执照主体</strong><small>{merchant.companyName}</small></span></div>
+          <div className={styles.profileEntry}><span className={styles.profileEntryIcon}><IdcardOutlined /></span><span className={styles.profileEntryCopy}><strong>统一社会信用代码</strong><small>{merchant.companyCreditCode}</small></span></div>
+          <div className={styles.profileEntry}><span className={styles.profileEntryIcon}><SafetyCertificateOutlined /></span><span className={styles.profileEntryCopy}><strong>法定代表人 / 经营者</strong><small>{merchant.legalPerson}</small></span></div>
+          <div className={styles.profileEntry}><span className={styles.profileEntryIcon}><TeamOutlined /></span><span className={styles.profileEntryCopy}><strong>商家联系人</strong><small>{merchant.contactName}</small></span></div>
+          <a className={styles.profileEntry} href={`tel:${merchant.contactPhone}`}><span className={styles.profileEntryIcon}><PhoneOutlined /></span><span className={styles.profileEntryCopy}><strong>联系电话</strong><small>{merchant.contactPhone}</small></span></a>
+          <button type="button" className={styles.profileEntry} onClick={() => void navigateToStore()}><span className={styles.profileEntryIcon}><EnvironmentOutlined /></span><span className={styles.profileEntryCopy}><strong>实体店地址</strong><small>{merchant.storeAddress}</small></span></button>
         </div>
       </section>
 
-      <section className={styles.merchantDetailPanel}>
-        <h2>商家资质与联系信息</h2>
-        <dl className={styles.merchantDetailList}>
-          <div>
-            <dt><BankOutlined />营业执照主体名称</dt>
-            <dd>{merchant.companyName}</dd>
-          </div>
-          <div>
-            <dt><IdcardOutlined />统一社会信用代码</dt>
-            <dd>{merchant.companyCreditCode}</dd>
-          </div>
-          <div>
-            <dt><SafetyCertificateOutlined />法定代表人/经营者</dt>
-            <dd>{merchant.legalPerson}</dd>
-          </div>
-          <div>
-            <dt><TeamOutlined />商家联系人</dt>
-            <dd>{merchant.contactName}</dd>
-          </div>
-          <div>
-            <dt><PhoneOutlined />联系电话</dt>
-            <dd><a href={`tel:${merchant.contactPhone}`}>{merchant.contactPhone}</a></dd>
-          </div>
-          <div>
-            <dt><EnvironmentOutlined />实体店地址</dt>
-            <dd>{merchant.storeAddress}</dd>
-          </div>
-        </dl>
-      </section>
-
-      <section className={styles.merchantVisitCard}>
-        <div className={styles.merchantVisitCopy}>
-          <span><EnvironmentOutlined /></span>
-          <div>
-            <strong>前往实体店</strong>
-            <small>{merchant.storeAddress}</small>
-          </div>
+      <ZkSectionTitle title="商家在售商品" description="读取该商家的真实在售商品；无商品时不生成占位套餐。" />
+      {products.length === 0 ? (
+        <ZkState title="这家商户暂时没有在售商品" description="仍可查看公开资料和使用地图导航。" />
+      ) : (
+        <div className={styles.productGrid}>
+          {products.map((product) => (
+            <article key={product.productId} className={styles.productCard} onClick={() => navigate(`/products/${product.productId}`)}>
+              <span className={styles.productCover}><img src={product.coverUrl} alt={product.productName} /><em>{product.categoryName}</em></span>
+              <span className={styles.productCardBody}><small>{product.brandName}</small><h3>{product.productName}</h3><p>{product.subtitle}</p><span className={styles.productCardFooter}><strong className={styles.productPrice}>¥{Number(product.price).toFixed(2)}</strong><span className={styles.productSales}>已售 {product.salesCount}</span></span></span>
+            </article>
+          ))}
         </div>
-        <button
-          type="button"
-          className={styles.merchantDetailNavigate}
-          onClick={() => void handleNavigation()}
-          disabled={openingNavigation}
-        >
-          <CompassOutlined />
-          <span>{openingNavigation ? '正在打开…' : '导航到店'}</span>
-        </button>
-      </section>
-
+      )}
     </main>
   );
 }

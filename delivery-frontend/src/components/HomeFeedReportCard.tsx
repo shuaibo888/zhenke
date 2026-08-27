@@ -29,7 +29,7 @@ export function HomeFeedReportCard({
             src={item.coverUrl}
             alt={`${item.title}实拍`}
             preview={{
-              mask: <span className={styles.imagePreviewMask}><ZoomInOutlined />点击放大</span>,
+              cover: <span className={styles.imagePreviewMask}><ZoomInOutlined />点击放大</span>,
             }}
           />
         </div>

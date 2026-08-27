@@ -129,4 +129,20 @@ class ShopProductServiceTest
         body.setStatus("0");
         return body;
     }
+    @Test
+    void localLifeCategoryForcesOfflineAndRequiresPackageRules()
+    {
+        ShopMerchant merchant = new ShopMerchant(); merchant.setMerchantId(1L);
+        when(merchantService.currentMerchantAccount()).thenReturn(merchant);
+        ShopProductCategory category = new ShopProductCategory(); category.setCategoryId(1L); category.setCategoryCode("ZHENKE_HOTEL"); category.setStatus("0");
+        when(productMapper.selectCategoryById(1L)).thenReturn(category);
+        ShopProductBody body = validBody(); body.setCoverUrl("/profile/upload/product/c.jpg"); body.setMainImageUrls(List.of("/profile/upload/product/m.jpg")); body.setDetailImageUrls(List.of("/profile/upload/product/d.jpg")); body.setSupportsOnline(true); body.setSupportsOffline(false);
+        assertThrows(ServiceException.class, () -> productService.create(body, "merchant"));
+        body.setPackageContent("双人住宿套餐"); body.setUsageNotice("到店出示核销码"); body.setValidityDescription("购买后30日内"); body.setRefundExpiryRule("未核销可退款，过期自动退");
+        when(productMapper.insertProduct(any())).thenAnswer(i -> { ShopProduct p=i.getArgument(0); p.setProductId(99L); return 1; });
+        when(productMapper.selectMerchantProduct(1L,99L)).thenAnswer(i -> { ShopProduct p=new ShopProduct(); p.setProductId(99L); p.setSupportsOnline("0"); p.setSupportsOffline("1"); return p; });
+        when(productMapper.selectImages(99L)).thenReturn(List.of());
+        ShopProduct created=productService.create(body,"merchant"); assertEquals("0",created.getSupportsOnline()); assertEquals("1",created.getSupportsOffline());
+    }
+
 }

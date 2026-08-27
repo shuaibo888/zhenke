@@ -9,6 +9,8 @@ import {
   ProfileOutlined,
   RightOutlined,
   ShoppingCartOutlined,
+  SafetyCertificateOutlined,
+  SettingOutlined,
   TrophyOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
@@ -26,7 +28,8 @@ import {
   uploadShopAvatar,
   type ShopUserOverview,
 } from '@/services/shopAuth';
-import styles from '@/styles/commerce.less';
+import legacyStyles from '@/styles/commerce.less';
+import styles from '@/styles/zhenke.less';
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 const ALLOWED_AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif']);
@@ -111,50 +114,52 @@ export default function ProfilePage() {
     }
   };
 
+  const profileEntry = (options: {
+    icon: React.ReactNode;
+    title: string;
+    description: string;
+    meta?: string;
+    onClick: () => void;
+  }) => (
+    <button type="button" className={styles.profileEntry} onClick={options.onClick}>
+      <span className={styles.profileEntryIcon}>{options.icon}</span>
+      <span className={styles.profileEntryCopy}>
+        <strong>{options.title}</strong>
+        <small>{options.description}</small>
+      </span>
+      <span>{options.meta || <RightOutlined />}</span>
+    </button>
+  );
+
   return (
     <>
-      <main className={styles.profileGrid}>
-        <div className={styles.profileBrand}>㤫者商城</div>
-        <section className={styles.profileHeaderCard}>
-          <span className={styles.profileHeaderGlow} aria-hidden="true" />
-          <div className={styles.profileIdentity}>
-            <div className={styles.profileAvatar}>
-              {user.avatarType === 'image' && user.avatarImage
-                ? <img src={user.avatarImage} alt={user.name} />
-                : <span>{(user.name || user.username).slice(0, 1)}</span>}
-            </div>
-            <div className={styles.profileIdentityText}>
-              <span className={styles.profileKicker}>个人中心</span>
-              <h2>{user.name}</h2>
-              <p>{user.usernameInitialized ? `@${user.username}` : '手机号用户'} · {user.roleName || '甄客'}</p>
-            </div>
-            <button
-              type="button"
-              className={styles.profilePointsButton}
-              aria-label={overviewLoading ? '积分加载中' : `我的积分 ${overview?.pointsBalance ?? 0}`}
-              onClick={() => navigate('/profile/points')}
-            >
-              <TrophyOutlined className={styles.profilePointsIcon} />
-              <span>积分</span>
-              <strong>{overviewLoading ? '--' : overview?.pointsBalance ?? 0}</strong>
-            </button>
+      <main className={styles.page}>
+        <section className={styles.profileHero}>
+          <span className={styles.profileHeroAvatar}>
+            {user.avatarType === 'image' && user.avatarImage
+              ? <img src={user.avatarImage} alt={user.name} />
+              : (user.name || user.username).slice(0, 1)}
+          </span>
+          <div className={styles.profileHeroCopy}>
+            <small>甄客行 · 我的</small>
+            <h1>{user.name}</h1>
+            <p>{user.usernameInitialized ? `@${user.username}` : '手机号用户'} · {user.roleName || '甄客'}</p>
+            <span>同一个账号承接内容、消费履约和全部历史资产</span>
           </div>
-          <div className={styles.profileHeaderActions}>
-            <Button type="primary" icon={<EditOutlined />} onClick={() => {
-              nameForm.setFieldsValue({ name: user.name });
-              setProfileOpen(true);
-            }}>
-              编辑资料
-            </Button>
-            <Button icon={<EnvironmentOutlined />} onClick={() => setAddressOpen(true)}>收货地址</Button>
-            <Button danger icon={<LogoutOutlined />} onClick={confirmLogout}>退出登录</Button>
+          <div className={styles.profileStats}>
+            <button type="button" className={styles.profileStat} onClick={() => navigate('/profile/orders')}>
+              <strong>{overviewLoading ? '--' : overview?.orderCount ?? 0}</strong><small>全部订单</small>
+            </button>
+            <button type="button" className={styles.profileStat} onClick={() => navigate('/profile/points')}>
+              <strong>{overviewLoading ? '--' : overview?.pointsBalance ?? 0}</strong><small>可用积分</small>
+            </button>
           </div>
         </section>
 
         {(!user.usernameInitialized || !user.passwordInitialized) && (
-          <div className={styles.profileSetupNotice} role="status">
-            <ExclamationCircleFilled className={styles.profileSetupNoticeIcon} />
-            <strong>设置账号名和密码，登录更方便</strong>
+          <div className={styles.setupNotice} role="status">
+            <ExclamationCircleFilled />
+            <strong>完成账号名与密码设置，换设备登录更方便</strong>
             <Button type="primary" size="small" onClick={() => {
               setExpandedSection(!user.usernameInitialized ? 'username' : 'password');
               setProfileOpen(true);
@@ -162,54 +167,56 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <section className={styles.profileMenuPanel}>
-          <div className={styles.profileMenuHeading}>
-            <div>
-              <span>服务中心</span>
-              <h3>我的服务</h3>
+        <div className={styles.profileGroups}>
+          <section className={`${styles.surface} ${styles.profileGroup}`}>
+            <header className={styles.profileGroupHeader}>
+              <h2>内容创作</h2><p>自由地点分享与消费后可信体验，语义和资格彼此独立。</p>
+            </header>
+            <div className={styles.profileEntryGrid}>
+              {profileEntry({ icon: <FileTextOutlined />, title: '我的甄客帖', description: '围绕地点主动发布的生活内容', onClick: () => navigate('/profile/posts') })}
+              {profileEntry({ icon: <SafetyCertificateOutlined />, title: '我的甄客验', description: '基于订单、试用或核销资格的可信体验', meta: overviewLoading ? '…' : `${overview?.reportCount ?? 0} 篇`, onClick: () => navigate('/profile/reports') })}
             </div>
-            <p>选择模块后查看完整记录和进度</p>
-          </div>
-          <div className={styles.profileMenuGrid}>
-            <button type="button" className={styles.profileMenuItem} onClick={() => navigate('/profile/orders')}>
-              <span className={styles.profileMenuIcon}><ShoppingCartOutlined /></span>
-              <span className={styles.profileMenuCopy}>
-                <strong>我的订单</strong>
-                <small>付款、物流、收货与售后记录</small>
-              </span>
-              <span className={styles.profileMenuMeta}>{overviewLoading ? '加载中' : `${overview?.orderCount ?? 0} 笔`}</span>
-              <RightOutlined className={styles.profileMenuArrow} />
-            </button>
-            <button type="button" className={styles.profileMenuItem} onClick={() => navigate('/profile/coupons')}>
-              <span className={styles.profileMenuIcon}><GiftOutlined /></span>
-              <span className={styles.profileMenuCopy}>
-                <strong>我的优惠券</strong>
-                <small>查看可用、待生效、已使用与失效优惠券</small>
-              </span>
-              <span className={styles.profileMenuMeta}>{overviewLoading ? '加载中' : `${overview?.couponAvailableCount ?? 0} 张可用`}</span>
-              <RightOutlined className={styles.profileMenuArrow} />
-            </button>
-            <button type="button" className={styles.profileMenuItem} onClick={() => navigate('/profile/trials')}>
-              <span className={styles.profileMenuIcon}><ProfileOutlined /></span>
-              <span className={styles.profileMenuCopy}>
-                <strong>我的试用</strong>
-                <small>申请、审核、物流与发布进度</small>
-              </span>
-              <span className={styles.profileMenuMeta}>{overviewLoading ? '加载中' : `${overview?.trialCount ?? 0} 项`}</span>
-              <RightOutlined className={styles.profileMenuArrow} />
-            </button>
-            <button type="button" className={styles.profileMenuItem} onClick={() => navigate('/profile/reports')}>
-              <span className={styles.profileMenuIcon}><FileTextOutlined /></span>
-              <span className={styles.profileMenuCopy}>
-                <strong>我的甄客验</strong>
-                <small>查看已发布内容</small>
-              </span>
-              <span className={styles.profileMenuMeta}>{overviewLoading ? '加载中' : `${overview?.reportCount ?? 0} 篇`}</span>
-              <RightOutlined className={styles.profileMenuArrow} />
-            </button>
-          </div>
-        </section>
+          </section>
 
+          <section className={`${styles.surface} ${styles.profileGroup}`}>
+            <header className={styles.profileGroupHeader}>
+              <h2>消费履约</h2><p>配送订单与待使用核销码都在同一套订单体系中查看。</p>
+            </header>
+            <div className={styles.profileEntryGrid}>
+              {profileEntry({ icon: <ShoppingCartOutlined />, title: '我的订单与核销', description: '待付款、待使用、物流、退款与已完成', meta: overviewLoading ? '…' : `${overview?.orderCount ?? 0} 笔`, onClick: () => navigate('/profile/orders') })}
+              {profileEntry({ icon: <EnvironmentOutlined />, title: '收货地址', description: '仅用于需要快递配送的订单', onClick: () => setAddressOpen(true) })}
+            </div>
+          </section>
+
+          <section className={`${styles.surface} ${styles.profileGroup}`}>
+            <header className={styles.profileGroupHeader}>
+              <h2>权益资产</h2><p>优惠券和积分继续归属于原有 shop_user，不复制或迁移账号。</p>
+            </header>
+            <div className={styles.profileEntryGrid}>
+              {profileEntry({ icon: <GiftOutlined />, title: '优惠券', description: '可用、待生效、已使用与失效', meta: overviewLoading ? '…' : `${overview?.couponAvailableCount ?? 0} 张`, onClick: () => navigate('/profile/coupons') })}
+              {profileEntry({ icon: <TrophyOutlined />, title: '积分与记录', description: '查看余额、兑换和积分明细', meta: overviewLoading ? '…' : `${overview?.pointsBalance ?? 0} 分`, onClick: () => navigate('/profile/points') })}
+            </div>
+          </section>
+
+          <section className={`${styles.surface} ${styles.profileGroup}`}>
+            <header className={styles.profileGroupHeader}>
+              <h2>参与服务</h2><p>继续使用既有试用资格、审核、物流和核销闭环。</p>
+            </header>
+            <div className={styles.profileEntryGrid}>
+              {profileEntry({ icon: <ProfileOutlined />, title: '我的试用', description: '申请、审核、物流、核销与报告进度', meta: overviewLoading ? '…' : `${overview?.trialCount ?? 0} 项`, onClick: () => navigate('/profile/trials') })}
+            </div>
+          </section>
+
+          <section className={`${styles.surface} ${styles.profileGroup}`}>
+            <header className={styles.profileGroupHeader}>
+              <h2>设置与安全</h2><p>资料、账号名、密码、手机号和退出登录。</p>
+            </header>
+            <div className={styles.profileEntryGrid}>
+              {profileEntry({ icon: <EditOutlined />, title: '编辑资料与账号安全', description: '头像、昵称、账号名、密码和手机号', onClick: () => { nameForm.setFieldsValue({ name: user.name }); setProfileOpen(true); } })}
+              {profileEntry({ icon: <LogoutOutlined />, title: '退出登录', description: '安全结束当前设备上的登录状态', onClick: confirmLogout })}
+            </div>
+          </section>
+        </div>
       </main>
 
       <Modal
@@ -221,20 +228,20 @@ export default function ProfilePage() {
         }}
         footer={null}
         width={600}
-        rootClassName={`${styles.profileEditModal} ${styles.responsiveModal}`}
+        rootClassName={`${legacyStyles.profileEditModal} ${legacyStyles.responsiveModal}`}
       >
-        <div className={styles.profileEditSections}>
-          <section className={styles.profileEditSection}>
+        <div className={legacyStyles.profileEditSections}>
+          <section className={legacyStyles.profileEditSection}>
             <button
               type="button"
-              className={`${styles.profileEditHeading} ${styles.profileEditHeadingBtn}`}
+              className={`${legacyStyles.profileEditHeading} ${legacyStyles.profileEditHeadingBtn}`}
               onClick={() => toggleSection('nickname')}
             >
               <span><EditOutlined /></span>
               <div><strong>修改昵称</strong><small>只更新个人展示名称</small></div>
-              <DownOutlined className={`${styles.profileEditArrow} ${expandedSection === 'nickname' ? styles.profileEditArrowOpen : ''}`} />
+              <DownOutlined className={`${legacyStyles.profileEditArrow} ${expandedSection === 'nickname' ? legacyStyles.profileEditArrowOpen : ''}`} />
             </button>
-            <div className={`${styles.profileEditBody} ${expandedSection === 'nickname' ? styles.profileEditBodyOpen : ''}`}>
+            <div className={`${legacyStyles.profileEditBody} ${expandedSection === 'nickname' ? legacyStyles.profileEditBodyOpen : ''}`}>
               <Form form={nameForm} layout="vertical" onFinish={saveName}>
                 <Form.Item name="name" label="昵称" rules={[{ required: true, message: '请输入昵称' }]}>
                   <Input size="large" placeholder="请输入你希望展示的昵称" autoComplete="nickname" />
@@ -244,24 +251,24 @@ export default function ProfilePage() {
             </div>
           </section>
 
-          <section className={styles.profileEditSection}>
+          <section className={legacyStyles.profileEditSection}>
             <button
               type="button"
-              className={`${styles.profileEditHeading} ${styles.profileEditHeadingBtn}`}
+              className={`${legacyStyles.profileEditHeading} ${legacyStyles.profileEditHeadingBtn}`}
               onClick={() => toggleSection('avatar')}
             >
               <span><UploadOutlined /></span>
               <div><strong>更换头像</strong><small>上传后立即更新头像，不影响昵称和密码</small></div>
-              <DownOutlined className={`${styles.profileEditArrow} ${expandedSection === 'avatar' ? styles.profileEditArrowOpen : ''}`} />
+              <DownOutlined className={`${legacyStyles.profileEditArrow} ${expandedSection === 'avatar' ? legacyStyles.profileEditArrowOpen : ''}`} />
             </button>
-            <div className={`${styles.profileEditBody} ${expandedSection === 'avatar' ? styles.profileEditBodyOpen : ''}`}>
-              <div className={styles.profileEditAvatarRow}>
-                <div className={`${styles.profileAvatar} ${styles.profileEditAvatar}`}>
+            <div className={`${legacyStyles.profileEditBody} ${expandedSection === 'avatar' ? legacyStyles.profileEditBodyOpen : ''}`}>
+              <div className={legacyStyles.profileEditAvatarRow}>
+                <div className={`${legacyStyles.profileAvatar} ${legacyStyles.profileEditAvatar}`}>
                   {user.avatarType === 'image' && user.avatarImage
                     ? <img src={user.avatarImage} alt={user.name} />
                     : <span>{(user.name || user.username).slice(0, 1)}</span>}
                 </div>
-                <div className={styles.avatarPicker}>
+                <div className={legacyStyles.avatarPicker}>
                   <input
                     ref={avatarInput}
                     type="file"

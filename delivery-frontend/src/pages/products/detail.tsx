@@ -18,6 +18,7 @@ import { useNavigate, useParams, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { AddressManager } from '@/components/AddressManager';
 import { HomeFeedReportCard } from '@/components/HomeFeedReportCard';
+import { LocalLifePackagePanel } from '@/components/LocalLifePackagePanel';
 import { MerchantInfoBar } from '@/components/MerchantInfoBar';
 import { WechatShareGuide } from '@/components/WechatShareGuide';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
@@ -448,7 +449,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
                   src={displayedProductImage}
                   alt={product.productName}
                   preview={{
-                    mask: <span className={styles.imagePreviewMask}><ZoomInOutlined />点击放大</span>,
+                    cover: <span className={styles.imagePreviewMask}><ZoomInOutlined />点击放大</span>,
                   }}
                 />
                 {productGallery.filter((imageUrl) => imageUrl !== displayedProductImage).map((imageUrl, index) => (
@@ -548,6 +549,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
         </section>
 
         <MerchantInfoBar merchantId={product.merchantId} merchantName={product.merchantName} />
+        <LocalLifePackagePanel product={product} />
 
         {product.certificationStatus === 'PASSED' && (
           <section className={styles.productCertificationPanel}>
@@ -657,7 +659,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
                         alt={`${product.productName} 商品详情图 ${index + 1}`}
                         loading="lazy"
                         preview={{
-                          mask: <span className={styles.imagePreviewMask}><ZoomInOutlined />点击放大</span>,
+                          cover: <span className={styles.imagePreviewMask}><ZoomInOutlined />点击放大</span>,
                         }}
                       />
                     ))}
@@ -800,7 +802,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
         placement="bottom"
         open={shareOpen}
         onClose={() => setShareOpen(false)}
-        height="auto"
+        size="auto"
         rootClassName={styles.responsiveDrawer}
       >
         <div className={styles.shareSheet}>

@@ -8,7 +8,7 @@ export type OrderStatus = 'unpaid' | 'paid' | 'shipped' | 'completed' | 'cancele
 
 export type ReportStatus = 'published' | 'deleted';
 
-export type NavKey = 'dashboard' | 'users' | 'coupons' | 'products' | 'trials' | 'orders' | 'reports' | 'merchants';
+export type NavKey = 'dashboard' | 'users' | 'coupons' | 'products' | 'trials' | 'orders' | 'reports' | 'zhenkePosts' | 'banners' | 'merchants';
 
 export interface AdminSession {
   id: number;
@@ -101,6 +101,7 @@ export interface ManagedProduct {
   merchantId: number;
   title: string;
   subtitle?: string;
+  packageContent?: string; usageNotice?: string; validityDescription?: string; reservationRequired?: boolean; reservationNotice?: string; refundExpiryRule?: string;
   brandName: string;
   artisanName: string;
   category: ProductCategory;

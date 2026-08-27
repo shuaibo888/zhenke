@@ -3,6 +3,7 @@ import { Spin, Tag } from 'antd';
 import { useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { ZkTaskHeader } from '@/components/ZkPage';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import type { ShopCouponDto } from '@/services/shopContent';
 import { formatPrice } from '@/utils/shop';
@@ -43,6 +44,7 @@ export default function CouponsPage() {
 
   return (
     <main className={`${styles.profileDetailPage} ${styles.couponsPage}`}>
+        <ZkTaskHeader eyebrow="权益资产" title="我的优惠券" description="集中查看下单券、到店核销券及其有效状态。" backTo="/profile" />
       <section className={styles.orderPanel}>
         <div className={styles.orderPanelHeading}>
           <div>

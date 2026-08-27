@@ -49,7 +49,7 @@ export default function SsoCallbackPage() {
           status="error"
           title="登录失败"
           subTitle={error}
-          extra={<Button type="primary" onClick={() => navigate('/auth', { replace: true })}>返回商城登录</Button>}
+          extra={<Button type="primary" onClick={() => navigate('/auth', { replace: true })}>返回甄客行登录</Button>}
         />
       </main>
     );
@@ -58,7 +58,7 @@ export default function SsoCallbackPage() {
   return (
     <main style={shellStyle}>
       <Spin size="large" />
-      <Typography.Text>正在登录商城，请稍候……</Typography.Text>
+      <Typography.Text>正在登录甄客行，请稍候……</Typography.Text>
     </main>
   );
 }

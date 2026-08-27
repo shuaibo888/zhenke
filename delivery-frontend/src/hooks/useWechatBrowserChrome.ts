@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { isWechatBrowser } from '@/hooks/useWechatShare';
 
-const APP_TITLE = '㤫者商城';
+const APP_TITLE = '甄客行';
 
 function routeTitle(pathname: string) {
   if (pathname === '/') return APP_TITLE;

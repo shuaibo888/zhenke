@@ -2,6 +2,7 @@ import { Button, Spin, Tag, message } from 'antd';
 import { useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { ZkTaskHeader } from '@/components/ZkPage';
 import { LogisticsModal } from '@/components/LogisticsModal';
 import { PublishReportModal } from '@/components/PublishReportModal';
 import { TrialRedeemCodeModal } from '@/components/TrialRedeemCodeModal';
@@ -100,6 +101,7 @@ export default function TrialsPage() {
   return (
     <>
       <main className={`${styles.profileDetailPage} ${styles.trialsPage}`}>
+        <ZkTaskHeader eyebrow="参与服务" title="我的试用" description="查看申请、审核、配送或到店核销以及甄客验发布进度。" backTo="/profile" />
         <section className={styles.orderPanel}>
           <div className={styles.orderPanelHeading}>
             <div>

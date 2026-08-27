@@ -19,7 +19,7 @@ export function getAvailableNavKeys(session: AdminSession | null): NavKey[] {
   const baseKeys: NavKey[] = ['dashboard', 'coupons', 'products', 'trials', 'orders', 'reports'];
 
   if (hasGlobalAccess(session)) {
-    return ['dashboard', 'users', 'coupons', 'products', 'trials', 'orders', 'reports', 'merchants'];
+    return ['dashboard', 'users', 'coupons', 'products', 'trials', 'orders', 'reports', 'zhenkePosts', 'banners', 'merchants'];
   }
 
   return baseKeys;

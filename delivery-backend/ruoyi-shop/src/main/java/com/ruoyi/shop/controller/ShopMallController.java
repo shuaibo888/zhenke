@@ -28,6 +28,7 @@ public class ShopMallController extends BaseController
     @GetMapping("/products")
     public TableDataInfo products(@RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long merchantId,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "12") int pageSize)
     {
@@ -38,6 +39,7 @@ public class ShopMallController extends BaseController
         }
         ShopProduct query = new ShopProduct();
         query.setCategoryId(categoryId);
+        query.setMerchantId(merchantId);
         query.setKeyword(normalizedKeyword);
         int safePageNum = Math.max(1, pageNum);
         int safePageSize = Math.max(1, Math.min(pageSize, 24));

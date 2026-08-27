@@ -1,9 +1,14 @@
 import { defineConfig } from 'umi';
 
 export default defineConfig({
-  title: '㤫者商城',
+  title: '甄客行',
   routes: [
     { path: '/', component: '@/pages/home' },
+    { path: '/posts/publish', component: '@/pages/posts/publish' },
+    { path: '/posts/:postId', component: '@/pages/posts/detail' },
+    { path: '/posts', component: '@/pages/posts' },
+    { path: '/places/:placeId', component: '@/pages/places/detail' },
+    { path: '/profile/posts', component: '@/pages/profile/posts' },
     { path: '/mall', component: '@/pages/mall' },
     { path: '/products/:productId', component: '@/pages/products/detail' },
     { path: '/merchants/:merchantId', component: '@/pages/merchants/detail' },

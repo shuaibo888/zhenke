@@ -2,6 +2,7 @@ import { LikeOutlined, RightOutlined } from '@ant-design/icons';
 import { Spin, Tag } from 'antd';
 import { Navigate, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { ZkTaskHeader } from '@/components/ZkPage';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import { getReportType } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
@@ -15,6 +16,7 @@ export default function MyReportsPage() {
   }
   return (
     <main className={`${styles.profileDetailPage} ${styles.profileReportsPage}`}>
+        <ZkTaskHeader eyebrow="内容创作" title="我的甄客验" description="这些内容均来自订单、试用、收货或核销资格，不是普通甄客帖。" backTo="/profile" />
       <section className={styles.orderPanel}>
         <div className={styles.orderPanelHeading}>
           <div>

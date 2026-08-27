@@ -2,6 +2,7 @@ import { Button, Input, Modal, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { ZkTaskHeader } from '@/components/ZkPage';
 import { LogisticsModal } from '@/components/LogisticsModal';
 import { OrderRedeemCodeModal } from '@/components/OrderRedeemCodeModal';
 import { PublishReportModal } from '@/components/PublishReportModal';
@@ -16,10 +17,10 @@ import {
   type ShopOrderDto,
   type VerificationReportDto,
 } from '@/services/shopContent';
-import { formatPrice, orderStatusMeta, paymentRemainingSeconds } from '@/utils/shop';
+import { formatPrice, getOrderStatusMeta, paymentRemainingSeconds } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
 
-type Filter = 'all' | 'PENDING_PAYMENT' | 'PAID' | 'SHIPPED' | 'pending_report' | 'aftersale';
+type Filter = 'all' | 'PENDING_PAYMENT' | 'pending_fulfillment' | 'SHIPPED' | 'pending_report' | 'aftersale';
 type PurchaseItem = ShopOrderDto['items'][number];
 
 function countdown(expiresAt?: string) {
@@ -69,6 +70,7 @@ export default function OrdersPage() {
     if (filter === 'pending_report') {
       return order.status === 'RECEIVED' && order.items.some((item) => !item.verificationReportId);
     }
+    if (filter === 'pending_fulfillment') return order.status === 'PAID';
     return order.status === filter;
   }), [clock, filter, orders]);
 
@@ -160,6 +162,7 @@ export default function OrdersPage() {
   return (
     <>
       <main className={`${styles.profileDetailPage} ${styles.ordersPage}`}>
+        <ZkTaskHeader eyebrow="消费履约" title="我的订单与核销" description="配送、到店核销、支付、退款和甄客验资格都在这里处理。" backTo="/profile" />
         <section className={styles.orderPanel}>
           <div className={styles.orderPanelHeading}>
             <div>
@@ -172,7 +175,7 @@ export default function OrdersPage() {
             {([
               ['all', '全部订单'],
               ['PENDING_PAYMENT', '待付款'],
-              ['PAID', '待发货'],
+              ['pending_fulfillment', '待使用 / 待发货'],
               ['SHIPPED', '待收货'],
               ['pending_report', '待发布'],
               ['aftersale', '售后'],
@@ -205,9 +208,9 @@ export default function OrdersPage() {
                 <div className={styles.orderCardHead}>
                   <span className={styles.orderShop}>
                     <span className={styles.orderShopAvatar}>{(order.merchantName || '店').slice(0, 1)}</span>
-                    <strong>{order.merchantName || '㤫者商城'}</strong>
+                    <strong>{order.merchantName || '甄客行'}</strong>
                   </span>
-                  <span className={styles.orderStatusText}>{orderStatusMeta[order.status].label}</span>
+                  <span className={styles.orderStatusText}>{getOrderStatusMeta(order).label}</span>
                 </div>
                 <div className={styles.orderCardBody}>
                   <img className={styles.orderThumb} src={order.items[0]?.coverUrl} alt={order.items[0]?.productName} />

@@ -81,6 +81,7 @@ interface ProductDto {
   brandName: string;
   productName: string;
   subtitle?: string;
+  packageContent?: string; usageNotice?: string; validityDescription?: string; reservationRequired?: '0'|'1'; reservationNotice?: string; refundExpiryRule?: string;
   detail: string;
   coverUrl: string;
   price: number;
@@ -260,7 +261,7 @@ function storeToken(token: string | null) {
   else window.localStorage.removeItem(tokenStorageKey);
 }
 
-async function requestApi<T extends ApiResponse>(path: string, init: RequestInit = {}, authenticated = false): Promise<T> {
+export async function requestApi<T extends ApiResponse>(path: string, init: RequestInit = {}, authenticated = false): Promise<T> {
   const headers = new Headers(init.headers);
   if (init.body) headers.set('Content-Type', 'application/json');
   if (authenticated) {
@@ -332,7 +333,7 @@ function toManagedProduct(dto: ProductDto): ManagedProduct {
     id: dto.productId,
     merchantId: dto.merchantId,
     title: dto.productName,
-    subtitle: dto.subtitle,
+    subtitle: dto.subtitle, packageContent: dto.packageContent, usageNotice: dto.usageNotice, validityDescription: dto.validityDescription, reservationRequired: dto.reservationRequired === '1', reservationNotice: dto.reservationNotice, refundExpiryRule: dto.refundExpiryRule,
     brandName: dto.brandName,
     artisanName: dto.merchantName,
     category: dto.categoryCode,
@@ -798,6 +799,7 @@ export interface ProductWriteBody {
   brandName: string;
   productName: string;
   subtitle?: string;
+  packageContent?: string; usageNotice?: string; validityDescription?: string; reservationRequired?: boolean; reservationNotice?: string; refundExpiryRule?: string;
   coverUrl: string;
   price: number;
   stock: number;
@@ -1184,3 +1186,5 @@ export async function uploadAdminFile(
   }
   return payload.url;
 }
+
+export async function uploadBannerImage(file: File) { const token=getToken(); if(!token) throw new Error('请先登录'); const body=new FormData(); body.append('file',file); const response=await fetch('/api/common/upload',{method:'POST',headers:{Authorization:`Bearer ${token}`},body}); const payload=await response.json(); if(!response.ok||payload.code!==200||!payload.url) throw new Error(payload.msg||'轮播图片上传失败'); return payload.url as string; }

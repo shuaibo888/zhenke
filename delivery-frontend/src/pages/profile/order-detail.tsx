@@ -9,6 +9,7 @@ import { Button, Input, Modal, Result, Spin, Tag, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { ZkTaskHeader } from '@/components/ZkPage';
 import { LogisticsModal } from '@/components/LogisticsModal';
 import { OrderRedeemCodeModal } from '@/components/OrderRedeemCodeModal';
 import { PublishReportModal } from '@/components/PublishReportModal';
@@ -26,6 +27,7 @@ import {
 import {
   formatDateTime,
   formatPrice,
+  getOrderStatusMeta,
   orderStatusMeta,
   paymentRemainingSeconds,
 } from '@/utils/shop';
@@ -33,8 +35,10 @@ import styles from '@/styles/commerce.less';
 
 type PurchaseItem = ShopOrderDto['items'][number];
 
-function statusLabel(status?: string) {
+function statusLabel(status?: string, fulfillmentType?: ShopOrderDto['fulfillmentType']) {
   if (!status) return '创建订单';
+  if (status === 'PAID' && fulfillmentType === 'OFFLINE') return '待使用';
+  if (status === 'RECEIVED' && fulfillmentType === 'OFFLINE') return '已核销';
   return orderStatusMeta[status as ShopOrderDto['status']]?.label || status;
 }
 
@@ -206,12 +210,13 @@ export default function OrderDetailPage() {
     );
   }
 
-  const status = orderStatusMeta[order.status];
+  const status = getOrderStatusMeta(order);
   const canRefund = ['PAID', 'SHIPPED', 'RECEIVED'].includes(order.status);
 
   return (
     <>
       <main className={`${styles.profileDetailPage} ${styles.businessDetailPage}`}>
+        <ZkTaskHeader eyebrow="消费履约" title="订单详情" description="以服务端状态为准查看付款、配送或到店核销进度。" backTo="/profile/orders" />
         <section className={styles.businessStatusHero}>
           <div>
             <span className={styles.eyebrow}>订单详情</span>
@@ -232,7 +237,7 @@ export default function OrderDetailPage() {
         )}
 
         <section className={styles.businessInfoCard}>
-          <div className={styles.businessSectionTitle}><ShopOutlined /><h3>{order.merchantName || '㤫者商城'}</h3></div>
+          <div className={styles.businessSectionTitle}><ShopOutlined /><h3>{order.merchantName || '甄客行'}</h3></div>
           <div className={styles.businessProductList}>
             {order.items.map((item) => (
               <button key={item.orderItemId} type="button" className={styles.businessProductRow} onClick={() => navigate(`/products/${item.productId}`)}>
@@ -274,7 +279,7 @@ export default function OrderDetailPage() {
             {(order.statusLogs?.length ? order.statusLogs : [{ logId: 0, toStatus: order.status, remark: '', createTime: order.updateTime }]).map((log, index, logs) => (
               <div className={index === logs.length - 1 ? styles.businessTimelineCurrent : ''} key={log.logId}>
                 <i />
-                <span><strong>{statusLabel(log.toStatus)}</strong><small>{log.remark}</small></span>
+                <span><strong>{statusLabel(log.toStatus, order.fulfillmentType)}</strong><small>{log.remark}</small></span>
                 <time>{formatDateTime(log.createTime)}</time>
               </div>
             ))}

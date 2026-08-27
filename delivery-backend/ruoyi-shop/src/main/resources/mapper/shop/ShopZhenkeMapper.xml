@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC '-//mybatis.org//DTD Mapper 3.0//EN'
+  'http://mybatis.org/dtd/mybatis-3-mapper.dtd'>
+<mapper namespace="com.ruoyi.shop.mapper.ShopZhenkeMapper">
+  <resultMap id="place" type="ShopPlace">
+    <id property="placeId" column="place_id"/>
+    <result property="provider" column="provider"/>
+    <result property="providerPlaceId" column="provider_place_id"/>
+    <result property="placeName" column="place_name"/>
+    <result property="placeType" column="place_type"/>
+    <result property="address" column="address"/>
+    <result property="province" column="province"/>
+    <result property="city" column="city"/>
+    <result property="district" column="district"/>
+    <result property="provinceCode" column="province_code"/>
+    <result property="cityCode" column="city_code"/>
+    <result property="districtCode" column="district_code"/>
+    <result property="latitude" column="latitude"/>
+    <result property="longitude" column="longitude"/>
+    <result property="coordinateSystem" column="coordinate_system"/>
+    <result property="status" column="status"/>
+    <result property="createTime" column="create_time"/>
+    <result property="updateTime" column="update_time"/>
+  </resultMap>
+  <resultMap id="resource" type="ShopZhenkePostResource">
+    <id property="resourceId" column="resource_id"/>
+    <result property="postId" column="post_id"/>
+    <result property="resourceType" column="resource_type"/>
+    <result property="resourceUrl" column="resource_url"/>
+    <result property="resourceSort" column="resource_sort"/>
+  </resultMap>
+  <resultMap id="post" type="ShopZhenkePost">
+    <id property="postId" column="post_id"/>
+    <result property="shopUserId" column="shop_user_id"/>
+    <result property="userName" column="user_name"/>
+    <result property="nickName" column="nick_name"/>
+    <result property="avatar" column="avatar"/>
+    <result property="title" column="title"/>
+    <result property="content" column="content"/>
+    <result property="suggestion" column="suggestion"/>
+    <result property="perspective" column="perspective"/>
+    <result property="placeId" column="place_id"/>
+    <result property="placeName" column="place_name"/>
+    <result property="placeAddress" column="place_address"/>
+    <result property="placeProvince" column="place_province"/>
+    <result property="placeCity" column="place_city"/>
+    <result property="placeDistrict" column="place_district"/>
+    <result property="placeLatitude" column="place_latitude"/>
+    <result property="placeLongitude" column="place_longitude"/>
+    <result property="merchantId" column="merchant_id"/>
+    <result property="merchantName" column="merchant_name"/>
+    <result property="status" column="status"/>
+    <result property="publishedAt" column="published_at"/>
+    <result property="deleteTime" column="delete_time"/>
+    <result property="createTime" column="create_time"/>
+    <result property="updateTime" column="update_time"/>
+    <result property="commentCount" column="comment_count"/>
+    <result property="usefulCount" column="useful_count"/>
+    <result property="usefulByMe" column="useful_by_me"/>
+  </resultMap>
+  <sql id="postSelect">
+    select p.*,u.user_name,u.nick_name,u.avatar,m.shop_name merchant_name,(select count(*) from shop_zhenke_post_comment c where c.post_id=p.post_id and c.del_flag='0') comment_count,(select count(*) from shop_zhenke_post_useful x where x.post_id=p.post_id) useful_count,
+    <choose>
+      <when test="currentUserId != null">exists(select 1 from shop_zhenke_post_useful x where x.post_id=p.post_id and x.shop_user_id=#{currentUserId})</when>
+      <otherwise>0</otherwise>
+    </choose>
+     useful_by_me from shop_zhenke_post p join shop_user u on u.user_id=p.shop_user_id and u.del_flag='0' left join shop_merchant m on m.merchant_id=p.merchant_id and m.del_flag='0'
+  </sql>
+  <select id="selectPlaceByProvider" resultMap="place">select * from shop_place where provider=#{provider} and provider_place_id=#{providerPlaceId} and status='0'</select>
+  <select id="selectPlace" resultMap="place">select * from shop_place where place_id=#{placeId} and status='0'</select>
+  <insert id="insertPlace" useGeneratedKeys="true" keyProperty="placeId">insert ignore into shop_place(provider,provider_place_id,place_name,place_type,address,province,city,district,province_code,city_code,district_code,latitude,longitude,coordinate_system,status,create_time,update_time) values(#{provider},#{providerPlaceId},#{placeName},#{placeType},#{address},#{province},#{city},#{district},#{provinceCode},#{cityCode},#{districtCode},#{latitude},#{longitude},'GCJ02','0',sysdate(),sysdate())</insert>
+  <select id="selectPosts" resultMap="post">
+    <include refid="postSelect"/>
+    <where>
+      <if test="!includeDeleted">p.del_flag='0' and p.status='PUBLISHED'</if>
+      <if test="authorId != null">and p.shop_user_id=#{authorId}</if>
+      <if test="placeId != null">and p.place_id=#{placeId}</if>
+      <if test="merchantId != null">and p.merchant_id=#{merchantId}</if>
+      <if test="status != null and status != ''">and p.status=#{status}</if>
+      <if test="keyword != null and keyword != ''">and (p.title like concat('%',#{keyword},'%') or u.user_name like concat('%',#{keyword},'%') or u.nick_name like concat('%',#{keyword},'%') or p.place_name like concat('%',#{keyword},'%'))</if>
+      <if test="zone == 'LOCAL'">and p.perspective='LOCAL'</if>
+      <if test="zone == 'OUTSIDE'">and p.perspective in ('TOURIST','HOMETOWNER')</if>
+    </where>
+    order by p.published_at desc,p.post_id desc
+  </select>
+  <select id="selectPost" resultMap="post">
+    <include refid="postSelect"/>
+     where p.post_id=#{postId}
+    <if test="!includeDeleted"> and p.del_flag='0' and p.status='PUBLISHED'</if>
+  </select>
+  <select id="selectResources" resultMap="resource">select * from shop_zhenke_post_resource where post_id=#{postId} order by resource_sort,resource_id</select>
+  <insert id="insertPost" useGeneratedKeys="true" keyProperty="postId">insert into shop_zhenke_post(shop_user_id,title,content,suggestion,perspective,place_id,place_name,place_address,place_province,place_city,place_district,place_latitude,place_longitude,merchant_id,status,published_at,del_flag,create_time,update_time) values(#{shopUserId},#{title},#{content},#{suggestion},#{perspective},#{placeId},#{placeName},#{placeAddress},#{placeProvince},#{placeCity},#{placeDistrict},#{placeLatitude},#{placeLongitude},#{merchantId},'PUBLISHED',sysdate(),'0',sysdate(),sysdate())</insert>
+  <insert id="insertResource" useGeneratedKeys="true" keyProperty="resourceId">insert into shop_zhenke_post_resource(post_id,resource_type,resource_url,resource_sort,create_time) values(#{postId},#{resourceType},#{resourceUrl},#{resourceSort},sysdate())</insert>
+  <insert id="insertPendingUpload">insert into shop_zhenke_upload(shop_user_id,resource_url,resource_type,expire_time,create_time) values(#{shopUserId},#{resourceUrl},#{resourceType},date_add(sysdate(),interval 24 hour),sysdate())</insert>
+  <update id="claimPendingUpload">update shop_zhenke_upload set claimed_post_id=#{postId},claim_time=sysdate() where shop_user_id=#{shopUserId} and resource_url=#{resourceUrl} and resource_type=#{resourceType} and claimed_post_id is null and expire_time&gt;sysdate()</update>
+  <update id="deleteOwnPost">update shop_zhenke_post set del_flag='2',status='DELETED',delete_source='AUTHOR',delete_time=sysdate(),update_time=sysdate() where post_id=#{postId} and shop_user_id=#{shopUserId} and del_flag='0' and status='PUBLISHED'</update>
+  <update id="adminDeletePost">update shop_zhenke_post set del_flag='2',status='DELETED',delete_source='ADMIN',deleted_by=#{adminId},delete_time=sysdate(),update_time=sysdate() where post_id=#{postId} and del_flag='0'</update>
+  <insert id="insertUseful">insert ignore into shop_zhenke_post_useful(post_id,shop_user_id,create_time) select #{postId},#{shopUserId},sysdate() from shop_zhenke_post where post_id=#{postId} and del_flag='0' and status='PUBLISHED'</insert>
+  <delete id="deleteUseful">delete from shop_zhenke_post_useful where post_id=#{postId} and shop_user_id=#{shopUserId}</delete>
+  <select id="countUseful" resultType="int">select count(*) from shop_zhenke_post_useful where post_id=#{postId} and shop_user_id=#{shopUserId}</select>
+  <resultMap id="comment" type="ShopZhenkePostComment">
+    <id property="commentId" column="comment_id"/>
+    <result property="postId" column="post_id"/>
+    <result property="parentCommentId" column="parent_comment_id"/>
+    <result property="replyToCommentId" column="reply_to_comment_id"/>
+    <result property="shopUserId" column="shop_user_id"/>
+    <result property="userName" column="user_name"/>
+    <result property="nickName" column="nick_name"/>
+    <result property="avatar" column="avatar"/>
+    <result property="replyToName" column="reply_to_name"/>
+    <result property="postAuthor" column="post_author"/>
+    <result property="content" column="content"/>
+    <result property="createTime" column="create_time"/>
+  </resultMap>
+  <select id="selectComments" resultMap="comment">select c.*,u.user_name,u.nick_name,u.avatar,coalesce(ru.nick_name,ru.user_name) reply_to_name,c.shop_user_id=p.shop_user_id post_author from shop_zhenke_post_comment c join shop_zhenke_post p on p.post_id=c.post_id and p.del_flag='0' join shop_user u on u.user_id=c.shop_user_id left join shop_zhenke_post_comment rc on rc.comment_id=c.reply_to_comment_id left join shop_user ru on ru.user_id=rc.shop_user_id where c.post_id=#{postId} and c.del_flag='0' order by coalesce(c.parent_comment_id,c.comment_id),c.create_time</select>
+  <select id="selectComment" resultMap="comment">select c.* from shop_zhenke_post_comment c where c.post_id=#{postId} and c.comment_id=#{commentId} and c.del_flag='0'</select>
+  <insert id="insertComment" useGeneratedKeys="true" keyProperty="commentId">insert into shop_zhenke_post_comment(post_id,parent_comment_id,reply_to_comment_id,shop_user_id,content,del_flag,create_time,update_time) values(#{postId},#{parentCommentId},#{replyToCommentId},#{shopUserId},#{content},'0',sysdate(),sysdate())</insert>
+  <update id="deleteComment">update shop_zhenke_post_comment set del_flag='2',delete_time=sysdate(),update_time=sysdate() where post_id=#{postId} and comment_id=#{commentId} and shop_user_id=#{shopUserId} and del_flag='0'</update>
+  <update id="deleteCommentTree">update shop_zhenke_post_comment set del_flag='2',delete_time=sysdate(),update_time=sysdate() where post_id=#{postId} and del_flag='0' and (comment_id=#{commentId} or parent_comment_id=#{commentId}) and exists(select 1 from (select comment_id from shop_zhenke_post_comment where post_id=#{postId} and comment_id=#{commentId} and shop_user_id=#{shopUserId} and parent_comment_id is null and del_flag='0') owned)</update>
+  <resultMap id="banner" type="ShopHomeBanner">
+    <id property="bannerId" column="banner_id"/>
+    <result property="title" column="title"/>
+    <result property="subtitle" column="subtitle"/>
+    <result property="imageUrl" column="image_url"/>
+    <result property="jumpType" column="jump_type"/>
+    <result property="jumpTarget" column="jump_target"/>
+    <result property="bannerSort" column="banner_sort"/>
+    <result property="status" column="status"/>
+    <result property="startTime" column="start_time"/>
+    <result property="endTime" column="end_time"/>
+    <result property="createBy" column="create_by"/>
+    <result property="createTime" column="create_time"/>
+    <result property="updateBy" column="update_by"/>
+    <result property="updateTime" column="update_time"/>
+  </resultMap>
+  <select id="selectActiveBanners" resultMap="banner">select * from shop_home_banner where status='0' and (start_time is null or start_time&lt;=sysdate()) and (end_time is null or end_time&gt;sysdate()) order by banner_sort,banner_id</select>
+  <select id="selectBanners" resultMap="banner">select * from shop_home_banner order by banner_sort,banner_id</select>
+  <select id="selectBanner" resultMap="banner">select * from shop_home_banner where banner_id=#{id}</select>
+  <insert id="insertBanner" useGeneratedKeys="true" keyProperty="bannerId">insert into shop_home_banner(title,subtitle,image_url,jump_type,jump_target,banner_sort,status,start_time,end_time,create_by,create_time,update_by,update_time) values(#{title},#{subtitle},#{imageUrl},#{jumpType},#{jumpTarget},#{bannerSort},#{status},#{startTime},#{endTime},#{createBy},sysdate(),#{updateBy},sysdate())</insert>
+  <update id="updateBanner">update shop_home_banner set title=#{title},subtitle=#{subtitle},image_url=#{imageUrl},jump_type=#{jumpType},jump_target=#{jumpTarget},banner_sort=#{bannerSort},status=#{status},start_time=#{startTime},end_time=#{endTime},update_by=#{updateBy},update_time=sysdate() where banner_id=#{bannerId}</update>
+  <delete id="deleteBanner">delete from shop_home_banner where banner_id=#{id}</delete>
+  <update id="updateBannerStatus">update shop_home_banner set status=#{status},update_by=#{user},update_time=sysdate() where banner_id=#{id}</update>
+  <select id="countActiveMerchant" resultType="int">select count(*) from shop_merchant where merchant_id=#{merchantId} and audit_status='APPROVED' and status='0' and del_flag='0'</select>
+  <select id="selectActiveMerchantOptions" resultType="ShopMerchantOption">
+  select merchant_id, shop_name
+  from shop_merchant
+  where audit_status = 'APPROVED' and status = '0' and del_flag = '0'
+    <if test="keyword != null and keyword != ''">
+    and (shop_name like concat('%', #{keyword}, '%') or company_name like concat('%', #{keyword}, '%'))
+  </if>
+  order by update_time desc, merchant_id desc
+  limit 30
+  </select>
+</mapper>

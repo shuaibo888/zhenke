@@ -55,14 +55,17 @@ export default function CheckoutSuccessPage() {
             <span className={styles.checkoutSuccessIcon}><CheckCircleFilled /></span>
             <span className={styles.eyebrow}>PAYMENT SUCCESS</span>
             <h1>支付成功</h1>
-            <p>订单已支付完成，商家将尽快为你安排发货。</p>
+            <p>{order.fulfillmentType === 'OFFLINE'
+              ? '订单已支付完成，可在订单详情中出示核销码，到店或现场使用。'
+              : '订单已支付完成，商家将尽快为你安排发货。'}</p>
             <div className={styles.checkoutSuccessAmount}>
               <span>实付金额</span>
               <strong>{formatPrice(order.totalAmount)}</strong>
             </div>
             <dl className={styles.checkoutSuccessDetails}>
               <div><dt>订单编号</dt><dd>{order.orderNo}</dd></div>
-              <div><dt>商家</dt><dd>{order.merchantName || '㤫者商城'}</dd></div>
+              <div><dt>商家</dt><dd>{order.merchantName || '甄客行'}</dd></div>
+              <div><dt>履约方式</dt><dd>{order.fulfillmentType === 'OFFLINE' ? '到店核销' : '快递配送'}</dd></div>
               {order.discountAmount > 0 && (
                 <div><dt>优惠金额</dt><dd>-{formatPrice(order.discountAmount)}</dd></div>
               )}
@@ -73,7 +76,7 @@ export default function CheckoutSuccessPage() {
               size="large"
               onClick={() => navigate('/profile/orders')}
             >
-              返回订单列表
+              {order.fulfillmentType === 'OFFLINE' ? '查看订单与核销码' : '返回订单列表'}
             </Button>
             <small><SafetyCertificateOutlined /> 支付结果已由服务端确认</small>
           </section>

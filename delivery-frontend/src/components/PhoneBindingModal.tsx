@@ -85,7 +85,7 @@ export function PhoneBindingModal({ open, onBound, onLogout }: PhoneBindingModal
       title="绑定手机号后继续"
       footer={null}
       closable={false}
-      maskClosable={false}
+      mask={{ closable: false }}
       keyboard={false}
       focusable={{ trap: !oneClickLoading, focusTriggerAfterClose: false }}
       centered
@@ -94,7 +94,7 @@ export function PhoneBindingModal({ open, onBound, onLogout }: PhoneBindingModal
       <Alert
         type="warning"
         showIcon
-        message="商城账号必须绑定已验证手机号"
+        message="甄客行账号必须绑定已验证手机号"
         description="手机号用于确认跨系统用户身份、手机号登录和账号安全验证。绑定成功前暂不能使用商城业务功能。"
         style={{ marginBottom: 20 }}
       />

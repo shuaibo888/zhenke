@@ -3,6 +3,7 @@ import { Button, InputNumber, Modal, Spin, message } from 'antd';
 import { useCallback, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { ZkTaskHeader } from '@/components/ZkPage';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import {
   exchangePointCoupon,
@@ -172,6 +173,7 @@ export default function PointsPage() {
 
   return (
     <main className={`${styles.profileDetailPage} ${styles.pointsPage}`}>
+        <ZkTaskHeader eyebrow="权益资产" title="积分中心" description="查看可用积分、来源划拨、兑换权益和每一笔变化记录。" backTo="/profile" />
       <section className={styles.pointBalancePanel}>
         <span className={styles.pointBalanceIcon}><TrophyOutlined /></span>
         <div className={styles.pointCurrentBalance}>
@@ -215,13 +217,13 @@ export default function PointsPage() {
         footer={null}
         centered
         width={500}
-        maskClosable={!transferring}
+        mask={{ closable: !transferring }}
         closable={!transferring}
       >
         <div className={styles.pointTransferForm}>
           <div className={styles.pointTransferIntro}>
             <strong>选择来源系统</strong>
-            <span>将其他系统账户中的余额划入商城积分</span>
+            <span>将其他系统账户中的余额划入甄客行积分</span>
           </div>
           <Spin spinning={transferSourcesLoading}>
             <div className={`${styles.pointTransferSourceGrid} ${
@@ -251,7 +253,7 @@ export default function PointsPage() {
                         <strong>{source.sourceName}</strong>
                         {selected ? <CheckCircleFilled /> : null}
                       </span>
-                      <small>{source.sourceUnitName}划入商城积分</small>
+                      <small>{source.sourceUnitName}划入甄客行积分</small>
                     </span>
                   </button>
                 );
@@ -289,7 +291,7 @@ export default function PointsPage() {
                 </div>
               </label>
               <div className={styles.pointTransferPreview}>
-                <span>预计划入商城积分</span>
+                <span>预计划入甄客行积分</span>
                 <strong>{transferPointsValid ? transferPoints.toLocaleString() : '--'}</strong>
               </div>
               <p className={styles.pointTransferHint}>

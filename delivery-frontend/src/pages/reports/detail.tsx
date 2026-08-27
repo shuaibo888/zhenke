@@ -16,6 +16,7 @@ import { useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { WechatShareGuide } from '@/components/WechatShareGuide';
 import { MerchantInfoBar } from '@/components/MerchantInfoBar';
+import { VerificationProofStrip } from '@/components/VerificationProofStrip';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
 import {
@@ -275,6 +276,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
             <ShareAltOutlined />
           </button>
         </header>
+        <VerificationProofStrip report={report} />
 
         <section className={styles.reportDetail}>
           <div className={styles.reportDetailGallery}>
@@ -305,7 +307,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
                             src={activeResource.resourceUrl}
                             alt={`${authorName}的实拍`}
                             preview={{
-                              mask: <span className={styles.imagePreviewMask}><ZoomInOutlined />点击放大</span>,
+                              cover: <span className={styles.imagePreviewMask}><ZoomInOutlined />点击放大</span>,
                             }}
                           />
                           {reportResources
@@ -466,7 +468,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
         onCancel={() => setVideoPreviewUrl('')}
         footer={null}
         closable={false}
-        maskClosable
+        mask={{ closable: true }}
         width={960}
         centered
         destroyOnHidden
@@ -493,7 +495,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
         placement="bottom"
         open={shareOpen}
         onClose={() => setShareOpen(false)}
-        height="auto"
+        size="auto"
         rootClassName={styles.responsiveDrawer}
       >
         <div className={styles.shareSheet}>

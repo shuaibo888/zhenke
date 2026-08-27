@@ -1,0 +1,334 @@
+package com.ruoyi.shop.service;
+
+import com.github.pagehelper.PageHelper;
+import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.shop.domain.*;
+import com.ruoyi.shop.domain.dto.*;
+import com.ruoyi.shop.map.TencentMapService;
+import com.ruoyi.shop.mapper.ShopZhenkeMapper;
+import com.ruoyi.shop.security.ShopAccountIdentity;
+import java.net.URI;
+import java.util.*;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class ShopZhenkeService {
+  private static final Set<String> ZONES = Set.of("RECOMMEND", "LOCAL", "OUTSIDE");
+  private final ShopZhenkeMapper mapper;
+  private final TencentMapService mapService;
+  private final Set<String> externalHosts;
+
+  public ShopZhenkeService(
+      ShopZhenkeMapper mapper,
+      TencentMapService mapService,
+      @Value("${shop.home-banner.external-hosts:}") String hosts) {
+    this.mapper = mapper;
+    this.mapService = mapService;
+    this.externalHosts = new HashSet<>();
+    for (String h : hosts.split(",")) {
+      if (!h.isBlank()) externalHosts.add(h.trim().toLowerCase(Locale.ROOT));
+    }
+  }
+
+  public List<ShopZhenkePost> posts(String zone, Long placeId, int pageNum, int pageSize) {
+    String z = StringUtils.trim(zone).toUpperCase(Locale.ROOT);
+    if (z.isEmpty()) z = "RECOMMEND";
+    if (!ZONES.contains(z)) throw new ServiceException("帖子分区无效");
+    PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(50, pageSize)));
+    return hydrate(
+        mapper.selectPosts(
+            z,
+            null,
+            placeId,
+            null,
+            null,
+            null,
+            false,
+            ShopAccountIdentity.currentShopUserIdOrNull()),
+        false);
+  }
+
+  public ShopZhenkePost detail(long id) {
+    ShopZhenkePost p = mapper.selectPost(id, false, ShopAccountIdentity.currentShopUserIdOrNull());
+    if (p == null) throw new ServiceException("甄客帖不存在或已删除");
+    p.setResources(mapper.selectResources(id));
+    return p;
+  }
+
+  public ShopPlace place(long id) {
+    ShopPlace p = mapper.selectPlace(id);
+    if (p == null) throw new ServiceException("地点不存在或已停用");
+    return p;
+  }
+
+  public List<ShopZhenkePost> myPosts(int pageNum, int pageSize) {
+    long uid = ShopAccountIdentity.requireAuthenticatedShopUserId();
+    PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(50, pageSize)));
+    return hydrate(mapper.selectPosts("RECOMMEND", uid, null, null, null, null, true, uid), false);
+  }
+
+  @Transactional
+  public String registerUpload(String resourceUrl, String originalFilename) {
+    long uid = ShopAccountIdentity.requireShopUserId();
+    String path = StringUtils.trim(resourceUrl);
+    if (!path.startsWith("/profile/upload/") || path.contains("..")) {
+      throw new ServiceException("上传资源地址无效");
+    }
+    String filename = StringUtils.trim(originalFilename).toLowerCase(Locale.ROOT);
+    String resourceType = filename.endsWith(".mp4") ? "VIDEO" : "IMAGE";
+    if (mapper.insertPendingUpload(uid, path, resourceType) != 1) {
+      throw new ServiceException("上传资源登记失败");
+    }
+    return path;
+  }
+
+  @Transactional
+  public ShopZhenkePost publish(ShopZhenkePostBody b) {
+    long uid = ShopAccountIdentity.requireShopUserId();
+    validateResources(b.getResources());
+    ShopPlace p = resolvePlace(b.getPlace());
+    if (b.getMerchantId() != null && mapper.countActiveMerchant(b.getMerchantId()) != 1)
+      throw new ServiceException("关联商家不存在、未审核或已停用");
+    ShopZhenkePost z = new ShopZhenkePost();
+    z.setShopUserId(uid);
+    z.setTitle(StringUtils.trim(b.getTitle()));
+    z.setContent(StringUtils.trim(b.getContent()));
+    z.setSuggestion(StringUtils.trim(b.getSuggestion()));
+    z.setPerspective(b.getPerspective());
+    z.setPlaceId(p.getPlaceId());
+    z.setPlaceName(p.getPlaceName());
+    z.setPlaceAddress(p.getAddress());
+    z.setPlaceProvince(p.getProvince());
+    z.setPlaceCity(p.getCity());
+    z.setPlaceDistrict(p.getDistrict());
+    z.setPlaceLatitude(p.getLatitude());
+    z.setPlaceLongitude(p.getLongitude());
+    z.setMerchantId(b.getMerchantId());
+    mapper.insertPost(z);
+    int sort = 1;
+    for (var item : b.getResources()) {
+      String resourceUrl = StringUtils.trim(item.getResourceUrl());
+      if (mapper.claimPendingUpload(uid, resourceUrl, item.getResourceType(), z.getPostId()) != 1) {
+        throw new ServiceException("媒体未由当前账号上传、已被使用或已经过期");
+      }
+      ShopZhenkePostResource r = new ShopZhenkePostResource();
+      r.setPostId(z.getPostId());
+      r.setResourceType(item.getResourceType());
+      r.setResourceUrl(resourceUrl);
+      r.setResourceSort(sort++);
+      mapper.insertResource(r);
+    }
+    return detail(z.getPostId());
+  }
+
+  @Transactional
+  public void deleteOwn(long id) {
+    if (mapper.deleteOwnPost(id, ShopAccountIdentity.requireAuthenticatedShopUserId()) != 1)
+      throw new ServiceException("只能删除本人公开的甄客帖");
+  }
+
+  @Transactional
+  public Map<String, Object> toggleUseful(long id) {
+    long uid = ShopAccountIdentity.requireShopUserId();
+    detail(id);
+    boolean active;
+    if (mapper.countUseful(id, uid) > 0) {
+      mapper.deleteUseful(id, uid);
+      active = false;
+    } else {
+      active = mapper.insertUseful(id, uid) == 1;
+    }
+    ShopZhenkePost p = detail(id);
+    return Map.of("useful", active, "usefulCount", p.getUsefulCount());
+  }
+
+  public List<ShopZhenkePostComment> comments(long id) {
+    detail(id);
+    return mapper.selectComments(id);
+  }
+
+  @Transactional
+  public ShopZhenkePostComment comment(long id, ShopZhenkeCommentBody b) {
+    long uid = ShopAccountIdentity.requireShopUserId();
+    detail(id);
+    ShopZhenkePostComment c = new ShopZhenkePostComment();
+    c.setPostId(id);
+    c.setShopUserId(uid);
+    c.setContent(StringUtils.trim(b.getContent()));
+    if (b.getReplyToCommentId() != null) {
+      ShopZhenkePostComment target = mapper.selectComment(id, b.getReplyToCommentId());
+      if (target == null) throw new ServiceException("回复的评论不存在");
+      c.setReplyToCommentId(target.getCommentId());
+      c.setParentCommentId(
+          target.getParentCommentId() == null
+              ? target.getCommentId()
+              : target.getParentCommentId());
+    }
+    mapper.insertComment(c);
+    return mapper.selectComment(id, c.getCommentId());
+  }
+
+  @Transactional
+  public void deleteComment(long id, long cid) {
+    long uid = ShopAccountIdentity.requireAuthenticatedShopUserId();
+    ShopZhenkePostComment c = mapper.selectComment(id, cid);
+    if (c == null) throw new ServiceException("评论不存在");
+    int n =
+        c.getParentCommentId() == null
+            ? mapper.deleteCommentTree(id, cid, uid)
+            : mapper.deleteComment(id, cid, uid);
+    if (n == 0) throw new ServiceException("只能删除自己的评论");
+  }
+
+  public List<com.ruoyi.shop.domain.vo.ShopMerchantOption> merchantOptions(String keyword) {
+    String value = StringUtils.trim(keyword);
+    if (value.length() > 50) throw new ServiceException("商家搜索关键词不能超过50个字符");
+    return mapper.selectActiveMerchantOptions(value);
+  }
+
+  public List<ShopHomeBanner> activeBanners() {
+    return mapper.selectActiveBanners();
+  }
+
+  public List<ShopHomeBanner> banners() {
+    return mapper.selectBanners();
+  }
+
+  public List<ShopZhenkePost> adminPosts(
+      String keyword, Long merchantId, String status, int pageNum, int pageSize) {
+    String normalizedStatus = StringUtils.trim(status).toUpperCase(Locale.ROOT);
+    if (!normalizedStatus.isEmpty() && !Set.of("PUBLISHED", "DELETED").contains(normalizedStatus)) {
+      throw new ServiceException("帖子状态筛选无效");
+    }
+    PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(50, pageSize)));
+    return hydrate(
+        mapper.selectPosts(
+            "RECOMMEND",
+            null,
+            null,
+            StringUtils.trim(keyword),
+            merchantId,
+            normalizedStatus,
+            true,
+            null),
+        true);
+  }
+
+  public ShopZhenkePost adminDetail(long id) {
+    ShopZhenkePost p = mapper.selectPost(id, true, null);
+    if (p == null) throw new ServiceException("甄客帖不存在");
+    p.setResources(mapper.selectResources(id));
+    return p;
+  }
+
+  @Transactional
+  public void adminDelete(long id, long admin) {
+    if (mapper.adminDeletePost(id, admin) != 1) throw new ServiceException("帖子不存在或已删除");
+  }
+
+  @Transactional
+  public ShopHomeBanner saveBanner(Long id, ShopHomeBannerBody b, String user) {
+    validateBanner(b);
+    ShopHomeBanner x = new ShopHomeBanner();
+    x.setBannerId(id);
+    x.setTitle(StringUtils.trim(b.getTitle()));
+    x.setSubtitle(StringUtils.trim(b.getSubtitle()));
+    x.setImageUrl(StringUtils.trim(b.getImageUrl()));
+    x.setJumpType(b.getJumpType());
+    x.setJumpTarget(StringUtils.trim(b.getJumpTarget()));
+    x.setBannerSort(b.getBannerSort());
+    x.setStatus(b.getStatus());
+    x.setStartTime(b.getStartTime());
+    x.setEndTime(b.getEndTime());
+    x.setCreateBy(user);
+    x.setUpdateBy(user);
+    if (id == null) mapper.insertBanner(x);
+    else if (mapper.updateBanner(x) != 1) throw new ServiceException("轮播不存在");
+    return mapper.selectBanner(x.getBannerId());
+  }
+
+  @Transactional
+  public void deleteBanner(long id) {
+    if (mapper.deleteBanner(id) != 1) throw new ServiceException("轮播不存在");
+  }
+
+  @Transactional
+  public void bannerStatus(long id, String status, String user) {
+    if (!Set.of("0", "1").contains(status) || mapper.updateBannerStatus(id, status, user) != 1)
+      throw new ServiceException("轮播状态无效或记录不存在");
+  }
+
+  private List<ShopZhenkePost> hydrate(List<ShopZhenkePost> rows, boolean includeDeletedResources) {
+    for (var p : rows) {
+      if (includeDeletedResources || !"DELETED".equals(p.getStatus())) {
+        p.setResources(mapper.selectResources(p.getPostId()));
+      } else {
+        p.setResources(List.of());
+      }
+    }
+    return rows;
+  }
+
+  private ShopPlace resolvePlace(ShopZhenkePostBody.PlaceSelection s) {
+    if (!"TENCENT".equalsIgnoreCase(s.getProvider())) throw new ServiceException("当前仅支持腾讯地图选点结果");
+    String providerPlaceId = StringUtils.trim(s.getProviderPlaceId());
+    ShopPlace p = mapper.selectPlaceByProvider("TENCENT", providerPlaceId);
+    if (p != null) return p;
+    Map<String, Object> authoritative = mapService.placeDetail(providerPlaceId);
+    if (!providerPlaceId.equals(authoritative.get("providerPlaceId"))) {
+      throw new ServiceException("地图地点标识校验失败，请重新选择地点");
+    }
+    p = new ShopPlace();
+    p.setProvider("TENCENT");
+    p.setProviderPlaceId(String.valueOf(authoritative.get("providerPlaceId")));
+    p.setPlaceName(String.valueOf(authoritative.get("placeName")));
+    p.setPlaceType((String) authoritative.get("placeType"));
+    p.setAddress(String.valueOf(authoritative.get("address")));
+    p.setProvince((String) authoritative.get("province"));
+    p.setCity((String) authoritative.get("city"));
+    p.setDistrict((String) authoritative.get("district"));
+    p.setProvinceCode((String) authoritative.get("provinceCode"));
+    p.setCityCode((String) authoritative.get("cityCode"));
+    p.setDistrictCode((String) authoritative.get("districtCode"));
+    p.setLatitude((java.math.BigDecimal) authoritative.get("latitude"));
+    p.setLongitude((java.math.BigDecimal) authoritative.get("longitude"));
+    if (mapper.insertPlace(p) != 1) {
+      ShopPlace existing = mapper.selectPlaceByProvider("TENCENT", providerPlaceId);
+      if (existing == null) throw new ServiceException("地点保存失败，请重新选择");
+      return existing;
+    }
+    return p;
+  }
+
+  private void validateResources(List<ShopZhenkePostBody.Resource> rs) {
+    long videos = rs.stream().filter(x -> "VIDEO".equals(x.getResourceType())).count();
+    if (videos > 1) throw new ServiceException("最多上传一个视频");
+    for (var r : rs) {
+      String u = StringUtils.trim(r.getResourceUrl());
+      if (!u.startsWith("/profile/upload/") || u.contains(".."))
+        throw new ServiceException("媒体地址无效");
+    }
+  }
+
+  private void validateBanner(ShopHomeBannerBody b) {
+    if (b.getStartTime() != null
+        && b.getEndTime() != null
+        && !b.getEndTime().after(b.getStartTime())) throw new ServiceException("轮播结束时间必须晚于开始时间");
+    String t = StringUtils.trim(b.getJumpTarget());
+    if ("INTERNAL".equals(b.getJumpType())) {
+      if (!t.startsWith("/") || t.startsWith("//")) throw new ServiceException("站内跳转必须是正式相对路由");
+    } else
+      try {
+        URI u = URI.create(t);
+        if (!"https".equalsIgnoreCase(u.getScheme())
+            || u.getHost() == null
+            || !externalHosts.contains(u.getHost().toLowerCase(Locale.ROOT)))
+          throw new ServiceException("外链必须使用 https 且域名在服务端允许列表中");
+      } catch (IllegalArgumentException e) {
+        throw new ServiceException("外链格式无效");
+      }
+  }
+}

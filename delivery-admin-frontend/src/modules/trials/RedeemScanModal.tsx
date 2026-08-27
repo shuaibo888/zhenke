@@ -183,7 +183,7 @@ export default function RedeemScanModal({
       onCancel={onClose}
       footer={null}
       width={420}
-      destroyOnClose={false}
+      destroyOnHidden={false}
       afterOpenChange={(visible) => {
         if (visible) {
           // 等弹窗动画与布局完成后启动，避免容器尺寸未就绪导致 start() 失败

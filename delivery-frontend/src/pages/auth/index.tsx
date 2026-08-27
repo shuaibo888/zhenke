@@ -166,23 +166,23 @@ export default function AuthPage() {
   return (
     <>
       <main className={`${styles.authShell} ${styles.authLayout}`}>
-        <Button type="text" icon={<ArrowLeftOutlined />} className={styles.authBackButton} aria-label="返回商城" onClick={() => navigate('/')}>
-          返回商城
+        <Button type="text" icon={<ArrowLeftOutlined />} className={styles.authBackButton} aria-label="返回甄客行" onClick={() => navigate('/')}>
+          返回甄客行
         </Button>
         <section className={styles.authIntro}>
           <div className={styles.authBrandRow}>
             <div className={styles.brandMark}>㤫</div>
-            <div><strong>㤫者商城</strong><span>真实体验 · 理性消费</span></div>
+            <div><strong>甄客行</strong><span>城市生活 · 真实分享</span></div>
           </div>
           <div className={styles.authIntroCopy}>
-            <span className={styles.eyebrow}>TRUSTED SHOPPING COMMUNITY</span>
-            <h1>先验证，<br />再相信。</h1>
-            <p>汇集真实甄客体验，让每一次选择都有可靠依据。</p>
+            <span className={styles.eyebrow}>LOCAL LIFE, SEEN &amp; SHARED</span>
+            <h1>发现值得去的地方，<br />也分享真实体验。</h1>
+            <p>登录后发布地点内容、参与互动，并在同一个账号中管理订单、核销和权益。</p>
           </div>
           <div className={styles.authRules}>
-            <span><CheckCircleFilled /> 真实用户体验</span>
-            <span><CheckCircleFilled /> 平台审核商家</span>
-            <span><CheckCircleFilled /> 交易流程保障</span>
+            <span><CheckCircleFilled /> 地点内容真实持久化</span>
+            <span><CheckCircleFilled /> 甄客帖与甄客验明确区分</span>
+            <span><CheckCircleFilled /> 交易与到店核销完整承接</span>
           </div>
         </section>
         <section className={`${styles.authCard} ${phoneMode ? styles.phoneAuthCard : ''}`}>
@@ -283,7 +283,7 @@ export default function AuthPage() {
                   </div>
                 )}
                 <Button block type="primary" size="large" htmlType="submit" loading={authSubmitting} className={styles.authSubmit}>
-                  {authMode === 'login' ? '登录商城' : '立即注册'}
+                  {authMode === 'login' ? '登录甄客行' : '立即注册'}
                 </Button>
                 {authMode === 'register' && <p className={styles.hint}>注册后需绑定手机号，账号名确认后不可修改。</p>}
               </Form>

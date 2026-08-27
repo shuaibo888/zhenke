@@ -1,5 +1,5 @@
 import { DeleteOutlined, MinusOutlined, PlusOutlined, ShoppingCartOutlined } from '@ant-design/icons';
-import { Button, Drawer, Spin, message } from 'antd';
+import { Button, Drawer, Spin, Tag, message } from 'antd';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -106,7 +106,11 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 <div className={styles.cartItemImage} style={{ backgroundImage: `url("${item.coverUrl}")` }} />
                 <div className={styles.cartItemBody}>
                   <div className={styles.cartItemTitle}>
-                    <strong>{item.productName}</strong>
+                    <span>
+                      <strong>{item.productName}</strong>
+                      {['ZHENKE_HOTEL', 'ZHENKE_RESTAURANT', 'ZHENKE_SCENIC'].includes(item.categoryCode)
+                        && <Tag color="volcano">到店核销</Tag>}
+                    </span>
                     <Button
                       size="small"
                       type="text"

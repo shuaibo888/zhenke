@@ -20,6 +20,12 @@ public class ShopProduct extends BaseEntity
     private String productName;
     private String subtitle;
     private String detail;
+    private String packageContent;
+    private String usageNotice;
+    private String validityDescription;
+    private String reservationRequired;
+    private String reservationNotice;
+    private String refundExpiryRule;
     private String coverUrl;
     private BigDecimal price;
     private Integer stock;
@@ -66,6 +72,18 @@ public class ShopProduct extends BaseEntity
     public void setSubtitle(String subtitle) { this.subtitle = subtitle; }
     public String getDetail() { return detail; }
     public void setDetail(String detail) { this.detail = detail; }
+    public String getPackageContent() { return packageContent; }
+    public void setPackageContent(String v) { packageContent = v; }
+    public String getUsageNotice() { return usageNotice; }
+    public void setUsageNotice(String v) { usageNotice = v; }
+    public String getValidityDescription() { return validityDescription; }
+    public void setValidityDescription(String v) { validityDescription = v; }
+    public String getReservationRequired() { return reservationRequired; }
+    public void setReservationRequired(String v) { reservationRequired = v; }
+    public String getReservationNotice() { return reservationNotice; }
+    public void setReservationNotice(String v) { reservationNotice = v; }
+    public String getRefundExpiryRule() { return refundExpiryRule; }
+    public void setRefundExpiryRule(String v) { refundExpiryRule = v; }
     public String getCoverUrl() { return coverUrl; }
     public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
     public BigDecimal getPrice() { return price; }

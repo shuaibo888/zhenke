@@ -498,8 +498,13 @@ public class ShopOrderService
         return created;
     }
 
-    private String resolveFulfillment(ShopProduct product, String requested)
+    String resolveFulfillment(ShopProduct product, String requested)
     {
+        if (ShopProductService.LOCAL_LIFE_CATEGORY_CODES.contains(product.getCategoryCode()))
+        {
+            if (!"1".equals(product.getSupportsOffline())) throw new ServiceException("本地生活商品履约配置异常");
+            return ShopProductService.FULFILLMENT_OFFLINE;
+        }
         boolean online = "1".equals(product.getSupportsOnline());
         boolean offline = "1".equals(product.getSupportsOffline());
         String normalized = StringUtils.trim(requested);

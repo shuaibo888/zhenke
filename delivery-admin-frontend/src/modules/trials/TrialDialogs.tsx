@@ -140,7 +140,7 @@ export default function TrialDialogs(props: TrialDialogsProps) {
         onCancel={props.onTrialClose}
         footer={null}
         width={520}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={props.trialForm} layout="vertical" onFinish={props.onTrialSubmit}>
           <Form.Item name="productId" label="选择商品" rules={[{ required: true, message: '请选择商品' }]}>

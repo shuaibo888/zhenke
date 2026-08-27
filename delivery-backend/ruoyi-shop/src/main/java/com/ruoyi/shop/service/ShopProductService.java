@@ -28,6 +28,7 @@ public class ShopProductService
     public static final String FULFILLMENT_OFFLINE = "OFFLINE";
     private static final String MAIN_IMAGE = "MAIN";
     private static final String DETAIL_IMAGE = "DETAIL";
+    public static final Set<String> LOCAL_LIFE_CATEGORY_CODES = Set.of("ZHENKE_HOTEL", "ZHENKE_RESTAURANT", "ZHENKE_SCENIC");
     private static final String PRODUCT_IMAGE_PATH_PREFIX = "/profile/upload/product/";
 
     private final ShopProductMapper productMapper;
@@ -219,6 +220,7 @@ public class ShopProductService
                 throw new ServiceException("库存大于0时才能上架商品");
             }
             requireEnabledCategory(product.getCategoryId());
+            if (LOCAL_LIFE_CATEGORY_CODES.contains(product.getCategoryCode()) && !"1".equals(product.getSupportsOffline())) throw new ServiceException("甄客酒店、饭店和景区商品只支持线下核销");
         }
         if (!ON_SALE.equals(status) && !OFF_SALE.equals(status))
         {
@@ -240,10 +242,21 @@ public class ShopProductService
         product.setProductName(StringUtils.trim(body.getProductName()));
         product.setSubtitle(StringUtils.trim(body.getSubtitle()));
         product.setDetail("");
+        product.setPackageContent(StringUtils.trim(body.getPackageContent()));
+        product.setUsageNotice(StringUtils.trim(body.getUsageNotice()));
+        product.setValidityDescription(StringUtils.trim(body.getValidityDescription()));
+        product.setReservationRequired(Boolean.TRUE.equals(body.getReservationRequired()) ? "1" : "0");
+        product.setReservationNotice(StringUtils.trim(body.getReservationNotice()));
+        product.setRefundExpiryRule(StringUtils.trim(body.getRefundExpiryRule()));
         product.setCoverUrl(normalizeProductImageUrl(body.getCoverUrl()));
         product.setPrice(body.getPrice());
         product.setStock(body.getStock());
         applyFulfillment(product, body);
+        ShopProductCategory category = productMapper.selectCategoryById(body.getCategoryId());
+        if (category != null && LOCAL_LIFE_CATEGORY_CODES.contains(category.getCategoryCode())) {
+            if (StringUtils.isEmpty(product.getPackageContent()) || StringUtils.isEmpty(product.getUsageNotice()) || StringUtils.isEmpty(product.getValidityDescription()) || StringUtils.isEmpty(product.getRefundExpiryRule())) throw new ServiceException("本地生活套餐需完整填写套餐内容、使用须知、有效期和退款/过期规则");
+            product.setSupportsOnline("0"); product.setSupportsOffline("1");
+        }
         return product;
     }
 

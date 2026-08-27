@@ -38,7 +38,7 @@ export function MerchantAuditDialog(props: MerchantAuditDialogProps) {
       onCancel={props.onAuditClose}
       footer={null}
       width={520}
-      destroyOnClose
+      destroyOnHidden
     >
         <Form form={props.auditForm} layout="vertical" onFinish={props.onAuditSubmit}>
           <Form.Item name="decision" label="审核结论" rules={[{ required: true, message: '请选择审核结论' }]}>
@@ -77,7 +77,7 @@ export function MerchantDetailDialog(props: MerchantDetailDialogProps) {
       onCancel={props.onDetailClose}
       footer={null}
       width={600}
-      destroyOnClose
+      destroyOnHidden
     >
         {props.detailMerchant && (
           <div className={styles.merchantDetail}>

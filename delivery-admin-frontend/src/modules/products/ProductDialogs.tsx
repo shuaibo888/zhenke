@@ -24,6 +24,12 @@ import styles from '@/pages/index.less';
 export interface ProductFormValues {
   title: string;
   subtitle?: string;
+  packageContent?: string;
+  usageNotice?: string;
+  validityDescription?: string;
+  reservationRequired?: boolean;
+  reservationNotice?: string;
+  refundExpiryRule?: string;
   brandName: string;
   categoryId: number;
   imageUrl: string;
@@ -150,6 +156,16 @@ export default function ProductDialogs(props: ProductDialogsProps) {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategorySort, setNewCategorySort] = useState(1);
   const [creatingCategory, setCreatingCategory] = useState(false);
+  const selectedCategoryId = Form.useWatch('categoryId', props.productForm);
+  const selectedCategory = props.productCategories.find((item) => item.categoryId === selectedCategoryId);
+  const localLifeCategory = Boolean(selectedCategory
+    && ['ZHENKE_HOTEL', 'ZHENKE_RESTAURANT', 'ZHENKE_SCENIC'].includes(selectedCategory.categoryCode));
+
+  useEffect(() => {
+    if (localLifeCategory) {
+      props.productForm.setFieldsValue({ supportsOnline: false, supportsOffline: true });
+    }
+  }, [localLifeCategory, props.productForm]);
 
   useEffect(() => {
     if (props.categoryModalOpen && !props.categoriesLoading) {
@@ -313,6 +329,31 @@ export default function ProductDialogs(props: ProductDialogsProps) {
           <Form.Item name="subtitle" label="商品副标题" rules={[{ max: 200, message: '副标题不能超过 200 个字' }]}>
             <Input placeholder="一句话说明商品特点（选填）" />
           </Form.Item>
+          <Form.Item name="categoryId" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
+            <Select
+              placeholder="选择商品所属场景或动态分类"
+              options={props.productCategories.map((item) => ({
+                label: item.categoryName,
+                value: item.categoryId,
+              }))}
+            />
+          </Form.Item>
+          {localLifeCategory && (
+            <section className={styles.formSection}>
+              <div className={styles.tableHeader}>
+                <div>
+                  <strong>{selectedCategory?.categoryName}套餐与使用规则</strong>
+                  <p>以下信息将直接展示给用户；服务端强制此类商品仅走到店核销。</p>
+                </div>
+              </div>
+              <Form.Item name="packageContent" label="套餐包含内容" rules={[{ required: true, message: '请完整填写套餐内容' }, { max: 5000 }]}><Input.TextArea rows={3} /></Form.Item>
+              <Form.Item name="usageNotice" label="使用须知" rules={[{ required: true, message: '请填写到店使用须知' }, { max: 5000 }]}><Input.TextArea rows={3} /></Form.Item>
+              <Form.Item name="validityDescription" label="有效期说明" rules={[{ required: true, message: '请填写有效期说明' }, { max: 500 }]}><Input /></Form.Item>
+              <Form.Item name="reservationRequired" valuePropName="checked"><Checkbox>需要提前预约</Checkbox></Form.Item>
+              <Form.Item name="reservationNotice" label="预约说明" rules={[{ max: 500 }]}><Input placeholder="需要预约时，请写明提前时间与联系方式" /></Form.Item>
+              <Form.Item name="refundExpiryRule" label="退款与过期规则" rules={[{ required: true, message: '请填写退款与过期规则' }, { max: 1000 }]}><Input.TextArea rows={2} /></Form.Item>
+            </section>
+          )}
           <Form.Item
             name="imageUrl"
             label="商品封面"
@@ -341,14 +382,6 @@ export default function ProductDialogs(props: ProductDialogsProps) {
           >
             <ProductImageUploader kind="DETAIL" maxCount={6} session={props.session} productId={props.editingProductId} />
           </Form.Item>
-          <Form.Item name="categoryId" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
-            <Select
-              options={props.productCategories.map((item) => ({
-                label: item.categoryName,
-                value: item.categoryId,
-              }))}
-            />
-          </Form.Item>
           <Space size={12} className={styles.formRow}>
             <Form.Item name="price" label="售价" rules={[{ required: true, message: '请输入售价' }]}>
               <InputNumber min={0.01} precision={2} prefix="¥" />
@@ -360,10 +393,10 @@ export default function ProductDialogs(props: ProductDialogsProps) {
           <Form.Item label="销售方式" required extra="至少选择一种；到店核销在支付后生成核销券，与试用线上线下无关。">
             <Space size={20}>
               <Form.Item name="supportsOnline" valuePropName="checked" noStyle>
-                <Checkbox>线上快递配送</Checkbox>
+                <Checkbox disabled={localLifeCategory}>线上快递配送</Checkbox>
               </Form.Item>
               <Form.Item name="supportsOffline" valuePropName="checked" noStyle>
-                <Checkbox>到店核销</Checkbox>
+                <Checkbox disabled={localLifeCategory}>到店核销{localLifeCategory ? '（当前分类强制）' : ''}</Checkbox>
               </Form.Item>
             </Space>
           </Form.Item>

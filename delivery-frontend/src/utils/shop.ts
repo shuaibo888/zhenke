@@ -70,6 +70,22 @@ export const orderStatusMeta: Record<ShopOrderDto['status'], { label: string; co
   REFUNDED: { label: '已退款', color: 'default' },
 };
 
+/**
+ * Translate the shared order state into the task the customer can understand.
+ * PAID means "wait for shipment" for delivery orders, but means "ready to use"
+ * for an offline local-life package. Keeping this distinction here prevents the
+ * unified order centre from leaking the old delivery-only wording.
+ */
+export function getOrderStatusMeta(order: Pick<ShopOrderDto, 'status' | 'fulfillmentType'>) {
+  if (order.status === 'PAID' && order.fulfillmentType === 'OFFLINE') {
+    return { label: '待使用', color: 'processing' };
+  }
+  if (order.status === 'RECEIVED' && order.fulfillmentType === 'OFFLINE') {
+    return { label: '已核销', color: 'success' };
+  }
+  return orderStatusMeta[order.status];
+}
+
 export function paymentRemainingSeconds(expiresAt?: string) {
   if (!expiresAt) return Number.POSITIVE_INFINITY;
   const milliseconds = Date.parse(expiresAt);

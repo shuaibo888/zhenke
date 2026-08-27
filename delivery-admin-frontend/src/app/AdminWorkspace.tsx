@@ -10,6 +10,8 @@ import {
   ShoppingOutlined,
   TeamOutlined,
   TruckOutlined,
+  ReadOutlined,
+  PictureOutlined,
 } from '@ant-design/icons';
 import {
   Button,
@@ -153,6 +155,8 @@ const navMeta: Record<NavKey, { label: string; icon: React.ReactNode }> = {
   trials: { label: '试用招募', icon: <SafetyCertificateOutlined /> },
   orders: { label: '订单管理', icon: <TruckOutlined /> },
   reports: { label: '甄客验管理', icon: <FileSearchOutlined /> },
+  zhenkePosts: { label: '甄客帖管理', icon: <ReadOutlined /> },
+  banners: { label: '首页轮播管理', icon: <PictureOutlined /> },
   merchants: { label: '商家管理', icon: <TeamOutlined /> },
 };
 
@@ -742,6 +746,7 @@ function AdminWorkspace() {
       productForm.setFieldsValue({
         title: detail.title,
         subtitle: detail.subtitle,
+        packageContent: detail.packageContent, usageNotice: detail.usageNotice, validityDescription: detail.validityDescription, reservationRequired: detail.reservationRequired, reservationNotice: detail.reservationNotice, refundExpiryRule: detail.refundExpiryRule,
         brandName: detail.brandName,
         categoryId: detail.categoryId,
         imageUrl: detail.imageUrl,
@@ -1676,12 +1681,12 @@ function AdminWorkspace() {
     return (
       <main className={styles.loginShell}>
           <section className={styles.loginBrand}>
-            <div className={styles.brandMark}>㤫</div>
+            <div className={styles.brandMark}>甄</div>
             <div>
-              <p className={styles.eyebrow}>㤫者商城后台</p>
-              <h1>供给与信任在这里对账</h1>
+              <p className={styles.eyebrow}>甄客行管理台</p>
+              <h1>内容、供给与履约在这里对账</h1>
             </div>
-            <p className={styles.brandCopy}>平台账号统一使用认证、权限和登录日志，商城用户与后台账号相互隔离。</p>
+            <p className={styles.brandCopy}>平台统一使用认证、权限和登录日志，用户端账号与后台账号相互隔离。</p>
           </section>
 
           <section className={styles.loginPanel}>
@@ -1869,9 +1874,9 @@ function AdminWorkspace() {
       <Layout className={styles.appShell}>
         <Sider width={232} className={styles.sider} breakpoint="md" collapsedWidth={0} trigger={null}>
           <div className={styles.logoBlock}>
-            <span className={styles.logoMark}>㤫</span>
+            <span className={styles.logoMark}>甄</span>
             <div>
-              <strong>㤫者商城</strong>
+              <strong>甄客行</strong>
               <span>{isAdmin ? '管理员后台' : '商家后台'}</span>
             </div>
           </div>
@@ -1895,9 +1900,9 @@ function AdminWorkspace() {
           styles={{ body: { padding: 0 } }}
         >
           <div className={styles.drawerLogo}>
-            <span className={styles.logoMark}>㤫</span>
+            <span className={styles.logoMark}>甄</span>
             <div>
-              <strong>㤫者商城</strong>
+              <strong>甄客行</strong>
               <span>{isAdmin ? '管理员后台' : '商家后台'}</span>
             </div>
           </div>

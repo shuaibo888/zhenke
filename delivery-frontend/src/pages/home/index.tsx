@@ -1,314 +1,247 @@
-import { Spin, message } from 'antd';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'umi';
-import { useShop } from '@/app/ShopContext';
-import { HomeFeedReportCard } from '@/components/HomeFeedReportCard';
-import { MasonryFeed } from '@/components/MasonryFeed';
 import {
-  fetchHomeFeed,
-  fetchProductCategories,
-  searchHomeFeed,
-  toggleReportUseful,
-  type HomeFeedItemDto,
-  type ProductCategoryDto,
-} from '@/services/shopContent';
-import ReportDetailPage from '@/pages/reports/detail';
-import ProductDetailPage from '@/pages/products/detail';
-import styles from '@/styles/commerce.less';
+  AppstoreOutlined,
+  CompassOutlined,
+  EditOutlined,
+  EnvironmentOutlined,
+  ReadOutlined,
+  ShopOutlined,
+} from '@ant-design/icons';
+import { Carousel, Input, Modal, message } from 'antd';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'umi';
+import { ZhenkePostCard } from '@/components/ZhenkePostCard';
+import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
+import {
+  banners,
+  posts,
+  type Banner,
+  type ZhenkePost,
+} from '@/services/zhenke';
+import styles from '@/styles/zhenke.less';
 
-type CategoryFilter = ProductCategoryDto['categoryCode'] | null;
-const HOME_PAGE_SIZE = 12;
+type LocationStatus = 'idle' | 'locating' | 'located' | 'failed';
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { user } = useShop();
-  const [category, setCategory] = useState<CategoryFilter>(null);
-  const [categories, setCategories] = useState<ProductCategoryDto[]>([]);
-  const [feed, setFeed] = useState<HomeFeedItemDto[]>([]);
+  const [feed, setFeed] = useState<ZhenkePost[]>([]);
+  const [bannerRows, setBannerRows] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [loadedPage, setLoadedPage] = useState(0);
-  const [total, setTotal] = useState(0);
-  const loadMoreTrigger = useRef<HTMLDivElement | null>(null);
-  const loadingMoreRef = useRef(false);
-  const requestVersion = useRef(0);
-  // 瀑布流：记录每张封面的真实宽高比，图片加载后触发头部重排（settle）。
-  const ratioMapRef = useRef<Record<string, { w: number; h: number }>>({});
-  const [revision, setRevision] = useState(0);
+  const [loadError, setLoadError] = useState('');
+  const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
+  const [currentArea, setCurrentArea] = useState('选择当前市区');
+  const [manualAreaOpen, setManualAreaOpen] = useState(false);
+  const [manualArea, setManualArea] = useState('');
 
-  const handleImageLoad = useCallback((key: string, width: number, height: number) => {
-    ratioMapRef.current[key] = { w: width || 1, h: height || 1 };
-    setRevision((value) => value + 1);
-  }, []);
-
-  const estimateHeight = useCallback((key: string | null, columnWidth: number) => {
-    const ratio = key ? ratioMapRef.current[key] : undefined;
-    const imageHeight = ratio ? (columnWidth * ratio.h) / ratio.w : columnWidth;
-    return imageHeight + (key?.startsWith('trial-') ? 148 : 112);
-  }, []);
-
-  const reportQuery = Number(searchParams.get('report'));
-  const productQuery = Number(searchParams.get('product'));
-  const paymentOrderId = Number(searchParams.get('wechatPayOrderId'));
-  const keyword = (searchParams.get('keyword') ?? '').trim();
-  const contentParam = searchParams.get('content')?.toUpperCase();
-  const contentType = contentParam === 'REPORT' || contentParam === 'TRIAL' ? contentParam : 'ALL';
-  const searchMode = keyword.length > 0;
-  const isPaymentReturn = Number.isSafeInteger(paymentOrderId) && paymentOrderId > 0
-    && ((searchParams.has('code') && searchParams.has('state'))
-      || searchParams.get('wechatPayReturn') === '1');
-  const showingDirectContent = isPaymentReturn
-    || (Number.isSafeInteger(reportQuery) && reportQuery > 0)
-    || (Number.isSafeInteger(productQuery) && productQuery > 0);
-
-  useEffect(() => {
-    if (showingDirectContent) return;
-    let mounted = true;
-    fetchProductCategories()
-      .then((rows) => {
-        if (mounted) setCategories(rows);
-      })
-      .catch((error) => {
-        if (mounted) message.error(error instanceof Error ? error.message : '商品分类加载失败');
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [showingDirectContent]);
-
-  useEffect(() => {
-    if (showingDirectContent) return;
-    const version = ++requestVersion.current;
+  const loadHome = useCallback(async () => {
     setLoading(true);
-    loadingMoreRef.current = false;
-    setLoadingMore(false);
-    setFeed([]);
-    setLoadedPage(0);
-    setTotal(0);
-    const firstPageRequest = searchMode
-      ? searchHomeFeed({ keyword, pageNum: 1, pageSize: HOME_PAGE_SIZE })
-      : fetchHomeFeed({
-        categoryCode: category ?? undefined,
-        contentType,
-        trialType: 'ALL',
-        pageNum: 1,
-        pageSize: HOME_PAGE_SIZE,
-      });
-    firstPageRequest
-      .then((result) => {
-        if (requestVersion.current !== version) return;
-        setFeed(Array.isArray(result.rows) ? result.rows : []);
-        setTotal(result.total);
-        setLoadedPage(1);
-      })
-      .catch((error) => {
-        if (requestVersion.current === version) {
-          message.error(error instanceof Error ? error.message : '首页内容加载失败');
-        }
-      })
-      .finally(() => {
-        if (requestVersion.current === version) setLoading(false);
-      });
-  }, [category, contentType, keyword, searchMode, showingDirectContent]);
-
-  const loadMore = useCallback(async () => {
-    if (showingDirectContent || loading || loadingMoreRef.current || loadedPage < 1 || feed.length >= total) return;
-    const version = requestVersion.current;
-    const nextPage = loadedPage + 1;
-    loadingMoreRef.current = true;
-    setLoadingMore(true);
+    setLoadError('');
     try {
-      const result = searchMode
-        ? await searchHomeFeed({ keyword, pageNum: nextPage, pageSize: HOME_PAGE_SIZE })
-        : await fetchHomeFeed({
-          categoryCode: category ?? undefined,
-          contentType,
-          trialType: 'ALL',
-          pageNum: nextPage,
-          pageSize: HOME_PAGE_SIZE,
-        });
-      if (requestVersion.current !== version) return;
-      setFeed((current) => {
-        const existing = new Set(current.map((item) => `${item.contentType}-${item.contentId}`));
-        return [...current, ...result.rows.filter((item) => !existing.has(`${item.contentType}-${item.contentId}`))];
-      });
-      setTotal(result.total);
-      setLoadedPage(nextPage);
+      const [postResult, bannerResult] = await Promise.all([
+        posts('RECOMMEND', 1, 9),
+        banners(),
+      ]);
+      setFeed(postResult.rows);
+      setBannerRows(bannerResult);
     } catch (error) {
-      if (requestVersion.current === version) {
-        message.error(error instanceof Error ? error.message : '更多内容加载失败');
-      }
+      setLoadError(error instanceof Error ? error.message : '首页内容加载失败');
     } finally {
-      if (requestVersion.current === version) {
-        loadingMoreRef.current = false;
-        setLoadingMore(false);
-      }
+      setLoading(false);
     }
-  }, [category, contentType, feed.length, keyword, loadedPage, loading, searchMode, showingDirectContent, total]);
+  }, []);
 
   useEffect(() => {
-    const target = loadMoreTrigger.current;
-    if (!target || feed.length >= total || loading || typeof IntersectionObserver === 'undefined') return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) void loadMore();
+    void loadHome();
+  }, [loadHome]);
+
+  const locate = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocationStatus('failed');
+      message.warning('当前浏览器不支持设备定位，可在发布页通过关键词选择地点');
+      return;
+    }
+    setLocationStatus('locating');
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const response = await fetch(
+            `/api/shop/zhenke/map/reverse?latitude=${coords.latitude}&longitude=${coords.longitude}`,
+          );
+          const payload = await response.json();
+          if (!response.ok || payload.code !== 200) throw new Error(payload.msg || '定位解析失败');
+          const city = payload.data?.city;
+          const district = payload.data?.district;
+          setCurrentArea(city && district && city !== district ? `${city} · ${district}` : district || city || '已定位');
+          setLocationStatus('located');
+        } catch (error) {
+          setLocationStatus('failed');
+          message.warning(error instanceof Error ? error.message : '地图服务暂时不可用');
+        }
       },
-      { rootMargin: '240px 0px' },
+      () => {
+        setLocationStatus('failed');
+        message.info('未获得定位权限，仍可浏览全平台内容，并在发布时手动选点');
+      },
+      { timeout: 8000, maximumAge: 300000, enableHighAccuracy: false },
     );
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, [feed.length, loadMore, loading, total]);
+  }, []);
 
-  if (isPaymentReturn) {
-    const paymentParams = new URLSearchParams(searchParams);
-    paymentParams.set('orderId', String(paymentOrderId));
-    return <Navigate to={`/checkout?${paymentParams.toString()}`} replace />;
-  }
-  if (Number.isSafeInteger(reportQuery) && reportQuery > 0) {
-    return <ReportDetailPage reportId={reportQuery} />;
-  }
-  if (Number.isSafeInteger(productQuery) && productQuery > 0) {
-    return <ProductDetailPage productId={productQuery} />;
-  }
+  useEffect(() => {
+    locate();
+  }, [locate]);
 
-  const useful = async (item: HomeFeedItemDto) => {
-    if (!item.report) return;
-    if (!user) {
-      message.info('请先登录');
-      navigate('/auth');
-      return;
-    }
-    if (item.report.shopUserId === user.id) {
-      message.warning('不能给自己的甄客验点有用');
-      return;
-    }
-    try {
-      const result = await toggleReportUseful(item.contentId);
-      setFeed((items) => items.map((current) => (
-        current.contentType === 'REPORT' && current.contentId === item.contentId && current.report
-          ? { ...current, report: { ...current.report, ...result } }
-          : current
-      )));
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : '操作失败');
-    }
+  const openBanner = (banner: Banner) => {
+    if (banner.jumpType === 'INTERNAL') navigate(banner.jumpTarget);
+    else window.location.assign(banner.jumpTarget);
   };
 
-  const cards = feed.map((item) => {
-    if (item.contentType === 'REPORT') {
-      if (!item.report) return null;
-      return (
-        <HomeFeedReportCard
-          key={`report-${item.contentId}`}
-          item={item}
-          onOpen={() => navigate(`/reports/${item.contentId}`)}
-          onUseful={() => void useful(item)}
-          onImageLoad={handleImageLoad}
-        />
-      );
+  const confirmManualArea = () => {
+    const area = manualArea.trim();
+    if (area.length < 2 || area.length > 30) {
+      message.warning('请输入 2 至 30 个字的市区名称');
+      return;
     }
-    if (!item.trial) return null;
-    const remaining = Math.max(0, item.trial.targetCount - item.trial.approvedCount);
-    const progress = item.trial.targetCount > 0
-      ? Math.min(100, Math.round((item.trial.approvedCount / item.trial.targetCount) * 100))
-      : 0;
-    return (
-      <article
-        key={`trial-${item.contentId}`}
-        className={styles.recruitGridCard}
-        onClick={() => navigate(`/products/${item.productId}?campaign=${item.contentId}`)}
-      >
-        <div className={styles.reportGridImage}>
-          <img
-            loading="lazy"
-            decoding="async"
-            src={item.coverUrl}
-            alt={item.title}
-            onLoad={(event) => {
-              const img = event.currentTarget;
-              if (img.naturalWidth) img.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
-              handleImageLoad(`trial-${item.contentId}`, img.naturalWidth, img.naturalHeight);
-            }}
-            onError={() => handleImageLoad(`trial-${item.contentId}`, 0, 0)}
-          />
-        </div>
-        <div className={styles.reportGridContent}>
-          <div className={styles.recruitBadge}>{item.trial.trialType === 'ONLINE' ? '线上试用' : '线下试用'}</div>
-          <p className={styles.reportGridTitle}>{item.title}</p>
-          <div className={styles.recruitGridMeta}>
-            <div className={styles.recruitProgressRow}>
-              <span className={styles.recruitProgressLabel}>已领取 {item.trial.approvedCount}/{item.trial.targetCount}</span>
-              <span className={styles.recruitRemainTag}>剩{remaining}</span>
-            </div>
-            <div className={styles.recruitProgressBar}><i style={{ width: `${progress}%` }} /></div>
-            <span className={styles.recruitDeadlineInline}>
-              截止 {item.trial.applicationDeadline.slice(5, 10).replace('-', '月')}日
-            </span>
-          </div>
-          <div className={styles.reportGridFooter}>
-            <span className={styles.gridAuthor}>
-              <span className={styles.gridMerchantAvatar}>{(item.merchantName || '店').slice(0, 1)}</span>
-              <span className={styles.gridAuthorName}>{item.merchantName}</span>
-            </span>
-          </div>
-        </div>
-      </article>
-    );
-  }).filter((card): card is NonNullable<typeof card> => card != null);
+    setCurrentArea(area);
+    setLocationStatus('located');
+    setManualAreaOpen(false);
+    message.success('当前市区已手动更新；首页内容不会因此被过滤');
+  };
 
   return (
-    <main className={`${styles.singleColumn} ${styles.homeFeedPage}`}>
-      {searchMode ? (
-        <div className={styles.homeSearchSummary}>
-          <span>全局搜索</span>
-          <strong>“{keyword}”</strong>
-          {!loading && <em>共 {total} 条</em>}
-          <button type="button" onClick={() => navigate('/')}>清除搜索</button>
+    <main className={styles.page}>
+      <section className={styles.heroGrid}>
+        <article className={`${styles.locationHero} ${styles.surface}`}>
+          <span className={styles.locationLabel}>
+            <EnvironmentOutlined /> 当前市区
+          </span>
+          <h1>{currentArea}<br />今天去哪里看看？</h1>
+          <p>
+            甄客行用真实定位帮助你显示当前市区、选择地点和打开导航。
+            首页与专区内容始终来自全平台，不会因为你所在的城市而被过滤。
+          </p>
+          <div className={styles.heroActions}>
+            <button type="button" className={styles.primaryButton} onClick={locate} disabled={locationStatus === 'locating'}>
+              <CompassOutlined /> {locationStatus === 'locating' ? '正在定位…' : locationStatus === 'located' ? '更新定位' : '开启设备定位'}
+            </button>
+            <button type="button" className={styles.heroSecondary} onClick={() => navigate('/posts/publish')}>
+              <EditOutlined /> 选择地点并发布
+            </button>
+            <button type="button" className={styles.heroTertiary} onClick={() => {
+              setManualArea(currentArea === '选择当前市区' ? '' : currentArea);
+              setManualAreaOpen(true);
+            }}>
+              手动选择市区
+            </button>
+          </div>
+        </article>
+
+        <aside className={`${styles.quickPanel} ${styles.surface}`}>
+          <div>
+            <span className={styles.eyebrow}>LOCAL LIFE</span>
+            <h2>从一篇真实分享，认识一座城。</h2>
+            <p>看地点、读体验，也可以进入商城购买商家提供的真实套餐。</p>
+          </div>
+          <div className={styles.quickLinks}>
+            <button type="button" className={styles.quickLink} onClick={() => navigate('/posts')}>
+              <span><ReadOutlined /></span>
+              <strong>逛甄客帖</strong>
+              <small>发现城市生活</small>
+            </button>
+            <button type="button" className={styles.quickLink} onClick={() => navigate('/mall')}>
+              <span><AppstoreOutlined /></span>
+              <strong>去商城</strong>
+              <small>套餐到店核销</small>
+            </button>
+          </div>
+        </aside>
+      </section>
+
+      {bannerRows.length > 0 && (
+        <Carousel autoplay dots className={styles.bannerCarousel}>
+          {bannerRows.map((banner) => (
+            <div key={banner.bannerId}>
+              <article
+                className={styles.bannerSlide}
+                role="link"
+                tabIndex={0}
+                onClick={() => openBanner(banner)}
+                onKeyDown={(event) => event.key === 'Enter' && openBanner(banner)}
+              >
+                <img src={banner.imageUrl} alt="" />
+                <div className={styles.bannerCopy}>
+                  <span className={styles.eyebrow}>甄客行精选</span>
+                  <h2>{banner.title}</h2>
+                  {banner.subtitle && <p>{banner.subtitle}</p>}
+                </div>
+              </article>
+            </div>
+          ))}
+        </Carousel>
+      )}
+
+      <ZkSectionTitle
+        title="城市里的甄客帖"
+        description="推荐区按公开时间倒序展示全平台内容，地点是发布者主动选择的信息。"
+        action={<button type="button" className={styles.textButton} onClick={() => navigate('/posts')}>查看全部 →</button>}
+      />
+
+      {loading ? (
+        <ZkState kind="loading" title="正在打开城市生活" />
+      ) : loadError ? (
+        <ZkState kind="error" title="首页暂时没有连接成功" description={loadError} onAction={() => void loadHome()} />
+      ) : feed.length > 0 ? (
+        <div className={styles.postGrid}>
+          {feed.map((post) => <ZhenkePostCard key={post.postId} post={post} />)}
         </div>
       ) : (
-        <div className={styles.homeCategoryNav} aria-label="商品分类">
-          {categories.map((item) => (
-            <button
-              key={item.categoryCode}
-              type="button"
-              className={category === item.categoryCode ? styles.homeCategoryActive : ''}
-              aria-pressed={category === item.categoryCode}
-              onClick={() => setCategory((current) => current === item.categoryCode ? null : item.categoryCode)}
-            >
-              {item.categoryName}
-            </button>
-          ))}
-        </div>
+        <ZkState
+          title="还没有公开甄客帖"
+          description="成为第一个认真记录这座城市的人。图片或视频至少上传一个，地点需要从地图服务中选择。"
+          actionText="发布第一篇"
+          onAction={() => navigate('/posts/publish')}
+        />
       )}
-      {loading && <div className={styles.sessionLoading}><Spin /></div>}
-      <MasonryFeed
-        gap={10}
-        estimateHeight={estimateHeight}
-        revision={revision}
+
+      <ZkSectionTitle
+        title="本地生活交易"
+        description="商城只是甄客行里的交易模块，酒店、饭店、景区套餐统一下单并线下核销。"
+        action={<button type="button" className={styles.textButton} onClick={() => navigate('/mall')}>进入商城 →</button>}
+      />
+      <div className={styles.sceneGrid}>
+        <button type="button" className={styles.sceneCard} onClick={() => navigate('/mall?scene=ZHENKE_HOTEL')}>
+          <span>住</span><strong>甄客酒店</strong><p>住宿套餐 · 到店核销</p>
+        </button>
+        <button type="button" className={styles.sceneCard} onClick={() => navigate('/mall?scene=ZHENKE_RESTAURANT')}>
+          <span>食</span><strong>甄客饭店</strong><p>餐饮套餐 · 到店核销</p>
+        </button>
+        <button type="button" className={styles.sceneCard} onClick={() => navigate('/mall?scene=ZHENKE_SCENIC')}>
+          <span>游</span><strong>甄客景区</strong><p>门票线路 · 现场核销</p>
+        </button>
+      </div>
+      <div className={styles.contextNotice}>
+        <ShopOutlined /> 商城商品来自已入驻商家；普通地点不等同于商家，也不会因为名称相同自动绑定。
+      </div>
+
+      <Modal
+        open={manualAreaOpen}
+        title="手动选择当前市区"
+        okText="确认显示"
+        cancelText="取消"
+        onOk={confirmManualArea}
+        onCancel={() => setManualAreaOpen(false)}
+        destroyOnHidden
       >
-        {cards}
-      </MasonryFeed>
-      {!loading && feed.length === 0 && (
-        <p className={styles.empty}>
-          {searchMode
-            ? `没有找到与“${keyword}”相关的试用或甄客验。`
-            : contentType === 'REPORT'
-              ? '当前分类还没有推荐到首页的甄客验。'
-              : contentType === 'TRIAL'
-                ? '当前分类还没有正在招募的试用。'
-                : '当前分类还没有正在招募的试用或已发布的甄客验。'}
+        <p className={styles.manualAreaHint}>
+          此处只更新首页左上角的当前位置显示，不会按城市筛选首页、甄客帖或专区内容。
         </p>
-      )}
-      {!loading && feed.length < total && (
-        <div ref={loadMoreTrigger} className={styles.homeLoadMore} role="status">
-          {loadingMore ? (
-            <><Spin size="small" /><span>正在加载更多</span></>
-          ) : (
-            <span>继续下滑，将自动加载更多</span>
-          )}
-        </div>
-      )}
+        <Input
+          autoFocus
+          value={manualArea}
+          maxLength={30}
+          placeholder="例如：上海市黄浦区"
+          onChange={(event) => setManualArea(event.target.value)}
+          onPressEnter={confirmManualArea}
+        />
+      </Modal>
     </main>
   );
 }

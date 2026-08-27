@@ -8,6 +8,7 @@ import { Button, Result, Spin, Tag, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { ZkTaskHeader } from '@/components/ZkPage';
 import { LogisticsModal } from '@/components/LogisticsModal';
 import { PublishReportModal } from '@/components/PublishReportModal';
 import { TrialRedeemCodeModal } from '@/components/TrialRedeemCodeModal';
@@ -154,6 +155,7 @@ export default function TrialDetailPage() {
   return (
     <>
       <main className={`${styles.profileDetailPage} ${styles.businessDetailPage}`}>
+        <ZkTaskHeader eyebrow="参与服务" title="试用详情" description="按真实状态完成审核、收货或核销，再发布可信甄客验。" backTo="/profile/trials" />
         <section className={styles.businessStatusHero}>
           <div>
             <span className={styles.eyebrow}>试用详情</span>
@@ -169,7 +171,7 @@ export default function TrialDetailPage() {
             {trial.productCoverUrl ? <img src={trial.productCoverUrl} alt={trial.productName} /> : <span>验</span>}
             <span>
               <strong>{trial.productName}</strong>
-              <small>{trial.merchantName || '㤫者商城'}</small>
+              <small>{trial.merchantName || '甄客行'}</small>
             </span>
             <Tag color={trial.trialType === 'ONLINE' ? 'green' : 'cyan'}>{trial.trialType === 'ONLINE' ? '线上试用' : '线下试用'}</Tag>
           </button>

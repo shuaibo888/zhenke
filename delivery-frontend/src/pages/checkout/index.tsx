@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { AddressManager } from '@/components/AddressManager';
+import { CheckoutJourney } from '@/components/CheckoutJourney';
 import { ProfileBackButton } from '@/components/ProfileBackButton';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import {
@@ -34,9 +35,11 @@ type CheckoutLine = {
   coverUrl: string;
   price: number;
   quantity: number;
+  categoryCode?: string;
 };
 
 const minimumWechatPayment = 0.01;
+const localLifeCategoryCodes = new Set(['ZHENKE_HOTEL', 'ZHENKE_RESTAURANT', 'ZHENKE_SCENIC']);
 
 function addressText(address: ShopShippingAddress) {
   return `${address.region.join(' ')} ${address.detail}`.trim();
@@ -196,6 +199,7 @@ export default function CheckoutPage() {
         coverUrl: item.coverUrl,
         price: item.price,
         quantity: item.quantity,
+        categoryCode: item.categoryCode,
       }));
     }
     return product ? [{
@@ -207,6 +211,7 @@ export default function CheckoutPage() {
       coverUrl: product.coverUrl,
       price: product.price,
       quantity,
+      categoryCode: product.categoryCode,
     }] : [];
   }, [cart, paymentOrder, product, quantity, source, sourceReportId]);
 
@@ -229,10 +234,19 @@ export default function CheckoutPage() {
   const payable = paymentOrder?.totalAmount
     ?? (subtotal > 0 ? Math.max(minimumWechatPayment, toMoney(subtotal - discount)) : 0);
   const selectedAddress = addresses.find((address) => address.id === selectedAddressId);
+  const cartHasOffline = source === 'cart'
+    && lines.some((line) => line.categoryCode && localLifeCategoryCodes.has(line.categoryCode));
+  const cartHasOnline = source === 'cart'
+    && lines.some((line) => !line.categoryCode || !localLifeCategoryCodes.has(line.categoryCode));
+  const checkoutFulfillment = orderMode
+    ? paymentOrder?.fulfillmentType ?? 'ONLINE'
+    : source === 'cart' && cartHasOffline && !cartHasOnline
+      ? 'OFFLINE'
+      : selectedFulfillmentType;
   const needsAddress = orderMode
     ? paymentOrder?.fulfillmentType === 'ONLINE'
     : source === 'cart'
-      ? true
+      ? cartHasOnline
       : selectedFulfillmentType === 'ONLINE';
   const couponUnavailableReason = useMemo(() => {
     if (merchants.length > 1) return '购物车包含多个商家，优惠券仅支持单商家结算使用';
@@ -409,6 +423,10 @@ export default function CheckoutPage() {
           </div>
           <SafetyCertificateOutlined />
         </header>
+        <CheckoutJourney
+          fulfillmentType={checkoutFulfillment}
+          paymentOnly={orderMode}
+        />
 
         <Spin spinning={pageLoading}>
           {orderMode && !pageLoading && !paymentOrder && (
@@ -440,15 +458,19 @@ export default function CheckoutPage() {
                   <span>{source === 'cart' ? <TruckOutlined /> : selectedFulfillmentType === 'ONLINE' ? <TruckOutlined /> : <ShopOutlined />}</span>
                   <div>
                     <strong>履约方式</strong>
-                    <small>{source === 'cart' ? '购物车商品统一使用快递物流' : '请确认本次购买的收货方式'}</small>
+                    <small>{source === 'cart' ? '不同履约方式由服务端拆分为独立订单' : '请确认本次购买的收货方式'}</small>
                   </div>
                 </div>
                 {source === 'cart' ? (
                   <div className={`${styles.checkoutFulfillmentOption} ${styles.checkoutFulfillmentOptionActive} ${styles.checkoutFulfillmentOptionFixed}`}>
-                    <span className={styles.checkoutFulfillmentIcon}><TruckOutlined /></span>
+                    <span className={styles.checkoutFulfillmentIcon}>{cartHasOffline && !cartHasOnline ? <ShopOutlined /> : <TruckOutlined />}</span>
                     <span className={styles.checkoutFulfillmentCopy}>
-                      <strong>快递物流</strong>
-                      <small>商品将配送至你选择的收货地址</small>
+                      <strong>{cartHasOffline && cartHasOnline ? '配送 + 到店核销' : cartHasOffline ? '到店核销' : '快递物流'}</strong>
+                      <small>{cartHasOffline && cartHasOnline
+                        ? '系统将按商家和履约方式拆单；配送订单使用地址，到店订单生成核销码'
+                        : cartHasOffline
+                          ? '无需收货地址，支付后分别生成到店核销订单'
+                          : '商品将配送至你选择的收货地址'}</small>
                     </span>
                     <Tag color="green">已固定</Tag>
                   </div>
@@ -542,7 +564,7 @@ export default function CheckoutPage() {
                     <div className={styles.checkoutMerchant} key={merchantId}>
                       <div className={styles.checkoutMerchantName}>
                         <ShopOutlined />
-                        <strong>{merchantName || '㤫者商城'}</strong>
+                        <strong>{merchantName || '甄客行'}</strong>
                       </div>
                       {lines.filter((line) => line.merchantId === merchantId).map((line) => (
                         <article className={styles.checkoutProduct} key={`${line.productId}-${line.sourceReportId || 0}`}>
@@ -621,7 +643,10 @@ export default function CheckoutPage() {
                 <div><dt>优惠券</dt><dd className={discount > 0 ? styles.checkoutDiscount : ''}>
                   {discount > 0 ? `-${formatPrice(discount)}` : formatPrice(0)}
                 </dd></div>
-                <div><dt>配送费</dt><dd>免运费</dd></div>
+                <div>
+                  <dt>{checkoutFulfillment === 'OFFLINE' ? '服务费' : '配送费'}</dt>
+                  <dd>{checkoutFulfillment === 'OFFLINE' ? formatPrice(0) : '免运费'}</dd>
+                </div>
               </dl>
               <div className={styles.checkoutPayable}>
                 <span>应付金额</span>
@@ -657,7 +682,7 @@ export default function CheckoutPage() {
       <Drawer
         title="选择优惠券"
         placement="bottom"
-        height="min(78dvh, 660px)"
+        size="min(78dvh, 660px)"
         open={couponOpen}
         onClose={confirmCouponSelection}
         rootClassName={`${styles.checkoutCouponDrawer} ${styles.responsiveDrawer}`}
