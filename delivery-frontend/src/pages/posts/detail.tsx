@@ -23,6 +23,7 @@ import {
   type PostComment,
   type ZhenkePost,
 } from '@/services/zhenke';
+import { isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
 import { buildLoginPath } from '@/utils/safeRedirect';
 import styles from '@/styles/zhenke.less';
 
@@ -41,6 +42,13 @@ export default function PostDetailPage() {
   const [replyTarget, setReplyTarget] = useState<PostComment>();
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [usefulSubmitting, setUsefulSubmitting] = useState(false);
+  const sharePreviewImage = detail?.resources.find((item) => item.resourceType === 'IMAGE')?.resourceUrl ?? '';
+  const prepareWechatShare = useWechatShare(detail && sharePreviewImage ? {
+    title: `甄客帖｜${detail.title}`,
+    description: `${detail.nickName || detail.userName || '甄客行用户'}：${detail.content.slice(0, 60)}`,
+    link: `/posts/${detail.postId}`,
+    imageUrl: sharePreviewImage,
+  } : null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -118,6 +126,11 @@ export default function PostDetailPage() {
       url: window.location.href,
     };
     try {
+      if (isWechatBrowser() && sharePreviewImage) {
+        await prepareWechatShare();
+        message.info('分享卡片已准备，请点击微信右上角发送给朋友或分享到朋友圈');
+        return;
+      }
       if (navigator.share) await navigator.share(shareData);
       else {
         await navigator.clipboard.writeText(window.location.href);

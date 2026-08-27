@@ -28,10 +28,11 @@ export default function MallPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedScene = searchParams.get('scene');
+  const requestedKeyword = searchParams.get('keyword') ?? '';
   const [categories, setCategories] = useState<ProductCategoryDto[]>([]);
   const [activeCategoryId, setActiveCategoryId] = useState<number>();
-  const [keywordInput, setKeywordInput] = useState(searchParams.get('keyword') ?? '');
-  const [keyword, setKeyword] = useState(searchParams.get('keyword') ?? '');
+  const [keywordInput, setKeywordInput] = useState(requestedKeyword);
+  const [keyword, setKeyword] = useState(requestedKeyword);
   const [products, setProducts] = useState<MallProductDto[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -44,15 +45,20 @@ export default function MallPage() {
     setCategoryError('');
     fetchProductCategories().then((rows) => {
       setCategories(rows);
-      if (requestedScene) {
-        const selected = rows.find((item) => item.categoryCode === requestedScene);
-        if (selected) setActiveCategoryId(selected.categoryId);
-      }
+      const selected = requestedScene
+        ? rows.find((item) => item.categoryCode === requestedScene)
+        : undefined;
+      setActiveCategoryId(selected?.categoryId);
     }).catch((reason) => {
       setCategories([]);
       setCategoryError(reason instanceof Error ? reason.message : '商品分类加载失败');
     });
   }, [requestedScene]);
+
+  useEffect(() => {
+    setKeywordInput(requestedKeyword);
+    setKeyword(requestedKeyword);
+  }, [requestedKeyword]);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -230,7 +236,11 @@ export default function MallPage() {
             title={keyword ? '没有找到相关商品' : '当前场景还没有在售商品'}
             description={keyword ? '请尝试更换商品、品牌或商家关键词。' : '商家按真实分类上架后会展示在这里，不使用假酒店、饭店或景区数据。'}
             actionText={keyword ? '清空搜索' : undefined}
-            onAction={keyword ? () => { setKeyword(''); setKeywordInput(''); } : undefined}
+            onAction={keyword ? () => {
+              const next = new URLSearchParams();
+              if (activeCategory?.categoryCode) next.set('scene', activeCategory.categoryCode);
+              setSearchParams(next);
+            } : undefined}
           />
         ) : (
           <>

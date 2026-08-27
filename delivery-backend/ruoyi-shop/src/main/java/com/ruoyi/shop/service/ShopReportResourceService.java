@@ -48,7 +48,7 @@ public class ShopReportResourceService
         }
         catch (Exception e)
         {
-            throw new ServiceException("甄客验资源上传失败，请稍后重试");
+            throw new ServiceException("媒体资源上传失败，请稍后重试");
         }
         throw new ServiceException("图片仅支持 JPG、PNG，视频仅支持 MP4");
     }

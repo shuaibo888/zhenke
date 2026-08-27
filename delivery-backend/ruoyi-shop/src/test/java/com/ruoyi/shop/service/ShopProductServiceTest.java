@@ -139,6 +139,9 @@ class ShopProductServiceTest
         ShopProductBody body = validBody(); body.setCoverUrl("/profile/upload/product/c.jpg"); body.setMainImageUrls(List.of("/profile/upload/product/m.jpg")); body.setDetailImageUrls(List.of("/profile/upload/product/d.jpg")); body.setSupportsOnline(true); body.setSupportsOffline(false);
         assertThrows(ServiceException.class, () -> productService.create(body, "merchant"));
         body.setPackageContent("双人住宿套餐"); body.setUsageNotice("到店出示核销码"); body.setValidityDescription("购买后30日内"); body.setRefundExpiryRule("未核销可退款，过期自动退");
+        body.setReservationRequired(true);
+        assertThrows(ServiceException.class, () -> productService.create(body, "merchant"));
+        body.setReservationNotice("至少提前一天联系商家预约");
         when(productMapper.insertProduct(any())).thenAnswer(i -> { ShopProduct p=i.getArgument(0); p.setProductId(99L); return 1; });
         when(productMapper.selectMerchantProduct(1L,99L)).thenAnswer(i -> { ShopProduct p=new ShopProduct(); p.setProductId(99L); p.setSupportsOnline("0"); p.setSupportsOffline("1"); return p; });
         when(productMapper.selectImages(99L)).thenReturn(List.of());

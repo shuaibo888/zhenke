@@ -25,7 +25,7 @@ import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { copyText } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
 
-const MERCHANT_ADMIN_LOGIN_URL = 'https://dzshop.vip/admin';
+const MERCHANT_ADMIN_LOGIN_URL = '/admin/';
 export function MerchantApplicationModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [form] = Form.useForm<MerchantApplicationBody>();
   const [queryForm] = Form.useForm<MerchantApplicationLookup>();

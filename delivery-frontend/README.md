@@ -24,7 +24,10 @@ src/
 
 ## 路由与分享
 
-- `/`：首页。
+- `/`：甄客行首页、当前位置、运营轮播与甄客帖内容流。
+- `/posts`、`/posts/:postId`、`/posts/publish`：甄客帖列表、详情与发布。
+- `/places/:placeId`：地点详情与导航。
+- `/mall`：甄客行内的商城交易模块。
 - `/products/:productId`：商品详情。
 - `/reports/:reportId`：甄客验详情。
 - `/profile/orders`：我的订单。
@@ -34,6 +37,7 @@ src/
 - `/profile/coupons`：我的优惠券。
 - `/profile/coupons/:userCouponId`：优惠券详情、固定核销码和适用门店。
 - `/profile/reports`：我的甄客验。
+- `/profile/posts`：我的甄客帖（含已删除状态与分页）。
 - `/?report=3`：兼容分享链接，直接加载报告 `3` 的真实详情。
 - `/?product=3`：兼容商品分享链接，直接加载商品 `3` 的真实详情。
 
@@ -44,4 +48,4 @@ src/
 - 不读取 `delivery-frontend1` 目录中的运行时代码。
 - 不包含 seed/mock 订单、购物车、甄客验或本地成功状态。
 - 支付、退款、物流、确认收货、试用和发布均由服务端状态驱动。
-- 当前仍保持“仅在微信中打开”的产品限制。
+- 普通浏览器可正常访问；微信环境额外启用分享卡片、地图和浏览器标题适配。

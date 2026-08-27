@@ -24,7 +24,7 @@ public class ShopZhenkeAdminController extends BaseController {
   }
 
   @GetMapping("/posts")
-  @PreAuthorize("@ss.hasPermi('shop:zhenkePost:list')")
+  @PreAuthorize("@ss.hasRole('admin') and @ss.hasPermi('shop:zhenkePost:list')")
   public TableDataInfo posts(
       @RequestParam(required = false) String keyword,
       @RequestParam(required = false) Long merchantId,
@@ -38,46 +38,46 @@ public class ShopZhenkeAdminController extends BaseController {
   }
 
   @GetMapping("/posts/{id}")
-  @PreAuthorize("@ss.hasPermi('shop:zhenkePost:query')")
+  @PreAuthorize("@ss.hasRole('admin') and @ss.hasPermi('shop:zhenkePost:query')")
   public AjaxResult post(@PathVariable long id) {
     return AjaxResult.success(s.adminDetail(id));
   }
 
   @Log(title = "删除甄客帖", businessType = BusinessType.DELETE)
   @DeleteMapping("/posts/{id}")
-  @PreAuthorize("@ss.hasPermi('shop:zhenkePost:remove')")
+  @PreAuthorize("@ss.hasRole('admin') and @ss.hasPermi('shop:zhenkePost:remove')")
   public AjaxResult delete(@PathVariable long id) {
     s.adminDelete(id, getUserId());
     return AjaxResult.success();
   }
 
   @GetMapping("/banners")
-  @PreAuthorize("@ss.hasPermi('shop:banner:list')")
+  @PreAuthorize("@ss.hasRole('admin') and @ss.hasPermi('shop:banner:list')")
   public AjaxResult banners() {
     return AjaxResult.success(s.banners());
   }
 
   @PostMapping("/banners")
-  @PreAuthorize("@ss.hasPermi('shop:banner:add')")
+  @PreAuthorize("@ss.hasRole('admin') and @ss.hasPermi('shop:banner:add')")
   public AjaxResult add(@Valid @RequestBody ShopHomeBannerBody b) {
     return AjaxResult.success(s.saveBanner(null, b, getUsername()));
   }
 
   @PutMapping("/banners/{id}")
-  @PreAuthorize("@ss.hasPermi('shop:banner:edit')")
+  @PreAuthorize("@ss.hasRole('admin') and @ss.hasPermi('shop:banner:edit')")
   public AjaxResult edit(@PathVariable long id, @Valid @RequestBody ShopHomeBannerBody b) {
     return AjaxResult.success(s.saveBanner(id, b, getUsername()));
   }
 
   @DeleteMapping("/banners/{id}")
-  @PreAuthorize("@ss.hasPermi('shop:banner:remove')")
+  @PreAuthorize("@ss.hasRole('admin') and @ss.hasPermi('shop:banner:remove')")
   public AjaxResult remove(@PathVariable long id) {
     s.deleteBanner(id);
     return AjaxResult.success();
   }
 
   @PutMapping("/banners/{id}/status")
-  @PreAuthorize("@ss.hasPermi('shop:banner:status')")
+  @PreAuthorize("@ss.hasRole('admin') and @ss.hasPermi('shop:banner:status')")
   public AjaxResult status(@PathVariable long id, @RequestParam String status) {
     s.bannerStatus(id, status, getUsername());
     return AjaxResult.success();

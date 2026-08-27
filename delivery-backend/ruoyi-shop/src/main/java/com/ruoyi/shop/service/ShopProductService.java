@@ -255,6 +255,10 @@ public class ShopProductService
         ShopProductCategory category = productMapper.selectCategoryById(body.getCategoryId());
         if (category != null && LOCAL_LIFE_CATEGORY_CODES.contains(category.getCategoryCode())) {
             if (StringUtils.isEmpty(product.getPackageContent()) || StringUtils.isEmpty(product.getUsageNotice()) || StringUtils.isEmpty(product.getValidityDescription()) || StringUtils.isEmpty(product.getRefundExpiryRule())) throw new ServiceException("本地生活套餐需完整填写套餐内容、使用须知、有效期和退款/过期规则");
+            if ("1".equals(product.getReservationRequired())
+                    && StringUtils.isEmpty(product.getReservationNotice())) {
+                throw new ServiceException("需要预约的本地生活套餐必须填写预约说明");
+            }
             product.setSupportsOnline("0"); product.setSupportsOffline("1");
         }
         return product;

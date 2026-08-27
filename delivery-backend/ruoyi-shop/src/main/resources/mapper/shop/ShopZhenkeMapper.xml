@@ -48,7 +48,7 @@
     <result property="placeDistrict" column="place_district"/>
     <result property="placeLatitude" column="place_latitude"/>
     <result property="placeLongitude" column="place_longitude"/>
-    <result property="merchantId" column="merchant_id"/>
+    <result property="merchantId" column="visible_merchant_id"/>
     <result property="merchantName" column="merchant_name"/>
     <result property="status" column="status"/>
     <result property="publishedAt" column="published_at"/>
@@ -60,12 +60,18 @@
     <result property="usefulByMe" column="useful_by_me"/>
   </resultMap>
   <sql id="postSelect">
-    select p.*,u.user_name,u.nick_name,u.avatar,m.shop_name merchant_name,(select count(*) from shop_zhenke_post_comment c where c.post_id=p.post_id and c.del_flag='0') comment_count,(select count(*) from shop_zhenke_post_useful x where x.post_id=p.post_id) useful_count,
+    select p.*,u.user_name,u.nick_name,u.avatar,m.merchant_id visible_merchant_id,m.shop_name merchant_name,(select count(*) from shop_zhenke_post_comment c where c.post_id=p.post_id and c.del_flag='0') comment_count,(select count(*) from shop_zhenke_post_useful x where x.post_id=p.post_id) useful_count,
     <choose>
       <when test="currentUserId != null">exists(select 1 from shop_zhenke_post_useful x where x.post_id=p.post_id and x.shop_user_id=#{currentUserId})</when>
       <otherwise>0</otherwise>
     </choose>
-     useful_by_me from shop_zhenke_post p join shop_user u on u.user_id=p.shop_user_id and u.del_flag='0' left join shop_merchant m on m.merchant_id=p.merchant_id and m.del_flag='0'
+     useful_by_me
+     from shop_zhenke_post p
+     join shop_user u on u.user_id=p.shop_user_id and u.del_flag='0'
+     join shop_place pl on pl.place_id=p.place_id
+     <if test="!includeDeleted">and pl.status='0'</if>
+     left join shop_merchant m on m.merchant_id=p.merchant_id and m.del_flag='0'
+     <if test="!includeDeleted">and m.audit_status='APPROVED' and m.status='0'</if>
   </sql>
   <select id="selectPlaceByProvider" resultMap="place">select * from shop_place where provider=#{provider} and provider_place_id=#{providerPlaceId} and status='0'</select>
   <select id="selectPlace" resultMap="place">select * from shop_place where place_id=#{placeId} and status='0'</select>

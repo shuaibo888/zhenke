@@ -71,6 +71,9 @@ export default function PublishPostPage() {
   const [currentLocation] = useState(loadCurrentLocation);
   const [preferCurrentArea, setPreferCurrentArea] = useState(Boolean(loadCurrentLocation()));
   const placeSearchVersion = useRef(0);
+  const mediaRef = useRef<PostResource[]>([]);
+  const pendingMediaRef = useRef<Array<{ id: number; resourceType: PostResource['resourceType'] }>>([]);
+  const uploadSequenceRef = useRef(0);
 
   if (authLoading) return <main className={styles.page}><ZkState kind="loading" title="正在确认登录状态" /></main>;
   if (!user) return <LoginRedirect />;
@@ -115,19 +118,32 @@ export default function PublishPostPage() {
     const isVideo = file.type === 'video/mp4';
     const isImage = ['image/jpeg', 'image/png'].includes(file.type);
     if (!isVideo && !isImage) throw new Error('图片仅支持 JPG/PNG，视频仅支持 MP4');
-    if (media.length >= 9) throw new Error('图片和视频合计最多上传 9 个');
     if (isImage && file.size > 5 * 1024 * 1024) throw new Error('单张图片不能超过 5MB');
     if (isVideo) {
       if (file.size > 10 * 1024 * 1024) throw new Error('视频不能超过 10MB');
-      if (media.some((item) => item.resourceType === 'VIDEO')) throw new Error('最多上传 1 个视频');
       if ((await videoDuration(file)) > 30.5) throw new Error('视频时长不能超过 30 秒');
     }
+    const resourceType: PostResource['resourceType'] = isVideo ? 'VIDEO' : 'IMAGE';
+    if (mediaRef.current.length + pendingMediaRef.current.length >= 9) {
+      throw new Error('图片和视频合计最多上传 9 个');
+    }
+    if (isVideo && (
+      mediaRef.current.some((item) => item.resourceType === 'VIDEO')
+      || pendingMediaRef.current.some((item) => item.resourceType === 'VIDEO')
+    )) {
+      throw new Error('最多上传 1 个视频');
+    }
+    const reservationId = ++uploadSequenceRef.current;
+    pendingMediaRef.current.push({ id: reservationId, resourceType });
     setMediaUploading(true);
     try {
       const resourceUrl = await upload(file);
-      setMedia((current) => [...current, { resourceType: isVideo ? 'VIDEO' : 'IMAGE', resourceUrl }]);
+      const nextMedia = [...mediaRef.current, { resourceType, resourceUrl }];
+      mediaRef.current = nextMedia;
+      setMedia(nextMedia);
     } finally {
-      setMediaUploading(false);
+      pendingMediaRef.current = pendingMediaRef.current.filter((item) => item.id !== reservationId);
+      setMediaUploading(pendingMediaRef.current.length > 0);
     }
   };
 
@@ -313,7 +329,11 @@ export default function PublishPostPage() {
                       type="button"
                       className={styles.mediaRemove}
                       aria-label={`删除第 ${index + 1} 个媒体`}
-                      onClick={() => setMedia((current) => current.filter((_, currentIndex) => currentIndex !== index))}
+                      onClick={() => {
+                        const nextMedia = mediaRef.current.filter((_, currentIndex) => currentIndex !== index);
+                        mediaRef.current = nextMedia;
+                        setMedia(nextMedia);
+                      }}
                     >
                       <CloseOutlined />
                     </button>

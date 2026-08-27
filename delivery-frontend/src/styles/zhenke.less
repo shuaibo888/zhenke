@@ -666,6 +666,16 @@
   transition: transform 180ms ease, box-shadow 180ms ease;
 }
 
+.postCard.postCardDisabled {
+  cursor: default;
+  opacity: 0.68;
+
+  &:hover {
+    transform: none;
+    box-shadow: @shadowSm;
+  }
+}
+
 .postCard:hover {
   transform: translateY(-4px);
   box-shadow: @shadowMd;

@@ -24,20 +24,20 @@ function AuthorAvatar({ post }: { post: ZhenkePost }) {
   );
 }
 
-export function ZhenkePostCard({ post }: { post: ZhenkePost }) {
+export function ZhenkePostCard({ post, disabled = false }: { post: ZhenkePost; disabled?: boolean }) {
   const navigate = useNavigate();
   const cover = post.resources?.[0];
   const authorName = post.nickName || post.userName || '甄客行用户';
 
   return (
     <article
-      className={styles.postCard}
-      tabIndex={0}
-      role="link"
-      aria-label={`查看甄客帖：${post.title}`}
-      onClick={() => navigate(`/posts/${post.postId}`)}
+      className={`${styles.postCard} ${disabled ? styles.postCardDisabled : ''}`}
+      tabIndex={disabled ? undefined : 0}
+      role={disabled ? undefined : 'link'}
+      aria-label={disabled ? `已删除的甄客帖：${post.title}` : `查看甄客帖：${post.title}`}
+      onClick={disabled ? undefined : () => navigate(`/posts/${post.postId}`)}
       onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') navigate(`/posts/${post.postId}`);
+        if (!disabled && (event.key === 'Enter' || event.key === ' ')) navigate(`/posts/${post.postId}`);
       }}
     >
       <div className={styles.postMedia}>
