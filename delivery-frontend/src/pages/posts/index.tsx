@@ -1,5 +1,5 @@
 import { EditOutlined, InfoCircleOutlined, ReadOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'umi';
 import { ZhenkePostCard } from '@/components/ZhenkePostCard';
@@ -56,6 +56,8 @@ export default function PostListPage() {
       });
       setTotal(result.total);
       setPage(nextPage);
+    } catch (reason) {
+      message.error(reason instanceof Error ? reason.message : '更多甄客帖加载失败');
     } finally {
       setLoadingMore(false);
     }

@@ -9,7 +9,7 @@ import {
 } from '@ant-design/icons';
 import { Button, Input, Popconfirm, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'umi';
+import { useLocation, useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { perspectiveNames } from '@/components/ZhenkePostCard';
 import { ZkState } from '@/components/ZkPage';
@@ -23,30 +23,43 @@ import {
   type PostComment,
   type ZhenkePost,
 } from '@/services/zhenke';
+import { buildLoginPath } from '@/utils/safeRedirect';
 import styles from '@/styles/zhenke.less';
 
 export default function PostDetailPage() {
   const { postId: rawPostId } = useParams<{ postId: string }>();
   const postId = Number(rawPostId);
+  const routeLocation = useLocation();
   const navigate = useNavigate();
   const { user } = useShop();
   const [detail, setDetail] = useState<ZhenkePost>();
   const [commentRows, setCommentRows] = useState<PostComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [commentsError, setCommentsError] = useState('');
   const [commentText, setCommentText] = useState('');
   const [replyTarget, setReplyTarget] = useState<PostComment>();
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [usefulSubmitting, setUsefulSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
+    setCommentsError('');
     try {
-      const [postDetail, postComments] = await Promise.all([post(postId), comments(postId)]);
-      setDetail(postDetail);
-      setCommentRows(postComments);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '甄客帖不存在或已删除');
+      const [postResult, commentResult] = await Promise.allSettled([post(postId), comments(postId)]);
+      if (postResult.status === 'fulfilled') {
+        setDetail(postResult.value);
+      } else {
+        setDetail(undefined);
+        setError(postResult.reason instanceof Error ? postResult.reason.message : '甄客帖不存在或已删除');
+      }
+      if (commentResult.status === 'fulfilled') {
+        setCommentRows(commentResult.value);
+      } else {
+        setCommentRows([]);
+        setCommentsError(commentResult.reason instanceof Error ? commentResult.reason.message : '评论暂时无法加载');
+      }
     } finally {
       setLoading(false);
     }
@@ -77,7 +90,7 @@ export default function PostDetailPage() {
   const requireLogin = () => {
     if (user) return true;
     message.info('登录后可评论、回复和标记有用');
-    navigate(`/auth?redirect=${encodeURIComponent(location.pathname)}`);
+    navigate(buildLoginPath(`${routeLocation.pathname}${routeLocation.search}${routeLocation.hash}`));
     return false;
   };
 
@@ -102,12 +115,12 @@ export default function PostDetailPage() {
     const shareData = {
       title: detail.title,
       text: detail.content.slice(0, 100),
-      url: location.href,
+      url: window.location.href,
     };
     try {
       if (navigator.share) await navigator.share(shareData);
       else {
-        await navigator.clipboard.writeText(location.href);
+        await navigator.clipboard.writeText(window.location.href);
         message.success('分享链接已复制');
       }
     } catch (reason) {
@@ -156,8 +169,13 @@ export default function PostDetailPage() {
             <Popconfirm
               title={reply ? '确认删除这条回复？' : '确认删除评论及其全部回复？'}
               onConfirm={async () => {
-                await deleteComment(postId, comment.commentId);
-                await load();
+                try {
+                  await deleteComment(postId, comment.commentId);
+                  await load();
+                  message.success(reply ? '回复已删除' : '评论已删除');
+                } catch (reason) {
+                  message.error(reason instanceof Error ? reason.message : '评论删除失败');
+                }
               }}
             >
               <Button size="small" type="text" danger>删除</Button>
@@ -206,10 +224,19 @@ export default function PostDetailPage() {
           <Button
             type={detail.usefulByMe ? 'primary' : 'default'}
             icon={<LikeOutlined />}
+            loading={usefulSubmitting}
             onClick={async () => {
               if (!requireLogin()) return;
-              const result = await toggleUseful(postId);
-              setDetail({ ...detail, usefulByMe: result.useful, usefulCount: result.usefulCount });
+              if (usefulSubmitting) return;
+              setUsefulSubmitting(true);
+              try {
+                const result = await toggleUseful(postId);
+                setDetail((current) => current ? { ...current, usefulByMe: result.useful, usefulCount: result.usefulCount } : current);
+              } catch (reason) {
+                message.error(reason instanceof Error ? reason.message : '“有用”状态更新失败');
+              } finally {
+                setUsefulSubmitting(false);
+              }
             }}
           >有用 {detail.usefulCount}</Button>
           <Button icon={<MessageOutlined />} onClick={() => document.getElementById('post-comments')?.scrollIntoView({ behavior: 'smooth' })}>
@@ -220,8 +247,13 @@ export default function PostDetailPage() {
             <Popconfirm
               title="删除后正文、媒体和历史分享链接均不可见，确认删除？"
               onConfirm={async () => {
-                await removePost(postId);
-                navigate('/profile/posts');
+                try {
+                  await removePost(postId);
+                  message.success('甄客帖已删除');
+                  navigate('/profile/posts');
+                } catch (reason) {
+                  message.error(reason instanceof Error ? reason.message : '帖子删除失败');
+                }
               }}
             >
               <Button danger>删除帖子</Button>
@@ -253,6 +285,12 @@ export default function PostDetailPage() {
         <div className={styles.sectionTitle}>
           <div><h2>评论与回复</h2><p>{commentRows.length} 条公开交流</p></div>
         </div>
+        {commentsError && (
+          <div className={styles.contextNotice} role="alert">
+            <span>{commentsError}，帖子正文仍可正常浏览。</span>
+            <Button type="link" size="small" onClick={() => void load()}>重新加载评论</Button>
+          </div>
+        )}
         <div className={styles.commentComposer}>
           {replyTarget && (
             <div className={styles.contextNotice}>

@@ -1,8 +1,9 @@
 import { GiftOutlined } from '@ant-design/icons';
 import { Spin, Tag } from 'antd';
 import { useMemo, useState } from 'react';
-import { Navigate, useNavigate } from 'umi';
+import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { LoginRedirect } from '@/components/LoginRedirect';
 import { ZkTaskHeader } from '@/components/ZkPage';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import type { ShopCouponDto } from '@/services/shopContent';
@@ -39,7 +40,7 @@ export default function CouponsPage() {
   }), [coupons, filter]);
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <LoginRedirect />;
   }
 
   return (

@@ -121,7 +121,10 @@ SELECT '甄客帖管理',0,70,'zhenke-posts',NULL,NULL,'ZhenkePosts',1,0,'C','0'
 WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE perms='shop:zhenkePost:list');
 SET @post_menu=(SELECT menu_id FROM sys_menu WHERE perms='shop:zhenkePost:list' ORDER BY menu_id LIMIT 1);
 INSERT INTO sys_menu(menu_name,parent_id,order_num,path,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time)
-SELECT '甄客帖删除',@post_menu,1,'#',1,0,'F','0','0','shop:zhenkePost:remove','#','migration',NOW()
+SELECT '甄客帖详情',@post_menu,1,'#',1,0,'F','0','0','shop:zhenkePost:query','#','migration',NOW()
+WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE perms='shop:zhenkePost:query');
+INSERT INTO sys_menu(menu_name,parent_id,order_num,path,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time)
+SELECT '甄客帖删除',@post_menu,2,'#',1,0,'F','0','0','shop:zhenkePost:remove','#','migration',NOW()
 WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE perms='shop:zhenkePost:remove');
 INSERT INTO sys_menu(menu_name,parent_id,order_num,path,component,route_name,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time,remark)
 SELECT '首页轮播管理',0,71,'home-banners',NULL,'HomeBanners',1,0,'C','0','0','shop:banner:list','picture','migration',NOW(),'首页轮播仅超管运营'
@@ -134,7 +137,7 @@ SELECT p.n,@banner_menu,p.o,'#',1,0,'F','0','0',p.perm,'#','migration',NOW() FRO
 ) p WHERE NOT EXISTS(SELECT 1 FROM sys_menu m WHERE m.perms=p.perm);
 INSERT IGNORE INTO sys_role_menu(role_id,menu_id)
 SELECT r.role_id,m.menu_id FROM sys_role r JOIN sys_menu m ON m.perms IN
-('shop:zhenkePost:list','shop:zhenkePost:remove','shop:banner:list','shop:banner:add','shop:banner:edit','shop:banner:remove','shop:banner:status')
+('shop:zhenkePost:list','shop:zhenkePost:query','shop:zhenkePost:remove','shop:banner:list','shop:banner:add','shop:banner:edit','shop:banner:remove','shop:banner:status')
 WHERE r.role_key='admin';
 
 -- 执行后只读核对

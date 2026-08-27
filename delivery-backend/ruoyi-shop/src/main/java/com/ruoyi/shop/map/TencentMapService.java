@@ -137,6 +137,7 @@ public class TencentMapService {
         || longitude == null) {
       throw new ServiceException(invalidMessage);
     }
+    requireCoordinates(latitude, longitude);
     String marker =
         "coord:"
             + latitude.toPlainString()
@@ -197,7 +198,9 @@ public class TencentMapService {
               JSONObject item = (JSONObject) raw;
               JSONObject loc = item.getJSONObject("location");
               JSONObject ad = item.getJSONObject("ad_info");
-              if (loc == null || item.getString("id") == null) return;
+              BigDecimal latitude = loc == null ? null : loc.getBigDecimal("lat");
+              BigDecimal longitude = loc == null ? null : loc.getBigDecimal("lng");
+              if (item.getString("id") == null || !coordinatesValid(latitude, longitude)) return;
               Map<String, Object> row = new LinkedHashMap<>();
               row.put("provider", "TENCENT");
               row.put("providerPlaceId", item.getString("id"));
@@ -210,8 +213,8 @@ public class TencentMapService {
               row.put("provinceCode", ad == null ? null : ad.getString("adcode"));
               row.put("cityCode", ad == null ? null : ad.getString("city_code"));
               row.put("districtCode", ad == null ? null : ad.getString("adcode"));
-              row.put("latitude", loc.getBigDecimal("lat"));
-              row.put("longitude", loc.getBigDecimal("lng"));
+              row.put("latitude", latitude);
+              row.put("longitude", longitude);
               rows.add(row);
             });
     return rows;
@@ -245,12 +248,13 @@ public class TencentMapService {
   private Map<String, Object> toPublicPlace(JSONObject item) {
     JSONObject location = item.getJSONObject("location");
     JSONObject address = item.getJSONObject("ad_info");
+    BigDecimal latitude = location == null ? null : location.getBigDecimal("lat");
+    BigDecimal longitude = location == null ? null : location.getBigDecimal("lng");
     if (location == null
         || item.getString("id") == null
         || StringUtils.isEmpty(StringUtils.trim(item.getString("title")))
         || StringUtils.isEmpty(StringUtils.trim(item.getString("address")))
-        || location.getBigDecimal("lat") == null
-        || location.getBigDecimal("lng") == null) {
+        || !coordinatesValid(latitude, longitude)) {
       throw new ServiceException("地图服务未返回有效地点");
     }
     Map<String, Object> value = new LinkedHashMap<>();
@@ -265,8 +269,8 @@ public class TencentMapService {
     value.put("provinceCode", address == null ? null : address.getString("adcode"));
     value.put("cityCode", address == null ? null : address.getString("city_code"));
     value.put("districtCode", address == null ? null : address.getString("adcode"));
-    value.put("latitude", location.getBigDecimal("lat"));
-    value.put("longitude", location.getBigDecimal("lng"));
+    value.put("latitude", latitude);
+    value.put("longitude", longitude);
     return value;
   }
 
@@ -304,12 +308,16 @@ public class TencentMapService {
   }
 
   private void requireCoordinates(BigDecimal lat, BigDecimal lng) {
-    if (lat == null
-        || lng == null
-        || lat.compareTo(BigDecimal.valueOf(-90)) < 0
-        || lat.compareTo(BigDecimal.valueOf(90)) > 0
-        || lng.compareTo(BigDecimal.valueOf(-180)) < 0
-        || lng.compareTo(BigDecimal.valueOf(180)) > 0) throw new ServiceException("定位坐标无效");
+    if (!coordinatesValid(lat, lng)) throw new ServiceException("定位坐标无效");
+  }
+
+  private boolean coordinatesValid(BigDecimal lat, BigDecimal lng) {
+    return lat != null
+        && lng != null
+        && lat.compareTo(BigDecimal.valueOf(-90)) >= 0
+        && lat.compareTo(BigDecimal.valueOf(90)) <= 0
+        && lng.compareTo(BigDecimal.valueOf(-180)) >= 0
+        && lng.compareTo(BigDecimal.valueOf(180)) <= 0;
   }
 
   private String encode(String value) {

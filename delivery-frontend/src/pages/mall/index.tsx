@@ -5,7 +5,7 @@ import {
   SafetyCertificateOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'umi';
 import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
@@ -38,15 +38,20 @@ export default function MallPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
+  const [categoryError, setCategoryError] = useState('');
 
   useEffect(() => {
+    setCategoryError('');
     fetchProductCategories().then((rows) => {
       setCategories(rows);
       if (requestedScene) {
         const selected = rows.find((item) => item.categoryCode === requestedScene);
         if (selected) setActiveCategoryId(selected.categoryId);
       }
-    }).catch((reason) => setError(reason instanceof Error ? reason.message : '商品分类加载失败'));
+    }).catch((reason) => {
+      setCategories([]);
+      setCategoryError(reason instanceof Error ? reason.message : '商品分类加载失败');
+    });
   }, [requestedScene]);
 
   const loadProducts = useCallback(async () => {
@@ -81,7 +86,7 @@ export default function MallPage() {
   const selectScene = (code: string) => {
     const category = categories.find((item) => item.categoryCode === code);
     if (!category) {
-      setError('该本地生活分类尚未完成数据库初始化，请管理员先执行增量 SQL 并启用分类');
+      message.warning('该本地生活分类尚未完成数据库初始化，请管理员先执行增量 SQL 并启用分类');
       return;
     }
     setActiveCategoryId(category.categoryId);
@@ -115,6 +120,8 @@ export default function MallPage() {
       });
       setTotal(result.total);
       setPage(nextPage);
+    } catch (reason) {
+      message.error(reason instanceof Error ? reason.message : '更多商城商品加载失败');
     } finally {
       setLoadingMore(false);
     }
@@ -201,6 +208,12 @@ export default function MallPage() {
           >{category.categoryName}</button>
         ))}
       </nav>
+      {categoryError && (
+        <div className={styles.contextNotice} role="alert">
+          <span>动态分类暂时无法加载：{categoryError}。当前仍可浏览全部真实商品。</span>
+          <Button type="link" onClick={() => window.location.reload()}>重新加载分类</Button>
+        </div>
+      )}
 
       <ZkSectionTitle
         title={keyword ? `“${keyword}”的搜索结果` : activeCategory?.categoryName ?? '正在售卖'}

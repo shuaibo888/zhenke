@@ -38,7 +38,7 @@ public class ShopZhenkeAdminController extends BaseController {
   }
 
   @GetMapping("/posts/{id}")
-  @PreAuthorize("@ss.hasPermi('shop:zhenkePost:list')")
+  @PreAuthorize("@ss.hasPermi('shop:zhenkePost:query')")
   public AjaxResult post(@PathVariable long id) {
     return AjaxResult.success(s.adminDetail(id));
   }

@@ -21,6 +21,7 @@ import {
   Input,
   Layout,
   Menu,
+  Result,
   Select,
   Space,
   Spin,
@@ -1877,7 +1878,7 @@ function AdminWorkspace() {
   };
 
   return (
-    <AdminPageContext.Provider value={pageProps}>
+    <AdminPageContext.Provider value={{ pages: pageProps, hasPermission }}>
       <>
       <Layout className={styles.appShell}>
         <Sider width={232} className={styles.sider} breakpoint="md" collapsedWidth={0} trigger={null}>
@@ -1949,7 +1950,11 @@ function AdminWorkspace() {
           </Header>
 
           <Content className={styles.content}>
-            <Outlet />
+            {availableNavKeys.includes(activeNav) ? (
+              <Outlet />
+            ) : (
+              <Result status="403" title="无权访问" subTitle="当前账号没有访问该管理模块的权限，正在返回工作台。" />
+            )}
           </Content>
         </Layout>
       </Layout>

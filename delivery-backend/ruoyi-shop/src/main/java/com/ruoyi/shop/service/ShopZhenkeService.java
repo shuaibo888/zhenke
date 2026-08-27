@@ -268,9 +268,15 @@ public class ShopZhenkeService {
     x.setEndTime(b.getEndTime());
     x.setCreateBy(user);
     x.setUpdateBy(user);
-    if (id == null) mapper.insertBanner(x);
+    if (id == null) {
+      if (mapper.insertBanner(x) != 1 || x.getBannerId() == null) {
+        throw new ServiceException("轮播保存失败，请重试");
+      }
+    }
     else if (mapper.updateBanner(x) != 1) throw new ServiceException("轮播不存在");
-    return mapper.selectBanner(x.getBannerId());
+    ShopHomeBanner saved = mapper.selectBanner(x.getBannerId());
+    if (saved == null) throw new ServiceException("轮播保存结果异常，请刷新后核对");
+    return saved;
   }
 
   @Transactional
@@ -340,18 +346,65 @@ public class ShopZhenkeService {
     if (b.getStartTime() != null
         && b.getEndTime() != null
         && !b.getEndTime().after(b.getStartTime())) throw new ServiceException("轮播结束时间必须晚于开始时间");
+    validateBannerImage(StringUtils.trim(b.getImageUrl()));
     String t = StringUtils.trim(b.getJumpTarget());
     if ("INTERNAL".equals(b.getJumpType())) {
-      if (!t.startsWith("/") || t.startsWith("//")) throw new ServiceException("站内跳转必须是正式相对路由");
+      validateInternalRoute(t);
     } else
       try {
         URI u = URI.create(t);
         if (!"https".equalsIgnoreCase(u.getScheme())
             || u.getHost() == null
+            || u.getUserInfo() != null
             || !externalHosts.contains(u.getHost().toLowerCase(Locale.ROOT)))
           throw new ServiceException("外链必须使用 https 且域名在服务端允许列表中");
       } catch (IllegalArgumentException e) {
         throw new ServiceException("外链格式无效");
       }
+  }
+
+  private void validateInternalRoute(String target) {
+    String lowered = target.toLowerCase(Locale.ROOT);
+    if (!target.startsWith("/")
+        || target.startsWith("//")
+        || target.contains("\\")
+        || target.chars().anyMatch(ch -> ch < 0x20)
+        || lowered.contains("%2f")
+        || lowered.contains("%5c")
+        || lowered.contains("%2e")) {
+      throw new ServiceException("站内跳转必须是正式相对路由");
+    }
+    try {
+      URI route = URI.create(target);
+      String path = route.getPath();
+      if (route.isAbsolute()
+          || route.getRawAuthority() != null
+          || path == null
+          || !path.startsWith("/")
+          || path.equals("/..")
+          || path.startsWith("/../")
+          || path.contains("/../")
+          || path.endsWith("/..")) {
+        throw new ServiceException("站内跳转必须是正式相对路由");
+      }
+    } catch (IllegalArgumentException e) {
+      throw new ServiceException("站内跳转格式无效");
+    }
+  }
+
+  private void validateBannerImage(String imageUrl) {
+    if (imageUrl.startsWith("/profile/upload/") && !imageUrl.contains("..") && !imageUrl.contains("\\")) {
+      return;
+    }
+    try {
+      URI image = URI.create(imageUrl);
+      if (!"https".equalsIgnoreCase(image.getScheme())
+          || image.getHost() == null
+          || image.getUserInfo() != null) {
+        throw new ServiceException("轮播图片必须使用平台上传地址或 HTTPS 图片地址");
+      }
+    } catch (IllegalArgumentException e) {
+      throw new ServiceException("轮播图片地址格式无效");
+    }
   }
 }

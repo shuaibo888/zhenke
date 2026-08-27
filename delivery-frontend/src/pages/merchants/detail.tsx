@@ -9,7 +9,7 @@ import {
   ShopOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
@@ -30,20 +30,30 @@ export default function MerchantDetailPage() {
   const [products, setProducts] = useState<MallProductDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [productsError, setProductsError] = useState('');
   const [openingNavigation, setOpeningNavigation] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
+    setProductsError('');
     try {
-      const [merchantDetail, productResult] = await Promise.all([
+      const [merchantResult, productResult] = await Promise.allSettled([
         fetchPublicMerchant(merchantId),
         fetchMallProducts({ merchantId, pageNum: 1, pageSize: 12 }),
       ]);
-      setMerchant(merchantDetail);
-      setProducts(productResult.rows);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '商家不存在或暂不可访问');
+      if (merchantResult.status === 'fulfilled') {
+        setMerchant(merchantResult.value);
+      } else {
+        setMerchant(undefined);
+        setError(merchantResult.reason instanceof Error ? merchantResult.reason.message : '商家不存在或暂不可访问');
+      }
+      if (productResult.status === 'fulfilled') {
+        setProducts(productResult.value.rows);
+      } else {
+        setProducts([]);
+        setProductsError(productResult.reason instanceof Error ? productResult.reason.message : '商家商品暂时无法加载');
+      }
     } finally {
       setLoading(false);
     }
@@ -67,6 +77,8 @@ export default function MerchantDetailPage() {
     setOpeningNavigation(true);
     try {
       await openMerchantNavigation(merchant);
+    } catch (reason) {
+      message.error(reason instanceof Error ? reason.message : '暂时无法打开导航');
     } finally {
       setOpeningNavigation(false);
     }
@@ -110,7 +122,14 @@ export default function MerchantDetailPage() {
       </section>
 
       <ZkSectionTitle title="商家在售商品" description="读取该商家的真实在售商品；无商品时不生成占位套餐。" />
-      {products.length === 0 ? (
+      {productsError ? (
+        <ZkState
+          kind="error"
+          title="商家信息可用，在售商品暂未加载"
+          description={productsError}
+          onAction={() => void load()}
+        />
+      ) : products.length === 0 ? (
         <ZkState title="这家商户暂时没有在售商品" description="仍可查看公开资料和使用地图导航。" />
       ) : (
         <div className={styles.productGrid}>

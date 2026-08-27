@@ -19,12 +19,25 @@ export interface AdminPagePropsMap {
   merchants: MerchantsModuleProps;
 }
 
-export const AdminPageContext = createContext<AdminPagePropsMap | null>(null);
+interface AdminWorkspaceContext {
+  pages: AdminPagePropsMap;
+  hasPermission: (permission: string) => boolean;
+}
+
+export const AdminPageContext = createContext<AdminWorkspaceContext | null>(null);
 
 export function useAdminPageProps<Key extends keyof AdminPagePropsMap>(key: Key): AdminPagePropsMap[Key] {
   const context = useContext(AdminPageContext);
   if (!context) {
     throw new Error('管理端页面必须在 AdminWorkspace 中渲染');
   }
-  return context[key];
+  return context.pages[key];
+}
+
+export function useAdminPermission(permission: string) {
+  const context = useContext(AdminPageContext);
+  if (!context) {
+    throw new Error('管理端页面必须在 AdminWorkspace 中渲染');
+  }
+  return context.hasPermission(permission);
 }

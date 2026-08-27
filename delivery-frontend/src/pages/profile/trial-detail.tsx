@@ -6,8 +6,9 @@ import {
 } from '@ant-design/icons';
 import { Button, Result, Spin, Tag, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'umi';
+import { useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { LoginRedirect } from '@/components/LoginRedirect';
 import { ZkTaskHeader } from '@/components/ZkPage';
 import { LogisticsModal } from '@/components/LogisticsModal';
 import { PublishReportModal } from '@/components/PublishReportModal';
@@ -91,7 +92,7 @@ export default function TrialDetailPage() {
     if (user) void load();
   }, [load, user]);
 
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user) return <LoginRedirect />;
 
   const updateTrial = (next: TrialApplicationDto) => {
     setTrial(next);

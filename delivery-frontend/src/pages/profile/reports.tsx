@@ -1,7 +1,8 @@
 import { LikeOutlined, RightOutlined } from '@ant-design/icons';
 import { Spin, Tag } from 'antd';
-import { Navigate, useNavigate } from 'umi';
+import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { LoginRedirect } from '@/components/LoginRedirect';
 import { ZkTaskHeader } from '@/components/ZkPage';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import { getReportType } from '@/utils/shop';
@@ -12,7 +13,7 @@ export default function MyReportsPage() {
   const { user, reports, reportsLoading, refreshReports } = useShop();
   useRefreshOnRoute('/profile/reports', refreshReports, '甄客验记录刷新失败');
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <LoginRedirect />;
   }
   return (
     <main className={`${styles.profileDetailPage} ${styles.profileReportsPage}`}>

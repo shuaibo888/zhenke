@@ -8,7 +8,7 @@ import {
 } from '@ant-design/icons';
 import { Button, Form, Input, message } from 'antd';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'umi';
+import { useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { MerchantApplicationModal } from '@/components/MerchantApplicationModal';
 import { getAliyunOneClickSpToken } from '@/services/aliyunOneClick';
@@ -20,12 +20,15 @@ import {
   type PhoneAuthCapabilities,
 } from '@/services/shopAuth';
 import styles from '@/styles/commerce.less';
+import { safeInternalRedirect } from '@/utils/safeRedirect';
 
 type AuthValues = { username: string; password: string; code?: string };
 type PhoneValues = { phone: string; code: string };
 
 export default function AuthPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnPath = safeInternalRedirect(searchParams.get('redirect'), '/profile');
   const {
     user,
     setUser,
@@ -50,8 +53,8 @@ export default function AuthPage() {
   const [capabilities, setCapabilities] = useState<PhoneAuthCapabilities | null>(null);
 
   useEffect(() => {
-    if (user) navigate('/profile', { replace: true });
-  }, [navigate, user]);
+    if (user) navigate(returnPath, { replace: true });
+  }, [navigate, returnPath, user]);
 
   useEffect(() => {
     void fetchPhoneAuthCapabilities()
@@ -86,7 +89,7 @@ export default function AuthPage() {
         return;
       }
       await login(values.username, values.password, values.code);
-      navigate('/profile');
+      navigate(returnPath, { replace: true });
     } catch (error) {
       message.error(error instanceof Error ? error.message : '操作失败');
       form.resetFields(['code']);
@@ -111,7 +114,7 @@ export default function AuthPage() {
       const nextUser = await loginOrRegisterByPhone(values.phone, values.code);
       setUser(nextUser);
       message.success('手机号验证成功');
-      navigate('/profile');
+      navigate(returnPath, { replace: true });
     } catch (error) {
       message.error(error instanceof Error ? error.message : '手机号登录失败');
     } finally {
@@ -126,7 +129,7 @@ export default function AuthPage() {
       const nextUser = await loginOrRegisterByOneClick(spToken);
       setUser(nextUser);
       message.success('本机号码认证成功');
-      navigate('/profile');
+      navigate(returnPath, { replace: true });
     } catch (error) {
       const reason = error instanceof Error ? error.message : '一键认证失败，请使用短信验证码';
       message.warning(reason);
@@ -171,7 +174,7 @@ export default function AuthPage() {
         </Button>
         <section className={styles.authIntro}>
           <div className={styles.authBrandRow}>
-            <div className={styles.brandMark}>㤫</div>
+            <div className={styles.brandMark}>甄</div>
             <div><strong>甄客行</strong><span>城市生活 · 真实分享</span></div>
           </div>
           <div className={styles.authIntroCopy}>

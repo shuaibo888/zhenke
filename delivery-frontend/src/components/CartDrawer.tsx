@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { buildLoginPath } from '@/utils/safeRedirect';
 import { formatPrice, getCartCount, getCartTotal } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
 
@@ -31,7 +32,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const checkout = () => {
     if (!user) {
       onClose();
-      navigate('/auth');
+      navigate(buildLoginPath('/checkout?source=cart'));
       return;
     }
     const merchantCount = new Set(cart.map((item) => item.merchantId)).size;

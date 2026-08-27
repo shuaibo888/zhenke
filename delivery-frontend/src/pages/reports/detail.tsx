@@ -12,7 +12,7 @@ import {
 } from '@ant-design/icons';
 import { Button, Drawer, Image, Input, Modal, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'umi';
+import { useLocation, useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { WechatShareGuide } from '@/components/WechatShareGuide';
 import { MerchantInfoBar } from '@/components/MerchantInfoBar';
@@ -30,6 +30,7 @@ import {
   type ReportCommentDto,
   type VerificationReportDto,
 } from '@/services/shopContent';
+import { buildLoginPath } from '@/utils/safeRedirect';
 import { buildReportShareLink, copyText, formatPrice, getReportType } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
 
@@ -80,6 +81,7 @@ function CommentItem({
 
 export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?: number }) {
   const params = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { user, replaceReport } = useShop();
   const routeId = Number(params.reportId);
@@ -160,7 +162,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
 
   const submitComment = async () => {
     if (!user) {
-      navigate('/auth');
+      navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`));
       return;
     }
     const content = comment.trim();
@@ -204,7 +206,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
 
   const useful = async () => {
     if (!user) {
-      navigate('/auth');
+      navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`));
       return;
     }
     if (!report || report.shopUserId === user.id) {
@@ -405,7 +407,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
               placeholder={user ? (replyingTo ? '写下你的回复' : '说说你对这份甄客验的看法') : '登录后可以评论和回复'}
               onChange={(event) => setComment(event.target.value)}
               onClick={() => {
-                if (!user) navigate('/auth');
+                if (!user) navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`));
               }}
             />
             <Button type="primary" loading={commentSubmitting} onClick={() => void submitComment()}>

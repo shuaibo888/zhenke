@@ -3,6 +3,7 @@ import { Button, DatePicker, Form, Image, Input, InputNumber, Modal, Popconfirm,
 import dayjs, { type Dayjs } from 'dayjs';
 import { useCallback, useEffect, useState } from 'react';
 import { requestApi, uploadBannerImage } from '@/services/adminApi';
+import { useAdminPermission } from '@/app/AdminPageContext';
 import styles from '@/pages/index.less';
 
 type Banner = {
@@ -23,6 +24,10 @@ type BannerForm = Omit<Banner, 'bannerId' | 'startTime' | 'endTime'> & {
 };
 
 export default function HomeBannersPage() {
+  const canAdd = useAdminPermission('shop:banner:add');
+  const canEdit = useAdminPermission('shop:banner:edit');
+  const canRemove = useAdminPermission('shop:banner:remove');
+  const canChangeStatus = useAdminPermission('shop:banner:status');
   const [data, setData] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -99,7 +104,7 @@ export default function HomeBannersPage() {
           <h3>首页轮播管理</h3>
           <p>轮播服务于本地生活内容发现；赛事等第三方项目只能配置为经过校验的外部链接。</p>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>新增轮播</Button>
+        {canAdd && <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>新增轮播</Button>}
       </div>
 
       <Table<Banner>
@@ -116,13 +121,13 @@ export default function HomeBannersPage() {
           { title: '跳转目标', dataIndex: 'jumpTarget', width: 220, ellipsis: true },
           { title: '排序', dataIndex: 'bannerSort', width: 80 },
           { title: '有效期', width: 180, render: (_, row) => row.startTime && row.endTime ? `${row.startTime.slice(0, 10)} 至 ${row.endTime.slice(0, 10)}` : '长期有效' },
-          { title: '启用', width: 80, render: (_, row) => <Switch checked={row.status === '0'} onChange={(checked) => void toggleStatus(row, checked)} /> },
+          { title: '启用', width: 80, render: (_, row) => <Switch disabled={!canChangeStatus} checked={row.status === '0'} onChange={(checked) => void toggleStatus(row, checked)} /> },
           {
             title: '操作', fixed: 'right', width: 140,
             render: (_, row) => (
               <Space>
-                <Button type="link" onClick={() => openEditor(row)}>编辑</Button>
-                <Popconfirm
+                {canEdit && <Button type="link" onClick={() => openEditor(row)}>编辑</Button>}
+                {canRemove && <Popconfirm
                   title="确认删除轮播？"
                   description="删除后首页将不再展示此运营位。"
                   onConfirm={async () => {
@@ -132,7 +137,7 @@ export default function HomeBannersPage() {
                   }}
                 >
                   <Button type="link" danger>删除</Button>
-                </Popconfirm>
+                </Popconfirm>}
               </Space>
             ),
           },

@@ -5,8 +5,9 @@ import {
 } from '@ant-design/icons';
 import { Button, QRCode, Result, Spin, Tag, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'umi';
+import { useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { LoginRedirect } from '@/components/LoginRedirect';
 import { ZkTaskHeader } from '@/components/ZkPage';
 import {
   fetchMyCoupon,
@@ -63,7 +64,7 @@ export default function CouponDetailPage() {
     return () => window.clearInterval(timer);
   }, [coupon?.availabilityStatus, coupon?.usageMode, loadCoupon]);
 
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user) return <LoginRedirect />;
   if (loading) return <main className={`${styles.profileDetailPage} ${styles.couponDetailPage}`}><Spin size="large" /></main>;
   if (notFound || !coupon) {
     return <main className={`${styles.profileDetailPage} ${styles.couponDetailPage}`}><Result status="404" title="优惠券不存在" extra={<Button onClick={() => navigate('/profile/coupons')}>返回我的优惠券</Button>} /></main>;

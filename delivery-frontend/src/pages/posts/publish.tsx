@@ -7,9 +7,10 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { Button, Checkbox, Form, Input, Radio, Select, Upload, message } from 'antd';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { LoginRedirect } from '@/components/LoginRedirect';
 import { ZkState } from '@/components/ZkPage';
 import {
   merchantOptions,
@@ -71,12 +72,8 @@ export default function PublishPostPage() {
   const [preferCurrentArea, setPreferCurrentArea] = useState(Boolean(loadCurrentLocation()));
   const placeSearchVersion = useRef(0);
 
-  useEffect(() => {
-    if (!authLoading && !user) navigate(`/auth?redirect=${encodeURIComponent('/posts/publish')}`, { replace: true });
-  }, [authLoading, navigate, user]);
-
   if (authLoading) return <main className={styles.page}><ZkState kind="loading" title="正在确认登录状态" /></main>;
-  if (!user) return null;
+  if (!user) return <LoginRedirect />;
 
   const searchPlaces = async (keyword: string) => {
     const normalized = keyword.trim();

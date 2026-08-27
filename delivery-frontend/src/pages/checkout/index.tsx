@@ -8,8 +8,9 @@ import {
 } from '@ant-design/icons';
 import { Alert, Button, Checkbox, Drawer, Modal, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'umi';
+import { useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { LoginRedirect } from '@/components/LoginRedirect';
 import { AddressManager } from '@/components/AddressManager';
 import { CheckoutJourney } from '@/components/CheckoutJourney';
 import { ProfileBackButton } from '@/components/ProfileBackButton';
@@ -303,7 +304,7 @@ export default function CheckoutPage() {
   }, [merchants, orderMode, singleMerchant, subtotal, user]);
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <LoginRedirect />;
   }
 
   const pageLoading = productLoading || orderLoading

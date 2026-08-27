@@ -15,6 +15,7 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { buildLoginPath } from '@/utils/safeRedirect';
 import { getCartCount } from '@/utils/shop';
 import { AddressManager } from './AddressManager';
 import { CartDrawer } from './CartDrawer';
@@ -75,7 +76,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const openPath = (item: MainNavItem) => {
     if (item.protected && !user) {
       message.info('登录后可查看内容、订单和权益');
-      navigate(`/auth?redirect=${encodeURIComponent(item.path)}`);
+      navigate(buildLoginPath(item.path));
       return;
     }
     navigate(item.path);
@@ -84,7 +85,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const goPublish = () => {
     if (!user) {
       message.info('登录后才能发布甄客帖');
-      navigate(`/auth?redirect=${encodeURIComponent('/posts/publish')}`);
+      navigate(buildLoginPath('/posts/publish'));
       return;
     }
     navigate('/posts/publish');
@@ -132,7 +133,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
                     type="button"
                     className={styles.circleAction}
                     aria-label="购物车"
-                    onClick={() => user ? setCartOpen(true) : navigate('/auth?redirect=/mall')}
+                    onClick={() => user ? setCartOpen(true) : navigate(buildLoginPath('/mall'))}
                   >
                     <ShoppingCartOutlined />
                   </button>
@@ -163,7 +164,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
                     </button>
                   </Dropdown>
                 ) : (
-                  <button type="button" className={styles.loginAction} onClick={() => navigate(`/auth?redirect=${encodeURIComponent(location.pathname)}`)}>
+                  <button type="button" className={styles.loginAction} onClick={() => navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`))}>
                     登录 / 注册
                   </button>
                 )}
@@ -179,13 +180,13 @@ export function AppChrome({ children }: { children: ReactNode }) {
                   type="button"
                   className={styles.circleAction}
                   aria-label="购物车"
-                  onClick={() => user ? setCartOpen(true) : navigate('/auth?redirect=/mall')}
+                  onClick={() => user ? setCartOpen(true) : navigate(buildLoginPath('/mall'))}
                 >
                   <ShoppingCartOutlined />
                 </button>
               </Badge>
               {!user && (
-                <button type="button" className={styles.loginAction} onClick={() => navigate(`/auth?redirect=${encodeURIComponent(location.pathname)}`)}>
+                <button type="button" className={styles.loginAction} onClick={() => navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`))}>
                   登录
                 </button>
               )}
@@ -223,7 +224,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
       {showCartFloat && (
         <div className={styles.cartFloat}>
           <Badge count={cartCount}>
-            <button type="button" className={styles.circleAction} onClick={() => user ? setCartOpen(true) : navigate('/auth?redirect=/mall')}>
+            <button type="button" className={styles.circleAction} onClick={() => user ? setCartOpen(true) : navigate(buildLoginPath('/mall'))}>
               <ShoppingCartOutlined />
             </button>
           </Badge>

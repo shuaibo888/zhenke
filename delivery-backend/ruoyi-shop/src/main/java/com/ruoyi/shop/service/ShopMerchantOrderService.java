@@ -114,7 +114,8 @@ public class ShopMerchantOrderService
     public ShopOrder redeem(String redeemCode)
     {
         ShopMerchant merchant = merchantService.currentMerchantAccount();
-        return redeemForMerchant(merchant.getMerchantId(), redeemCode);
+        return redeemForMerchant(merchant.getMerchantId(), redeemCode,
+                "MERCHANT", merchant.getMerchantId(), "商家核销线下订单");
     }
 
     public ShopOrder previewRedeem(String redeemCode)
@@ -132,7 +133,9 @@ public class ShopMerchantOrderService
         {
             throw new ServiceException("核销码无效");
         }
-        return redeemForMerchant(order.getMerchantId(), normalized);
+        Long adminUserId = SecurityUtils.getUserId();
+        return redeemForMerchant(order.getMerchantId(), normalized,
+                "ADMIN", adminUserId, "平台管理员核销线下订单");
     }
 
     public ShopOrder adminPreviewRedeem(String redeemCode)
@@ -165,7 +168,8 @@ public class ShopMerchantOrderService
         return hydrate(order);
     }
 
-    private ShopOrder redeemForMerchant(long merchantId, String redeemCode)
+    private ShopOrder redeemForMerchant(long merchantId, String redeemCode,
+            String operatorType, long operatorId, String remark)
     {
         String normalized = StringUtils.trim(redeemCode);
         if (StringUtils.isEmpty(normalized))
@@ -174,6 +178,12 @@ public class ShopMerchantOrderService
         }
         if (orderMapper.redeemOrder(merchantId, normalized) == 0)
         {
+            ShopOrder existing = orderMapper.selectMerchantOrderByRedeemCode(merchantId, normalized);
+            if (existing != null && ShopOrderService.RECEIVED.equals(existing.getStatus())
+                    && ShopProductService.FULFILLMENT_OFFLINE.equals(existing.getFulfillmentType()))
+            {
+                throw new ServiceException("该订单已核销，请勿重复操作");
+            }
             throw new ServiceException("核销码无效或不属于当前商家");
         }
         ShopOrder order = orderMapper.selectMerchantOrderByRedeemCode(merchantId, normalized);
@@ -181,6 +191,13 @@ public class ShopMerchantOrderService
         {
             throw new ServiceException("订单不存在");
         }
+        if (!ShopOrderService.RECEIVED.equals(order.getStatus())
+                || !ShopProductService.FULFILLMENT_OFFLINE.equals(order.getFulfillmentType()))
+        {
+            throw new ServiceException("核销结果异常，请刷新订单后核对");
+        }
+        insertStatusLog(order.getOrderId(), ShopOrderService.PAID, ShopOrderService.RECEIVED,
+                operatorType, operatorId, remark);
         return hydrate(order);
     }
 

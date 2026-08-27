@@ -144,6 +144,40 @@ class ShopZhenkeServiceTest {
   }
 
   @Test
+  void internalBannerRejectsNetworkPathEscapesAndInsecureImages() {
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+
+    assertThrows(
+        ServiceException.class,
+        () -> service.saveBanner(null, banner("/\\evil.example/path", "INTERNAL"), "admin"));
+    assertThrows(
+        ServiceException.class,
+        () -> service.saveBanner(null, banner("/%2f%2fevil.example/path", "INTERNAL"), "admin"));
+
+    ShopHomeBannerBody insecureImage = banner("/posts", "INTERNAL");
+    insecureImage.setImageUrl("http://cdn.example/banner.jpg");
+    assertThrows(ServiceException.class, () -> service.saveBanner(null, insecureImage, "admin"));
+  }
+
+  @Test
+  void bannerInsertMustPersistAndReturnSavedRecord() {
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopHomeBannerBody body = banner("/posts", "INTERNAL");
+    when(mapper.insertBanner(any())).thenReturn(0);
+
+    assertThrows(ServiceException.class, () -> service.saveBanner(null, body, "admin"));
+
+    when(mapper.insertBanner(any()))
+        .thenAnswer(
+            invocation -> {
+              ((ShopHomeBanner) invocation.getArgument(0)).setBannerId(9L);
+              return 1;
+            });
+    when(mapper.selectBanner(9L)).thenReturn(null);
+    assertThrows(ServiceException.class, () -> service.saveBanner(null, body, "admin"));
+  }
+
+  @Test
   void activeBannerDelegatesToEffectiveWindowQuery() {
     ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
     when(mapper.selectActiveBanners()).thenReturn(List.of());

@@ -3,6 +3,7 @@ import { Alert, Button, Spin, message } from 'antd';
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { LoginRedirect } from '@/components/LoginRedirect';
 import { fetchShopOrder, type ShopOrderDto } from '@/services/shopContent';
 import { formatPrice } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
@@ -41,7 +42,7 @@ export default function CheckoutSuccessPage() {
   }, [contextOrder, orderId, user]);
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <LoginRedirect />;
   }
   if (!orderId) {
     return <Navigate to="/profile/orders" replace />;

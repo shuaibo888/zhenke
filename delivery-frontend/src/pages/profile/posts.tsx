@@ -3,6 +3,7 @@ import { Button, Popconfirm, Tag, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { LoginRedirect } from '@/components/LoginRedirect';
 import { ZhenkePostCard } from '@/components/ZhenkePostCard';
 import { ZkPageHeader, ZkState } from '@/components/ZkPage';
 import { mine, removePost, type ZhenkePost } from '@/services/zhenke';
@@ -31,15 +32,12 @@ export default function MyPostsPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
-      navigate(`/auth?redirect=${encodeURIComponent('/profile/posts')}`, { replace: true });
-      return;
-    }
+    if (!user) return;
     void load();
   }, [authLoading, load, navigate, user]);
 
   if (authLoading) return <main className={styles.page}><ZkState kind="loading" title="正在确认登录状态" /></main>;
-  if (!user) return null;
+  if (!user) return <LoginRedirect />;
 
   return (
     <main className={styles.page}>

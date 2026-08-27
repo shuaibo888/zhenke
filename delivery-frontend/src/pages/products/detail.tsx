@@ -12,15 +12,16 @@ import {
   TruckOutlined,
   ZoomInOutlined,
 } from '@ant-design/icons';
-import { Button, Drawer, Form, Image, Input, Modal, Spin, Tag, message } from 'antd';
+import { Alert, Button, Drawer, Form, Image, Input, Modal, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'umi';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { AddressManager } from '@/components/AddressManager';
 import { HomeFeedReportCard } from '@/components/HomeFeedReportCard';
 import { LocalLifePackagePanel } from '@/components/LocalLifePackagePanel';
 import { MerchantInfoBar } from '@/components/MerchantInfoBar';
 import { WechatShareGuide } from '@/components/WechatShareGuide';
+import { ZkState } from '@/components/ZkPage';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
 import {
@@ -32,6 +33,7 @@ import {
   type PublicProductDto,
 } from '@/services/shopContent';
 import type { ShopShippingAddress } from '@/services/shopAuth';
+import { buildLoginPath } from '@/utils/safeRedirect';
 import { buildProductShareLink, buildTrialShareLink, copyText, formatPrice } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
 
@@ -88,6 +90,7 @@ const certificationProofLabels: Record<string, string> = {
 export default function ProductDetailPage({ productId: productIdProp }: { productId?: number }) {
   const { productId: productIdParam } = useParams();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const {
     user,
@@ -108,6 +111,9 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   const [reportsLoadingMore, setReportsLoadingMore] = useState(false);
   const [reportLoadFailed, setReportLoadFailed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [productError, setProductError] = useState('');
+  const [relatedContentError, setRelatedContentError] = useState('');
+  const [reloadVersion, setReloadVersion] = useState(0);
   const [trialChoiceOpen, setTrialChoiceOpen] = useState(false);
   const [trialOpen, setTrialOpen] = useState(false);
   const [trialSubmitting, setTrialSubmitting] = useState(false);
@@ -135,15 +141,20 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   useEffect(() => {
     if (!Number.isSafeInteger(productId) || productId <= 0) {
       setLoading(false);
+      setProduct(null);
+      setProductError('商品链接无效');
       return;
     }
     let mounted = true;
     setLoading(true);
+    setProduct(null);
+    setProductError('');
+    setRelatedContentError('');
     setProductContentTab('DETAIL');
     reportLoadRequestRef.current = null;
     setReportsLoadingMore(false);
     setReportLoadFailed(false);
-    Promise.all([
+    Promise.allSettled([
       fetchPublicProduct(productId),
       fetchHomeFeed({ productId, contentType: 'TRIAL', pageNum: 1, pageSize: 4 }),
       fetchHomeFeed({
@@ -153,17 +164,32 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
         pageSize: PRODUCT_REPORT_PAGE_SIZE,
       }),
     ])
-      .then(([nextProduct, trialResult, reportResult]) => {
+      .then(([productResult, trialResult, reportResult]) => {
         if (!mounted) return;
-        setProduct(nextProduct);
-        setActiveProductImage(nextProduct.coverUrl);
-        setFeed(trialResult.rows);
-        setReports(reportResult.rows);
-        setReportTotal(reportResult.total);
+        const relatedErrors: string[] = [];
+        if (productResult.status === 'fulfilled') {
+          setProduct(productResult.value);
+          setActiveProductImage(productResult.value.coverUrl);
+        } else {
+          setProductError(productResult.reason instanceof Error ? productResult.reason.message : '商品不存在或已下架');
+        }
+        if (trialResult.status === 'fulfilled') {
+          setFeed(trialResult.value.rows);
+        } else {
+          setFeed([]);
+          relatedErrors.push(trialResult.reason instanceof Error ? trialResult.reason.message : '试用信息暂时无法加载');
+        }
+        if (reportResult.status === 'fulfilled') {
+          setReports(reportResult.value.rows);
+          setReportTotal(reportResult.value.total);
+        } else {
+          setReports([]);
+          setReportTotal(0);
+          setReportLoadFailed(true);
+          relatedErrors.push(reportResult.reason instanceof Error ? reportResult.reason.message : '甄客验暂时无法加载');
+        }
+        setRelatedContentError(relatedErrors.join('；'));
         setReportPage(1);
-      })
-      .catch((error) => {
-        if (mounted) message.error(error instanceof Error ? error.message : '商品加载失败');
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -171,7 +197,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
     return () => {
       mounted = false;
     };
-  }, [productId]);
+  }, [productId, reloadVersion]);
 
   const supportsOnlinePurchase = product?.supportsOnline === '1';
   const supportsOfflinePurchase = product?.supportsOffline === '1';
@@ -241,7 +267,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   const requireLogin = () => {
     if (user) return true;
     message.info('请先登录');
-    navigate('/auth');
+    navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`));
     return false;
   };
 
@@ -410,7 +436,16 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
 
   if (loading) return <main className={styles.sessionLoading}><Spin size="large" /></main>;
   if (!product) {
-    return <main className={styles.singleColumn}><p className={styles.empty}>商品不存在或已下架。</p></main>;
+    return (
+      <main className={styles.singleColumn}>
+        <ZkState
+          kind="error"
+          title="商品暂时无法打开"
+          description={productError || '商品不存在或已下架。'}
+          onAction={() => setReloadVersion((value) => value + 1)}
+        />
+      </main>
+    );
   }
 
   return (
@@ -425,6 +460,16 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
             <ShareAltOutlined />
           </button>
         </header>
+
+        {relatedContentError && (
+          <Alert
+            type="warning"
+            showIcon
+            message="商品信息已加载，部分关联内容暂不可用"
+            description={relatedContentError}
+            action={<Button size="small" onClick={() => setReloadVersion((value) => value + 1)}>重试关联内容</Button>}
+          />
+        )}
 
         <section className={styles.trialHero}>
           <div className={styles.productImageGallery}>

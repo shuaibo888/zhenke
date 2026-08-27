@@ -1,7 +1,8 @@
 import { Button, Input, Modal, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
-import { Navigate, useNavigate } from 'umi';
+import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { LoginRedirect } from '@/components/LoginRedirect';
 import { ZkTaskHeader } from '@/components/ZkPage';
 import { LogisticsModal } from '@/components/LogisticsModal';
 import { OrderRedeemCodeModal } from '@/components/OrderRedeemCodeModal';
@@ -75,7 +76,7 @@ export default function OrdersPage() {
   }), [clock, filter, orders]);
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <LoginRedirect />;
   }
 
   const cancel = (order: ShopOrderDto) => {

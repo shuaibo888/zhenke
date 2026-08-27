@@ -7,8 +7,9 @@ import {
 } from '@ant-design/icons';
 import { Button, Input, Modal, Result, Spin, Tag, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'umi';
+import { useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { LoginRedirect } from '@/components/LoginRedirect';
 import { ZkTaskHeader } from '@/components/ZkPage';
 import { LogisticsModal } from '@/components/LogisticsModal';
 import { OrderRedeemCodeModal } from '@/components/OrderRedeemCodeModal';
@@ -104,7 +105,7 @@ export default function OrderDetailPage() {
     return () => window.clearInterval(timer);
   }, []);
 
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user) return <LoginRedirect />;
 
   const updateOrder = (next: ShopOrderDto) => {
     setOrder(next);

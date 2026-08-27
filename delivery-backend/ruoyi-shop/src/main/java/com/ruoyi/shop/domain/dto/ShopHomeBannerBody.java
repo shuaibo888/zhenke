@@ -23,9 +23,11 @@ public class ShopHomeBannerBody {
   @Size(max = 500)
   private String jumpTarget;
 
+  @NotNull
   @Min(0)
   private Integer bannerSort = 0;
 
+  @NotBlank
   @Pattern(regexp = "0|1")
   private String status = "0";
 

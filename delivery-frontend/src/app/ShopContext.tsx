@@ -20,6 +20,7 @@ import {
   type TrialApplicationDto,
   type VerificationReportDto,
 } from '@/services/shopContent';
+import { buildLoginPath } from '@/utils/safeRedirect';
 import {
   createShopShippingAddress,
   deleteShopShippingAddress,
@@ -417,8 +418,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [clearSession]);
 
   const handleAuthExpiredRelogin = useCallback(() => {
+    const { pathname, search, hash } = history.location;
     closeAuthExpiredModal();
-    history.replace('/auth');
+    history.replace(buildLoginPath(`${pathname}${search}${hash}`));
   }, [closeAuthExpiredModal]);
 
   const handleAuthExpiredGuest = useCallback(() => {

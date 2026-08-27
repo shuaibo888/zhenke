@@ -1,8 +1,9 @@
 import { CheckCircleFilled, GiftOutlined, HistoryOutlined, SwapOutlined, TrophyOutlined } from '@ant-design/icons';
 import { Button, InputNumber, Modal, Spin, message } from 'antd';
 import { useCallback, useRef, useState } from 'react';
-import { Navigate, useNavigate } from 'umi';
+import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { LoginRedirect } from '@/components/LoginRedirect';
 import { ZkTaskHeader } from '@/components/ZkPage';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import {
@@ -136,7 +137,7 @@ export default function PointsPage() {
   }, [selectedSource, availablePoints, transferPoints, refreshPoints, queryTransferBalance]);
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <LoginRedirect />;
   }
 
   const selectedTransferSource = transferSources.find((source) => source.sourceSystem === selectedSource);

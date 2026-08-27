@@ -1,7 +1,8 @@
 import { Button, Spin, Tag, message } from 'antd';
 import { useMemo, useState } from 'react';
-import { Navigate, useNavigate } from 'umi';
+import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { LoginRedirect } from '@/components/LoginRedirect';
 import { ZkTaskHeader } from '@/components/ZkPage';
 import { LogisticsModal } from '@/components/LogisticsModal';
 import { PublishReportModal } from '@/components/PublishReportModal';
@@ -64,7 +65,7 @@ export default function TrialsPage() {
   }), [filter, trials]);
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <LoginRedirect />;
   }
 
   const confirmReceived = async (trial: TrialApplicationDto) => {

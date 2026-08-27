@@ -16,8 +16,9 @@ import {
 } from '@ant-design/icons';
 import { Button, Form, Input, Modal, message } from 'antd';
 import { useCallback, useRef, useState } from 'react';
-import { Navigate, useNavigate } from 'umi';
+import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { LoginRedirect } from '@/components/LoginRedirect';
 import { AddressManager } from '@/components/AddressManager';
 import { AccountSecurityPanel } from '@/components/AccountSecurityPanel';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
@@ -58,7 +59,7 @@ export default function ProfilePage() {
   useRefreshOnRoute('/profile', loadOverview, '个人中心数据刷新失败');
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <LoginRedirect />;
   }
 
   const toggleSection = (key: string) => {

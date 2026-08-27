@@ -3,6 +3,7 @@ import type { TablePaginationConfig } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { useCallback, useEffect, useState } from 'react';
 import { requestApi } from '@/services/adminApi';
+import { useAdminPermission } from '@/app/AdminPageContext';
 import styles from '@/pages/index.less';
 
 type PostResource = {
@@ -37,6 +38,8 @@ const perspectiveLabel = {
 } as const;
 
 export default function ZhenkePostsPage() {
+  const canQuery = useAdminPermission('shop:zhenkePost:query');
+  const canRemove = useAdminPermission('shop:zhenkePost:remove');
   const [data, setData] = useState<Post[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -197,8 +200,8 @@ export default function ZhenkePostsPage() {
             title: '操作', fixed: 'right', width: 150,
             render: (_, row) => (
               <Space>
-                <Button type="link" onClick={() => void openDetail(row.postId)}>详情</Button>
-                {row.status !== 'DELETED' && <Button type="link" danger onClick={() => remove(row)}>删除</Button>}
+                {canQuery && <Button type="link" onClick={() => void openDetail(row.postId)}>详情</Button>}
+                {canRemove && row.status !== 'DELETED' && <Button type="link" danger onClick={() => remove(row)}>删除</Button>}
               </Space>
             ),
           },

@@ -21,19 +21,29 @@ export default function PlaceDetailPage() {
   const [feed, setFeed] = useState<ZhenkePost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [feedError, setFeedError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
+    setFeedError('');
     try {
-      const [placeDetail, postResult] = await Promise.all([
+      const [placeResult, postResult] = await Promise.allSettled([
         place(placeId),
         posts('RECOMMEND', 1, 20, placeId),
       ]);
-      setDetail(placeDetail);
-      setFeed(postResult.rows);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '地点不存在或已停用');
+      if (placeResult.status === 'fulfilled') {
+        setDetail(placeResult.value);
+      } else {
+        setDetail(undefined);
+        setError(placeResult.reason instanceof Error ? placeResult.reason.message : '地点不存在或已停用');
+      }
+      if (postResult.status === 'fulfilled') {
+        setFeed(postResult.value.rows);
+      } else {
+        setFeed([]);
+        setFeedError(postResult.reason instanceof Error ? postResult.reason.message : '地点关联帖子暂时无法加载');
+      }
     } finally {
       setLoading(false);
     }
@@ -99,7 +109,14 @@ export default function PlaceDetailPage() {
         title="这个地点的甄客帖"
         description="按公开时间展示与地点关联的全平台帖子，不按你当前所在城市过滤。"
       />
-      {feed.length > 0 ? (
+      {feedError ? (
+        <ZkState
+          kind="error"
+          title="地点信息可用，关联帖子暂未加载"
+          description={feedError}
+          onAction={() => void load()}
+        />
+      ) : feed.length > 0 ? (
         <div className={styles.postGrid}>{feed.map((item) => <ZhenkePostCard key={item.postId} post={item} />)}</div>
       ) : (
         <ZkState

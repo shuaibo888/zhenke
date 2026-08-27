@@ -1,7 +1,7 @@
 import { HistoryOutlined, MinusOutlined, PlusOutlined } from '@ant-design/icons';
 import { Pagination, Spin, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Navigate } from 'umi';
+import { LoginRedirect } from '@/components/LoginRedirect';
 import { useShop } from '@/app/ShopContext';
 import { ZkTaskHeader } from '@/components/ZkPage';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
@@ -45,7 +45,7 @@ export default function PointRecordsPage() {
   useRefreshOnRoute('/profile/point-records', refreshRecords, '积分记录刷新失败');
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <LoginRedirect />;
   }
 
   const changePage = (nextPage: number) => {
