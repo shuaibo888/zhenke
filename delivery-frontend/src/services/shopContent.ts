@@ -367,6 +367,7 @@ export interface HomeSearchQuery {
 export interface MallProductsQuery {
   categoryId?: number;
   merchantId?: number;
+  businessModule?: 'MALL';
   keyword?: string;
   pageNum?: number;
   pageSize?: number;
@@ -432,6 +433,7 @@ export async function fetchMallProducts(query: MallProductsQuery = {}) {
   });
   if (query.categoryId) params.set('categoryId', String(query.categoryId));
   if (query.merchantId) params.set('merchantId', String(query.merchantId));
+  if (query.businessModule) params.set('businessModule', query.businessModule);
   const keyword = query.keyword?.trim();
   if (keyword) params.set('keyword', keyword);
   const result = await requestApi<TableResponse<MallProductDto>>(

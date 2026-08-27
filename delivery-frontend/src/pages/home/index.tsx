@@ -222,19 +222,22 @@ export default function HomePage() {
       )}
 
       <ZkSectionTitle
-        title="本地生活交易"
-        description="商城只是甄客行里的交易模块，酒店、饭店、景区套餐统一下单并线下核销。"
+        title="四大营业分类"
+        description="原商城能力完整保留；酒店、景区和饭店在同一交易底座上扩展，主要使用线下核销。"
         action={<button type="button" className={styles.textButton} onClick={() => navigate('/mall')}>进入商城 →</button>}
       />
-      <div className={styles.sceneGrid}>
-        <button type="button" className={styles.sceneCard} onClick={() => navigate('/mall?scene=ZHENKE_HOTEL')}>
-          <span>住</span><strong>甄客酒店</strong><p>住宿套餐 · 到店核销</p>
+      <div className={styles.businessModuleGrid}>
+        <button type="button" className={styles.businessModuleCard} onClick={() => navigate('/mall?module=MALL')}>
+          <span>购</span><strong>商城</strong><p>原有商品 · 试用 · 配送与售后</p>
         </button>
-        <button type="button" className={styles.sceneCard} onClick={() => navigate('/mall?scene=ZHENKE_RESTAURANT')}>
-          <span>食</span><strong>甄客饭店</strong><p>餐饮套餐 · 到店核销</p>
+        <button type="button" className={styles.businessModuleCard} onClick={() => navigate('/mall?module=ZHENKE_HOTEL')}>
+          <span>住</span><strong>酒店</strong><p>住宿套餐 · 到店核销</p>
         </button>
-        <button type="button" className={styles.sceneCard} onClick={() => navigate('/mall?scene=ZHENKE_SCENIC')}>
-          <span>游</span><strong>甄客景区</strong><p>门票线路 · 现场核销</p>
+        <button type="button" className={styles.businessModuleCard} onClick={() => navigate('/mall?module=ZHENKE_SCENIC')}>
+          <span>游</span><strong>景区</strong><p>门票线路 · 现场核销</p>
+        </button>
+        <button type="button" className={styles.businessModuleCard} onClick={() => navigate('/mall?module=ZHENKE_RESTAURANT')}>
+          <span>食</span><strong>饭店</strong><p>餐饮套餐 · 到店核销</p>
         </button>
       </div>
       <div className={styles.contextNotice}>

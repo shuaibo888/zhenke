@@ -18,19 +18,33 @@ import {
 import styles from '@/styles/zhenke.less';
 
 const PAGE_SIZE = 16;
-const localLifeScenes = [
-  { code: 'ZHENKE_HOTEL', title: '甄客酒店', caption: '住宿套餐 · 到店核销', mark: '住' },
-  { code: 'ZHENKE_RESTAURANT', title: '甄客饭店', caption: '餐券套餐 · 到店核销', mark: '食' },
-  { code: 'ZHENKE_SCENIC', title: '甄客景区', caption: '门票线路 · 现场核销', mark: '游' },
+const businessModules = [
+  { code: 'MALL', title: '商城', caption: '原有好物 · 配送与售后', mark: '购' },
+  { code: 'ZHENKE_HOTEL', title: '酒店', caption: '住宿套餐 · 到店核销', mark: '住' },
+  { code: 'ZHENKE_SCENIC', title: '景区', caption: '门票线路 · 现场核销', mark: '游' },
+  { code: 'ZHENKE_RESTAURANT', title: '饭店', caption: '餐券套餐 · 到店核销', mark: '食' },
 ] as const;
+type BusinessModuleCode = (typeof businessModules)[number]['code'];
+const localLifeCodes = new Set<BusinessModuleCode>([
+  'ZHENKE_HOTEL',
+  'ZHENKE_SCENIC',
+  'ZHENKE_RESTAURANT',
+]);
+
+function normalizeBusinessModule(value: string | null): BusinessModuleCode {
+  return businessModules.some((item) => item.code === value) ? value as BusinessModuleCode : 'MALL';
+}
 
 export default function MallPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const requestedScene = searchParams.get('scene');
+  const requestedRouteCode = searchParams.get('module') ?? searchParams.get('scene');
+  const activeModule = normalizeBusinessModule(requestedRouteCode);
+  const requestedCategory = searchParams.get('category')
+    ?? (activeModule === 'MALL' && requestedRouteCode !== 'MALL' ? requestedRouteCode : null);
   const requestedKeyword = searchParams.get('keyword') ?? '';
   const [categories, setCategories] = useState<ProductCategoryDto[]>([]);
-  const [activeCategoryId, setActiveCategoryId] = useState<number>();
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [keywordInput, setKeywordInput] = useState(requestedKeyword);
   const [keyword, setKeyword] = useState(requestedKeyword);
   const [products, setProducts] = useState<MallProductDto[]>([]);
@@ -45,27 +59,46 @@ export default function MallPage() {
     setCategoryError('');
     fetchProductCategories().then((rows) => {
       setCategories(rows);
-      const selected = requestedScene
-        ? rows.find((item) => item.categoryCode === requestedScene)
-        : undefined;
-      setActiveCategoryId(selected?.categoryId);
     }).catch((reason) => {
       setCategories([]);
       setCategoryError(reason instanceof Error ? reason.message : '商品分类加载失败');
+    }).finally(() => {
+      setCategoriesLoading(false);
     });
-  }, [requestedScene]);
+  }, []);
 
   useEffect(() => {
     setKeywordInput(requestedKeyword);
     setKeyword(requestedKeyword);
   }, [requestedKeyword]);
 
+  const legacyCategories = useMemo(
+    () => categories.filter((item) => !localLifeCodes.has(item.categoryCode as BusinessModuleCode)),
+    [categories],
+  );
+  const activeCategory = useMemo(() => {
+    if (activeModule === 'MALL') {
+      return legacyCategories.find((item) => item.categoryCode === requestedCategory);
+    }
+    return categories.find((item) => item.categoryCode === activeModule);
+  }, [activeModule, categories, legacyCategories, requestedCategory]);
+  const activeCategoryId = activeCategory?.categoryId;
+
   const loadProducts = useCallback(async () => {
+    if (categoriesLoading) return;
+    if (activeModule !== 'MALL' && !activeCategoryId) {
+      setProducts([]);
+      setTotal(0);
+      setPage(1);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
       const result = await fetchMallProducts({
         categoryId: activeCategoryId,
+        businessModule: activeModule === 'MALL' ? 'MALL' : undefined,
         keyword: keyword || undefined,
         pageNum: 1,
         pageSize: PAGE_SIZE,
@@ -78,25 +111,21 @@ export default function MallPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeCategoryId, keyword]);
+  }, [activeCategoryId, activeModule, categoriesLoading, keyword]);
 
   useEffect(() => {
     void loadProducts();
   }, [loadProducts]);
 
-  const activeCategory = useMemo(
-    () => categories.find((item) => item.categoryId === activeCategoryId),
-    [activeCategoryId, categories],
-  );
-
-  const selectScene = (code: string) => {
+  const selectModule = (code: BusinessModuleCode) => {
     const category = categories.find((item) => item.categoryCode === code);
-    if (!category) {
+    if (code !== 'MALL' && !category) {
       message.warning('该本地生活分类尚未完成数据库初始化，请管理员先执行增量 SQL 并启用分类');
       return;
     }
-    setActiveCategoryId(category.categoryId);
-    setSearchParams({ scene: code });
+    const next = new URLSearchParams({ module: code });
+    if (keyword) next.set('keyword', keyword);
+    setSearchParams(next);
     document.getElementById('mall-products')?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -106,7 +135,10 @@ export default function MallPage() {
     setKeyword(normalized);
     const next = new URLSearchParams();
     if (normalized) next.set('keyword', normalized);
-    if (activeCategory?.categoryCode) next.set('scene', activeCategory.categoryCode);
+    next.set('module', activeModule);
+    if (activeModule === 'MALL' && activeCategory?.categoryCode) {
+      next.set('category', activeCategory.categoryCode);
+    }
     setSearchParams(next);
   };
 
@@ -116,6 +148,7 @@ export default function MallPage() {
       const nextPage = page + 1;
       const result = await fetchMallProducts({
         categoryId: activeCategoryId,
+        businessModule: activeModule === 'MALL' ? 'MALL' : undefined,
         keyword: keyword || undefined,
         pageNum: nextPage,
         pageSize: PAGE_SIZE,
@@ -160,13 +193,19 @@ export default function MallPage() {
         </aside>
       </section>
 
-      <ZkSectionTitle title="三大本地生活场景" description="通过稳定分类代码识别，不依赖数据库自增 ID 或中文名称。" />
-      <div className={styles.sceneGrid}>
-        {localLifeScenes.map((scene) => (
-          <button key={scene.code} type="button" className={styles.sceneCard} onClick={() => selectScene(scene.code)}>
-            <span>{scene.mark}</span>
-            <strong>{scene.title}</strong>
-            <p>{scene.caption}</p>
+      <ZkSectionTitle title="四大营业模块" description="商城完整保留原有交易能力；酒店、景区和饭店主要使用线下核销。" />
+      <div className={styles.businessModuleGrid}>
+        {businessModules.map((module) => (
+          <button
+            key={module.code}
+            type="button"
+            className={`${styles.businessModuleCard} ${activeModule === module.code ? styles.businessModuleCardActive : ''}`}
+            aria-pressed={activeModule === module.code}
+            onClick={() => selectModule(module.code)}
+          >
+            <span>{module.mark}</span>
+            <strong>{module.title}</strong>
+            <p>{module.caption}</p>
           </button>
         ))}
       </div>
@@ -191,29 +230,31 @@ export default function MallPage() {
         <Button type="primary" htmlType="submit">搜索</Button>
       </form>
 
-      <nav className={styles.categoryRail} aria-label="商城动态分类">
-        <button
-          type="button"
-          className={`${styles.categoryChip} ${activeCategoryId == null ? styles.categoryChipActive : ''}`}
-          onClick={() => {
-            setActiveCategoryId(undefined);
-            setSearchParams(keyword ? { keyword } : {});
-          }}
-        >全部</button>
-        {categories.map((category) => (
+      {activeModule === 'MALL' && (
+        <nav className={styles.categoryRail} aria-label="商城原有动态分类">
           <button
-            key={category.categoryId}
             type="button"
-            className={`${styles.categoryChip} ${activeCategoryId === category.categoryId ? styles.categoryChipActive : ''}`}
+            className={`${styles.categoryChip} ${activeCategoryId == null ? styles.categoryChipActive : ''}`}
             onClick={() => {
-              setActiveCategoryId(category.categoryId);
-              const next: Record<string, string> = { scene: category.categoryCode };
-              if (keyword) next.keyword = keyword;
+              const next = new URLSearchParams({ module: 'MALL' });
+              if (keyword) next.set('keyword', keyword);
               setSearchParams(next);
             }}
-          >{category.categoryName}</button>
-        ))}
-      </nav>
+          >商城全部</button>
+          {legacyCategories.map((category) => (
+            <button
+              key={category.categoryId}
+              type="button"
+              className={`${styles.categoryChip} ${activeCategoryId === category.categoryId ? styles.categoryChipActive : ''}`}
+              onClick={() => {
+                const next = new URLSearchParams({ module: 'MALL', category: category.categoryCode });
+                if (keyword) next.set('keyword', keyword);
+                setSearchParams(next);
+              }}
+            >{category.categoryName}</button>
+          ))}
+        </nav>
+      )}
       {categoryError && (
         <div className={styles.contextNotice} role="alert">
           <span>动态分类暂时无法加载：{categoryError}。当前仍可浏览全部真实商品。</span>
@@ -222,7 +263,9 @@ export default function MallPage() {
       )}
 
       <ZkSectionTitle
-        title={keyword ? `“${keyword}”的搜索结果` : activeCategory?.categoryName ?? '正在售卖'}
+        title={keyword
+          ? `“${keyword}”的搜索结果`
+          : activeCategory?.categoryName ?? businessModules.find((item) => item.code === activeModule)?.title ?? '正在售卖'}
         description={!loading ? `共 ${total} 件真实商品；无商品时不填充演示数据。` : '正在查询真实商品数据。'}
       />
 
@@ -233,12 +276,19 @@ export default function MallPage() {
           <ZkState kind="error" title="商城暂时无法加载" description={error} onAction={() => void loadProducts()} />
         ) : products.length === 0 ? (
           <ZkState
-            title={keyword ? '没有找到相关商品' : '当前场景还没有在售商品'}
-            description={keyword ? '请尝试更换商品、品牌或商家关键词。' : '商家按真实分类上架后会展示在这里，不使用假酒店、饭店或景区数据。'}
+            title={keyword ? '没有找到相关商品' : '当前模块还没有在售商品'}
+            description={keyword
+              ? '请尝试更换商品、品牌或商家关键词。'
+              : activeModule === 'MALL'
+                ? '这里完整承接原商城动态分类；商家上架真实商品后会展示。'
+                : '商家按真实分类上架后会展示在这里，不使用假酒店、饭店或景区数据。'}
             actionText={keyword ? '清空搜索' : undefined}
             onAction={keyword ? () => {
               const next = new URLSearchParams();
-              if (activeCategory?.categoryCode) next.set('scene', activeCategory.categoryCode);
+              next.set('module', activeModule);
+              if (activeModule === 'MALL' && activeCategory?.categoryCode) {
+                next.set('category', activeCategory.categoryCode);
+              }
               setSearchParams(next);
             } : undefined}
           />

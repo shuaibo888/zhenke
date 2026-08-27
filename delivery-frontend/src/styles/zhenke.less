@@ -1112,48 +1112,66 @@
   font-size: 12px;
 }
 
-.sceneGrid {
+.businessModuleGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
   margin: 18px 0;
 }
 
-.sceneCard {
+.businessModuleCard {
   position: relative;
-  min-height: 170px;
+  min-height: 165px;
   padding: 22px;
   overflow: hidden;
   color: #fff;
-  background: linear-gradient(145deg, @primaryDark, @primary);
-  border: 0;
+  background: linear-gradient(145deg, #57352b, #a55538);
+  border: 2px solid transparent;
   border-radius: 22px;
+  box-shadow: @shadowSm;
   cursor: pointer;
   text-align: left;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
 }
 
-.sceneCard:nth-child(2) {
-  background: linear-gradient(145deg, #8c492f, #d98545);
+.businessModuleCard:nth-child(2) {
+  background: linear-gradient(145deg, #7f4431, #d47c43);
 }
 
-.sceneCard:nth-child(3) {
-  background: linear-gradient(145deg, #4d4b35, @gold);
+.businessModuleCard:nth-child(3) {
+  background: linear-gradient(145deg, #555038, #a78a49);
 }
 
-.sceneCard span {
+.businessModuleCard:nth-child(4) {
+  background: linear-gradient(145deg, #7d372f, #c9634b);
+}
+
+.businessModuleCard:hover,
+.businessModuleCard:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: @shadowMd;
+  outline: none;
+}
+
+.businessModuleCardActive {
+  border-color: #fff4e9;
+  box-shadow: 0 0 0 3px fade(@primary, 28%), @shadowMd;
+}
+
+.businessModuleCard span {
   font-size: 27px;
 }
 
-.sceneCard strong {
+.businessModuleCard strong {
   display: block;
   margin-top: 28px;
   font-family: "STKaiti", "KaiTi", serif;
-  font-size: 27px;
+  font-size: 26px;
 }
 
-.sceneCard p {
+.businessModuleCard p {
   margin: 5px 0 0;
-  color: rgba(255, 255, 255, 0.76);
+  color: rgba(255, 255, 255, 0.78);
 }
 
 .profileGroups {
@@ -1335,18 +1353,18 @@
     gap: 11px;
   }
 
-  .sceneGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .businessModuleGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .sceneCard {
+  .businessModuleCard {
     min-height: 135px;
     padding: 15px;
   }
 
-  .sceneCard strong {
+  .businessModuleCard strong {
     margin-top: 20px;
-    font-size: 20px;
+    font-size: 21px;
   }
 
   .floatingPublish {
@@ -1450,12 +1468,22 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .sceneGrid {
-    grid-template-columns: 1fr;
+  .businessModuleGrid {
+    gap: 10px;
   }
 
-  .sceneCard {
-    min-height: 125px;
+  .businessModuleCard {
+    min-height: 118px;
+    padding: 14px;
+  }
+
+  .businessModuleCard strong {
+    margin-top: 13px;
+    font-size: 19px;
+  }
+
+  .businessModuleCard p {
+    font-size: 11px;
   }
 
   .profileEntryGrid {

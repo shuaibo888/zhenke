@@ -226,6 +226,9 @@
             and m.audit_status = 'APPROVED' and m.status = '0'
             and c.status = '0'
             <if test="categoryId != null">and p.category_id = #{categoryId}</if>
+            <if test="mallOnly != null and mallOnly">
+                and c.category_code not in ('ZHENKE_HOTEL', 'ZHENKE_RESTAURANT', 'ZHENKE_SCENIC')
+            </if>
             <if test="merchantId != null">and p.merchant_id = #{merchantId}</if>
             <if test="keyword != null and keyword != ''">
                 and (

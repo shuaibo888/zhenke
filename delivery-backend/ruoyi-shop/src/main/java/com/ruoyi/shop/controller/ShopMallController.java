@@ -1,6 +1,7 @@
 package com.ruoyi.shop.controller;
 
 import java.util.List;
+import java.util.Locale;
 import com.github.pagehelper.PageHelper;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,6 +30,7 @@ public class ShopMallController extends BaseController
     public TableDataInfo products(@RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long merchantId,
+            @RequestParam(required = false) String businessModule,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "12") int pageSize)
     {
@@ -41,6 +43,13 @@ public class ShopMallController extends BaseController
         query.setCategoryId(categoryId);
         query.setMerchantId(merchantId);
         query.setKeyword(normalizedKeyword);
+        String normalizedModule = businessModule == null ? null
+                : businessModule.trim().toUpperCase(Locale.ROOT);
+        if (normalizedModule != null && !normalizedModule.isEmpty() && !"MALL".equals(normalizedModule))
+        {
+            throw new ServiceException("营业模块参数无效");
+        }
+        query.setMallOnly("MALL".equals(normalizedModule));
         int safePageNum = Math.max(1, pageNum);
         int safePageSize = Math.max(1, Math.min(pageSize, 24));
         PageHelper.startPage(safePageNum, safePageSize, safePageNum == 1);

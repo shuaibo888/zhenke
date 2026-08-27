@@ -36,6 +36,7 @@ public class ShopProduct extends BaseEntity
     private String delFlag;
     private Boolean trialOnly;
     private String keyword;
+    private Boolean mallOnly;
     private List<ShopProductImage> images;
     private List<String> mainImageUrls;
     private List<String> detailImageUrls;
@@ -104,6 +105,8 @@ public class ShopProduct extends BaseEntity
     public void setTrialOnly(Boolean trialOnly) { this.trialOnly = trialOnly; }
     @JsonIgnore public String getKeyword() { return keyword; }
     public void setKeyword(String keyword) { this.keyword = keyword; }
+    @JsonIgnore public Boolean getMallOnly() { return mallOnly; }
+    public void setMallOnly(Boolean mallOnly) { this.mallOnly = mallOnly; }
     public List<ShopProductImage> getImages() { return images; }
     public void setImages(List<ShopProductImage> images) { this.images = images; }
     public List<String> getMainImageUrls() { return mainImageUrls; }
