@@ -182,11 +182,17 @@ export async function banners() {
 }
 
 export async function merchantOptions(keyword = "") {
-  return (
-    (
-      await requestApi<ApiResponse<MerchantOption[]>>(
-        `/shop/zhenke/merchant-options?keyword=${encodeURIComponent(keyword)}`,
-      )
-    ).data ?? []
+  const data = (
+    await requestApi<ApiResponse<Array<MerchantOption | null>>>(
+      `/shop/zhenke/merchant-options?keyword=${encodeURIComponent(keyword)}`,
+    )
+  ).data;
+  if (!Array.isArray(data)) return [];
+  return data.filter(
+    (item): item is MerchantOption =>
+      item != null
+      && Number.isFinite(item.merchantId)
+      && typeof item.shopName === "string"
+      && item.shopName.trim().length > 0,
   );
 }

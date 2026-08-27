@@ -116,9 +116,6 @@ token:
   expireTime: 30
 
 shop:
-  # 甄客行首页轮播外链域名白名单（逗号分隔，仅允许 HTTPS）
-  home-banner:
-    external-hosts: ${SHOP_HOME_BANNER_EXTERNAL_HOSTS:}
   event-sso:
     # 赛事系统票据验证接口和共享密钥必须由服务器环境变量注入，禁止写入源码。
     exchange-url: ${EVENT_SSO_EXCHANGE_URL:}

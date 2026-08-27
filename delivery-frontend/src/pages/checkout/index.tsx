@@ -575,8 +575,8 @@ export default function CheckoutPage() {
               message={paymentOrder.status === 'PAID' ? '支付已完成' : '当前订单无需继续支付'}
               description={paymentOrder.status === 'PAID'
                 ? paymentOrder.fulfillmentType === 'OFFLINE'
-                  ? '支付结果已经由服务端确认，可前往订单详情查看核销码。'
-                  : '支付结果已经由服务端确认，可前往我的订单查看发货进度。'
+                  ? '支付结果已经确认，可前往订单详情查看核销码。'
+                  : '支付结果已经确认，可前往我的订单查看发货进度。'
                 : '订单状态已经变化，请前往我的订单查看详情。'}
               action={<Button onClick={() => navigate('/profile/orders')}>查看订单</Button>}
             />
@@ -589,7 +589,7 @@ export default function CheckoutPage() {
                   <span>{source === 'cart' ? <TruckOutlined /> : selectedFulfillmentType === 'ONLINE' ? <TruckOutlined /> : <ShopOutlined />}</span>
                   <div>
                     <strong>履约方式</strong>
-                    <small>{source === 'cart' ? '不同履约方式由服务端拆分为独立订单' : '请确认本次购买的收货方式'}</small>
+                    <small>{source === 'cart' ? '不同使用方式将分别生成订单' : '请确认本次购买的收货方式'}</small>
                   </div>
                 </div>
                 {source === 'cart' ? (

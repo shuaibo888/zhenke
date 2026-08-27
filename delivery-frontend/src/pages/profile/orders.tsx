@@ -84,7 +84,7 @@ export default function OrdersPage() {
   const cancel = (order: ShopOrderDto) => {
     Modal.confirm({
       title: '取消订单',
-      content: '取消后库存会由服务端恢复，确定继续吗？',
+      content: '取消后商品库存将恢复，确定继续吗？',
       okText: '取消订单',
       cancelText: '保留订单',
       onOk: async () => {

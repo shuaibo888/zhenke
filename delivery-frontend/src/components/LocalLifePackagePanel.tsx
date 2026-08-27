@@ -40,7 +40,7 @@ export function LocalLifePackagePanel({
         <div>
           <small>{scene?.label || product.categoryName} · 购买前必读</small>
           <h2 id="package-panel-title">套餐与到店使用</h2>
-          <p>规则由商家上架并由服务端保存；支付后仍以订单中的规则快照为准。</p>
+          <p>购买前请仔细确认套餐内容、有效期和使用说明。</p>
         </div>
       </header>
       <div className={styles.packageRuleGrid}>

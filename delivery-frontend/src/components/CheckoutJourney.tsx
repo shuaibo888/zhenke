@@ -20,12 +20,12 @@ export function CheckoutJourney({
     {
       icon: <CheckOutlined />,
       title: paymentOnly ? "订单已创建" : "确认订单",
-      copy: "价格、库存与优惠由服务端复核",
+      copy: "确认价格、库存与优惠",
     },
     {
       icon: <CreditCardOutlined />,
       title: "安全支付",
-      copy: "支付结果以服务端回调为准",
+      copy: "支付成功后更新订单状态",
     },
     mixed
       ? {

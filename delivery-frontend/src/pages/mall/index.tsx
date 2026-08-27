@@ -25,7 +25,7 @@ import styles from '@/styles/zhenke.less';
 
 const PAGE_SIZE = 16;
 const businessModules = [
-  { code: 'MALL', title: '商城', caption: '原有业务 · 配送与核销', mark: '购' },
+  { code: 'MALL', title: '商城', caption: '精选好物 · 配送与核销', mark: '购' },
   { code: 'ZHENKE_HOTEL', title: '酒店', caption: '住宿套餐 · 到店核销', mark: '住' },
   { code: 'ZHENKE_SCENIC', title: '景区', caption: '门票线路 · 现场核销', mark: '游' },
   { code: 'ZHENKE_RESTAURANT', title: '饭店', caption: '餐券套餐 · 到店核销', mark: '食' },
@@ -267,21 +267,18 @@ export default function MallPage() {
     <main className={styles.page}>
       <section className={styles.mallHero}>
         <article className={styles.mallHeroMain}>
-          <span className={styles.locationLabel}>甄客行交易模块</span>
+          <span className={styles.locationLabel}>甄客行商城</span>
           <h1>把看见的城市生活，变成一次安心消费。</h1>
-          <p>
-            酒店、饭店和景区使用现有统一商品、订单、支付与线下核销链路；
-            其他动态分类继续保留原有线上配送或线下核销能力。
-          </p>
+          <p>精选商城好物、酒店住宿、景区门票和饭店套餐，按商品说明配送或到店使用。</p>
         </article>
         <aside className={`${styles.surface} ${styles.mallPromise}`}>
           <div className={styles.promiseItem}>
             <span><SafetyCertificateOutlined /></span>
-            <div><strong>真实入驻商家</strong><small>商品归属由服务端确认</small></div>
+            <div><strong>平台入驻商家</strong><small>公开信息清楚可查</small></div>
           </div>
           <div className={styles.promiseItem}>
             <span><QrcodeOutlined /></span>
-            <div><strong>配送与核销并存</strong><small>商城原履约保留，本地套餐到店使用</small></div>
+            <div><strong>配送与到店使用</strong><small>购买前查看商品使用方式</small></div>
           </div>
           <div className={styles.promiseItem}>
             <span><FieldTimeOutlined /></span>
@@ -290,7 +287,7 @@ export default function MallPage() {
         </aside>
       </section>
 
-      <ZkSectionTitle title="四大营业模块" description="商城完整保留原有交易能力；酒店、景区和饭店主要使用线下核销。" />
+      <ZkSectionTitle title="四大营业模块" description="选择你今天想逛的分类。" />
       <div className={styles.businessModuleGrid}>
         {businessModules.map((module) => (
           <button
@@ -328,7 +325,7 @@ export default function MallPage() {
       </form>
 
       {activeModule === 'MALL' && (
-        <nav className={styles.categoryRail} aria-label="商城原有动态分类">
+        <nav className={styles.categoryRail} aria-label="商城商品分类">
           <button
             type="button"
             className={`${styles.categoryChip} ${activeCategoryId == null ? styles.categoryChipActive : ''}`}
@@ -354,7 +351,7 @@ export default function MallPage() {
       )}
       {categoryError && (
         <div className={styles.contextNotice} role="alert">
-          <span>动态分类暂时无法加载：{categoryError}。当前仍可浏览全部真实商品。</span>
+          <span>商品分类暂时无法加载：{categoryError}。当前仍可浏览全部商品。</span>
           <Button type="link" onClick={() => window.location.reload()}>重新加载分类</Button>
         </div>
       )}
@@ -363,7 +360,7 @@ export default function MallPage() {
         title={keyword
           ? `“${keyword}”的搜索结果`
           : activeCategory?.categoryName ?? businessModules.find((item) => item.code === activeModule)?.title ?? '正在售卖'}
-        description={!loading ? `共 ${total} 件真实商品；无商品时不填充演示数据。` : '正在查询真实商品数据。'}
+        description={!loading ? `共 ${total} 件商品` : '正在查询商品。'}
       />
 
       <section id="mall-products">
@@ -377,8 +374,8 @@ export default function MallPage() {
             description={keyword
               ? '请尝试更换商品、品牌或商家关键词。'
               : activeModule === 'MALL'
-                ? '这里完整承接原商城动态分类；商家上架真实商品后会展示。'
-                : '商家按真实分类上架后会展示在这里，不使用假酒店、饭店或景区数据。'}
+                ? '暂时没有找到在售商品，稍后再来看看。'
+                : '当前分类暂时没有可购买的套餐，稍后再来看看。'}
             actionText={keyword ? '清空搜索' : undefined}
             onAction={keyword ? () => {
               const next = new URLSearchParams();
@@ -434,7 +431,7 @@ export default function MallPage() {
 
       <ZkSectionTitle
         title={`${activeCategory?.categoryName ?? businessModules.find((item) => item.code === activeModule)?.title ?? '商城'}试用与甄客验`}
-        description="保留原商城正在招募的试用和用户主动推荐的资格型真实体验；内容按当前营业分类筛选。"
+        description="发现正在招募的试用和消费者分享的甄客验。"
       />
       <section>
         {commerceFeedLoading ? (
@@ -444,7 +441,7 @@ export default function MallPage() {
         ) : commerceFeed.length === 0 ? (
           <ZkState
             title="当前分类暂无试用或推荐甄客验"
-            description="商家发布真实试用、消费者完成收货或核销并主动推荐后，会展示在这里。"
+            description="有新的试用活动或甄客验时，会展示在这里。"
           />
         ) : (
           <>

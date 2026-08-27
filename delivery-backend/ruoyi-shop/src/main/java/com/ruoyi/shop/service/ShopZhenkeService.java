@@ -10,7 +10,6 @@ import com.ruoyi.shop.mapper.ShopZhenkeMapper;
 import com.ruoyi.shop.security.ShopAccountIdentity;
 import java.net.URI;
 import java.util.*;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,18 +18,10 @@ public class ShopZhenkeService {
   private static final Set<String> ZONES = Set.of("RECOMMEND", "LOCAL", "OUTSIDE");
   private final ShopZhenkeMapper mapper;
   private final TencentMapService mapService;
-  private final Set<String> externalHosts;
 
-  public ShopZhenkeService(
-      ShopZhenkeMapper mapper,
-      TencentMapService mapService,
-      @Value("${shop.home-banner.external-hosts:}") String hosts) {
+  public ShopZhenkeService(ShopZhenkeMapper mapper, TencentMapService mapService) {
     this.mapper = mapper;
     this.mapService = mapService;
-    this.externalHosts = new HashSet<>();
-    for (String h : hosts.split(",")) {
-      if (!h.isBlank()) externalHosts.add(h.trim().toLowerCase(Locale.ROOT));
-    }
   }
 
   public List<ShopZhenkePost> posts(String zone, Long placeId, int pageNum, int pageSize) {
@@ -195,7 +186,14 @@ public class ShopZhenkeService {
   public List<com.ruoyi.shop.domain.vo.ShopMerchantOption> merchantOptions(String keyword) {
     String value = StringUtils.trim(keyword);
     if (value.length() > 50) throw new ServiceException("商家搜索关键词不能超过50个字符");
-    return mapper.selectActiveMerchantOptions(value);
+    List<com.ruoyi.shop.domain.vo.ShopMerchantOption> options =
+        mapper.selectActiveMerchantOptions(value);
+    if (options == null) return List.of();
+    return options.stream()
+        .filter(Objects::nonNull)
+        .filter(option -> option.getMerchantId() != null && option.getMerchantId() > 0)
+        .filter(option -> StringUtils.isNotEmpty(StringUtils.trim(option.getShopName())))
+        .toList();
   }
 
   public List<ShopHomeBanner> activeBanners() {
@@ -379,9 +377,8 @@ public class ShopZhenkeService {
         URI u = URI.create(t);
         if (!"https".equalsIgnoreCase(u.getScheme())
             || u.getHost() == null
-            || u.getUserInfo() != null
-            || !externalHosts.contains(u.getHost().toLowerCase(Locale.ROOT)))
-          throw new ServiceException("外链必须使用 https 且域名在服务端允许列表中");
+            || u.getUserInfo() != null)
+          throw new ServiceException("外链必须使用完整的 https 地址");
       } catch (IllegalArgumentException e) {
         throw new ServiceException("外链格式无效");
       }

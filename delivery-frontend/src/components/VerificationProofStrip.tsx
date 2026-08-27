@@ -24,12 +24,10 @@ export function VerificationProofStrip({
       <div>
         <small>甄客验 · 资格型真实体验</small>
         <strong>{source}</strong>
-        <p>
-          发布资格由服务端依据订单、试用、收货或核销状态确认，与用户主动发布的甄客帖不同。
-        </p>
+        <p>这篇体验与已完成的订单或试用记录相关。</p>
       </div>
       <em>
-        <CheckCircleFilled /> 已形成资格链路
+        <CheckCircleFilled /> 资格已确认
       </em>
     </aside>
   );

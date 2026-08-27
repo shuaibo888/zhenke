@@ -4,7 +4,6 @@ import {
   EditOutlined,
   EnvironmentOutlined,
   ReadOutlined,
-  ShopOutlined,
 } from '@ant-design/icons';
 import { Carousel, Input, Modal, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
@@ -122,7 +121,7 @@ export default function HomePage() {
     saveCurrentLocation({ label: area, city: area, source: 'MANUAL' });
     setLocationStatus('located');
     setManualAreaOpen(false);
-    message.success('当前市区已手动更新；首页内容不会因此被过滤');
+    message.success('当前市区已更新');
   };
 
   return (
@@ -134,8 +133,7 @@ export default function HomePage() {
           </span>
           <h1>{currentArea}<br />今天去哪里看看？</h1>
           <p>
-            甄客行用真实定位帮助你显示当前市区、选择地点和打开导航。
-            首页与专区内容始终来自全平台，不会因为你所在的城市而被过滤。
+            定位用于显示当前市区、选择地点和打开导航，也可以继续发现各地分享。
           </p>
           <div className={styles.heroActions}>
             <button type="button" className={styles.primaryButton} onClick={locate} disabled={locationStatus === 'locating'}>
@@ -157,7 +155,7 @@ export default function HomePage() {
           <div>
             <span className={styles.eyebrow}>LOCAL LIFE</span>
             <h2>从一篇真实分享，认识一座城。</h2>
-            <p>看地点、读体验，也可以进入交易模块购买原商城商品或本地生活套餐。</p>
+            <p>看地点、读体验，也可以购买好物、预订住宿、门票和美食套餐。</p>
           </div>
           <div className={styles.quickLinks}>
             <button type="button" className={styles.quickLink} onClick={() => navigate('/posts')}>
@@ -205,7 +203,7 @@ export default function HomePage() {
 
       <ZkSectionTitle
         title="城市里的甄客帖"
-        description="推荐区按公开时间倒序展示全平台内容，地点是发布者主动选择的信息。"
+        description="看看大家最近发现了哪些值得去的地方。"
         action={<button type="button" className={styles.textButton} onClick={() => navigate('/posts')}>查看全部 →</button>}
       />
 
@@ -220,7 +218,7 @@ export default function HomePage() {
       ) : (
         <ZkState
           title="还没有公开甄客帖"
-          description="成为第一个认真记录这座城市的人。图片或视频至少上传一个，地点需要从地图服务中选择。"
+          description="成为第一个认真记录这座城市的人。"
           actionText="发布第一篇"
           onAction={() => navigate('/posts/publish')}
         />
@@ -228,12 +226,12 @@ export default function HomePage() {
 
       <ZkSectionTitle
         title="四大营业分类"
-        description="原商城能力完整保留；酒店、景区和饭店在同一交易底座上扩展，主要使用线下核销。"
+        description="精选好物、住宿、门票与美食，都可以从这里开始。"
         action={<button type="button" className={styles.textButton} onClick={() => navigate('/mall')}>进入商城 →</button>}
       />
       <div className={styles.businessModuleGrid}>
         <button type="button" className={styles.businessModuleCard} onClick={() => navigate('/mall?module=MALL')}>
-          <span>购</span><strong>商城</strong><p>原有商品 · 试用 · 配送与核销</p>
+          <span>购</span><strong>商城</strong><p>精选好物 · 试用 · 配送与核销</p>
         </button>
         <button type="button" className={styles.businessModuleCard} onClick={() => navigate('/mall?module=ZHENKE_HOTEL')}>
           <span>住</span><strong>酒店</strong><p>住宿套餐 · 到店核销</p>
@@ -245,10 +243,6 @@ export default function HomePage() {
           <span>食</span><strong>饭店</strong><p>餐饮套餐 · 到店核销</p>
         </button>
       </div>
-      <div className={styles.contextNotice}>
-        <ShopOutlined /> 商城商品来自已入驻商家；普通地点不等同于商家，也不会因为名称相同自动绑定。
-      </div>
-
       <Modal
         open={manualAreaOpen}
         title="手动选择当前市区"
@@ -259,7 +253,7 @@ export default function HomePage() {
         destroyOnHidden
       >
         <p className={styles.manualAreaHint}>
-          此处只更新首页左上角的当前位置显示，不会按城市筛选首页、甄客帖或专区内容。
+          此处只更新首页显示的当前位置。
         </p>
         <Input
           autoFocus

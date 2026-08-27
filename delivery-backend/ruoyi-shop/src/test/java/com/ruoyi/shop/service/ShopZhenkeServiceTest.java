@@ -14,10 +14,12 @@ import com.ruoyi.shop.domain.ShopZhenkePostComment;
 import com.ruoyi.shop.domain.dto.ShopHomeBannerBody;
 import com.ruoyi.shop.domain.dto.ShopZhenkeCommentBody;
 import com.ruoyi.shop.domain.dto.ShopZhenkePostBody;
+import com.ruoyi.shop.domain.vo.ShopMerchantOption;
 import com.ruoyi.shop.map.TencentMapService;
 import com.ruoyi.shop.mapper.ShopZhenkeMapper;
 import com.ruoyi.shop.security.ShopAccountIdentity;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +43,7 @@ class ShopZhenkeServiceTest {
     when(mapper.selectPosts(
             anyString(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(false), isNull(), isNull(), isNull()))
         .thenReturn(List.of());
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
 
     service.posts("LOCAL", null, 1, 12);
 
@@ -53,7 +55,7 @@ class ShopZhenkeServiceTest {
   void uploadedMediaIsRegisteredAgainstCurrentUserAndMustBeLocal() {
     authenticateShopUser(18L);
     when(mapper.insertPendingUpload(anyLong(), anyString(), anyString())).thenReturn(1);
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
 
     assertEquals(
         "/profile/upload/2026/08/photo.png",
@@ -66,10 +68,27 @@ class ShopZhenkeServiceTest {
 
   @Test
   void adminStatusFilterRejectsUnknownStates() {
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
     assertThrows(
         ServiceException.class,
         () -> service.adminPosts("", null, "PENDING_REVIEW", null, null, 1, 20));
+  }
+
+  @Test
+  void merchantOptionsDiscardIncompleteRows() {
+    ShopMerchantOption valid = new ShopMerchantOption();
+    valid.setMerchantId(9L);
+    valid.setShopName("甄客商家");
+    ShopMerchantOption missingName = new ShopMerchantOption();
+    missingName.setMerchantId(10L);
+    List<ShopMerchantOption> rows = new ArrayList<>();
+    rows.add(null);
+    rows.add(missingName);
+    rows.add(valid);
+    when(mapper.selectActiveMerchantOptions("")).thenReturn(rows);
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
+
+    assertEquals(List.of(valid), service.merchantOptions(""));
   }
 
   @Test
@@ -112,7 +131,7 @@ class ShopZhenkeServiceTest {
     saved.setPostId(44L);
     when(mapper.selectPost(44L, false, 18L)).thenReturn(saved);
     when(mapper.selectResources(44L)).thenReturn(List.of());
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
 
     assertEquals(44L, service.publish(body).getPostId());
 
@@ -125,15 +144,18 @@ class ShopZhenkeServiceTest {
   }
 
   @Test
-  void externalBannerRequiresHttpsAndServerAllowList() {
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "trusted.example.com");
+  void externalBannerRequiresACompleteHttpsUrl() {
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
     assertThrows(
         ServiceException.class,
         () ->
             service.saveBanner(null, banner("http://trusted.example.com/x", "EXTERNAL"), "admin"));
     assertThrows(
         ServiceException.class,
-        () -> service.saveBanner(null, banner("https://evil.example/x", "EXTERNAL"), "admin"));
+        () -> service.saveBanner(null, banner("https:///missing-host", "EXTERNAL"), "admin"));
+    assertThrows(
+        ServiceException.class,
+        () -> service.saveBanner(null, banner("https://user:secret@example.com/x", "EXTERNAL"), "admin"));
 
     when(mapper.insertBanner(any()))
         .thenAnswer(
@@ -143,12 +165,12 @@ class ShopZhenkeServiceTest {
             });
     when(mapper.selectBanner(1L)).thenReturn(new ShopHomeBanner());
     assertNotNull(
-        service.saveBanner(null, banner("https://trusted.example.com/x", "EXTERNAL"), "admin"));
+        service.saveBanner(null, banner("https://events.example.com/x", "EXTERNAL"), "admin"));
   }
 
   @Test
   void internalBannerRejectsNetworkPathEscapesAndInsecureImages() {
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
 
     assertThrows(
         ServiceException.class,
@@ -164,7 +186,7 @@ class ShopZhenkeServiceTest {
 
   @Test
   void bannerInsertMustPersistAndReturnSavedRecord() {
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
     ShopHomeBannerBody body = banner("/posts", "INTERNAL");
     when(mapper.insertBanner(any())).thenReturn(0);
 
@@ -182,7 +204,7 @@ class ShopZhenkeServiceTest {
 
   @Test
   void activeBannerDelegatesToEffectiveWindowQuery() {
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
     when(mapper.selectActiveBanners()).thenReturn(List.of());
     assertTrue(service.activeBanners().isEmpty());
     verify(mapper).selectActiveBanners();
@@ -190,7 +212,7 @@ class ShopZhenkeServiceTest {
 
   @Test
   void publishingRequiresAuthenticatedShopUser() {
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
 
     assertThrows(ServiceException.class, () -> service.publish(postBody()));
     verify(mapper, never()).insertPost(any());
@@ -206,7 +228,7 @@ class ShopZhenkeServiceTest {
     when(mapper.claimPendingUpload(
             18L, "/profile/upload/report/user-18/clip.mp4", "VIDEO", 45L))
         .thenReturn(1);
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
 
     assertEquals(45L, service.publish(body).getPostId());
     verify(mapper)
@@ -223,7 +245,7 @@ class ShopZhenkeServiceTest {
     when(mapper.claimPendingUpload(
             18L, "/profile/upload/report/user-18/photo.png", "IMAGE", 46L))
         .thenReturn(1);
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
 
     assertEquals(46L, service.publish(body).getPostId());
     verify(mapper)
@@ -238,7 +260,7 @@ class ShopZhenkeServiceTest {
     ShopPlace place = existingPlace();
     when(mapper.selectPlaceByProvider("TENCENT", "poi-100")).thenReturn(place);
     when(mapper.countActiveMerchant(99L)).thenReturn(0);
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
 
     assertThrows(ServiceException.class, () -> service.publish(body));
     verify(mapper, never()).insertPost(any());
@@ -252,7 +274,7 @@ class ShopZhenkeServiceTest {
     when(mapper.selectPost(66L, false, 18L)).thenReturn(post);
     when(mapper.countUseful(66L, 18L)).thenReturn(1, 0);
     when(mapper.deleteUseful(66L, 18L)).thenReturn(1);
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
 
     Map<String, Object> result = service.toggleUseful(66L);
 
@@ -269,7 +291,7 @@ class ShopZhenkeServiceTest {
     when(mapper.selectPost(67L, false, 18L)).thenReturn(post);
     when(mapper.countUseful(67L, 18L)).thenReturn(0, 1);
     when(mapper.insertUseful(67L, 18L)).thenReturn(0);
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
 
     Map<String, Object> result = service.toggleUseful(67L);
 
@@ -297,7 +319,7 @@ class ShopZhenkeServiceTest {
     ShopZhenkeCommentBody body = new ShopZhenkeCommentBody();
     body.setContent("回复内容");
     body.setReplyToCommentId(12L);
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
 
     service.comment(70L, body);
 
@@ -315,7 +337,7 @@ class ShopZhenkeServiceTest {
     root.setCommentId(20L);
     when(mapper.selectComment(70L, 20L)).thenReturn(root);
     when(mapper.deleteCommentTree(70L, 20L, 18L)).thenReturn(1);
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
 
     service.deleteComment(70L, 20L);
     verify(mapper).deleteCommentTree(70L, 20L, 18L);
@@ -333,7 +355,7 @@ class ShopZhenkeServiceTest {
     authenticateShopUser(18L);
     when(mapper.deleteOwnPost(77L, 18L)).thenReturn(1);
     when(mapper.adminDeletePost(78L, 900L)).thenReturn(1);
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
 
     service.deleteOwn(77L);
     service.adminDelete(78L, 900L);
@@ -350,7 +372,7 @@ class ShopZhenkeServiceTest {
     Date to = new Date(2_000L);
     when(mapper.selectPosts(anyString(), any(), any(), any(), any(), any(), anyBoolean(), any(), any(), any()))
         .thenReturn(List.of());
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
 
     service.adminPosts("关键词", 9L, "published", from, to, 1, 20);
 
@@ -359,7 +381,7 @@ class ShopZhenkeServiceTest {
 
   @Test
   void adminFiltersRejectInvalidMerchantAndPublishedWindow() {
-    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
 
     assertThrows(
         ServiceException.class,

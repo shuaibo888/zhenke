@@ -88,7 +88,7 @@ export default function CheckoutSuccessPage() {
             >
               {order.fulfillmentType === 'OFFLINE' ? '查看订单与核销码' : '返回订单列表'}
             </Button>
-            <small><SafetyCertificateOutlined /> 支付结果已由服务端确认</small>
+            <small><SafetyCertificateOutlined /> 支付结果已确认</small>
           </section>
         ) : !loading && loadError ? (
           <Alert
@@ -110,7 +110,7 @@ export default function CheckoutSuccessPage() {
             type="warning"
             showIcon
             message="支付结果尚未确认"
-            description="只有服务端确认支付成功后才会展示支付成功页面，请返回订单查看最新状态。"
+            description="暂未确认支付成功，请返回订单查看最新状态。"
             action={<Button onClick={() => navigate('/profile/orders')}>返回订单列表</Button>}
           />
         ) : (

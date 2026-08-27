@@ -120,7 +120,7 @@ export default function MerchantDetailPage() {
       <section className={`${styles.surface} ${styles.profileGroup}`} style={{ marginTop: 16 }}>
         <header className={styles.profileGroupHeader}>
           <h2>商家公开信息</h2>
-          <p>普通地图地点不等于已入驻商家；以下主体来自现有 shop_merchant 审核资料。</p>
+          <p>查看商家主体、联系方式与实体店地址。</p>
         </header>
         <div className={styles.profileEntryGrid}>
           <div className={styles.profileEntry}><span className={styles.profileEntryIcon}><BankOutlined /></span><span className={styles.profileEntryCopy}><strong>营业执照主体</strong><small>{merchant.companyName}</small></span></div>
@@ -132,7 +132,7 @@ export default function MerchantDetailPage() {
         </div>
       </section>
 
-      <ZkSectionTitle title="商家在售商品" description="读取该商家的真实在售商品；无商品时不生成占位套餐。" />
+      <ZkSectionTitle title="商家在售商品" description="看看这家商户有哪些商品和套餐。" />
       {productsError ? (
         <ZkState
           kind="error"

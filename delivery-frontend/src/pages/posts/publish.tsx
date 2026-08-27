@@ -186,7 +186,7 @@ export default function PublishPostPage() {
         </button>
         <div className={styles.pageHeaderCopy}>
           <strong>发布甄客帖</strong>
-          <p>真实保存后立即公开，暂不支持编辑和恢复。</p>
+          <p>分享后将在甄客帖中公开展示。</p>
         </div>
       </div>
 
@@ -200,9 +200,6 @@ export default function PublishPostPage() {
       >
         <span className={styles.eyebrow}>CREATE A STORY</span>
         <h1>记录一个地点，分享一种体验视角。</h1>
-        <p className={styles.selectionHint}>
-          甄客帖不要求平台订单；地点是你主动选择的信息，不会被包装成到访认证。
-        </p>
 
         <Form.Item
           label={<><UserOutlined /> 体验视角</>}
@@ -257,7 +254,7 @@ export default function PublishPostPage() {
         <Form.Item
           label={<><EnvironmentOutlined /> 关联地点</>}
           name="place"
-          extra="可以搜索任意城市，不限当前位置；必须从腾讯地图返回结果中选择。"
+          extra="可以搜索并选择任意城市的地点。"
           rules={[{ required: true, message: '请选择关联地点' }]}
         >
           <Select
@@ -278,7 +275,7 @@ export default function PublishPostPage() {
         <Form.Item
           label={<><ShopOutlined /> 关联已入驻商家（选填）</>}
           name="merchantId"
-          extra="地点和商家分别保存。只有你主动选择才会关联，没有商家是正常状态。"
+          extra="如果内容与平台商家有关，可以选择关联。"
         >
           <Select
             size="large"
@@ -289,7 +286,9 @@ export default function PublishPostPage() {
             onFocus={() => merchants.length === 0 && void searchMerchants('')}
             onSearch={(value) => void searchMerchants(value)}
             placeholder="不关联商家"
-            options={merchants.map((item) => ({ value: item.merchantId, label: item.shopName }))}
+            options={merchants
+              .filter((item): item is MerchantOption => item != null)
+              .map((item) => ({ value: item.merchantId, label: item.shopName }))}
           />
         </Form.Item>
 
@@ -312,7 +311,7 @@ export default function PublishPostPage() {
               }}
             >
               <Button icon={<UploadOutlined />} loading={mediaUploading}>
-                {mediaUploading ? '正在上传真实文件…' : '选择图片或 MP4 视频'}
+                {mediaUploading ? '正在上传…' : '选择图片或 MP4 视频'}
               </Button>
             </Upload>
             <p className={styles.selectionHint}>
@@ -345,7 +344,7 @@ export default function PublishPostPage() {
         </Form.Item>
 
         <div className={styles.contextNotice}>
-          发布后内容立即公开。作者可以逻辑删除，但第一版不能编辑或恢复；不应上传无权公开的个人资料、联系方式或他人肖像。
+          发布后内容将公开展示，请勿上传无权公开的个人资料、联系方式或他人肖像。
         </div>
         <Button
           block
