@@ -1,5 +1,5 @@
 import { Button, Input, Modal, Spin, Tag, message } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
@@ -51,7 +51,9 @@ export default function OrdersPage() {
   const [logistics, setLogistics] = useState<LogisticsTraceDto | null>(null);
   const [logisticsOpen, setLogisticsOpen] = useState(false);
   const [logisticsLoading, setLogisticsLoading] = useState(false);
+  const [logisticsError, setLogisticsError] = useState('');
   const [logisticsOrder, setLogisticsOrder] = useState<ShopOrderDto | null>(null);
+  const logisticsRequestRef = useRef(0);
   const [refundOrder, setRefundOrder] = useState<ShopOrderDto | null>(null);
   const [refundReason, setRefundReason] = useState('');
   const [refundSubmitting, setRefundSubmitting] = useState(false);
@@ -121,15 +123,22 @@ export default function OrdersPage() {
   };
 
   const openLogistics = async (order: ShopOrderDto) => {
+    const requestId = ++logisticsRequestRef.current;
     setLogisticsOrder(order);
     setLogisticsOpen(true);
     setLogisticsLoading(true);
+    setLogistics(null);
+    setLogisticsError('');
     try {
-      setLogistics(await fetchShopOrderLogistics(order.orderId));
+      const next = await fetchShopOrderLogistics(order.orderId);
+      if (logisticsRequestRef.current === requestId) setLogistics(next);
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '物流查询失败');
+      if (logisticsRequestRef.current !== requestId) return;
+      const reason = error instanceof Error ? error.message : '物流查询失败';
+      setLogisticsError(reason);
+      message.error(reason);
     } finally {
-      setLogisticsLoading(false);
+      if (logisticsRequestRef.current === requestId) setLogisticsLoading(false);
     }
   };
 
@@ -312,7 +321,15 @@ export default function OrdersPage() {
         title="物流详情"
         referenceNo={logisticsOrder?.orderNo}
         trace={logistics}
-        onClose={() => setLogisticsOpen(false)}
+        error={logisticsError}
+        onRetry={logisticsOrder ? () => void openLogistics(logisticsOrder) : undefined}
+        onClose={() => {
+          logisticsRequestRef.current += 1;
+          setLogisticsOpen(false);
+          setLogisticsOrder(null);
+          setLogistics(null);
+          setLogisticsError('');
+        }}
       />
 
       <Modal

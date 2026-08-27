@@ -1,5 +1,5 @@
 import { Button, Spin, Tag, message } from 'antd';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
@@ -49,6 +49,8 @@ export default function TrialsPage() {
   const [logisticsTrial, setLogisticsTrial] = useState<TrialApplicationDto | null>(null);
   const [logistics, setLogistics] = useState<LogisticsTraceDto | null>(null);
   const [logisticsLoading, setLogisticsLoading] = useState(false);
+  const [logisticsError, setLogisticsError] = useState('');
+  const logisticsRequestRef = useRef(0);
   const [publishTrial, setPublishTrial] = useState<TrialApplicationDto | null>(null);
   const [redeemTrial, setRedeemTrial] = useState<TrialApplicationDto | null>(null);
   useBodyScrollLock(Boolean(logisticsTrial) || Boolean(publishTrial) || Boolean(redeemTrial));
@@ -81,14 +83,21 @@ export default function TrialsPage() {
   };
 
   const openLogistics = async (trial: TrialApplicationDto) => {
+    const requestId = ++logisticsRequestRef.current;
     setLogisticsTrial(trial);
     setLogisticsLoading(true);
+    setLogistics(null);
+    setLogisticsError('');
     try {
-      setLogistics(await fetchTrialApplicationLogistics(trial.applicationId));
+      const next = await fetchTrialApplicationLogistics(trial.applicationId);
+      if (logisticsRequestRef.current === requestId) setLogistics(next);
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '物流查询失败');
+      if (logisticsRequestRef.current !== requestId) return;
+      const reason = error instanceof Error ? error.message : '物流查询失败';
+      setLogisticsError(reason);
+      message.error(reason);
     } finally {
-      setLogisticsLoading(false);
+      if (logisticsRequestRef.current === requestId) setLogisticsLoading(false);
     }
   };
 
@@ -215,7 +224,14 @@ export default function TrialsPage() {
         title="试用物流详情"
         referenceNo={logisticsTrial?.trackingNo}
         trace={logistics}
-        onClose={() => setLogisticsTrial(null)}
+        error={logisticsError}
+        onRetry={logisticsTrial ? () => void openLogistics(logisticsTrial) : undefined}
+        onClose={() => {
+          logisticsRequestRef.current += 1;
+          setLogisticsTrial(null);
+          setLogistics(null);
+          setLogisticsError('');
+        }}
       />
 
       <PublishReportModal

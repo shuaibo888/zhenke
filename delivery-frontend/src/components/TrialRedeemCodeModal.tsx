@@ -21,13 +21,21 @@ export function TrialRedeemCodeModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const handledRef = useRef(false);
+  const checkingApplicationIdRef = useRef<number | null>(null);
+  const activeApplicationIdRef = useRef<number | null>(trial?.applicationId ?? null);
+  activeApplicationIdRef.current = trial?.applicationId ?? null;
   useBodyScrollLock(open);
 
   const load = useCallback(async (options?: { silent?: boolean }) => {
     if (!trial) return;
+    const applicationId = trial.applicationId;
+    if (checkingApplicationIdRef.current === applicationId) return;
+    checkingApplicationIdRef.current = applicationId;
     if (!options?.silent) setLoading(true);
     try {
-      const app = await fetchTrialRedeemCode(trial.applicationId);
+      const app = await fetchTrialRedeemCode(applicationId);
+      if (activeApplicationIdRef.current !== applicationId) return;
+      setError('');
       setApplication(app);
       if (app.status === 'REDEEMED' && !handledRef.current) {
         handledRef.current = true;
@@ -35,18 +43,20 @@ export function TrialRedeemCodeModal({
         onRedeemed();
       }
     } catch (err) {
-      if (options?.silent) return;
+      if (options?.silent || activeApplicationIdRef.current !== applicationId) return;
       const reason = err instanceof Error ? err.message : '获取核销码失败';
       setError(reason);
       message.error(reason);
     } finally {
-      if (!options?.silent) setLoading(false);
+      if (checkingApplicationIdRef.current === applicationId) checkingApplicationIdRef.current = null;
+      if (!options?.silent && activeApplicationIdRef.current === applicationId) setLoading(false);
     }
   }, [trial, onRedeemed]);
 
   useEffect(() => {
     if (!open || !trial) return;
     handledRef.current = false;
+    setApplication(null);
     setError('');
     void load();
     const timer = window.setInterval(() => void load({ silent: true }), REDEEM_POLL_INTERVAL_MS);

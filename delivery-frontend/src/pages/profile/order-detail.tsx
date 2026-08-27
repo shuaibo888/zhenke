@@ -6,7 +6,7 @@ import {
   TruckOutlined,
 } from '@ant-design/icons';
 import { Button, Input, Modal, Result, Space, Spin, Tag, message } from 'antd';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
@@ -72,6 +72,8 @@ export default function OrderDetailPage() {
   const [logistics, setLogistics] = useState<LogisticsTraceDto | null>(null);
   const [logisticsOpen, setLogisticsOpen] = useState(false);
   const [logisticsLoading, setLogisticsLoading] = useState(false);
+  const [logisticsError, setLogisticsError] = useState('');
+  const logisticsRequestRef = useRef(0);
   const [refundOpen, setRefundOpen] = useState(false);
   const [refundReason, setRefundReason] = useState('');
   const [refundSubmitting, setRefundSubmitting] = useState(false);
@@ -157,14 +159,21 @@ export default function OrderDetailPage() {
 
   const openLogistics = async () => {
     if (!order) return;
+    const requestId = ++logisticsRequestRef.current;
     setLogisticsOpen(true);
     setLogisticsLoading(true);
+    setLogistics(null);
+    setLogisticsError('');
     try {
-      setLogistics(await fetchShopOrderLogistics(order.orderId));
+      const next = await fetchShopOrderLogistics(order.orderId);
+      if (logisticsRequestRef.current === requestId) setLogistics(next);
     } catch (err) {
-      message.error(err instanceof Error ? err.message : '物流查询失败');
+      if (logisticsRequestRef.current !== requestId) return;
+      const reason = err instanceof Error ? err.message : '物流查询失败';
+      setLogisticsError(reason);
+      message.error(reason);
     } finally {
-      setLogisticsLoading(false);
+      if (logisticsRequestRef.current === requestId) setLogisticsLoading(false);
     }
   };
 
@@ -323,7 +332,21 @@ export default function OrderDetailPage() {
         </div>
       </main>
 
-      <LogisticsModal open={logisticsOpen} loading={logisticsLoading} title="物流详情" referenceNo={order.orderNo} trace={logistics} onClose={() => setLogisticsOpen(false)} />
+      <LogisticsModal
+        open={logisticsOpen}
+        loading={logisticsLoading}
+        title="物流详情"
+        referenceNo={order.orderNo}
+        trace={logistics}
+        error={logisticsError}
+        onRetry={() => void openLogistics()}
+        onClose={() => {
+          logisticsRequestRef.current += 1;
+          setLogisticsOpen(false);
+          setLogistics(null);
+          setLogisticsError('');
+        }}
+      />
       <Modal title="申请退款" open={refundOpen} onCancel={() => setRefundOpen(false)} onOk={() => void submitRefund()} confirmLoading={refundSubmitting} okText="提交申请" cancelText="取消">
         <Input.TextArea value={refundReason} onChange={(event) => setRefundReason(event.target.value)} rows={4} maxLength={200} showCount placeholder="请说明退款原因" />
       </Modal>

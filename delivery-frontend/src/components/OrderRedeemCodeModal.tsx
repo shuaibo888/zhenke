@@ -21,13 +21,21 @@ export function OrderRedeemCodeModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const handledRef = useRef(false);
+  const checkingOrderIdRef = useRef<number | null>(null);
+  const activeOrderIdRef = useRef<number | null>(order?.orderId ?? null);
+  activeOrderIdRef.current = order?.orderId ?? null;
   useBodyScrollLock(open);
 
   const load = useCallback(async (options?: { silent?: boolean }) => {
     if (!order) return;
+    const orderId = order.orderId;
+    if (checkingOrderIdRef.current === orderId) return;
+    checkingOrderIdRef.current = orderId;
     if (!options?.silent) setLoading(true);
     try {
-      const next = await fetchShopOrderRedeemCode(order.orderId);
+      const next = await fetchShopOrderRedeemCode(orderId);
+      if (activeOrderIdRef.current !== orderId) return;
+      setError('');
       setCurrent(next);
       if (next.status === 'RECEIVED' && !handledRef.current) {
         handledRef.current = true;
@@ -35,18 +43,20 @@ export function OrderRedeemCodeModal({
         onRedeemed();
       }
     } catch (err) {
-      if (options?.silent) return;
+      if (options?.silent || activeOrderIdRef.current !== orderId) return;
       const reason = err instanceof Error ? err.message : '获取核销码失败';
       setError(reason);
       message.error(reason);
     } finally {
-      if (!options?.silent) setLoading(false);
+      if (checkingOrderIdRef.current === orderId) checkingOrderIdRef.current = null;
+      if (!options?.silent && activeOrderIdRef.current === orderId) setLoading(false);
     }
   }, [order, onRedeemed]);
 
   useEffect(() => {
     if (!open || !order) return;
     handledRef.current = false;
+    setCurrent(null);
     setError('');
     void load();
     const timer = window.setInterval(() => void load({ silent: true }), REDEEM_POLL_INTERVAL_MS);

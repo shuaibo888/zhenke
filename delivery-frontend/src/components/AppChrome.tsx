@@ -39,7 +39,8 @@ const navItems: MainNavItem[] = [
 
 function getActiveNav(pathname: string): MainNavItem['key'] {
   if (pathname.startsWith('/posts') || pathname.startsWith('/places')) return 'posts';
-  if (pathname.startsWith('/mall') || pathname.startsWith('/products') || pathname.startsWith('/merchants')) return 'mall';
+  if (pathname.startsWith('/mall') || pathname.startsWith('/products')
+    || pathname.startsWith('/merchants') || pathname.startsWith('/reports')) return 'mall';
   if (pathname.startsWith('/profile') || pathname.startsWith('/checkout')) return 'profile';
   return 'home';
 }

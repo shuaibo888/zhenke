@@ -5,7 +5,7 @@ import {
   TruckOutlined,
 } from '@ant-design/icons';
 import { Button, Result, Space, Spin, Tag, message } from 'antd';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
@@ -68,6 +68,8 @@ export default function TrialDetailPage() {
   const [logistics, setLogistics] = useState<LogisticsTraceDto | null>(null);
   const [logisticsOpen, setLogisticsOpen] = useState(false);
   const [logisticsLoading, setLogisticsLoading] = useState(false);
+  const [logisticsError, setLogisticsError] = useState('');
+  const logisticsRequestRef = useRef(0);
   const [publishOpen, setPublishOpen] = useState(false);
   const [redeemOpen, setRedeemOpen] = useState(false);
 
@@ -114,14 +116,21 @@ export default function TrialDetailPage() {
 
   const openLogistics = async () => {
     if (!trial) return;
+    const requestId = ++logisticsRequestRef.current;
     setLogisticsOpen(true);
     setLogisticsLoading(true);
+    setLogistics(null);
+    setLogisticsError('');
     try {
-      setLogistics(await fetchTrialApplicationLogistics(trial.applicationId));
+      const next = await fetchTrialApplicationLogistics(trial.applicationId);
+      if (logisticsRequestRef.current === requestId) setLogistics(next);
     } catch (err) {
-      message.error(err instanceof Error ? err.message : '物流查询失败');
+      if (logisticsRequestRef.current !== requestId) return;
+      const reason = err instanceof Error ? err.message : '物流查询失败';
+      setLogisticsError(reason);
+      message.error(reason);
     } finally {
-      setLogisticsLoading(false);
+      if (logisticsRequestRef.current === requestId) setLogisticsLoading(false);
     }
   };
 
@@ -231,7 +240,21 @@ export default function TrialDetailPage() {
         </div>
       </main>
 
-      <LogisticsModal open={logisticsOpen} loading={logisticsLoading} title="试用物流详情" referenceNo={trial.trackingNo} trace={logistics} onClose={() => setLogisticsOpen(false)} />
+      <LogisticsModal
+        open={logisticsOpen}
+        loading={logisticsLoading}
+        title="试用物流详情"
+        referenceNo={trial.trackingNo}
+        trace={logistics}
+        error={logisticsError}
+        onRetry={() => void openLogistics()}
+        onClose={() => {
+          logisticsRequestRef.current += 1;
+          setLogisticsOpen(false);
+          setLogistics(null);
+          setLogisticsError('');
+        }}
+      />
       <PublishReportModal open={publishOpen} trial={trial} onClose={() => setPublishOpen(false)} onPublished={(report) => void reportPublished(report)} />
       <TrialRedeemCodeModal open={redeemOpen} trial={trial} onClose={() => setRedeemOpen(false)} onRedeemed={() => { setRedeemOpen(false); void load(); void refreshTrials(); }} />
     </>
