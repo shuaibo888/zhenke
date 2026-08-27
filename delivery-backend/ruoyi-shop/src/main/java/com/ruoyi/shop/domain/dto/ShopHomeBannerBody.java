@@ -1,7 +1,8 @@
 package com.ruoyi.shop.domain.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.*;
-import java.util.Date;
+import java.time.LocalDate;
 
 public class ShopHomeBannerBody {
   @NotBlank
@@ -31,7 +32,11 @@ public class ShopHomeBannerBody {
   @Pattern(regexp = "0|1")
   private String status = "0";
 
-  private Date startTime, endTime;
+  @JsonFormat(pattern = "yyyy-MM-dd")
+  private LocalDate startTime;
+
+  @JsonFormat(pattern = "yyyy-MM-dd")
+  private LocalDate endTime;
 
   public String getTitle() {
     return title;
@@ -89,19 +94,19 @@ public class ShopHomeBannerBody {
     status = v;
   }
 
-  public Date getStartTime() {
+  public LocalDate getStartTime() {
     return startTime;
   }
 
-  public void setStartTime(Date v) {
+  public void setStartTime(LocalDate v) {
     startTime = v;
   }
 
-  public Date getEndTime() {
+  public LocalDate getEndTime() {
     return endTime;
   }
 
-  public void setEndTime(Date v) {
+  public void setEndTime(LocalDate v) {
     endTime = v;
   }
 }

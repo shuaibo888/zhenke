@@ -69,8 +69,8 @@ export default function HomeBannersPage() {
       const { range, ...fields } = values;
       const body = {
         ...fields,
-        startTime: range?.[0]?.format('YYYY-MM-DD HH:mm:ss'),
-        endTime: range?.[1]?.format('YYYY-MM-DD HH:mm:ss'),
+        startTime: range?.[0]?.format('YYYY-MM-DD'),
+        endTime: range?.[1]?.format('YYYY-MM-DD'),
       };
       await requestApi(
         editing ? `/shop/admin/zhenke/banners/${editing.bannerId}` : '/shop/admin/zhenke/banners',
@@ -105,7 +105,7 @@ export default function HomeBannersPage() {
     <section className={styles.tableSurface}>
       <div className={styles.tableHeader}>
         <div>
-          <p className={styles.eyebrow}>首页运营位 · 外链由服务端白名单校验</p>
+          <p className={styles.eyebrow}>首页运营位 · 支持站内路由与 HTTPS 外链</p>
           <h3>首页轮播管理</h3>
           <p>轮播服务于本地生活内容发现；赛事等第三方项目只能配置为经过校验的外部链接。</p>
         </div>
@@ -208,7 +208,13 @@ export default function HomeBannersPage() {
             <Form.Item name="bannerSort" label="排序"><InputNumber min={0} precision={0} /></Form.Item>
             <Form.Item name="status" label="状态"><Select style={{ width: 120 }} options={[{ value: '0', label: '启用' }, { value: '1', label: '停用' }]} /></Form.Item>
           </Space>
-          <Form.Item name="range" label="有效期"><DatePicker.RangePicker showTime style={{ width: '100%' }} /></Form.Item>
+          <Form.Item name="range" label="有效日期">
+            <DatePicker.RangePicker
+              format="YYYY-MM-DD"
+              placeholder={['开始日期', '结束日期']}
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
         </Form>
       </Modal>
     </section>

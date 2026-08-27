@@ -9,6 +9,9 @@ import com.ruoyi.shop.map.TencentMapService;
 import com.ruoyi.shop.mapper.ShopZhenkeMapper;
 import com.ruoyi.shop.security.ShopAccountIdentity;
 import java.net.URI;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -262,8 +265,8 @@ public class ShopZhenkeService {
     x.setJumpTarget(StringUtils.trim(b.getJumpTarget()));
     x.setBannerSort(b.getBannerSort());
     x.setStatus(b.getStatus());
-    x.setStartTime(b.getStartTime());
-    x.setEndTime(b.getEndTime());
+    x.setStartTime(atBannerTime(b.getStartTime(), LocalTime.MIDNIGHT));
+    x.setEndTime(atBannerTime(b.getEndTime(), LocalTime.of(23, 59, 59)));
     x.setCreateBy(user);
     x.setUpdateBy(user);
     if (id == null) {
@@ -365,9 +368,13 @@ public class ShopZhenkeService {
   }
 
   private void validateBanner(ShopHomeBannerBody b) {
+    if ((b.getStartTime() == null) != (b.getEndTime() == null)) {
+      throw new ServiceException("请同时选择轮播开始日期和结束日期");
+    }
     if (b.getStartTime() != null
-        && b.getEndTime() != null
-        && !b.getEndTime().after(b.getStartTime())) throw new ServiceException("轮播结束时间必须晚于开始时间");
+        && b.getEndTime().isBefore(b.getStartTime())) {
+      throw new ServiceException("轮播结束日期不能早于开始日期");
+    }
     validateBannerImage(StringUtils.trim(b.getImageUrl()));
     String t = StringUtils.trim(b.getJumpTarget());
     if ("INTERNAL".equals(b.getJumpType())) {
@@ -382,6 +389,11 @@ public class ShopZhenkeService {
       } catch (IllegalArgumentException e) {
         throw new ServiceException("外链格式无效");
       }
+  }
+
+  private Date atBannerTime(LocalDate value, LocalTime time) {
+    if (value == null) return null;
+    return Date.from(value.atTime(time).atZone(ZoneId.systemDefault()).toInstant());
   }
 
   private void validateInternalRoute(String target) {

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.exception.ServiceException;
@@ -19,6 +20,9 @@ import com.ruoyi.shop.map.TencentMapService;
 import com.ruoyi.shop.mapper.ShopZhenkeMapper;
 import com.ruoyi.shop.security.ShopAccountIdentity;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -166,6 +170,46 @@ class ShopZhenkeServiceTest {
     when(mapper.selectBanner(1L)).thenReturn(new ShopHomeBanner());
     assertNotNull(
         service.saveBanner(null, banner("https://events.example.com/x", "EXTERNAL"), "admin"));
+  }
+
+  @Test
+  void bannerDatePayloadCanBeDeserialized() throws Exception {
+    ShopHomeBannerBody body =
+        new ObjectMapper()
+            .findAndRegisterModules()
+            .readValue(
+                "{\"startTime\":\"2026-08-27\",\"endTime\":\"2026-08-27\"}",
+                ShopHomeBannerBody.class);
+
+    assertEquals(LocalDate.of(2026, 8, 27), body.getStartTime());
+    assertEquals(LocalDate.of(2026, 8, 27), body.getEndTime());
+  }
+
+  @Test
+  void bannerValidityIsStoredAsWholeCalendarDays() {
+    ShopHomeBannerBody body = banner("/posts", "INTERNAL");
+    ZoneId zone = ZoneId.systemDefault();
+    body.setStartTime(LocalDate.of(2026, 8, 27));
+    body.setEndTime(LocalDate.of(2026, 8, 27));
+    when(mapper.insertBanner(any()))
+        .thenAnswer(
+            invocation -> {
+              ((ShopHomeBanner) invocation.getArgument(0)).setBannerId(8L);
+              return 1;
+            });
+    when(mapper.selectBanner(8L)).thenReturn(new ShopHomeBanner());
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
+
+    service.saveBanner(null, body, "admin");
+
+    var captor = org.mockito.ArgumentCaptor.forClass(ShopHomeBanner.class);
+    verify(mapper).insertBanner(captor.capture());
+    assertEquals(
+        LocalDateTime.of(2026, 8, 27, 0, 0),
+        captor.getValue().getStartTime().toInstant().atZone(zone).toLocalDateTime());
+    assertEquals(
+        LocalDateTime.of(2026, 8, 27, 23, 59, 59),
+        captor.getValue().getEndTime().toInstant().atZone(zone).toLocalDateTime());
   }
 
   @Test
