@@ -47,6 +47,8 @@ public class ShopZhenkeService {
             null,
             null,
             false,
+            null,
+            null,
             ShopAccountIdentity.currentShopUserIdOrNull()),
         false);
   }
@@ -67,7 +69,9 @@ public class ShopZhenkeService {
   public List<ShopZhenkePost> myPosts(int pageNum, int pageSize) {
     long uid = ShopAccountIdentity.requireAuthenticatedShopUserId();
     PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(50, pageSize)));
-    return hydrate(mapper.selectPosts("RECOMMEND", uid, null, null, null, null, true, uid), false);
+    return hydrate(
+        mapper.selectPosts("RECOMMEND", uid, null, null, null, null, true, null, null, uid),
+        false);
   }
 
   @Transactional
@@ -107,7 +111,9 @@ public class ShopZhenkeService {
     z.setPlaceLatitude(p.getLatitude());
     z.setPlaceLongitude(p.getLongitude());
     z.setMerchantId(b.getMerchantId());
-    mapper.insertPost(z);
+    if (mapper.insertPost(z) != 1 || z.getPostId() == null) {
+      throw new ServiceException("甄客帖保存失败，请重试");
+    }
     int sort = 1;
     for (var item : b.getResources()) {
       String resourceUrl = StringUtils.trim(item.getResourceUrl());
@@ -119,7 +125,7 @@ public class ShopZhenkeService {
       r.setResourceType(item.getResourceType());
       r.setResourceUrl(resourceUrl);
       r.setResourceSort(sort++);
-      mapper.insertResource(r);
+      if (mapper.insertResource(r) != 1) throw new ServiceException("甄客帖媒体保存失败，请重试");
     }
     return detail(z.getPostId());
   }
@@ -134,13 +140,12 @@ public class ShopZhenkeService {
   public Map<String, Object> toggleUseful(long id) {
     long uid = ShopAccountIdentity.requireShopUserId();
     detail(id);
-    boolean active;
     if (mapper.countUseful(id, uid) > 0) {
       mapper.deleteUseful(id, uid);
-      active = false;
     } else {
-      active = mapper.insertUseful(id, uid) == 1;
+      mapper.insertUseful(id, uid);
     }
+    boolean active = mapper.countUseful(id, uid) > 0;
     ShopZhenkePost p = detail(id);
     return Map.of("useful", active, "usefulCount", p.getUsefulCount());
   }
@@ -167,8 +172,12 @@ public class ShopZhenkeService {
               ? target.getCommentId()
               : target.getParentCommentId());
     }
-    mapper.insertComment(c);
-    return mapper.selectComment(id, c.getCommentId());
+    if (mapper.insertComment(c) != 1 || c.getCommentId() == null) {
+      throw new ServiceException("评论保存失败，请重试");
+    }
+    ShopZhenkePostComment saved = mapper.selectComment(id, c.getCommentId());
+    if (saved == null) throw new ServiceException("评论保存结果异常，请刷新后查看");
+    return saved;
   }
 
   @Transactional
@@ -198,7 +207,19 @@ public class ShopZhenkeService {
   }
 
   public List<ShopZhenkePost> adminPosts(
-      String keyword, Long merchantId, String status, int pageNum, int pageSize) {
+      String keyword,
+      Long merchantId,
+      String status,
+      java.util.Date publishedFrom,
+      java.util.Date publishedTo,
+      int pageNum,
+      int pageSize) {
+    String normalizedKeyword = StringUtils.trim(keyword);
+    if (normalizedKeyword.length() > 120) throw new ServiceException("帖子搜索关键词不能超过120个字符");
+    if (merchantId != null && merchantId <= 0) throw new ServiceException("关联商家筛选无效");
+    if (publishedFrom != null && publishedTo != null && publishedTo.before(publishedFrom)) {
+      throw new ServiceException("发布时间结束值不能早于开始值");
+    }
     String normalizedStatus = StringUtils.trim(status).toUpperCase(Locale.ROOT);
     if (!normalizedStatus.isEmpty() && !Set.of("PUBLISHED", "DELETED").contains(normalizedStatus)) {
       throw new ServiceException("帖子状态筛选无效");
@@ -209,10 +230,12 @@ public class ShopZhenkeService {
             "RECOMMEND",
             null,
             null,
-            StringUtils.trim(keyword),
+            normalizedKeyword,
             merchantId,
             normalizedStatus,
             true,
+            publishedFrom,
+            publishedTo,
             null),
         true);
   }

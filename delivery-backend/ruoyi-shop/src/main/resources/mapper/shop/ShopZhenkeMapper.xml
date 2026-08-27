@@ -78,6 +78,8 @@
       <if test="placeId != null">and p.place_id=#{placeId}</if>
       <if test="merchantId != null">and p.merchant_id=#{merchantId}</if>
       <if test="status != null and status != ''">and p.status=#{status}</if>
+      <if test="publishedFrom != null">and p.published_at &gt;= #{publishedFrom}</if>
+      <if test="publishedTo != null">and p.published_at &lt;= #{publishedTo}</if>
       <if test="keyword != null and keyword != ''">and (p.title like concat('%',#{keyword},'%') or u.user_name like concat('%',#{keyword},'%') or u.nick_name like concat('%',#{keyword},'%') or p.place_name like concat('%',#{keyword},'%'))</if>
       <if test="zone == 'LOCAL'">and p.perspective='LOCAL'</if>
       <if test="zone == 'OUTSIDE'">and p.perspective in ('TOURIST','HOMETOWNER')</if>

@@ -324,7 +324,9 @@ function AdminWorkspace() {
     Boolean(session?.permissions?.includes('*:*:*') || session?.permissions?.includes(permission));
   const availableNavKeys = getAvailableNavKeys(session).filter(
     (key) => (key !== 'users' || hasPermission('shop:user:list'))
-      && (key !== 'merchants' || hasPermission('shop:merchant:list')),
+      && (key !== 'merchants' || hasPermission('shop:merchant:list'))
+      && (key !== 'zhenkePosts' || hasPermission('shop:zhenkePost:list'))
+      && (key !== 'banners' || hasPermission('shop:banner:list')),
   );
 
   const loadCaptcha = async () => {
@@ -782,6 +784,12 @@ function AdminWorkspace() {
         brandName: values.brandName.trim(),
         productName: values.title.trim(),
         subtitle: values.subtitle?.trim(),
+        packageContent: values.packageContent?.trim(),
+        usageNotice: values.usageNotice?.trim(),
+        validityDescription: values.validityDescription?.trim(),
+        reservationRequired: Boolean(values.reservationRequired),
+        reservationNotice: values.reservationNotice?.trim(),
+        refundExpiryRule: values.refundExpiryRule?.trim(),
         coverUrl: values.imageUrl.trim(),
         price: values.price,
         stock: values.stock,

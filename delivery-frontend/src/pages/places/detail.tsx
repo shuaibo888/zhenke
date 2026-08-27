@@ -4,13 +4,14 @@ import {
   InfoCircleOutlined,
   CompassOutlined,
 } from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { ZhenkePostCard } from '@/components/ZhenkePostCard';
 import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
 import { place, posts, type Place, type ZhenkePost } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
+import { openPlaceNavigation } from '@/utils/merchantNavigation';
 
 export default function PlaceDetailPage() {
   const { placeId: rawPlaceId } = useParams<{ placeId: string }>();
@@ -55,8 +56,6 @@ export default function PlaceDetailPage() {
     );
   }
 
-  const navigationUrl = `https://apis.map.qq.com/uri/v1/routeplan?type=drive&to=${encodeURIComponent(detail.placeName)}&tocoord=${detail.latitude},${detail.longitude}&referer=zhenkexing`;
-
   return (
     <main className={styles.page}>
       <div className={styles.detailTopbar}>
@@ -75,7 +74,17 @@ export default function PlaceDetailPage() {
             .map((item) => <span key={item}>{item}</span>)}
         </div>
         <div className={styles.heroActions}>
-          <Button type="primary" size="large" icon={<CompassOutlined />} href={navigationUrl} target="_blank" rel="noreferrer">
+          <Button
+            type="primary"
+            size="large"
+            icon={<CompassOutlined />}
+            onClick={() => void openPlaceNavigation(detail.placeId, {
+              latitude: detail.latitude,
+              longitude: detail.longitude,
+              name: detail.placeName,
+              address: detail.address,
+            }).catch((reason) => message.error(reason instanceof Error ? reason.message : '暂时无法打开导航'))}
+          >
             用腾讯地图导航
           </Button>
         </div>

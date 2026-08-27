@@ -8,6 +8,8 @@ import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.shop.domain.dto.ShopHomeBannerBody;
 import com.ruoyi.shop.service.ShopZhenkeService;
 import jakarta.validation.Valid;
+import java.util.Date;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,9 +29,12 @@ public class ShopZhenkeAdminController extends BaseController {
       @RequestParam(required = false) String keyword,
       @RequestParam(required = false) Long merchantId,
       @RequestParam(required = false) String status,
+      @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date publishedFrom,
+      @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date publishedTo,
       @RequestParam(defaultValue = "1") int pageNum,
       @RequestParam(defaultValue = "10") int pageSize) {
-    return getDataTable(s.adminPosts(keyword, merchantId, status, pageNum, pageSize));
+    return getDataTable(
+        s.adminPosts(keyword, merchantId, status, publishedFrom, publishedTo, pageNum, pageSize));
   }
 
   @GetMapping("/posts/{id}")

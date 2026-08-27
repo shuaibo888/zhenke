@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.JSONObject;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.shop.domain.vo.ShopMerchantPublicView;
+import com.ruoyi.shop.domain.ShopPlace;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URI;
@@ -109,29 +110,43 @@ public class TencentMapService {
   }
 
   public URI navigationUri(ShopMerchantPublicView merchant) {
-    String key = StringUtils.trim(properties.getKey());
-    if (!properties.isEnabled() || StringUtils.isEmpty(key)) {
-      throw new ServiceException("腾讯地图导航服务尚未配置");
-    }
-
     String shopName = StringUtils.trim(merchant.getShopName());
     String storeAddress = StringUtils.trim(merchant.getStoreAddress());
-    if (StringUtils.isEmpty(shopName)
-        || StringUtils.isEmpty(storeAddress)
-        || merchant.getLatitude() == null
-        || merchant.getLongitude() == null) {
-      throw new ServiceException("该商家导航信息不完整");
+    return navigationUri(
+        shopName, storeAddress, merchant.getLatitude(), merchant.getLongitude(), "该商家导航信息不完整");
+  }
+
+  public URI navigationUri(ShopPlace place) {
+    return navigationUri(
+        StringUtils.trim(place.getPlaceName()),
+        StringUtils.trim(place.getAddress()),
+        place.getLatitude(),
+        place.getLongitude(),
+        "该地点导航信息不完整");
+  }
+
+  private URI navigationUri(
+      String name, String address, BigDecimal latitude, BigDecimal longitude, String invalidMessage) {
+    String referer = StringUtils.trim(properties.getReferer());
+    if (!properties.isEnabled() || StringUtils.isEmpty(referer)) {
+      throw new ServiceException("腾讯地图导航服务尚未配置");
+    }
+    if (StringUtils.isEmpty(name)
+        || StringUtils.isEmpty(address)
+        || latitude == null
+        || longitude == null) {
+      throw new ServiceException(invalidMessage);
     }
     String marker =
         "coord:"
-            + merchant.getLatitude().toPlainString()
+            + latitude.toPlainString()
             + ","
-            + merchant.getLongitude().toPlainString()
+            + longitude.toPlainString()
             + ";title:"
-            + shopName
+            + name
             + ";addr:"
-            + storeAddress;
-    String query = "marker=" + encode(marker) + "&referer=" + encode(key);
+            + address;
+    String query = "marker=" + encode(marker) + "&referer=" + encode(referer);
     return URI.create(URI_API_URL + "marker?" + query);
   }
 
@@ -156,11 +171,20 @@ public class TencentMapService {
   }
 
   public List<Map<String, Object>> search(String keyword) {
+    return search(keyword, null);
+  }
+
+  public List<Map<String, Object>> search(String keyword, String region) {
     String q = StringUtils.trim(keyword);
     if (q.isEmpty() || q.length() > 80) throw new ServiceException("地点搜索关键词无效");
+    String normalizedRegion = StringUtils.trim(region);
+    if (normalizedRegion.length() > 40) throw new ServiceException("地点搜索区域无效");
+    String boundaryRegion = StringUtils.isEmpty(normalizedRegion) ? "全国" : normalizedRegion;
     JSONObject result =
         requestJson(
-            "https://apis.map.qq.com/ws/place/v1/search?boundary=region(%E5%85%A8%E5%9B%BD,0)&page_size=20&keyword="
+            "https://apis.map.qq.com/ws/place/v1/search?boundary=region("
+                + encode(boundaryRegion)
+                + ",0)&page_size=20&keyword="
                 + encode(q)
                 + "&key="
                 + encode(requireKey()));

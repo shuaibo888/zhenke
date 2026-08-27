@@ -18,6 +18,7 @@ import {
   type ZhenkePost,
 } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
+import { loadCurrentLocation, saveCurrentLocation } from '@/utils/currentLocation';
 
 type LocationStatus = 'idle' | 'locating' | 'located' | 'failed';
 
@@ -27,26 +28,33 @@ export default function HomePage() {
   const [bannerRows, setBannerRows] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
-  const [currentArea, setCurrentArea] = useState('选择当前市区');
+  const [bannerError, setBannerError] = useState('');
+  const [locationStatus, setLocationStatus] = useState<LocationStatus>(() => loadCurrentLocation() ? 'located' : 'idle');
+  const [currentArea, setCurrentArea] = useState(() => loadCurrentLocation()?.label ?? '选择当前市区');
   const [manualAreaOpen, setManualAreaOpen] = useState(false);
   const [manualArea, setManualArea] = useState('');
 
   const loadHome = useCallback(async () => {
     setLoading(true);
     setLoadError('');
-    try {
-      const [postResult, bannerResult] = await Promise.all([
-        posts('RECOMMEND', 1, 9),
-        banners(),
-      ]);
-      setFeed(postResult.rows);
-      setBannerRows(bannerResult);
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : '首页内容加载失败');
-    } finally {
-      setLoading(false);
+    setBannerError('');
+    const [postResult, bannerResult] = await Promise.allSettled([
+      posts('RECOMMEND', 1, 9),
+      banners(),
+    ]);
+    if (postResult.status === 'fulfilled') {
+      setFeed(postResult.value.rows);
+    } else {
+      setFeed([]);
+      setLoadError(postResult.reason instanceof Error ? postResult.reason.message : '首页内容加载失败');
     }
+    if (bannerResult.status === 'fulfilled') {
+      setBannerRows(bannerResult.value);
+    } else {
+      setBannerRows([]);
+      setBannerError('精选轮播暂时不可用，不影响甄客帖和商城浏览。');
+    }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -70,7 +78,16 @@ export default function HomePage() {
           if (!response.ok || payload.code !== 200) throw new Error(payload.msg || '定位解析失败');
           const city = payload.data?.city;
           const district = payload.data?.district;
-          setCurrentArea(city && district && city !== district ? `${city} · ${district}` : district || city || '已定位');
+          const label = city && district && city !== district ? `${city} · ${district}` : district || city || '已定位';
+          setCurrentArea(label);
+          saveCurrentLocation({
+            label,
+            city,
+            district,
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            source: 'DEVICE',
+          });
           setLocationStatus('located');
         } catch (error) {
           setLocationStatus('failed');
@@ -101,6 +118,7 @@ export default function HomePage() {
       return;
     }
     setCurrentArea(area);
+    saveCurrentLocation({ label: area, city: area, source: 'MANUAL' });
     setLocationStatus('located');
     setManualAreaOpen(false);
     message.success('当前市区已手动更新；首页内容不会因此被过滤');
@@ -177,6 +195,7 @@ export default function HomePage() {
           ))}
         </Carousel>
       )}
+      {bannerError && <div className={styles.contextNotice}>{bannerError}</div>}
 
       <ZkSectionTitle
         title="城市里的甄客帖"

@@ -9,6 +9,7 @@ public class TencentMapProperties
 {
     private boolean enabled = true;
     private String key;
+    private String referer = "zhenkexing";
     private int connectTimeoutSeconds = 5;
     private int requestTimeoutSeconds = 8;
 
@@ -16,6 +17,8 @@ public class TencentMapProperties
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public String getKey() { return key; }
     public void setKey(String key) { this.key = key; }
+    public String getReferer() { return referer; }
+    public void setReferer(String referer) { this.referer = referer; }
     public int getConnectTimeoutSeconds() { return connectTimeoutSeconds; }
     public void setConnectTimeoutSeconds(int connectTimeoutSeconds) { this.connectTimeoutSeconds = connectTimeoutSeconds; }
     public int getRequestTimeoutSeconds() { return requestTimeoutSeconds; }

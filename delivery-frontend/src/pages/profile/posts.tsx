@@ -2,6 +2,7 @@ import { EditOutlined, FileTextOutlined } from '@ant-design/icons';
 import { Button, Popconfirm, Tag, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'umi';
+import { useShop } from '@/app/ShopContext';
 import { ZhenkePostCard } from '@/components/ZhenkePostCard';
 import { ZkPageHeader, ZkState } from '@/components/ZkPage';
 import { mine, removePost, type ZhenkePost } from '@/services/zhenke';
@@ -9,11 +10,13 @@ import styles from '@/styles/zhenke.less';
 
 export default function MyPostsPage() {
   const navigate = useNavigate();
+  const { user, authLoading } = useShop();
   const [rows, setRows] = useState<ZhenkePost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
+    if (!user) return;
     setLoading(true);
     setError('');
     try {
@@ -24,11 +27,19 @@ export default function MyPostsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      navigate(`/auth?redirect=${encodeURIComponent('/profile/posts')}`, { replace: true });
+      return;
+    }
     void load();
-  }, [load]);
+  }, [authLoading, load, navigate, user]);
+
+  if (authLoading) return <main className={styles.page}><ZkState kind="loading" title="正在确认登录状态" /></main>;
+  if (!user) return null;
 
   return (
     <main className={styles.page}>

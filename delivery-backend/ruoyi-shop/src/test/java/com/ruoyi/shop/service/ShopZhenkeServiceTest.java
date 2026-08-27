@@ -10,12 +10,15 @@ import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.shop.domain.ShopHomeBanner;
 import com.ruoyi.shop.domain.ShopPlace;
 import com.ruoyi.shop.domain.ShopZhenkePost;
+import com.ruoyi.shop.domain.ShopZhenkePostComment;
 import com.ruoyi.shop.domain.dto.ShopHomeBannerBody;
+import com.ruoyi.shop.domain.dto.ShopZhenkeCommentBody;
 import com.ruoyi.shop.domain.dto.ShopZhenkePostBody;
 import com.ruoyi.shop.map.TencentMapService;
 import com.ruoyi.shop.mapper.ShopZhenkeMapper;
 import com.ruoyi.shop.security.ShopAccountIdentity;
 import java.math.BigDecimal;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,13 +39,13 @@ class ShopZhenkeServiceTest {
   @Test
   void zonesNeverAcceptOrForwardDeviceCity() {
     when(mapper.selectPosts(
-            anyString(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(false), isNull()))
+            anyString(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(false), isNull(), isNull(), isNull()))
         .thenReturn(List.of());
     ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
 
     service.posts("LOCAL", null, 1, 12);
 
-    verify(mapper).selectPosts("LOCAL", null, null, null, null, null, false, null);
+    verify(mapper).selectPosts("LOCAL", null, null, null, null, null, false, null, null, null);
     assertThrows(ServiceException.class, () -> service.posts("HANDAN", null, 1, 12));
   }
 
@@ -65,7 +68,8 @@ class ShopZhenkeServiceTest {
   void adminStatusFilterRejectsUnknownStates() {
     ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
     assertThrows(
-        ServiceException.class, () -> service.adminPosts("", null, "PENDING_REVIEW", 1, 20));
+        ServiceException.class,
+        () -> service.adminPosts("", null, "PENDING_REVIEW", null, null, 1, 20));
   }
 
   @Test
@@ -101,6 +105,7 @@ class ShopZhenkeServiceTest {
               return 1;
             });
     when(mapper.claimPendingUpload(18L, "/profile/upload/photo.png", "IMAGE", 44L)).thenReturn(1);
+    when(mapper.insertResource(any())).thenReturn(1);
     ShopZhenkePost saved = new ShopZhenkePost();
     saved.setPostId(44L);
     when(mapper.selectPost(44L, false, 18L)).thenReturn(saved);
@@ -146,6 +151,167 @@ class ShopZhenkeServiceTest {
     verify(mapper).selectActiveBanners();
   }
 
+  @Test
+  void publishingRequiresAuthenticatedShopUser() {
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+
+    assertThrows(ServiceException.class, () -> service.publish(postBody()));
+    verify(mapper, never()).insertPost(any());
+  }
+
+  @Test
+  void videoOnlyPostCanBePublishedAndClaimsVideoUpload() {
+    authenticateShopUser(18L);
+    ShopZhenkePostBody body = postBody();
+    body.getResources().get(0).setResourceType("VIDEO");
+    body.getResources().get(0).setResourceUrl("/profile/upload/clip.mp4");
+    stubExistingPlaceAndSavedPost(18L, 45L);
+    when(mapper.claimPendingUpload(18L, "/profile/upload/clip.mp4", "VIDEO", 45L)).thenReturn(1);
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+
+    assertEquals(45L, service.publish(body).getPostId());
+    verify(mapper).claimPendingUpload(18L, "/profile/upload/clip.mp4", "VIDEO", 45L);
+  }
+
+  @Test
+  void publishingRejectsInactiveMerchantAssociation() {
+    authenticateShopUser(18L);
+    ShopZhenkePostBody body = postBody();
+    body.setMerchantId(99L);
+    ShopPlace place = existingPlace();
+    when(mapper.selectPlaceByProvider("TENCENT", "poi-100")).thenReturn(place);
+    when(mapper.countActiveMerchant(99L)).thenReturn(0);
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+
+    assertThrows(ServiceException.class, () -> service.publish(body));
+    verify(mapper, never()).insertPost(any());
+  }
+
+  @Test
+  void usefulToggleRemovesExistingVoteWithoutCreatingDuplicate() {
+    authenticateShopUser(18L);
+    ShopZhenkePost post = savedPost(66L);
+    post.setUsefulCount(4);
+    when(mapper.selectPost(66L, false, 18L)).thenReturn(post);
+    when(mapper.countUseful(66L, 18L)).thenReturn(1, 0);
+    when(mapper.deleteUseful(66L, 18L)).thenReturn(1);
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+
+    Map<String, Object> result = service.toggleUseful(66L);
+
+    assertEquals(false, result.get("useful"));
+    verify(mapper).deleteUseful(66L, 18L);
+    verify(mapper, never()).insertUseful(anyLong(), anyLong());
+  }
+
+  @Test
+  void usefulToggleReturnsPersistedStateWhenConcurrentInsertAlreadyWon() {
+    authenticateShopUser(18L);
+    ShopZhenkePost post = savedPost(67L);
+    post.setUsefulCount(5);
+    when(mapper.selectPost(67L, false, 18L)).thenReturn(post);
+    when(mapper.countUseful(67L, 18L)).thenReturn(0, 1);
+    when(mapper.insertUseful(67L, 18L)).thenReturn(0);
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+
+    Map<String, Object> result = service.toggleUseful(67L);
+
+    assertEquals(true, result.get("useful"));
+    verify(mapper).insertUseful(67L, 18L);
+  }
+
+  @Test
+  void repliesAlwaysAttachToTheRootComment() {
+    authenticateShopUser(18L);
+    when(mapper.selectPost(70L, false, 18L)).thenReturn(savedPost(70L));
+    ShopZhenkePostComment target = new ShopZhenkePostComment();
+    target.setCommentId(12L);
+    target.setParentCommentId(10L);
+    when(mapper.selectComment(70L, 12L)).thenReturn(target);
+    when(mapper.insertComment(any()))
+        .thenAnswer(
+            invocation -> {
+              ((ShopZhenkePostComment) invocation.getArgument(0)).setCommentId(13L);
+              return 1;
+            });
+    ShopZhenkePostComment saved = new ShopZhenkePostComment();
+    saved.setCommentId(13L);
+    when(mapper.selectComment(70L, 13L)).thenReturn(saved);
+    ShopZhenkeCommentBody body = new ShopZhenkeCommentBody();
+    body.setContent("回复内容");
+    body.setReplyToCommentId(12L);
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+
+    service.comment(70L, body);
+
+    var captor = org.mockito.ArgumentCaptor.forClass(ShopZhenkePostComment.class);
+    verify(mapper).insertComment(captor.capture());
+    assertEquals(10L, captor.getValue().getParentCommentId());
+    assertEquals(12L, captor.getValue().getReplyToCommentId());
+    assertEquals(18L, captor.getValue().getShopUserId());
+  }
+
+  @Test
+  void deletingRootCommentUsesOwnedTreeDeleteAndRejectsForeignComment() {
+    authenticateShopUser(18L);
+    ShopZhenkePostComment root = new ShopZhenkePostComment();
+    root.setCommentId(20L);
+    when(mapper.selectComment(70L, 20L)).thenReturn(root);
+    when(mapper.deleteCommentTree(70L, 20L, 18L)).thenReturn(1);
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+
+    service.deleteComment(70L, 20L);
+    verify(mapper).deleteCommentTree(70L, 20L, 18L);
+
+    ShopZhenkePostComment reply = new ShopZhenkePostComment();
+    reply.setCommentId(21L);
+    reply.setParentCommentId(20L);
+    when(mapper.selectComment(70L, 21L)).thenReturn(reply);
+    when(mapper.deleteComment(70L, 21L, 18L)).thenReturn(0);
+    assertThrows(ServiceException.class, () -> service.deleteComment(70L, 21L));
+  }
+
+  @Test
+  void authorAndAdminDeletionRequireAnActualStateChange() {
+    authenticateShopUser(18L);
+    when(mapper.deleteOwnPost(77L, 18L)).thenReturn(1);
+    when(mapper.adminDeletePost(78L, 900L)).thenReturn(1);
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+
+    service.deleteOwn(77L);
+    service.adminDelete(78L, 900L);
+
+    when(mapper.deleteOwnPost(79L, 18L)).thenReturn(0);
+    when(mapper.adminDeletePost(80L, 900L)).thenReturn(0);
+    assertThrows(ServiceException.class, () -> service.deleteOwn(79L));
+    assertThrows(ServiceException.class, () -> service.adminDelete(80L, 900L));
+  }
+
+  @Test
+  void adminFiltersForwardMerchantStatusAndPublishedWindow() {
+    Date from = new Date(1_000L);
+    Date to = new Date(2_000L);
+    when(mapper.selectPosts(anyString(), any(), any(), any(), any(), any(), anyBoolean(), any(), any(), any()))
+        .thenReturn(List.of());
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+
+    service.adminPosts("关键词", 9L, "published", from, to, 1, 20);
+
+    verify(mapper).selectPosts("RECOMMEND", null, null, "关键词", 9L, "PUBLISHED", true, from, to, null);
+  }
+
+  @Test
+  void adminFiltersRejectInvalidMerchantAndPublishedWindow() {
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService, "");
+
+    assertThrows(
+        ServiceException.class,
+        () -> service.adminPosts("", 0L, "", null, null, 1, 20));
+    assertThrows(
+        ServiceException.class,
+        () -> service.adminPosts("", null, "", new Date(2_000L), new Date(1_000L), 1, 20));
+  }
+
   private void authenticateShopUser(long userId) {
     SysUser user = new SysUser();
     user.setPhonenumber("13800000000");
@@ -169,6 +335,37 @@ class ShopZhenkeServiceTest {
     body.setStatus("0");
     body.setBannerSort(1);
     return body;
+  }
+
+  private void stubExistingPlaceAndSavedPost(long userId, long postId) {
+    when(mapper.selectPlaceByProvider("TENCENT", "poi-100")).thenReturn(existingPlace());
+    when(mapper.insertPost(any(ShopZhenkePost.class)))
+        .thenAnswer(
+            invocation -> {
+              ((ShopZhenkePost) invocation.getArgument(0)).setPostId(postId);
+              return 1;
+            });
+    when(mapper.selectPost(postId, false, userId)).thenReturn(savedPost(postId));
+    when(mapper.selectResources(postId)).thenReturn(List.of());
+    when(mapper.insertResource(any())).thenReturn(1);
+  }
+
+  private ShopPlace existingPlace() {
+    ShopPlace place = new ShopPlace();
+    place.setPlaceId(5L);
+    place.setProvider("TENCENT");
+    place.setProviderPlaceId("poi-100");
+    place.setPlaceName("服务端地点");
+    place.setAddress("服务端地址");
+    place.setLatitude(new BigDecimal("31.230416"));
+    place.setLongitude(new BigDecimal("121.473701"));
+    return place;
+  }
+
+  private ShopZhenkePost savedPost(long postId) {
+    ShopZhenkePost post = new ShopZhenkePost();
+    post.setPostId(postId);
+    return post;
   }
 
   private ShopZhenkePostBody postBody() {

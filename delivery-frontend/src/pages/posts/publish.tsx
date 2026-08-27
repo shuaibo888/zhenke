@@ -6,10 +6,11 @@ import {
   UploadOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Button, Form, Input, Radio, Select, Upload, message } from 'antd';
+import { Button, Checkbox, Form, Input, Radio, Select, Upload, message } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { ZkState } from '@/components/ZkPage';
 import {
   merchantOptions,
   publish,
@@ -19,6 +20,7 @@ import {
   type PostResource,
 } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
+import { loadCurrentLocation } from '@/utils/currentLocation';
 
 type Poi = Omit<Place, 'placeId' | 'coordinateSystem'>;
 
@@ -56,7 +58,7 @@ async function videoDuration(file: File) {
 
 export default function PublishPostPage() {
   const navigate = useNavigate();
-  const { user } = useShop();
+  const { user, authLoading } = useShop();
   const [form] = Form.useForm<PublishValues>();
   const [media, setMedia] = useState<PostResource[]>([]);
   const [mediaUploading, setMediaUploading] = useState(false);
@@ -65,12 +67,15 @@ export default function PublishPostPage() {
   const [merchants, setMerchants] = useState<MerchantOption[]>([]);
   const [merchantSearching, setMerchantSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [currentLocation] = useState(loadCurrentLocation);
+  const [preferCurrentArea, setPreferCurrentArea] = useState(Boolean(loadCurrentLocation()));
   const placeSearchVersion = useRef(0);
 
   useEffect(() => {
-    if (!user) navigate(`/auth?redirect=${encodeURIComponent('/posts/publish')}`, { replace: true });
-  }, [navigate, user]);
+    if (!authLoading && !user) navigate(`/auth?redirect=${encodeURIComponent('/posts/publish')}`, { replace: true });
+  }, [authLoading, navigate, user]);
 
+  if (authLoading) return <main className={styles.page}><ZkState kind="loading" title="正在确认登录状态" /></main>;
   if (!user) return null;
 
   const searchPlaces = async (keyword: string) => {
@@ -82,7 +87,9 @@ export default function PublishPostPage() {
     const version = ++placeSearchVersion.current;
     setPlaceSearching(true);
     try {
-      const response = await fetch(`/api/shop/zhenke/map/search?keyword=${encodeURIComponent(normalized)}`);
+      const query = new URLSearchParams({ keyword: normalized });
+      if (preferCurrentArea && currentLocation?.city) query.set('region', currentLocation.city);
+      const response = await fetch(`/api/shop/zhenke/map/search?${query.toString()}`);
       const payload = await response.json();
       if (!response.ok || payload.code !== 200) throw new Error(payload.msg || '地点搜索失败');
       if (version === placeSearchVersion.current) setPois(Array.isArray(payload.data) ? payload.data : []);
@@ -222,6 +229,17 @@ export default function PublishPostPage() {
         <Form.Item label="给后来人的建议（选填）" name="suggestion" rules={[{ max: 1000 }]}>
           <Input.TextArea rows={3} showCount maxLength={1000} placeholder="例如最佳到访时间、交通方式或需要避开的坑" />
         </Form.Item>
+
+        {currentLocation && (
+          <div className={styles.selectionHint}>
+            <Checkbox
+              checked={preferCurrentArea}
+              onChange={(event) => setPreferCurrentArea(event.target.checked)}
+            >
+              优先显示“{currentLocation.label}”范围内的地点；关闭后搜索全国
+            </Checkbox>
+          </div>
+        )}
 
         <Form.Item
           label={<><EnvironmentOutlined /> 关联地点</>}

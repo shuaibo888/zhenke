@@ -2,6 +2,7 @@ package com.ruoyi.shop.mapper;
 
 import com.ruoyi.shop.domain.*;
 import com.ruoyi.shop.domain.vo.ShopMerchantOption;
+import java.util.Date;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;
 
@@ -21,6 +22,8 @@ public interface ShopZhenkeMapper {
       @Param("merchantId") Long merchantId,
       @Param("status") String status,
       @Param("includeDeleted") boolean includeDeleted,
+      @Param("publishedFrom") Date publishedFrom,
+      @Param("publishedTo") Date publishedTo,
       @Param("currentUserId") Long currentUserId);
 
   ShopZhenkePost selectPost(

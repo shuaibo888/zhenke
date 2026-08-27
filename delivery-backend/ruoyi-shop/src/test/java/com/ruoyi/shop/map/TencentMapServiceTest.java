@@ -3,6 +3,7 @@ package com.ruoyi.shop.map;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.shop.domain.ShopPlace;
 import java.math.BigDecimal;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -32,5 +33,23 @@ class TencentMapServiceTest {
     assertThrows(
         ServiceException.class,
         () -> service.parsePlaceDetailResponse("{\"status\":0,\"result\":{\"id\":\"poi-1\"}}"));
+  }
+
+  @Test
+  void navigationUsesConfiguredApplicationRefererInsteadOfSecretKey() {
+    TencentMapProperties properties = new TencentMapProperties();
+    properties.setKey("server-secret-key");
+    properties.setReferer("zhenkexing-app");
+    TencentMapService configuredService = new TencentMapService(properties);
+    ShopPlace place = new ShopPlace();
+    place.setPlaceName("城市博物馆");
+    place.setAddress("人民路1号");
+    place.setLatitude(new BigDecimal("31.230416"));
+    place.setLongitude(new BigDecimal("121.473701"));
+
+    String uri = configuredService.navigationUri(place).toASCIIString();
+
+    assertTrue(uri.contains("referer=zhenkexing-app"));
+    assertFalse(uri.contains("server-secret-key"));
   }
 }

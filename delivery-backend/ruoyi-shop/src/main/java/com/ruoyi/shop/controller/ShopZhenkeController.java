@@ -9,6 +9,9 @@ import com.ruoyi.shop.domain.dto.*;
 import com.ruoyi.shop.service.*;
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -96,6 +99,14 @@ public class ShopZhenkeController extends BaseController {
   }
 
   @Anonymous
+  @GetMapping("/places/{id}/navigation")
+  public ResponseEntity<Void> navigateToPlace(@PathVariable long id) {
+    return ResponseEntity.status(HttpStatus.FOUND)
+        .header(HttpHeaders.LOCATION, map.navigationUri(service.place(id)).toASCIIString())
+        .build();
+  }
+
+  @Anonymous
   @GetMapping("/map/reverse")
   public AjaxResult reverse(@RequestParam BigDecimal latitude, @RequestParam BigDecimal longitude) {
     return AjaxResult.success(map.reverse(latitude, longitude));
@@ -103,8 +114,9 @@ public class ShopZhenkeController extends BaseController {
 
   @Anonymous
   @GetMapping("/map/search")
-  public AjaxResult search(@RequestParam String keyword) {
-    return AjaxResult.success(map.search(keyword));
+  public AjaxResult search(
+      @RequestParam String keyword, @RequestParam(required = false) String region) {
+    return AjaxResult.success(map.search(keyword, region));
   }
 
   @Anonymous

@@ -17,10 +17,17 @@ function isAndroidDevice() {
   return /Android/i.test(navigator.userAgent);
 }
 
-export async function openMerchantNavigation(merchant: PublicMerchantDto) {
-  const { latitude, longitude } = merchant;
+export interface NavigationTarget {
+  latitude: number;
+  longitude: number;
+  name: string;
+  address: string;
+}
+
+export async function openCoordinateNavigation(target: NavigationTarget, fallbackUrl: string) {
+  const { latitude, longitude } = target;
   if (!validCoordinate(latitude, -90, 90) || !validCoordinate(longitude, -180, 180)) {
-    throw new Error('该商家导航坐标不完整');
+    throw new Error('导航坐标不完整');
   }
 
   if (isWechatBrowser()) {
@@ -28,18 +35,18 @@ export async function openMerchantNavigation(merchant: PublicMerchantDto) {
       await openWechatLocation({
         latitude,
         longitude,
-        name: merchant.shopName,
-        address: merchant.storeAddress,
+        name: target.name,
+        address: target.address,
       });
       return;
     } catch {
-      window.location.assign(merchantNavigationUrl(merchant.merchantId));
+      window.location.assign(fallbackUrl);
       return;
     }
   }
 
   const coordinate = `${latitude},${longitude}`;
-  const name = encodeURIComponent(merchant.shopName);
+  const name = encodeURIComponent(target.name);
   if (isIosDevice()) {
     window.location.href = `https://maps.apple.com/?daddr=${coordinate}&q=${name}&dirflg=d`;
     return;
@@ -48,5 +55,18 @@ export async function openMerchantNavigation(merchant: PublicMerchantDto) {
     window.location.href = `geo:${coordinate}?q=${coordinate}(${name})`;
     return;
   }
-  window.location.assign(merchantNavigationUrl(merchant.merchantId));
+  window.location.assign(fallbackUrl);
+}
+
+export async function openMerchantNavigation(merchant: PublicMerchantDto) {
+  return openCoordinateNavigation({
+    latitude: merchant.latitude,
+    longitude: merchant.longitude,
+    name: merchant.shopName,
+    address: merchant.storeAddress,
+  }, merchantNavigationUrl(merchant.merchantId));
+}
+
+export async function openPlaceNavigation(placeId: number, target: NavigationTarget) {
+  return openCoordinateNavigation(target, `/api/shop/zhenke/places/${placeId}/navigation`);
 }

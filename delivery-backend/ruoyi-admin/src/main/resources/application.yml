@@ -251,6 +251,8 @@ tencent-map:
   enabled: true
   # 地址解析和腾讯地点页共用同一个 Key，只在后端使用。
   key: ${TENCENT_MAP_KEY:}
+  # URI API 要求填写在腾讯位置服务控制台登记的应用名称，不是地图 Key。
+  referer: ${TENCENT_MAP_REFERER:zhenkexing}
   connect-timeout-seconds: 5
   request-timeout-seconds: 8
 
