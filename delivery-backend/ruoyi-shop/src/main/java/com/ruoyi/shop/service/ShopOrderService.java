@@ -488,7 +488,7 @@ public class ShopOrderService
                     throw new ServiceException("订单明细创建失败");
                 }
             }
-            if (address != null)
+            if (address != null && shouldSnapshotAddress(group.fulfillmentType()))
             {
                 insertAddressSnapshot(order.getOrderId(), address);
             }
@@ -522,6 +522,11 @@ public class ShopOrderService
         }
         if (online) return ShopProductService.FULFILLMENT_ONLINE;
         return ShopProductService.FULFILLMENT_OFFLINE;
+    }
+
+    boolean shouldSnapshotAddress(String fulfillmentType)
+    {
+        return ShopProductService.FULFILLMENT_ONLINE.equals(fulfillmentType);
     }
 
     private Map<Long, RequestedLine> normalizeItems(List<ShopOrderItemBody> items)

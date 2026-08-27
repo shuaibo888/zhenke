@@ -66,6 +66,12 @@ class ShopOrderServiceTest {
         service.resolveFulfillment(product, ShopProductService.FULFILLMENT_OFFLINE));
   }
 
+  @Test
+  void addressSnapshotBelongsOnlyToDeliveryOrdersAfterFulfillmentSplit() {
+    assertTrue(service.shouldSnapshotAddress(ShopProductService.FULFILLMENT_ONLINE));
+    assertFalse(service.shouldSnapshotAddress(ShopProductService.FULFILLMENT_OFFLINE));
+  }
+
   private ShopProduct product(String categoryCode, String online, String offline) {
     ShopProduct product = new ShopProduct();
     product.setCategoryCode(categoryCode);
