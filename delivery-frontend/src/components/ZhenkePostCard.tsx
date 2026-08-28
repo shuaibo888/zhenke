@@ -26,7 +26,7 @@ function AuthorAvatar({ post }: { post: ZhenkePost }) {
 
 export function ZhenkePostCard({ post, disabled = false }: { post: ZhenkePost; disabled?: boolean }) {
   const navigate = useNavigate();
-  const cover = post.resources?.[0];
+  const cover = post.resources?.find((item) => item.resourceType === 'IMAGE');
   const authorName = post.nickName || post.userName || '甄客行用户';
 
   return (
@@ -44,15 +44,13 @@ export function ZhenkePostCard({ post, disabled = false }: { post: ZhenkePost; d
       }}
     >
       <div className={styles.postMedia}>
-        {cover?.resourceType === 'VIDEO' ? (
-          <>
-            <video src={cover.resourceUrl} muted playsInline preload="metadata" />
-            <span className={styles.videoBadge}><PlayCircleFilled /></span>
-          </>
-        ) : cover ? (
+        {cover ? (
           <img src={cover.resourceUrl} alt={post.title} loading="lazy" decoding="async" />
         ) : (
           <span>城市日常</span>
+        )}
+        {post.resources?.some((item) => item.resourceType === 'VIDEO') && (
+          <span className={styles.videoBadge}><PlayCircleFilled /></span>
         )}
         <span className={styles.contentBadge}>甄客帖</span>
       </div>

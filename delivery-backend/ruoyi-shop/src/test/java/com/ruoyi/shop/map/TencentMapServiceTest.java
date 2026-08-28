@@ -15,9 +15,9 @@ class TencentMapServiceTest {
   void parsesProviderPlaceAsAuthoritativeSelection() {
     String response =
         """
-{"status":0,"result":{"id":"poi-100","title":"城市博物馆","category":"文化场馆",
+{"status":0,"count":1,"data":[{"id":"poi-100","title":"城市博物馆","category":"文化场馆",
 "address":"人民路1号","location":{"lat":31.230416,"lng":121.473701},
-"ad_info":{"province":"上海市","city":"上海市","district":"黄浦区","adcode":"310101","city_code":"156310100"}}}
+"ad_info":{"province":"上海市","city":"上海市","district":"黄浦区","adcode":"310101","city_code":"156310100"}}]}
 """;
 
     Map<String, Object> place = service.parsePlaceDetailResponse(response);
@@ -32,7 +32,7 @@ class TencentMapServiceTest {
   void rejectsIncompleteProviderPlace() {
     assertThrows(
         ServiceException.class,
-        () -> service.parsePlaceDetailResponse("{\"status\":0,\"result\":{\"id\":\"poi-1\"}}"));
+        () -> service.parsePlaceDetailResponse("{\"status\":0,\"data\":[{\"id\":\"poi-1\"}]}"));
   }
 
   @Test

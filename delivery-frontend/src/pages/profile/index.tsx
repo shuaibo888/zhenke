@@ -146,7 +146,7 @@ export default function ProfilePage() {
             <small>甄客行 · 我的</small>
             <h1>{user.name}</h1>
             <p>{user.usernameInitialized ? `@${user.username}` : '手机号用户'} · {user.roleName || '甄客'}</p>
-            <span>同一个账号承接内容、消费履约和全部历史资产</span>
+            <span>记录生活，发现值得去的地方</span>
           </div>
           <div className={styles.profileStats}>
             <button type="button" className={styles.profileStat} onClick={() => navigate('/profile/orders')}>
@@ -174,7 +174,7 @@ export default function ProfilePage() {
         <div className={styles.profileGroups}>
           <section className={`${styles.surface} ${styles.profileGroup}`}>
             <header className={styles.profileGroupHeader}>
-              <h2>内容创作</h2><p>自由地点分享与消费后可信体验，语义和资格彼此独立。</p>
+              <h2>内容创作</h2>
             </header>
             <div className={styles.profileEntryGrid}>
               {profileEntry({ icon: <FileTextOutlined />, title: '我的甄客帖', description: '围绕地点主动发布的生活内容', onClick: () => navigate('/profile/posts') })}
@@ -184,7 +184,7 @@ export default function ProfilePage() {
 
           <section className={`${styles.surface} ${styles.profileGroup}`}>
             <header className={styles.profileGroupHeader}>
-              <h2>消费履约</h2><p>配送订单与待使用核销码都在同一套订单体系中查看。</p>
+              <h2>消费履约</h2>
             </header>
             <div className={styles.profileEntryGrid}>
               {profileEntry({ icon: <ShoppingCartOutlined />, title: '我的订单与核销', description: '待付款、待使用、物流、退款与已完成', meta: overviewLoading ? '…' : `${overview?.orderCount ?? 0} 笔`, onClick: () => navigate('/profile/orders') })}
@@ -194,7 +194,7 @@ export default function ProfilePage() {
 
           <section className={`${styles.surface} ${styles.profileGroup}`}>
             <header className={styles.profileGroupHeader}>
-              <h2>权益资产</h2><p>优惠券和积分继续归属于原有 shop_user，不复制或迁移账号。</p>
+              <h2>权益资产</h2>
             </header>
             <div className={styles.profileEntryGrid}>
               {profileEntry({ icon: <GiftOutlined />, title: '优惠券', description: '可用、待生效、已使用与失效', meta: overviewLoading ? '…' : `${overview?.couponAvailableCount ?? 0} 张`, onClick: () => navigate('/profile/coupons') })}
@@ -204,7 +204,7 @@ export default function ProfilePage() {
 
           <section className={`${styles.surface} ${styles.profileGroup}`}>
             <header className={styles.profileGroupHeader}>
-              <h2>参与服务</h2><p>继续使用既有试用资格、审核、物流和核销闭环。</p>
+              <h2>参与服务</h2>
             </header>
             <div className={styles.profileEntryGrid}>
               {profileEntry({ icon: <ProfileOutlined />, title: '我的试用', description: '申请、审核、物流、核销与报告进度', meta: overviewLoading ? '…' : `${overview?.trialCount ?? 0} 项`, onClick: () => navigate('/profile/trials') })}
@@ -213,7 +213,7 @@ export default function ProfilePage() {
 
           <section className={`${styles.surface} ${styles.profileGroup}`}>
             <header className={styles.profileGroupHeader}>
-              <h2>设置与安全</h2><p>资料、账号名、密码、手机号和退出登录。</p>
+              <h2>设置与安全</h2>
             </header>
             <div className={styles.profileEntryGrid}>
               {profileEntry({ icon: <EditOutlined />, title: '编辑资料与账号安全', description: '头像、昵称、账号名、密码和手机号', onClick: () => { nameForm.setFieldsValue({ name: user.name }); setProfileOpen(true); } })}

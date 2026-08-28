@@ -403,54 +403,15 @@
   background: linear-gradient(145deg, #f9eee4, #fffaf4);
 }
 
-.heroGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.65fr);
-  gap: 20px;
+.homeLead {
+  margin-bottom: 34px;
 }
 
-.locationHero {
-  position: relative;
-  min-height: 290px;
-  padding: 34px;
-  overflow: hidden;
-  background:
-    linear-gradient(105deg, rgba(61, 30, 25, 0.96), rgba(111, 51, 40, 0.82)),
-    linear-gradient(145deg, @primaryDark, @primary);
-  border: 0;
-  color: #fff;
-}
-
-.locationHero::after {
-  position: absolute;
-  right: -90px;
-  bottom: -130px;
-  width: 360px;
-  height: 360px;
-  content: "";
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  border-radius: 50%;
-  box-shadow: 0 0 0 36px rgba(255, 255, 255, 0.05), 0 0 0 72px rgba(255, 255, 255, 0.03);
-}
-
-.locationHero > * {
-  position: relative;
-  z-index: 1;
-}
-
-.locationHero h1 {
-  max-width: 650px;
-  margin: 18px 0 10px;
-  color: #fff;
-  font-family: "STKaiti", "KaiTi", serif;
-  font-size: clamp(38px, 5vw, 62px);
-  line-height: 1.08;
-}
-
-.locationHero p {
-  max-width: 580px;
-  color: rgba(255, 255, 255, 0.78);
-  line-height: 1.75;
+.homeLocationRow {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  margin-bottom: 12px;
 }
 
 .locationLabel {
@@ -473,141 +434,465 @@
   margin-top: 24px;
 }
 
-.heroSecondary {
-  min-height: 42px;
-  padding: 0 16px;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.34);
-  border-radius: 999px;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.heroTertiary {
-  min-height: 42px;
-  padding: 0 8px;
-  color: rgba(255, 255, 255, 0.82);
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  font-weight: 700;
-  text-decoration: underline;
-  text-decoration-color: rgba(255, 255, 255, 0.35);
-  text-underline-offset: 4px;
-}
-
 .manualAreaHint {
   margin: 0 0 14px;
   color: @muted;
   line-height: 1.7;
 }
 
-.quickPanel {
-  display: grid;
-  align-content: space-between;
-  min-height: 290px;
-  padding: 26px;
-  background: linear-gradient(160deg, #fff7ee, #f0dfcf);
+.cityChip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: min(280px, 100%);
+  min-height: 48px;
+  padding: 6px 12px 6px 7px;
+  color: @primaryDark;
+  background: rgba(255, 253, 248, 0.82);
+  border: 1px solid @line;
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(48, 22, 15, 0.07);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
-.quickPanel h2 {
-  margin: 8px 0;
+.cityChip:hover {
+  box-shadow: 0 7px 18px rgba(48, 22, 15, 0.12);
+  transform: translateY(-1px);
+}
+
+.cityChip:focus-visible,
+.bannerAction:focus-visible {
+  outline: 3px solid fade(@orange, 70%);
+  outline-offset: 3px;
+}
+
+.cityChipWarning {
+  color: #8b4c2e;
+  border-color: #f2c3a8;
+}
+
+.cityChipIcon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  place-items: center;
+  color: #fff;
+  background: @orange;
+  border-radius: 50%;
+  font-size: 16px;
+}
+
+.cityChipCopy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.cityChipCopy small {
+  color: @muted;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.cityChipCopy strong {
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cityChipArrow {
+  flex: none;
+  color: @muted;
+  font-size: 10px;
+}
+
+.cityPickerModal :global(.ant-modal-content),
+.cityPickerModal :global(.ant-modal-container) {
+  padding: 24px;
+  background: @surface;
+  border: 1px solid @line;
+  border-radius: 22px;
+  box-shadow: 0 24px 70px rgba(46, 24, 17, 0.2);
+}
+
+.cityPickerModal :global(.ant-modal-title) {
   color: @primaryDark;
   font-family: "STKaiti", "KaiTi", serif;
-  font-size: 30px;
+  font-size: 25px;
 }
 
-.quickPanel p {
+.cityPickerModal :global(.ant-input-affix-wrapper) {
+  min-height: 48px;
+  background: #f8f3ed;
+  border-color: transparent;
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+.cityPickerModal :global(.ant-input-affix-wrapper-focused) {
+  background: #fff;
+  border-color: @orange;
+  box-shadow: 0 0 0 3px fade(@orange, 12%);
+}
+
+.cityPickerScroll {
+  max-height: min(62vh, 620px);
+  margin-top: 18px;
+  padding-right: 5px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: #d9c7ba transparent;
+  scrollbar-width: thin;
+}
+
+.cityPickerSection + .cityPickerSection {
+  margin-top: 25px;
+}
+
+.cityPickerSection h3 {
+  margin: 0 0 12px;
   color: @muted;
-  line-height: 1.7;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
-.quickLinks {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.cityCurrentButton {
+  display: flex;
+  align-items: center;
   gap: 10px;
-}
-
-.quickLink {
-  display: grid;
-  gap: 7px;
-  min-height: 96px;
-  padding: 15px;
+  width: 100%;
+  min-height: 54px;
+  padding: 8px 12px 8px 8px;
   color: @ink;
-  background: fade(@surfaceStrong, 82%);
-  border: 1px solid fade(@line, 80%);
-  border-radius: @radiusMd;
+  background: #fff4ec;
+  border: 1px solid #edc7b2;
+  border-radius: 14px;
   cursor: pointer;
   text-align: left;
 }
 
-.quickLink span {
-  color: @orange;
-  font-size: 20px;
+.cityCurrentButton > span {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  place-items: center;
+  color: #fff;
+  background: @orange;
+  border-radius: 50%;
 }
 
-.quickLink small {
+.cityCurrentButton strong {
+  flex: 1;
+  font-size: 15px;
+}
+
+.cityCurrentButton small {
+  color: @primary;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cityCurrentButton:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.hotCityGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.hotCityGrid button,
+.cityProvinceList button {
+  min-height: 42px;
+  padding: 8px 10px;
+  color: @ink;
+  background: #fff;
+  border: 1px solid @line;
+  border-radius: 11px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.hotCityGrid button:hover,
+.cityProvinceList button:hover {
+  color: @primary;
+  background: #fff4ec;
+  border-color: #e9bca3;
+}
+
+.cityProvinceList {
+  display: grid;
+  gap: 18px;
+}
+
+.cityProvinceList > section {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.cityProvinceList h4 {
+  margin: 9px 0 0;
+  color: @primaryDark;
+  font-size: 13px;
+}
+
+.cityProvinceList > section > div {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.citySearchResults {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.citySearchResults button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  padding: 10px 13px;
+  color: @ink;
+  background: #fff;
+  border: 1px solid @line;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.citySearchResults button:hover {
+  color: @primary;
+  background: #fff4ec;
+  border-color: #e9bca3;
+}
+
+.citySearchResults strong {
+  flex: 1;
+}
+
+.citySearchResults small {
+  overflow: hidden;
+  max-width: 45%;
   color: @muted;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cityPickerEmpty {
+  margin: 0;
+  padding: 34px 16px;
+  color: @muted;
+  background: #faf6f1;
+  border-radius: 14px;
+  text-align: center;
 }
 
 .bannerCarousel {
-  margin-top: 20px;
   overflow: hidden;
+  background: @surface;
+  border: 1px solid @line;
   border-radius: @radiusLg;
   box-shadow: @shadowMd;
 }
 
-.bannerSlide {
-  position: relative;
-  min-height: 310px;
-  overflow: hidden;
-  background: @primaryDark;
-  cursor: pointer;
+.bannerCarousel :global(.slick-dots) {
+  right: auto;
+  bottom: 13px;
+  left: 26px;
+  justify-content: flex-start;
+  width: auto;
+  margin: 0;
 }
 
-.bannerSlide img {
-  position: absolute;
+.bannerCarousel :global(.slick-dots li button) {
+  height: 4px;
+  background: fade(@primary, 48%);
+  border-radius: 99px;
+}
+
+.bannerSlide {
+  overflow: hidden;
+  background: @surface;
+}
+
+.bannerMedia {
+  position: relative;
+  display: grid;
+  height: clamp(280px, 27vw, 380px);
+  overflow: hidden;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 46%, #fff 0 28%, transparent 62%),
+    linear-gradient(135deg, #f5ede5, #ede3db);
+}
+
+.bannerPreview {
+  position: absolute !important;
   inset: 0;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: 100% !important;
 }
 
-.bannerSlide::after {
+.bannerPreview :global(.ant-image-cover) {
+  color: #fff;
+  background: rgba(61, 35, 27, 0.28);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.bannerImage {
   position: absolute;
   inset: 0;
-  content: "";
-  background: linear-gradient(90deg, rgba(31, 20, 17, 0.9), rgba(31, 20, 17, 0.24) 72%);
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+  object-position: center;
+  cursor: zoom-in;
+  filter: none;
+  transition: transform 0.35s ease;
+}
+
+.bannerPreview:hover .bannerImage {
+  transform: scale(1.008);
+}
+
+.bannerPreviewCover {
+  border-radius: 0;
 }
 
 .bannerCopy {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  min-height: 310px;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-end;
-  max-width: 680px;
-  padding: 34px;
-  color: #fff;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 22px;
+  align-items: center;
+  min-height: 126px;
+  padding: 20px 26px 34px;
+  color: @ink;
+  background: @surface;
 }
 
-.bannerCopy h2 {
-  margin: 7px 0;
+.bannerText {
+  min-width: 0;
+}
+
+.bannerCopy h1 {
+  margin: 6px 0 4px;
+  color: @primaryDark;
   font-family: "STKaiti", "KaiTi", serif;
-  font-size: 38px;
+  font-size: clamp(27px, 3vw, 38px);
+  line-height: 1.15;
 }
 
 .bannerCopy p {
   margin: 0;
-  color: rgba(255, 255, 255, 0.78);
+  color: @muted;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.bannerAction {
+  display: inline-flex;
+  min-height: 44px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  color: #fff;
+  background: @orange;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 8px 20px fade(@orange, 24%);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+  transition: background 0.16s ease, transform 0.16s ease;
+}
+
+.bannerAction:hover {
+  background: darken(@orange, 5%);
+  transform: translateY(-1px);
+}
+
+.bannerFallback {
+  position: relative;
+  display: flex;
+  height: clamp(320px, 30vw, 420px);
+  align-items: flex-end;
+  overflow: hidden;
+  padding: 40px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 82% 18%, rgba(255, 190, 130, 0.28), transparent 29%),
+    linear-gradient(135deg, #4d2a23, #8a3f32 55%, #c46d3b);
+  border-radius: @radiusLg;
+  box-shadow: @shadowMd;
+}
+
+.bannerFallback::after {
+  position: absolute;
+  right: -8%;
+  bottom: -58%;
+  width: 46%;
+  aspect-ratio: 1;
+  content: "";
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  box-shadow: 0 0 0 42px rgba(255, 255, 255, 0.05), 0 0 0 84px rgba(255, 255, 255, 0.025);
+}
+
+.bannerFallback > div {
+  position: relative;
+  z-index: 3;
+  max-width: 680px;
+}
+
+.bannerFallback h1 {
+  margin: 9px 0 0;
+  color: #fff;
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: clamp(34px, 4vw, 52px);
+}
+
+.bannerFallback p {
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.bannerFallbackLoading {
+  background:
+    linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.08) 50%, transparent 65%) 0 0 / 220% 100%,
+    linear-gradient(135deg, #4d2a23, #8a3f32 55%, #c46d3b);
+  animation: bannerShimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes bannerShimmer {
+  to {
+    background-position: -220% 0, 0 0;
+  }
 }
 
 .zoneTabs {
   display: flex;
   gap: 8px;
+  margin-bottom: 22px;
   padding: 5px;
   overflow-x: auto;
   background: fade(@surfaceStrong, 74%);
@@ -1345,14 +1630,6 @@
     padding-top: 20px;
   }
 
-  .heroGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .quickPanel {
-    min-height: 230px;
-  }
-
   .postGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 11px;
@@ -1389,6 +1666,60 @@
 }
 
 @media (max-width: 560px) {
+  .cityPickerModal :global(.ant-modal) {
+    top: 0;
+    width: 100% !important;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .cityPickerModal :global(.ant-modal-content),
+  .cityPickerModal :global(.ant-modal-container) {
+    display: flex;
+    height: 100dvh;
+    flex-direction: column;
+    padding: 20px 16px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .cityPickerModal :global(.ant-modal-body) {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .cityPickerModal :global(.ant-modal-title) {
+    font-size: 23px;
+  }
+
+  .cityPickerScroll {
+    min-height: 0;
+    max-height: none;
+    flex: 1;
+    margin-right: -5px;
+  }
+
+  .hotCityGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cityProvinceList > section {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .cityProvinceList > section > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .citySearchResults {
+    grid-template-columns: 1fr;
+  }
+
   .pageHeader {
     align-items: flex-start;
     flex-direction: column;
@@ -1399,30 +1730,61 @@
     font-size: 32px;
   }
 
-  .locationHero {
-    min-height: 300px;
-    padding: 26px 22px;
+  .homeLead {
+    margin-bottom: 26px;
   }
 
-  .locationHero h1 {
-    font-size: 42px;
+  .homeLocationRow {
+    min-height: 42px;
+    margin-bottom: 10px;
   }
 
-  .quickPanel {
-    padding: 20px;
+  .cityChip {
+    min-height: 42px;
+    padding: 5px 10px 5px 5px;
   }
 
-  .bannerSlide,
-  .bannerCopy {
-    min-height: 230px;
+  .cityChipIcon {
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
   }
 
-  .bannerCopy {
+  .bannerMedia,
+  .bannerFallback {
+    height: clamp(190px, 64vw, 250px);
+  }
+
+  .bannerFallback {
     padding: 22px;
   }
 
-  .bannerCopy h2 {
-    font-size: 28px;
+  .bannerCopy {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    min-height: 116px;
+    padding: 15px 18px 31px;
+  }
+
+  .bannerCopy h1,
+  .bannerFallback h1 {
+    font-size: 24px;
+  }
+
+  .bannerCopy p {
+    font-size: 13px;
+  }
+
+  .bannerAction {
+    min-height: 40px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+
+  .bannerCarousel :global(.slick-dots) {
+    right: auto;
+    bottom: 11px;
+    left: 18px;
   }
 
   .postBody {

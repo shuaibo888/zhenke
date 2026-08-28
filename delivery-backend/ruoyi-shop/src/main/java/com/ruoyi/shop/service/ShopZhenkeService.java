@@ -334,6 +334,8 @@ public class ShopZhenkeService {
   }
 
   private void validateResources(List<ShopZhenkePostBody.Resource> rs) {
+    long images = rs.stream().filter(x -> "IMAGE".equals(x.getResourceType())).count();
+    if (images < 1) throw new ServiceException("请至少上传一张图片作为封面");
     long videos = rs.stream().filter(x -> "VIDEO".equals(x.getResourceType())).count();
     if (videos > 1) throw new ServiceException("最多上传一个视频");
     for (var r : rs) {

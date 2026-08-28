@@ -10,6 +10,9 @@ export interface Place {
   province?: string;
   city?: string;
   district?: string;
+  provinceCode?: string;
+  cityCode?: string;
+  districtCode?: string;
   latitude: number;
   longitude: number;
   coordinateSystem: string;
@@ -19,6 +22,30 @@ export interface PostResource {
   resourceType: "IMAGE" | "VIDEO";
   resourceUrl: string;
   resourceSort?: number;
+}
+export interface PostPlaceSelection {
+  provider: string;
+  providerPlaceId: string;
+  name: string;
+  type?: string;
+  address: string;
+  province?: string;
+  city?: string;
+  district?: string;
+  provinceCode?: string;
+  cityCode?: string;
+  districtCode?: string;
+  latitude: number;
+  longitude: number;
+}
+export interface PublishPostBody {
+  title: string;
+  content: string;
+  suggestion?: string;
+  perspective: Perspective;
+  place: PostPlaceSelection;
+  merchantId?: number;
+  resources: PostResource[];
 }
 export interface ZhenkePost {
   postId: number;
@@ -102,7 +129,7 @@ export async function mine(pageNum = 1) {
   );
   return { rows: r.rows ?? [], total: r.total ?? 0 };
 }
-export async function publish(body: unknown) {
+export async function publish(body: PublishPostBody) {
   return (
     await requestApi<ApiResponse<ZhenkePost>>(
       "/shop/zhenke/posts",

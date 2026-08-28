@@ -14,8 +14,8 @@ class TencentMapCoordinateValidationTest {
   void rejectsOutOfRangeProviderCoordinates() {
     String response =
         """
-        {"status":0,"result":{"id":"poi-100","title":"异常地点","address":"测试地址",
-        "location":{"lat":91,"lng":121.473701}}}
+        {"status":0,"data":[{"id":"poi-100","title":"异常地点","address":"测试地址",
+        "location":{"lat":91,"lng":121.473701}}]}
         """;
 
     assertThrows(ServiceException.class, () -> service.parsePlaceDetailResponse(response));

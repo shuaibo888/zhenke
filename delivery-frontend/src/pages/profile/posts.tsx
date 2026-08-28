@@ -68,7 +68,7 @@ export default function MyPostsPage() {
       ) : rows.length === 0 ? (
         <ZkState
           title="你还没有发布甄客帖"
-          description="选择真实地点，上传图片或视频，分享自己的城市生活视角。"
+          description="选择真实地点，上传封面图片和可选视频，分享自己的城市生活视角。"
           actionText="发布第一篇"
           onAction={() => navigate('/posts/publish')}
         />

@@ -1,4 +1,4 @@
-import { EditOutlined, InfoCircleOutlined, ReadOutlined } from '@ant-design/icons';
+import { EditOutlined, ReadOutlined } from '@ant-design/icons';
 import { Button, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'umi';
@@ -9,9 +9,9 @@ import styles from '@/styles/zhenke.less';
 
 const PAGE_SIZE = 12;
 const zones = [
-  { value: 'RECOMMEND', label: '推荐', description: '全平台最新公开内容' },
-  { value: 'LOCAL', label: '本地专区', description: '本地土著视角' },
-  { value: 'OUTSIDE', label: '外地专区', description: '游客与在外家乡人视角' },
+  { value: 'RECOMMEND', label: '推荐' },
+  { value: 'LOCAL', label: '本地专区' },
+  { value: 'OUTSIDE', label: '外地专区' },
 ] as const;
 
 type Zone = typeof zones[number]['value'];
@@ -66,9 +66,9 @@ export default function PostListPage() {
   return (
     <main className={styles.page}>
       <ZkPageHeader
-        eyebrow={<><ReadOutlined /> ZHENKE STORIES</>}
+        eyebrow={<><ReadOutlined /> 城市生活 · 真实分享</>}
         title="甄客帖"
-        description="登录用户围绕真实地点主动发布的城市生活内容，不需要订单资格，也不等同于甄客验。"
+        description="发现城市里的好去处与真实体验。"
         action={<Button type="primary" size="large" icon={<EditOutlined />} onClick={() => navigate('/posts/publish')}>发布甄客帖</Button>}
       />
 
@@ -86,13 +86,6 @@ export default function PostListPage() {
           </button>
         ))}
       </div>
-      <div className={styles.contextNotice}>
-        <InfoCircleOutlined />
-        <span>
-          {zones.find((item) => item.value === zone)?.description}。本地与外地专区只按发布者选择的体验视角区分，
-          不读取设备城市、手选城市、地点城市或距离。
-        </span>
-      </div>
 
       {loading ? (
         <ZkState kind="loading" title="正在加载甄客帖" />
@@ -101,7 +94,7 @@ export default function PostListPage() {
       ) : rows.length === 0 ? (
         <ZkState
           title="这个专区还没有内容"
-          description="你可以选择任意城市的真实地点，分享自己的体验视角。"
+          description="来记录一次值得分享的到访吧。"
           actionText="去发布"
           onAction={() => navigate('/posts/publish')}
         />

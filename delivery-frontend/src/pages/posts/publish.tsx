@@ -7,7 +7,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { Button, Checkbox, Form, Input, Radio, Select, Upload, message } from 'antd';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
@@ -40,6 +40,9 @@ const perspectiveOptions = [
   { label: '在外家乡人', value: 'HOMETOWNER' },
 ];
 
+const PLACE_SEARCH_DEBOUNCE_MS = 600;
+const MIN_PLACE_KEYWORD_LENGTH = 2;
+
 async function videoDuration(file: File) {
   return new Promise<number>((resolve, reject) => {
     const video = document.createElement('video');
@@ -62,45 +65,73 @@ export default function PublishPostPage() {
   const { user, authLoading } = useShop();
   const [form] = Form.useForm<PublishValues>();
   const [media, setMedia] = useState<PostResource[]>([]);
+  const hasCoverImage = media.some((item) => item.resourceType === 'IMAGE');
   const [mediaUploading, setMediaUploading] = useState(false);
   const [pois, setPois] = useState<Poi[]>([]);
   const [placeSearching, setPlaceSearching] = useState(false);
+  const [placeSearchKeyword, setPlaceSearchKeyword] = useState('');
+  const [placeSearchError, setPlaceSearchError] = useState('');
   const [merchants, setMerchants] = useState<MerchantOption[]>([]);
   const [merchantSearching, setMerchantSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [currentLocation] = useState(loadCurrentLocation);
   const [preferCurrentArea, setPreferCurrentArea] = useState(Boolean(loadCurrentLocation()));
   const placeSearchVersion = useRef(0);
+  const placeSearchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const placeSearchAbort = useRef<AbortController | undefined>(undefined);
   const mediaRef = useRef<PostResource[]>([]);
   const pendingMediaRef = useRef<Array<{ id: number; resourceType: PostResource['resourceType'] }>>([]);
   const uploadSequenceRef = useRef(0);
 
+  useEffect(() => () => {
+    if (placeSearchTimer.current) clearTimeout(placeSearchTimer.current);
+    placeSearchAbort.current?.abort();
+  }, []);
+
   if (authLoading) return <main className={styles.page}><ZkState kind="loading" title="正在确认登录状态" /></main>;
   if (!user) return <LoginRedirect />;
 
-  const searchPlaces = async (keyword: string) => {
-    const normalized = keyword.trim();
-    if (!normalized) {
-      setPois([]);
-      return;
-    }
-    const version = ++placeSearchVersion.current;
+  const searchPlaces = async (normalized: string, version: number) => {
+    const controller = new AbortController();
+    placeSearchAbort.current = controller;
     setPlaceSearching(true);
+    setPlaceSearchError('');
     try {
       const query = new URLSearchParams({ keyword: normalized });
       if (preferCurrentArea && currentLocation?.city) query.set('region', currentLocation.city);
-      const response = await fetch(`/api/shop/zhenke/map/search?${query.toString()}`);
+      const response = await fetch(`/api/shop/zhenke/map/search?${query.toString()}`, {
+        signal: controller.signal,
+      });
       const payload = await response.json();
       if (!response.ok || payload.code !== 200) throw new Error(payload.msg || '地点搜索失败');
       if (version === placeSearchVersion.current) setPois(Array.isArray(payload.data) ? payload.data : []);
     } catch (reason) {
+      if (controller.signal.aborted) return;
       if (version === placeSearchVersion.current) {
         setPois([]);
-        message.error(reason instanceof Error ? reason.message : '地点搜索暂时不可用');
+        setPlaceSearchError('地点搜索暂时不可用，请稍后重试');
       }
     } finally {
+      if (placeSearchAbort.current === controller) placeSearchAbort.current = undefined;
       if (version === placeSearchVersion.current) setPlaceSearching(false);
     }
+  };
+
+  const schedulePlaceSearch = (keyword: string) => {
+    const normalized = keyword.trim();
+    const version = ++placeSearchVersion.current;
+    setPlaceSearchKeyword(normalized);
+    setPlaceSearchError('');
+    setPlaceSearching(false);
+    setPois([]);
+    if (placeSearchTimer.current) clearTimeout(placeSearchTimer.current);
+    placeSearchAbort.current?.abort();
+    placeSearchAbort.current = undefined;
+    if (normalized.length < MIN_PLACE_KEYWORD_LENGTH) return;
+    placeSearchTimer.current = setTimeout(() => {
+      placeSearchTimer.current = undefined;
+      void searchPlaces(normalized, version);
+    }, PLACE_SEARCH_DEBOUNCE_MS);
   };
 
   const searchMerchants = async (keyword: string) => {
@@ -148,8 +179,8 @@ export default function PublishPostPage() {
   };
 
   const submit = async (values: PublishValues) => {
-    if (media.length === 0) {
-      message.warning('请至少上传一张图片或一个视频');
+    if (!hasCoverImage) {
+      message.warning('请至少上传一张图片作为封面');
       return;
     }
     const selectedPlace = pois.find((item) => `${item.provider}:${item.providerPlaceId}` === values.place);
@@ -165,7 +196,21 @@ export default function PublishPostPage() {
         content: values.content.trim(),
         suggestion: values.suggestion?.trim() || undefined,
         perspective: values.perspective,
-        place: selectedPlace,
+        place: {
+          provider: selectedPlace.provider,
+          providerPlaceId: selectedPlace.providerPlaceId,
+          name: selectedPlace.placeName,
+          type: selectedPlace.placeType,
+          address: selectedPlace.address,
+          province: selectedPlace.province,
+          city: selectedPlace.city,
+          district: selectedPlace.district,
+          provinceCode: selectedPlace.provinceCode,
+          cityCode: selectedPlace.cityCode,
+          districtCode: selectedPlace.districtCode,
+          latitude: selectedPlace.latitude,
+          longitude: selectedPlace.longitude,
+        },
         merchantId: values.merchantId,
         resources: media,
       });
@@ -193,7 +238,7 @@ export default function PublishPostPage() {
       <Form<PublishValues>
         form={form}
         layout="vertical"
-        requiredMark="optional"
+        requiredMark={false}
         className={`${styles.surface} ${styles.publishCard}`}
         initialValues={{ perspective: 'LOCAL' }}
         onFinish={(values) => void submit(values)}
@@ -262,8 +307,12 @@ export default function PublishPostPage() {
             showSearch
             filterOption={false}
             loading={placeSearching}
-            onSearch={(value) => void searchPlaces(value)}
-            notFoundContent={placeSearching ? '正在搜索地点…' : '输入地点名、商圈或详细地址搜索'}
+            onSearch={schedulePlaceSearch}
+            notFoundContent={placeSearching
+              ? '正在搜索地点…'
+              : placeSearchError || (placeSearchKeyword.length < MIN_PLACE_KEYWORD_LENGTH
+                ? '请至少输入 2 个字搜索地点'
+                : '没有找到匹配地点，请尝试更完整的名称')}
             placeholder="搜索酒店、饭店、景区、商店或公共地点"
             options={pois.map((item) => ({
               value: `${item.provider}:${item.providerPlaceId}`,
@@ -292,7 +341,7 @@ export default function PublishPostPage() {
           />
         </Form.Item>
 
-        <Form.Item label="图片或视频" required>
+        <Form.Item label="封面图片与视频" required>
           <div className={styles.mediaUploader}>
             <Upload
               accept="image/jpeg,image/png,video/mp4"
@@ -315,7 +364,8 @@ export default function PublishPostPage() {
               </Button>
             </Upload>
             <p className={styles.selectionHint}>
-              合计 1–9 个；视频最多 1 个。图片 JPG/PNG ≤ 5MB；MP4 ≤ 10MB 且 ≤ 30 秒。允许只发视频。
+              至少上传 1 张图片作为封面；可再上传 1 个视频，图片和视频合计最多 9 个。
+              图片 JPG/PNG ≤ 5MB；MP4 ≤ 10MB 且 ≤ 30 秒。
             </p>
             {media.length > 0 && (
               <div className={styles.mediaGrid}>
@@ -352,7 +402,7 @@ export default function PublishPostPage() {
           type="primary"
           htmlType="submit"
           loading={submitting}
-          disabled={mediaUploading || media.length === 0}
+          disabled={mediaUploading || !hasCoverImage}
         >确认发布甄客帖</Button>
       </Form>
     </main>

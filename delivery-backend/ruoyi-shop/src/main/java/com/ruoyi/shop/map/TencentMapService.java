@@ -233,17 +233,25 @@ public class TencentMapService {
                 + encode(id)
                 + "&key="
                 + encode(requireKey()));
-    return toPublicPlace(item);
+    return toPublicPlace(extractPlaceDetailItem(item));
   }
 
   Map<String, Object> parsePlaceDetailResponse(String responseBody) {
     JSONObject payload = JSON.parseObject(responseBody);
-    if (payload == null
-        || payload.getIntValue("status") != 0
-        || payload.getJSONObject("result") == null) {
+    if (payload == null || payload.getIntValue("status") != 0) {
       throw new ServiceException("地图服务未返回有效地点");
     }
-    return toPublicPlace(payload.getJSONObject("result"));
+    return toPublicPlace(extractPlaceDetailItem(payload));
+  }
+
+  /** Tencent's detail API returns the selected POI in data[0]. */
+  private JSONObject extractPlaceDetailItem(JSONObject payload) {
+    if (payload == null) throw new ServiceException("地图服务未返回有效地点");
+    var data = payload.getJSONArray("data");
+    if (data != null && !data.isEmpty() && data.getJSONObject(0) != null) {
+      return data.getJSONObject(0);
+    }
+    throw new ServiceException("地图服务未返回有效地点");
   }
 
   private Map<String, Object> toPublicPlace(JSONObject item) {

@@ -263,20 +263,16 @@ class ShopZhenkeServiceTest {
   }
 
   @Test
-  void videoOnlyPostCanBePublishedAndClaimsVideoUpload() {
+  void videoOnlyPostIsRejectedBeforePersistence() {
     authenticateShopUser(18L);
     ShopZhenkePostBody body = postBody();
     body.getResources().get(0).setResourceType("VIDEO");
     body.getResources().get(0).setResourceUrl("/profile/upload/report/user-18/clip.mp4");
-    stubExistingPlaceAndSavedPost(18L, 45L);
-    when(mapper.claimPendingUpload(
-            18L, "/profile/upload/report/user-18/clip.mp4", "VIDEO", 45L))
-        .thenReturn(1);
     ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
 
-    assertEquals(45L, service.publish(body).getPostId());
-    verify(mapper)
-        .claimPendingUpload(18L, "/profile/upload/report/user-18/clip.mp4", "VIDEO", 45L);
+    ServiceException error = assertThrows(ServiceException.class, () -> service.publish(body));
+    assertEquals("请至少上传一张图片作为封面", error.getMessage());
+    verify(mapper, never()).insertPost(any());
   }
 
   @Test
