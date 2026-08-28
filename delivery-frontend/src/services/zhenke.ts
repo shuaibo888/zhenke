@@ -1,5 +1,6 @@
 import { requestApi, type ApiResponse, type TableResponse } from "./apiClient";
 export type Perspective = "LOCAL" | "TOURIST" | "HOMETOWNER";
+export type EnjoyCategory = "MALL" | "RESTAURANT" | "SCENIC" | "HOTEL";
 export interface Place {
   placeId: number;
   provider: string;
@@ -99,6 +100,36 @@ export interface Banner {
   jumpType: "INTERNAL" | "EXTERNAL";
   jumpTarget: string;
   bannerSort: number;
+}
+export interface ZhenkeEnjoy {
+  enjoyId: number;
+  category: EnjoyCategory;
+  title: string;
+  subtitle?: string;
+  coverUrl: string;
+  content: string;
+  highlights?: string;
+  placeName?: string;
+  placeAddress?: string;
+  displaySort: number;
+  status: "0" | "1";
+  publishedAt?: string;
+  likeCount: number;
+  commentCount: number;
+  likedByMe: boolean;
+}
+export interface EnjoyComment {
+  commentId: number;
+  enjoyId: number;
+  parentCommentId?: number;
+  replyToCommentId?: number;
+  shopUserId: number;
+  userName: string;
+  nickName?: string;
+  avatar?: string;
+  replyToName?: string;
+  content: string;
+  createTime: string;
 }
 export async function posts(
   zone = "RECOMMEND",
@@ -221,5 +252,50 @@ export async function merchantOptions(keyword = "") {
       && Number.isFinite(item.merchantId)
       && typeof item.shopName === "string"
       && item.shopName.trim().length > 0,
+  );
+}
+
+export async function enjoys(category?: EnjoyCategory, pageNum = 1, pageSize = 12) {
+  const query = new URLSearchParams({ pageNum: String(pageNum), pageSize: String(pageSize) });
+  if (category) query.set("category", category);
+  const result = await requestApi<TableResponse<ZhenkeEnjoy>>(`/shop/zhenke/enjoys?${query}`);
+  return { rows: result.rows ?? [], total: result.total ?? 0 };
+}
+
+export async function enjoyDetail(id: number) {
+  return (await requestApi<ApiResponse<ZhenkeEnjoy>>(`/shop/zhenke/enjoys/${id}`)).data!;
+}
+
+export async function toggleEnjoyLike(id: number) {
+  return (
+    await requestApi<ApiResponse<{ liked: boolean; likeCount: number }>>(
+      `/shop/zhenke/enjoys/${id}/like`,
+      { method: "POST" },
+      true,
+    )
+  ).data!;
+}
+
+export async function enjoyComments(id: number) {
+  return (
+    (await requestApi<ApiResponse<EnjoyComment[]>>(`/shop/zhenke/enjoys/${id}/comments`)).data ?? []
+  );
+}
+
+export async function createEnjoyComment(id: number, content: string, replyToCommentId?: number) {
+  return (
+    await requestApi<ApiResponse<EnjoyComment>>(
+      `/shop/zhenke/enjoys/${id}/comments`,
+      { method: "POST", body: JSON.stringify({ content, replyToCommentId }) },
+      true,
+    )
+  ).data!;
+}
+
+export async function deleteEnjoyComment(id: number, commentId: number) {
+  await requestApi(
+    `/shop/zhenke/enjoys/${id}/comments/${commentId}`,
+    { method: "DELETE" },
+    true,
   );
 }

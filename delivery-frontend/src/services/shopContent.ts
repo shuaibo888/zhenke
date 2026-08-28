@@ -40,6 +40,7 @@ export interface PublicProductDto {
   coverUrl: string;
   price: number;
   stock: number;
+  stockUnlimited: '0' | '1';
   supportsOnline: '0' | '1';
   supportsOffline: '0' | '1';
   salesCount: number;
@@ -73,6 +74,7 @@ export type MallProductDto = Pick<PublicProductDto,
   | 'coverUrl'
   | 'price'
   | 'stock'
+  | 'stockUnlimited'
   | 'salesCount'
   | 'status'
   | 'certificationStatus'
@@ -214,6 +216,7 @@ export interface ShopCartItemDto {
   coverUrl: string;
   price: number;
   stock: number;
+  stockUnlimited: '0' | '1';
   productStatus: 'DRAFT' | 'ON_SALE' | 'OFF_SALE';
   supportsOnline: '0' | '1';
   supportsOffline: '0' | '1';

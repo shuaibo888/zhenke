@@ -11,6 +11,7 @@ import {
   TeamOutlined,
   TruckOutlined,
   ReadOutlined,
+  StarOutlined,
   PictureOutlined,
 } from '@ant-design/icons';
 import {
@@ -157,6 +158,7 @@ const navMeta: Record<NavKey, { label: string; icon: React.ReactNode }> = {
   orders: { label: '订单管理', icon: <TruckOutlined /> },
   reports: { label: '甄客验管理', icon: <FileSearchOutlined /> },
   zhenkePosts: { label: '甄客帖管理', icon: <ReadOutlined /> },
+  enjoys: { label: '甄必享管理', icon: <StarOutlined /> },
   banners: { label: '首页轮播管理', icon: <PictureOutlined /> },
   merchants: { label: '商家管理', icon: <TeamOutlined /> },
 };
@@ -317,6 +319,7 @@ function AdminWorkspace() {
     (key) => (key !== 'users' || hasPermission('shop:user:list'))
       && (key !== 'merchants' || hasPermission('shop:merchant:list'))
       && (key !== 'zhenkePosts' || hasPermission('shop:zhenkePost:list'))
+      && (key !== 'enjoys' || hasPermission('shop:enjoy:list'))
       && (key !== 'banners' || hasPermission('shop:banner:list')),
   );
 
@@ -723,8 +726,7 @@ function AdminWorkspace() {
       imageUrl: '',
       mainImageUrls: [],
       detailImageUrls: [],
-      price: 99,
-      stock: 20,
+      stockUnlimited: true,
       supportsOnline: true,
       supportsOffline: false,
     });
@@ -747,6 +749,7 @@ function AdminWorkspace() {
         detailImageUrls: detail.detailImageUrls,
         price: detail.price,
         stock: detail.stock,
+        stockUnlimited: detail.stockUnlimited,
         supportsOnline: detail.supportsOnline ?? true,
         supportsOffline: detail.supportsOffline ?? false,
       });
@@ -783,7 +786,8 @@ function AdminWorkspace() {
         refundExpiryRule: values.refundExpiryRule?.trim(),
         coverUrl: values.imageUrl.trim(),
         price: values.price,
-        stock: values.stock,
+        stock: values.stockUnlimited ? undefined : values.stock,
+        stockUnlimited: values.stockUnlimited,
         supportsOnline: values.supportsOnline,
         supportsOffline: values.supportsOffline,
         mainImageUrls: values.mainImageUrls ?? [],
@@ -1384,7 +1388,7 @@ function AdminWorkspace() {
       responsive: ['md'],
       render: (price: number) => formatMoney(price),
     },
-    { title: '库存', dataIndex: 'stock', responsive: ['md'] },
+    { title: '库存', dataIndex: 'stock', responsive: ['md'], render: (_, product) => product.stockUnlimited ? '无限' : product.stock },
     {
       title: '销售方式',
       key: 'fulfillment',

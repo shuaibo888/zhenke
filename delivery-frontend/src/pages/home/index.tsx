@@ -1,20 +1,27 @@
 import {
   ArrowRightOutlined,
+  CoffeeOutlined,
   CompassOutlined,
   DownOutlined,
   EnvironmentOutlined,
+  HomeOutlined,
   SearchOutlined,
+  ShoppingOutlined,
 } from '@ant-design/icons';
 import { Carousel, Image, Input, Modal, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'umi';
 import pcaCode from 'china-division/dist/pca-code.json';
+import { ZhenkeEnjoyCard } from '@/components/ZhenkeEnjoyCard';
 import { ZhenkePostCard } from '@/components/ZhenkePostCard';
 import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
 import {
   banners,
+  enjoys,
   posts,
   type Banner,
+  type EnjoyCategory,
+  type ZhenkeEnjoy,
   type ZhenkePost,
 } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
@@ -45,6 +52,45 @@ const cityGroups = (pcaCode as RegionNode[]).map((province) => {
 const allCities = cityGroups.flatMap((group) => group.cities);
 const hotCities = HOT_CITY_NAMES.map((name) => allCities.find((city) => city.name === name)).filter((city): city is CityOption => Boolean(city));
 
+const zhenEnjoyEntries: Array<{
+  code: EnjoyCategory;
+  title: string;
+  caption: string;
+  icon: React.ReactNode;
+}> = [
+  {
+    code: 'MALL',
+    title: '甄必购',
+    caption: '发现值得带回家的好物',
+    icon: <ShoppingOutlined />,
+  },
+  {
+    code: 'RESTAURANT',
+    title: '甄必吃',
+    caption: '找一顿值得专程去吃的',
+    icon: <CoffeeOutlined />,
+  },
+  {
+    code: 'SCENIC',
+    title: '甄必玩',
+    caption: '挑一个说走就走的去处',
+    icon: <CompassOutlined />,
+  },
+  {
+    code: 'HOTEL',
+    title: '甄必住',
+    caption: '住得舒服，旅途才更从容',
+    icon: <HomeOutlined />,
+  },
+];
+
+const emptyEnjoyFeeds: Record<EnjoyCategory, ZhenkeEnjoy[]> = {
+  MALL: [],
+  RESTAURANT: [],
+  SCENIC: [],
+  HOTEL: [],
+};
+
 const locationCityLabel = (location: ReturnType<typeof loadCurrentLocation>) => {
   if (!location) return '选择城市';
   if (location.city) return location.city;
@@ -55,6 +101,9 @@ export default function HomePage() {
   const navigate = useNavigate();
   const [feed, setFeed] = useState<ZhenkePost[]>([]);
   const [bannerRows, setBannerRows] = useState<Banner[]>([]);
+  const [enjoyFeeds, setEnjoyFeeds] = useState<Record<EnjoyCategory, ZhenkeEnjoy[]>>(emptyEnjoyFeeds);
+  const [activeEnjoy, setActiveEnjoy] = useState<EnjoyCategory>('MALL');
+  const [enjoyError, setEnjoyError] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [bannerError, setBannerError] = useState('');
@@ -77,9 +126,14 @@ export default function HomePage() {
     setLoading(true);
     setLoadError('');
     setBannerError('');
-    const [postResult, bannerResult] = await Promise.allSettled([
+    setEnjoyError('');
+    const [postResult, bannerResult, enjoyResult] = await Promise.allSettled([
       posts('RECOMMEND', 1, 9),
       banners(),
+      Promise.all(zhenEnjoyEntries.map(async (entry) => [
+        entry.code,
+        (await enjoys(entry.code, 1, 6)).rows,
+      ] as const)),
     ]);
     if (postResult.status === 'fulfilled') {
       setFeed(postResult.value.rows);
@@ -92,6 +146,16 @@ export default function HomePage() {
     } else {
       setBannerRows([]);
       setBannerError('今日精选暂时没有加载成功，请稍后再试。');
+    }
+    if (enjoyResult.status === 'fulfilled') {
+      const next = { ...emptyEnjoyFeeds };
+      enjoyResult.value.forEach(([category, rows]) => { next[category] = rows; });
+      setEnjoyFeeds(next);
+      const firstPopulated = zhenEnjoyEntries.find((entry) => next[entry.code].length > 0);
+      if (firstPopulated) setActiveEnjoy(firstPopulated.code);
+    } else {
+      setEnjoyFeeds({ ...emptyEnjoyFeeds });
+      setEnjoyError('甄必享内容暂时没有加载成功');
     }
     setLoading(false);
   }, []);
@@ -248,25 +312,49 @@ export default function HomePage() {
         />
       )}
 
-      <ZkSectionTitle
-        title="四大营业分类"
-        description="精选好物、住宿、门票与美食，都可以从这里开始。"
-        action={<button type="button" className={styles.textButton} onClick={() => navigate('/mall')}>进入商城 →</button>}
-      />
-      <div className={styles.businessModuleGrid}>
-        <button type="button" className={styles.businessModuleCard} onClick={() => navigate('/mall?module=MALL')}>
-          <span>购</span><strong>商城</strong><p>精选好物 · 试用 · 配送与核销</p>
-        </button>
-        <button type="button" className={styles.businessModuleCard} onClick={() => navigate('/mall?module=ZHENKE_HOTEL')}>
-          <span>住</span><strong>酒店</strong><p>住宿套餐 · 到店核销</p>
-        </button>
-        <button type="button" className={styles.businessModuleCard} onClick={() => navigate('/mall?module=ZHENKE_SCENIC')}>
-          <span>游</span><strong>景区</strong><p>门票线路 · 现场核销</p>
-        </button>
-        <button type="button" className={styles.businessModuleCard} onClick={() => navigate('/mall?module=ZHENKE_RESTAURANT')}>
-          <span>食</span><strong>饭店</strong><p>餐饮套餐 · 到店核销</p>
-        </button>
-      </div>
+      <section className={styles.zhenEnjoySection} aria-labelledby="zhen-enjoy-title">
+        <header className={styles.zhenEnjoyHeader}>
+          <div>
+            <span>甄选城市生活</span>
+            <h2 id="zhen-enjoy-title">甄必享</h2>
+          </div>
+          <button type="button" className={styles.textButton} onClick={() => navigate(`/enjoy?category=${activeEnjoy}`)}>查看全部 →</button>
+        </header>
+        <div className={styles.zhenEnjoyRail}>
+          {zhenEnjoyEntries.map((entry, index) => (
+            <button
+              key={entry.code}
+              type="button"
+              className={`${styles.zhenEnjoyCard} ${activeEnjoy === entry.code ? styles.zhenEnjoyCardActive : ''}`}
+              aria-pressed={activeEnjoy === entry.code}
+              onClick={() => setActiveEnjoy(entry.code)}
+            >
+              <span className={styles.zhenEnjoyIndex}>{String(index + 1).padStart(2, '0')}</span>
+              <span className={styles.zhenEnjoyIcon}>{entry.icon}</span>
+              <strong>{entry.title}</strong>
+              <p>{entry.caption}</p>
+              <em>{enjoyFeeds[entry.code].length > 0 ? `${enjoyFeeds[entry.code].length} 条精选` : '内容筹备中'}</em>
+            </button>
+          ))}
+        </div>
+        <div className={styles.zhenEnjoyContent}>
+          {enjoyError ? (
+            <ZkState kind="error" title="甄必享暂时没有连接成功" description={enjoyError} onAction={() => void loadHome()} />
+          ) : enjoyFeeds[activeEnjoy].length > 0 ? (
+            <div className={styles.enjoyEditorialGrid}>
+              {enjoyFeeds[activeEnjoy].map((item) => <ZhenkeEnjoyCard key={item.enjoyId} item={item} />)}
+            </div>
+          ) : (
+            <div className={styles.zhenEnjoyEmpty}>
+              <span>{zhenEnjoyEntries.find((entry) => entry.code === activeEnjoy)?.icon}</span>
+              <div>
+                <strong>{zhenEnjoyEntries.find((entry) => entry.code === activeEnjoy)?.title}正在准备</strong>
+                <p>平台运营团队正在整理本期精选内容。</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
       <Modal
         open={cityPickerOpen}
         title="选择当前城市"

@@ -17,6 +17,7 @@ public class ShopCartItem
     private String coverUrl;
     private BigDecimal price;
     private Integer stock;
+    private String stockUnlimited;
     private String productStatus;
     private String supportsOnline;
     private String supportsOffline;
@@ -47,6 +48,8 @@ public class ShopCartItem
     public void setPrice(BigDecimal price) { this.price = price; }
     public Integer getStock() { return stock; }
     public void setStock(Integer stock) { this.stock = stock; }
+    public String getStockUnlimited() { return stockUnlimited; }
+    public void setStockUnlimited(String stockUnlimited) { this.stockUnlimited = stockUnlimited; }
     public String getProductStatus() { return productStatus; }
     public void setProductStatus(String productStatus) { this.productStatus = productStatus; }
     public String getSupportsOnline() { return supportsOnline; }

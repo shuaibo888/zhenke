@@ -9,6 +9,7 @@ import {
   InputNumber,
   Modal,
   Popconfirm,
+  Radio,
   Select,
   Space,
   Switch,
@@ -37,7 +38,8 @@ export interface ProductFormValues {
   mainImageUrls: string[];
   detailImageUrls: string[];
   price: number;
-  stock: number;
+  stock?: number;
+  stockUnlimited: boolean;
   supportsOnline: boolean;
   supportsOffline: boolean;
 }
@@ -164,6 +166,7 @@ export default function ProductDialogs(props: ProductDialogsProps) {
   const [creatingCategory, setCreatingCategory] = useState(false);
   const selectedCategoryId = Form.useWatch('categoryId', props.productForm);
   const selectedCategory = props.productCategories.find((item) => item.categoryId === selectedCategoryId);
+  const stockUnlimited = Form.useWatch('stockUnlimited', props.productForm);
   const localLifeCategory = Boolean(selectedCategory
     && ['ZHENKE_HOTEL', 'ZHENKE_RESTAURANT', 'ZHENKE_SCENIC'].includes(selectedCategory.categoryCode));
 
@@ -417,11 +420,20 @@ export default function ProductDialogs(props: ProductDialogsProps) {
           </Form.Item>
           <Space size={12} className={styles.formRow}>
             <Form.Item name="price" label="售价" rules={[{ required: true, message: '请输入售价' }]}>
-              <InputNumber min={0.01} precision={2} prefix="¥" />
+              <InputNumber min={0.01} precision={2} prefix="¥" placeholder="请填写售价" />
             </Form.Item>
-            <Form.Item name="stock" label="库存" rules={[{ required: true, message: '请输入库存' }]}>
-              <InputNumber min={0} precision={0} />
+            <Form.Item name="stockUnlimited" label="库存方式">
+              <Radio.Group
+                optionType="button"
+                buttonStyle="solid"
+                options={[{ label: '无限库存', value: true }, { label: '有限库存', value: false }]}
+              />
             </Form.Item>
+            {!stockUnlimited && (
+              <Form.Item name="stock" label="库存数量" rules={[{ required: true, message: '请输入库存数量' }]}>
+                <InputNumber min={0} max={999999999} precision={0} placeholder="请输入可售数量" />
+              </Form.Item>
+            )}
           </Space>
           <Form.Item label="销售方式" required extra="至少选择一种；到店核销在支付后生成核销券，与试用线上线下无关。">
             <Space size={20}>

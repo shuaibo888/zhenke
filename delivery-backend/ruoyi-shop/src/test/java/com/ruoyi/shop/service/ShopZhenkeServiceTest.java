@@ -143,6 +143,8 @@ class ShopZhenkeServiceTest {
     verify(mapper).insertPlace(place.capture());
     assertEquals("服务端地点", place.getValue().getPlaceName());
     assertEquals("服务端地址", place.getValue().getAddress());
+    var post = org.mockito.ArgumentCaptor.forClass(ShopZhenkePost.class);
+    verify(mapper).insertPost(post.capture());
     verify(mapper)
         .claimPendingUpload(18L, "/profile/upload/report/user-18/photo.png", "IMAGE", 44L);
   }

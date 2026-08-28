@@ -221,7 +221,8 @@ public class ShopProductService
                 productMapper.selectMerchantProduct(merchantId, productId));
         if (ON_SALE.equals(status))
         {
-            if (product.getStock() == null || product.getStock() <= 0)
+            if (!"1".equals(product.getStockUnlimited())
+                    && (product.getStock() == null || product.getStock() <= 0))
             {
                 throw new ServiceException("库存大于0时才能上架商品");
             }
@@ -263,7 +264,13 @@ public class ShopProductService
         product.setRefundExpiryRule(StringUtils.trim(body.getRefundExpiryRule()));
         product.setCoverUrl(normalizeProductImageUrl(body.getCoverUrl()));
         product.setPrice(body.getPrice());
-        product.setStock(body.getStock());
+        boolean stockUnlimited = Boolean.TRUE.equals(body.getStockUnlimited());
+        if (!stockUnlimited && body.getStock() == null)
+        {
+            throw new ServiceException("有限库存商品必须填写库存");
+        }
+        product.setStockUnlimited(stockUnlimited ? "1" : "0");
+        product.setStock(stockUnlimited ? 0 : body.getStock());
         applyFulfillment(product, body);
         ShopProductCategory category = productMapper.selectCategoryById(body.getCategoryId());
         if (category != null && LOCAL_LIFE_CATEGORY_CODES.contains(category.getCategoryCode()))

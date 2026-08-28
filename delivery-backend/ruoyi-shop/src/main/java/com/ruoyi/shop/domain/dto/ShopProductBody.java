@@ -35,10 +35,11 @@ public class ShopProductBody
     @Digits(integer = 8, fraction = 2, message = "商品价格最多8位整数和2位小数")
     private BigDecimal price;
 
-    @NotNull(message = "请输入商品库存")
     @Min(value = 0, message = "商品库存不能小于0")
     @Max(value = 999999999, message = "商品库存过大")
     private Integer stock;
+
+    private Boolean stockUnlimited;
 
     @Size(max = 5000) private String packageContent;
     @Size(max = 5000) private String usageNotice;
@@ -70,6 +71,8 @@ public class ShopProductBody
     public void setPrice(BigDecimal price) { this.price = price; }
     public Integer getStock() { return stock; }
     public void setStock(Integer stock) { this.stock = stock; }
+    public Boolean getStockUnlimited() { return stockUnlimited; }
+    public void setStockUnlimited(Boolean stockUnlimited) { this.stockUnlimited = stockUnlimited; }
     public String getPackageContent(){return packageContent;} public void setPackageContent(String v){packageContent=v;} public String getUsageNotice(){return usageNotice;} public void setUsageNotice(String v){usageNotice=v;} public String getValidityDescription(){return validityDescription;} public void setValidityDescription(String v){validityDescription=v;} public Boolean getReservationRequired(){return reservationRequired;} public void setReservationRequired(Boolean v){reservationRequired=v;} public String getReservationNotice(){return reservationNotice;} public void setReservationNotice(String v){reservationNotice=v;} public String getRefundExpiryRule(){return refundExpiryRule;} public void setRefundExpiryRule(String v){refundExpiryRule=v;}
     public Boolean getSupportsOnline() { return supportsOnline; }
     public void setSupportsOnline(Boolean supportsOnline) { this.supportsOnline = supportsOnline; }

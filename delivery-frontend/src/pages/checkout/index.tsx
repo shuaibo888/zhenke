@@ -40,6 +40,7 @@ type CheckoutLine = {
   supportsOnline?: '0' | '1';
   supportsOffline?: '0' | '1';
   stock?: number;
+  stockUnlimited?: '0' | '1';
   productStatus?: 'DRAFT' | 'ON_SALE' | 'OFF_SALE';
 };
 
@@ -236,6 +237,7 @@ export default function CheckoutPage() {
         supportsOnline: item.supportsOnline,
         supportsOffline: item.supportsOffline,
         stock: item.stock,
+        stockUnlimited: item.stockUnlimited,
         productStatus: item.productStatus,
       }));
     }
@@ -267,9 +269,13 @@ export default function CheckoutPage() {
     && lines.some((line) => cartLineFulfillment(line) === 'ONLINE');
   const mixedCartFulfillment = source === 'cart' && cartHasOnline && cartHasOffline;
   const cartHasUnavailableItems = source === 'cart' && lines.some((line) => (
-    line.productStatus !== 'ON_SALE' || (line.stock ?? 0) < line.quantity
+    line.productStatus !== 'ON_SALE'
+      || (line.stockUnlimited !== '1' && (line.stock ?? 0) < line.quantity)
   ));
-  const buyStockInsufficient = source === 'buy' && Boolean(product) && (product?.stock ?? 0) < quantity;
+  const buyStockInsufficient = source === 'buy'
+    && Boolean(product)
+    && product?.stockUnlimited !== '1'
+    && (product?.stock ?? 0) < quantity;
   const singleCheckoutGroup = singleMerchant && !mixedCartFulfillment;
   const selectedCoupons = selectedCouponIds
     .map((couponId) => availableCoupons.find((coupon) => coupon.userCouponId === couponId))

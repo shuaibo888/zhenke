@@ -12,6 +12,7 @@
         <result property="coverUrl" column="cover_url" />
         <result property="price" column="price" />
         <result property="stock" column="stock" />
+        <result property="stockUnlimited" column="stock_unlimited" />
         <result property="supportsOnline" column="supports_online" />
         <result property="supportsOffline" column="supports_offline" />
         <result property="status" column="product_status" />
@@ -204,7 +205,7 @@
     <select id="selectOrderableProductForUpdate" parameterType="Long" resultMap="ShopProductResult">
         select p.product_id, p.merchant_id, m.shop_name as merchant_name,
                p.category_id, c.category_code, c.category_name, p.product_name,
-               p.cover_url, p.price, p.stock, p.supports_online, p.supports_offline,
+               p.cover_url, p.price, p.stock, p.stock_unlimited, p.supports_online, p.supports_offline,
                p.status as product_status
         from shop_product p
         inner join shop_merchant m on m.merchant_id = p.merchant_id
@@ -223,14 +224,16 @@
 
     <update id="deductStock">
         update shop_product
-        set stock = stock - #{quantity}, update_time = sysdate()
+        set stock = case when stock_unlimited = '1' then stock else stock - #{quantity} end,
+            update_time = sysdate()
         where product_id = #{productId} and status = 'ON_SALE' and del_flag = '0'
-          and stock &gt;= #{quantity}
+          and (stock_unlimited = '1' or stock &gt;= #{quantity})
     </update>
 
     <update id="restoreStock">
         update shop_product
-        set stock = stock + #{quantity}, update_time = sysdate()
+        set stock = case when stock_unlimited = '1' then stock else stock + #{quantity} end,
+            update_time = sysdate()
         where product_id = #{productId} and del_flag = '0'
     </update>
 

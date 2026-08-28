@@ -7,6 +7,8 @@ export default defineConfig({
     { path: '/posts/publish', component: '@/pages/posts/publish' },
     { path: '/posts/:postId', component: '@/pages/posts/detail' },
     { path: '/posts', component: '@/pages/posts' },
+    { path: '/enjoy/:enjoyId', component: '@/pages/enjoy/detail' },
+    { path: '/enjoy', component: '@/pages/enjoy' },
     { path: '/places/:placeId', component: '@/pages/places/detail' },
     { path: '/profile/posts', component: '@/pages/profile/posts' },
     { path: '/mall', component: '@/pages/mall' },

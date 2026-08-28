@@ -61,6 +61,7 @@ class ShopProductServiceTest
         when(productMapper.selectImages(10L)).thenReturn(insertedImages);
 
         ShopProductBody body = validBody();
+        body.setStockUnlimited(true);
         body.setCoverUrl("http://dzshop.vip/profile/upload/product/merchant-1/cover.jpg");
         body.setMainImageUrls(List.of(
                 "https://dzshop.vip/profile/upload/product/merchant-1/main.jpg"));
@@ -71,6 +72,8 @@ class ShopProductServiceTest
 
         assertEquals("/profile/upload/product/merchant-1/cover.jpg",
                 insertedProduct.get().getCoverUrl());
+        assertEquals("1", insertedProduct.get().getStockUnlimited());
+        assertEquals(0, insertedProduct.get().getStock());
         assertEquals(List.of(
                 "/profile/upload/product/merchant-1/main.jpg",
                 "/profile/upload/product/merchant-1/detail.jpg"),
@@ -148,6 +151,33 @@ class ShopProductServiceTest
         assertThrows(ServiceException.class, () -> productService.updateStatus(10L, "ON_SALE", "merchant"));
 
         verify(productMapper, never()).updateMerchantProductStatus(1L, 10L, "ON_SALE", "merchant");
+    }
+
+    @Test
+    void unlimitedStockProductCanBePublishedWithZeroPhysicalStock()
+    {
+        ShopMerchant merchant = new ShopMerchant();
+        merchant.setMerchantId(1L);
+        when(merchantService.currentMerchantAccount()).thenReturn(merchant);
+        ShopProductCategory category = new ShopProductCategory();
+        category.setCategoryId(1L);
+        category.setCategoryCode("CATEGORY_1");
+        category.setStatus("0");
+        when(productMapper.selectCategoryById(1L)).thenReturn(category);
+        ShopProduct product = new ShopProduct();
+        product.setProductId(10L);
+        product.setMerchantId(1L);
+        product.setCategoryId(1L);
+        product.setCategoryCode("CATEGORY_1");
+        product.setStock(0);
+        product.setStockUnlimited("1");
+        when(productMapper.selectMerchantProduct(1L, 10L)).thenReturn(product);
+        when(productMapper.updateMerchantProductStatus(1L, 10L, "ON_SALE", "merchant"))
+                .thenReturn(1);
+        when(productMapper.selectImages(10L)).thenReturn(List.of());
+
+        assertEquals(10L, productService.updateStatus(10L, "ON_SALE", "merchant").getProductId());
+        verify(productMapper).updateMerchantProductStatus(1L, 10L, "ON_SALE", "merchant");
     }
 
     private ShopProductBody validBody()

@@ -538,7 +538,7 @@
                  p.product_id, p.merchant_id, m.shop_name as merchant_name,
                  pc.category_code, pc.category_name, c.campaign_title as title,
                  c.campaign_summary as summary, p.cover_url,
-                 c.published_at, (p.stock &gt; 0) as purchasable,
+                 c.published_at, (p.stock_unlimited = '1' or p.stock &gt; 0) as purchasable,
                  c.target_count, c.trial_type,
                  (select count(1) from shop_trial_application a
                    where a.campaign_id = c.campaign_id
@@ -586,7 +586,7 @@
                  coalesce((select rr.resource_url from shop_verification_report_resource rr
                            where rr.report_id = r.report_id and rr.resource_type = 'IMAGE'
                            order by rr.resource_sort, rr.resource_id limit 1), p.cover_url) as cover_url,
-                 r.published_at, (p.stock &gt; 0) as purchasable,
+                 r.published_at, (p.stock_unlimited = '1' or p.stock &gt; 0) as purchasable,
                   null as target_count, null as trial_type, null as approved_count, null as application_deadline,
                   r.shop_user_id as report_user_id, coalesce(u.nick_name, u.user_name) as report_user_name,
                   r.shortcoming as report_shortcoming, r.recommend as report_recommend,

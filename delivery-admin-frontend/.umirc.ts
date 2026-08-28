@@ -15,6 +15,7 @@ export default defineConfig({
         { path: "/orders", component: "@/pages/orders" },
         { path: "/reports", component: "@/pages/reports" },
         { path: "/zhenke-posts", component: "@/pages/zhenke-posts" },
+        { path: "/zhenke-enjoys", component: "@/pages/zhenke-enjoys" },
         { path: "/home-banners", component: "@/pages/home-banners" },
         { path: "/merchants", component: "@/pages/merchants" },
         { path: "*", component: "@/pages/not-found" },

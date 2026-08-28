@@ -47,7 +47,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const count = getCartCount(cart);
   const total = getCartTotal(cart);
   const hasUnavailableItems = cart.some((item) => (
-    item.productStatus !== 'ON_SALE' || item.stock < item.quantity
+    item.productStatus !== 'ON_SALE' || (item.stockUnlimited !== '1' && item.stock < item.quantity)
   ));
 
   const checkout = () => {
@@ -151,7 +151,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                           <strong>{item.productName}</strong>
                           {cartItemUsesOffline(item) && <Tag color="volcano">到店核销</Tag>}
                           {item.productStatus !== 'ON_SALE' && <Tag>已下架</Tag>}
-                          {item.productStatus === 'ON_SALE' && item.stock < item.quantity && <Tag color="error">库存不足</Tag>}
+                          {item.productStatus === 'ON_SALE' && item.stockUnlimited !== '1' && item.stock < item.quantity && <Tag color="error">库存不足</Tag>}
                         </span>
                         <Button
                           size="small"
@@ -173,7 +173,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                         <Button
                           size="small"
                           icon={<PlusOutlined />}
-                          disabled={mutatingId === item.cartItemId || item.quantity >= item.stock}
+                          disabled={mutatingId === item.cartItemId || item.quantity >= 99 || (item.stockUnlimited !== '1' && item.quantity >= item.stock)}
                           onClick={() => void changeQuantity(item.cartItemId, item.quantity + 1)}
                         />
                         <em>{formatPrice(item.price * item.quantity)}</em>

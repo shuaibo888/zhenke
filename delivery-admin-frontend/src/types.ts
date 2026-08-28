@@ -8,7 +8,7 @@ export type OrderStatus = 'unpaid' | 'paid' | 'shipped' | 'completed' | 'cancele
 
 export type ReportStatus = 'published' | 'deleted';
 
-export type NavKey = 'dashboard' | 'users' | 'coupons' | 'products' | 'trials' | 'orders' | 'reports' | 'zhenkePosts' | 'banners' | 'merchants';
+export type NavKey = 'dashboard' | 'users' | 'coupons' | 'products' | 'trials' | 'orders' | 'reports' | 'zhenkePosts' | 'enjoys' | 'banners' | 'merchants';
 
 export interface AdminSession {
   id: number;
@@ -112,6 +112,7 @@ export interface ManagedProduct {
   price: number;
   cost: number;
   stock: number;
+  stockUnlimited: boolean;
   supportsOnline?: boolean;
   supportsOffline?: boolean;
   sales: number;

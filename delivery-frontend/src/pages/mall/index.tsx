@@ -1,12 +1,14 @@
 import {
   CheckCircleOutlined,
   FieldTimeOutlined,
+  LeftOutlined,
   QrcodeOutlined,
+  RightOutlined,
   SafetyCertificateOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import { Button, message } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { HomeFeedReportCard } from '@/components/HomeFeedReportCard';
@@ -67,6 +69,7 @@ export default function MallPage() {
   const [commerceFeedLoading, setCommerceFeedLoading] = useState(true);
   const [commerceFeedLoadingMore, setCommerceFeedLoadingMore] = useState(false);
   const [commerceFeedError, setCommerceFeedError] = useState('');
+  const categoryRailRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     setCategoryError('');
@@ -189,6 +192,25 @@ export default function MallPage() {
     }
     setSearchParams(next);
   };
+
+  const scrollCategories = (direction: -1 | 1) => {
+    const rail = categoryRailRef.current;
+    if (!rail) return;
+    rail.scrollBy({
+      left: direction * Math.max(rail.clientWidth * 0.72, 240),
+      behavior: 'smooth',
+    });
+  };
+
+  useEffect(() => {
+    const rail = categoryRailRef.current;
+    const activeChip = rail?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!rail || !activeChip) return;
+    rail.scrollTo({
+      left: Math.max(0, activeChip.offsetLeft - (rail.clientWidth - activeChip.clientWidth) / 2),
+      behavior: 'smooth',
+    });
+  }, [activeCategoryId]);
 
   const loadMore = async () => {
     setLoadingMore(true);
@@ -325,29 +347,45 @@ export default function MallPage() {
       </form>
 
       {activeModule === 'MALL' && (
-        <nav className={styles.categoryRail} aria-label="商城商品分类">
+        <div className={styles.categoryRailFrame}>
           <button
             type="button"
-            className={`${styles.categoryChip} ${activeCategoryId == null ? styles.categoryChipActive : ''}`}
-            onClick={() => {
-              const next = new URLSearchParams({ module: 'MALL' });
-              if (keyword) next.set('keyword', keyword);
-              setSearchParams(next);
-            }}
-          >商城全部</button>
-          {legacyCategories.map((category) => (
+            className={styles.categoryRailArrow}
+            aria-label="查看左侧分类"
+            onClick={() => scrollCategories(-1)}
+          ><LeftOutlined /></button>
+          <nav ref={categoryRailRef} className={styles.categoryRail} aria-label="商城商品分类" tabIndex={0}>
             <button
-              key={category.categoryId}
               type="button"
-              className={`${styles.categoryChip} ${activeCategoryId === category.categoryId ? styles.categoryChipActive : ''}`}
+              aria-current={activeCategoryId == null ? 'page' : undefined}
+              className={`${styles.categoryChip} ${activeCategoryId == null ? styles.categoryChipActive : ''}`}
               onClick={() => {
-                const next = new URLSearchParams({ module: 'MALL', category: category.categoryCode });
+                const next = new URLSearchParams({ module: 'MALL' });
                 if (keyword) next.set('keyword', keyword);
                 setSearchParams(next);
               }}
-            >{category.categoryName}</button>
-          ))}
-        </nav>
+            >全部</button>
+            {legacyCategories.map((category) => (
+              <button
+                key={category.categoryId}
+                type="button"
+                aria-current={activeCategoryId === category.categoryId ? 'page' : undefined}
+                className={`${styles.categoryChip} ${activeCategoryId === category.categoryId ? styles.categoryChipActive : ''}`}
+                onClick={() => {
+                  const next = new URLSearchParams({ module: 'MALL', category: category.categoryCode });
+                  if (keyword) next.set('keyword', keyword);
+                  setSearchParams(next);
+                }}
+              >{category.categoryName}</button>
+            ))}
+          </nav>
+          <button
+            type="button"
+            className={styles.categoryRailArrow}
+            aria-label="查看右侧分类"
+            onClick={() => scrollCategories(1)}
+          ><RightOutlined /></button>
+        </div>
       )}
       {categoryError && (
         <div className={styles.contextNotice} role="alert">
@@ -406,7 +444,7 @@ export default function MallPage() {
                   <span className={styles.productCover}>
                     <img src={product.coverUrl} alt={product.productName} loading="lazy" />
                     <em>{product.categoryName}</em>
-                    {product.stock <= 0 && <b>已售罄</b>}
+                    {product.stockUnlimited !== '1' && product.stock <= 0 && <b>已售罄</b>}
                   </span>
                   <span className={styles.productCardBody}>
                     <small>{product.merchantName}</small>

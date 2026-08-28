@@ -34,6 +34,7 @@
         <result property="coverUrl" column="cover_url" />
         <result property="price" column="price" />
         <result property="stock" column="stock" />
+        <result property="stockUnlimited" column="stock_unlimited" />
         <result property="supportsOnline" column="supports_online" />
         <result property="supportsOffline" column="supports_offline" />
         <result property="salesCount" column="sales_count" />
@@ -60,7 +61,7 @@
         select p.product_id, p.merchant_id, m.shop_name as merchant_name,
                p.category_id, c.category_code, c.category_name,
                p.brand_name, p.product_name, p.subtitle, p.detail, p.package_content, p.usage_notice, p.validity_description, p.reservation_required, p.reservation_notice, p.refund_expiry_rule, p.cover_url, p.price,
-               p.stock, p.supports_online, p.supports_offline, coalesce((
+               p.stock, p.stock_unlimited, p.supports_online, p.supports_offline, coalesce((
                    select sum(oi.quantity)
                    from shop_order_item oi
                    inner join shop_order o on o.order_id = oi.order_id and o.del_flag = '0'
@@ -192,7 +193,7 @@
     <select id="selectPublicProducts" parameterType="ShopProduct" resultMap="ShopProductResult">
         select p.product_id, p.merchant_id, m.shop_name as merchant_name,
                p.category_id, c.category_code, c.category_name,
-               p.brand_name, p.product_name, p.subtitle, p.cover_url, p.price, p.stock,
+               p.brand_name, p.product_name, p.subtitle, p.cover_url, p.price, p.stock, p.stock_unlimited,
                p.supports_online, p.supports_offline, coalesce((
                    select sum(oi.quantity)
                    from shop_order_item oi
@@ -247,7 +248,7 @@
     <select id="selectPublicProduct" parameterType="Long" resultMap="ShopProductResult">
         select p.product_id, p.merchant_id, m.shop_name as merchant_name,
                p.category_id, c.category_code, c.category_name,
-               p.brand_name, p.product_name, p.subtitle, p.detail, p.package_content, p.usage_notice, p.validity_description, p.reservation_required, p.reservation_notice, p.refund_expiry_rule, p.cover_url, p.price, p.stock,
+               p.brand_name, p.product_name, p.subtitle, p.detail, p.package_content, p.usage_notice, p.validity_description, p.reservation_required, p.reservation_notice, p.refund_expiry_rule, p.cover_url, p.price, p.stock, p.stock_unlimited,
                p.supports_online, p.supports_offline, coalesce((
                    select sum(oi.quantity)
                    from shop_order_item oi
@@ -290,16 +291,16 @@
     <insert id="insertProduct" parameterType="ShopProduct" useGeneratedKeys="true" keyProperty="productId">
         insert into shop_product
         (merchant_id, category_id, brand_name, product_name, subtitle, detail, package_content, usage_notice, validity_description, reservation_required, reservation_notice, refund_expiry_rule, cover_url,
-         price, stock, supports_online, supports_offline, sales_count, status, del_flag, create_by, create_time, update_by, update_time)
+         price, stock, stock_unlimited, supports_online, supports_offline, sales_count, status, del_flag, create_by, create_time, update_by, update_time)
         values
         (#{merchantId}, #{categoryId}, #{brandName}, #{productName}, #{subtitle}, #{detail}, #{packageContent}, #{usageNotice}, #{validityDescription}, #{reservationRequired}, #{reservationNotice}, #{refundExpiryRule}, #{coverUrl},
-         #{price}, #{stock}, #{supportsOnline}, #{supportsOffline}, 0, 'DRAFT', '0', #{createBy}, sysdate(), #{updateBy}, sysdate())
+         #{price}, #{stock}, #{stockUnlimited}, #{supportsOnline}, #{supportsOffline}, 0, 'DRAFT', '0', #{createBy}, sysdate(), #{updateBy}, sysdate())
     </insert>
 
     <update id="updateMerchantProduct" parameterType="ShopProduct">
         update shop_product
         set category_id = #{categoryId}, brand_name = #{brandName}, product_name = #{productName}, subtitle = #{subtitle},
-            detail = #{detail}, package_content=#{packageContent}, usage_notice=#{usageNotice}, validity_description=#{validityDescription}, reservation_required=#{reservationRequired}, reservation_notice=#{reservationNotice}, refund_expiry_rule=#{refundExpiryRule}, cover_url = #{coverUrl}, price = #{price}, stock = #{stock},
+            detail = #{detail}, package_content=#{packageContent}, usage_notice=#{usageNotice}, validity_description=#{validityDescription}, reservation_required=#{reservationRequired}, reservation_notice=#{reservationNotice}, refund_expiry_rule=#{refundExpiryRule}, cover_url = #{coverUrl}, price = #{price}, stock = #{stock}, stock_unlimited = #{stockUnlimited},
             supports_online = #{supportsOnline}, supports_offline = #{supportsOffline},
             update_by = #{updateBy}, update_time = sysdate()
         where product_id = #{productId} and merchant_id = #{merchantId} and del_flag = '0'

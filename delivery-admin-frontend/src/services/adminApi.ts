@@ -86,6 +86,7 @@ interface ProductDto {
   coverUrl: string;
   price: number;
   stock: number;
+  stockUnlimited: '0' | '1';
   supportsOnline: '0' | '1';
   supportsOffline: '0' | '1';
   salesCount: number;
@@ -346,6 +347,7 @@ function toManagedProduct(dto: ProductDto): ManagedProduct {
     price: Number(dto.price),
     cost: 0,
     stock: dto.stock,
+    stockUnlimited: dto.stockUnlimited === '1',
     supportsOnline: dto.supportsOnline === '1',
     supportsOffline: dto.supportsOffline === '1',
     sales: dto.salesCount,
@@ -802,7 +804,8 @@ export interface ProductWriteBody {
   packageContent?: string; usageNotice?: string; validityDescription?: string; reservationRequired?: boolean; reservationNotice?: string; refundExpiryRule?: string;
   coverUrl: string;
   price: number;
-  stock: number;
+  stock?: number;
+  stockUnlimited: boolean;
   supportsOnline: boolean;
   supportsOffline: boolean;
   mainImageUrls?: string[];

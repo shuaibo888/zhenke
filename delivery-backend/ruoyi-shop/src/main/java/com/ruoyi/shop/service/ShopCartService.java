@@ -104,7 +104,8 @@ public class ShopCartService
 
     private void requireAvailableStock(ShopProduct product, int quantity)
     {
-        if (product.getStock() == null || product.getStock() < quantity)
+        if (!"1".equals(product.getStockUnlimited())
+                && (product.getStock() == null || product.getStock() < quantity))
         {
             throw new ServiceException("商品库存不足");
         }

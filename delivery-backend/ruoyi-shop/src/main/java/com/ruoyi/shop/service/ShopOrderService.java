@@ -376,7 +376,8 @@ public class ShopOrderService
                 throw new ServiceException("甄客验购买来源无效");
             }
             String fulfillmentType = resolveFulfillment(product, requested.getValue().fulfillmentType());
-            if (product.getStock() == null || product.getStock() < quantity
+            if ((!("1".equals(product.getStockUnlimited()))
+                    && (product.getStock() == null || product.getStock() < quantity))
                     || orderMapper.deductStock(product.getProductId(), quantity) == 0)
             {
                 throw new ServiceException(product.getProductName() + "库存不足");

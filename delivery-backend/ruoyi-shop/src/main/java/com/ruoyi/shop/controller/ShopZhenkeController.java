@@ -19,16 +19,19 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/shop/zhenke")
 public class ShopZhenkeController extends BaseController {
   private final ShopZhenkeService service;
+  private final ShopZhenkeEnjoyService enjoyService;
   private final ShopReportResourceService resources;
   private final ShopPublicMediaService publicMedia;
   private final com.ruoyi.shop.map.TencentMapService map;
 
   public ShopZhenkeController(
       ShopZhenkeService s,
+      ShopZhenkeEnjoyService enjoyService,
       ShopReportResourceService r,
       ShopPublicMediaService publicMedia,
       com.ruoyi.shop.map.TencentMapService map) {
     service = s;
+    this.enjoyService = enjoyService;
     resources = r;
     this.publicMedia = publicMedia;
     this.map = map;
@@ -42,7 +45,8 @@ public class ShopZhenkeController extends BaseController {
       @RequestParam(defaultValue = "1") int pageNum,
       @RequestParam(defaultValue = "12") int pageSize) {
     PageHelper.clearPage();
-    return getDataTable(publicMedia.posts(service.posts(zone, placeId, pageNum, pageSize)));
+    return getDataTable(
+        publicMedia.posts(service.posts(zone, placeId, pageNum, pageSize)));
   }
 
   @Anonymous
@@ -136,5 +140,45 @@ public class ShopZhenkeController extends BaseController {
   @GetMapping("/banners")
   public AjaxResult banners() {
     return AjaxResult.success(publicMedia.banners(service.activeBanners()));
+  }
+
+  @Anonymous
+  @GetMapping("/enjoys")
+  public TableDataInfo enjoys(
+      @RequestParam(required = false) String category,
+      @RequestParam(defaultValue = "1") int pageNum,
+      @RequestParam(defaultValue = "12") int pageSize) {
+    PageHelper.clearPage();
+    return getDataTable(publicMedia.enjoys(enjoyService.enjoys(category, pageNum, pageSize)));
+  }
+
+  @Anonymous
+  @GetMapping("/enjoys/{id}")
+  public AjaxResult enjoy(@PathVariable long id) {
+    return AjaxResult.success(publicMedia.enjoy(enjoyService.detail(id)));
+  }
+
+  @PostMapping("/enjoys/{id}/like")
+  public AjaxResult likeEnjoy(@PathVariable long id) {
+    return AjaxResult.success(enjoyService.toggleLike(id));
+  }
+
+  @Anonymous
+  @GetMapping("/enjoys/{id}/comments")
+  public AjaxResult enjoyComments(@PathVariable long id) {
+    return AjaxResult.success(publicMedia.enjoyComments(enjoyService.comments(id)));
+  }
+
+  @PostMapping("/enjoys/{id}/comments")
+  public AjaxResult commentEnjoy(
+      @PathVariable long id, @Valid @RequestBody ShopZhenkeCommentBody body) {
+    return AjaxResult.success(
+        "评论成功", publicMedia.enjoyComment(enjoyService.comment(id, body)));
+  }
+
+  @DeleteMapping("/enjoys/{id}/comments/{commentId}")
+  public AjaxResult deleteEnjoyComment(@PathVariable long id, @PathVariable long commentId) {
+    enjoyService.deleteComment(id, commentId);
+    return AjaxResult.success("评论已删除");
   }
 }

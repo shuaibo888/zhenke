@@ -3,6 +3,8 @@ package com.ruoyi.shop.service;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.framework.config.ServerConfig;
 import com.ruoyi.shop.domain.ShopHomeBanner;
+import com.ruoyi.shop.domain.ShopZhenkeEnjoy;
+import com.ruoyi.shop.domain.ShopZhenkeEnjoyComment;
 import com.ruoyi.shop.domain.ShopZhenkePost;
 import com.ruoyi.shop.domain.ShopZhenkePostComment;
 import java.util.List;
@@ -57,6 +59,26 @@ public class ShopPublicMediaService {
 
   public ShopHomeBanner banner(ShopHomeBanner value) {
     if (value != null) value.setImageUrl(publicUrl(value.getImageUrl()));
+    return value;
+  }
+
+  public List<ShopZhenkeEnjoy> enjoys(List<ShopZhenkeEnjoy> rows) {
+    rows.forEach(this::enjoy);
+    return rows;
+  }
+
+  public ShopZhenkeEnjoy enjoy(ShopZhenkeEnjoy value) {
+    if (value != null) value.setCoverUrl(publicUrl(value.getCoverUrl()));
+    return value;
+  }
+
+  public List<ShopZhenkeEnjoyComment> enjoyComments(List<ShopZhenkeEnjoyComment> rows) {
+    rows.forEach(this::enjoyComment);
+    return rows;
+  }
+
+  public ShopZhenkeEnjoyComment enjoyComment(ShopZhenkeEnjoyComment value) {
+    if (value != null) value.setAvatar(publicUrl(value.getAvatar()));
     return value;
   }
 }

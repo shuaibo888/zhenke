@@ -9,6 +9,7 @@ export const adminNavPaths: Record<NavKey, string> = {
   orders: '/orders',
   reports: '/reports',
   zhenkePosts: '/zhenke-posts',
+  enjoys: '/zhenke-enjoys',
   banners: '/home-banners',
   merchants: '/merchants',
 };
