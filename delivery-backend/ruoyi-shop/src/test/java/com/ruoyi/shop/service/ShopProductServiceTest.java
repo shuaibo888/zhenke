@@ -4,16 +4,26 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.awt.image.BufferedImage;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.imageio.ImageIO;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.shop.domain.ShopMerchant;
 import com.ruoyi.shop.domain.ShopProduct;
 import com.ruoyi.shop.domain.ShopProductCategory;
@@ -25,11 +35,33 @@ import com.ruoyi.shop.mapper.ShopProductMapper;
 
 class ShopProductServiceTest
 {
+    @TempDir
+    Path tempDirectory;
+
+    private String previousProfile;
     private final ShopProductMapper productMapper = mock(ShopProductMapper.class);
     private final ShopMerchantService merchantService = mock(ShopMerchantService.class);
     private final ShopProductCertificationService certificationService = mock(ShopProductCertificationService.class);
     private final ShopProductService productService = new ShopProductService(
             productMapper, merchantService, certificationService);
+
+    @BeforeEach
+    void setUpStoredImages() throws Exception
+    {
+        previousProfile = RuoYiConfig.getProfile();
+        new RuoYiConfig().setProfile(tempDirectory.toString());
+        for (String fileName : List.of(
+                "cover.jpg", "main.jpg", "detail.jpg", "c.jpg", "m.jpg", "d.jpg"))
+        {
+            writeImage("upload/product/merchant-1/" + fileName);
+        }
+    }
+
+    @AfterEach
+    void restoreProfile()
+    {
+        new RuoYiConfig().setProfile(previousProfile);
+    }
 
     @Test
     void storesUploadedProductImagesAsRootRelativePaths()
@@ -62,7 +94,7 @@ class ShopProductServiceTest
 
         ShopProductBody body = validBody();
         body.setStockUnlimited(true);
-        body.setCoverUrl("http://dzshop.vip/profile/upload/product/merchant-1/cover.jpg");
+        body.setCoverUrl("http://127.0.0.1:8080/api/profile/upload/product/merchant-1/cover.jpg");
         body.setMainImageUrls(List.of(
                 "https://dzshop.vip/profile/upload/product/merchant-1/main.jpg"));
         body.setDetailImageUrls(List.of(
@@ -200,6 +232,14 @@ class ShopProductServiceTest
         body.setStatus("0");
         return body;
     }
+
+    private void writeImage(String relativePath) throws Exception
+    {
+        Path file = tempDirectory.resolve(relativePath);
+        Files.createDirectories(file.getParent());
+        ImageIO.write(new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB), "jpg", file.toFile());
+    }
+
     @Test
     void localLifeCategoryForcesOfflineAndRequiresPackageRules()
     {
@@ -207,7 +247,7 @@ class ShopProductServiceTest
         when(merchantService.currentMerchantAccount()).thenReturn(merchant);
         ShopProductCategory category = new ShopProductCategory(); category.setCategoryId(1L); category.setCategoryCode("ZHENKE_HOTEL"); category.setStatus("0");
         when(productMapper.selectCategoryById(1L)).thenReturn(category);
-        ShopProductBody body = validBody(); body.setCoverUrl("/profile/upload/product/c.jpg"); body.setMainImageUrls(List.of("/profile/upload/product/m.jpg")); body.setDetailImageUrls(List.of("/profile/upload/product/d.jpg")); body.setSupportsOnline(true); body.setSupportsOffline(false);
+        ShopProductBody body = validBody(); body.setCoverUrl("/profile/upload/product/merchant-1/c.jpg"); body.setMainImageUrls(List.of("/profile/upload/product/merchant-1/m.jpg")); body.setDetailImageUrls(List.of("/profile/upload/product/merchant-1/d.jpg")); body.setSupportsOnline(true); body.setSupportsOffline(false);
         assertThrows(ServiceException.class, () -> productService.create(body, "merchant"));
         body.setPackageContent("双人住宿套餐"); body.setUsageNotice("到店出示核销码"); body.setValidityDescription("购买后30日内"); body.setRefundExpiryRule("未核销可退款，过期自动退");
         body.setReservationRequired(true);
@@ -254,6 +294,74 @@ class ShopProductServiceTest
 
         assertEquals("1", created.getSupportsOnline());
         assertEquals("1", created.getSupportsOffline());
+    }
+
+    @Test
+    void rejectsExternalOrAnotherMerchantsProductMediaOnCreate()
+    {
+        ShopMerchant merchant = new ShopMerchant();
+        merchant.setMerchantId(1L);
+        when(merchantService.currentMerchantAccount()).thenReturn(merchant);
+        ShopProductCategory category = new ShopProductCategory();
+        category.setCategoryId(1L);
+        category.setCategoryCode("CATEGORY_1");
+        category.setStatus("0");
+        when(productMapper.selectCategoryById(1L)).thenReturn(category);
+
+        ShopProductBody body = validBody();
+        body.setCoverUrl("https://cdn.example.com/cover.jpg");
+        body.setMainImageUrls(List.of("/profile/upload/product/merchant-1/main.jpg"));
+        body.setDetailImageUrls(List.of("/profile/upload/product/merchant-1/detail.jpg"));
+        assertThrows(ServiceException.class, () -> productService.create(body, "merchant"));
+
+        body.setCoverUrl("/profile/upload/product/merchant-1/cover.jpg");
+        body.setMainImageUrls(List.of("/profile/upload/product/merchant-2/main.jpg"));
+        assertThrows(ServiceException.class, () -> productService.create(body, "merchant"));
+
+        verify(productMapper, never()).insertProduct(any());
+    }
+
+    @Test
+    void existingLegacyProductMediaCanRemainUnchangedDuringAnEdit()
+    {
+        ShopMerchant merchant = new ShopMerchant();
+        merchant.setMerchantId(1L);
+        when(merchantService.currentMerchantAccount()).thenReturn(merchant);
+        ShopProductCategory category = new ShopProductCategory();
+        category.setCategoryId(1L);
+        category.setCategoryCode("CATEGORY_1");
+        category.setStatus("0");
+        when(productMapper.selectCategoryById(1L)).thenReturn(category);
+
+        ShopProduct existing = new ShopProduct();
+        existing.setProductId(10L);
+        existing.setMerchantId(1L);
+        existing.setCategoryId(1L);
+        existing.setBrandName("Brand");
+        existing.setProductName("Product");
+        existing.setCoverUrl("https://legacy.example.com/cover.jpg");
+        when(productMapper.selectMerchantProduct(1L, 10L)).thenReturn(existing);
+        ShopProductImage main = new ShopProductImage();
+        main.setImageType("MAIN");
+        main.setImageUrl("https://legacy.example.com/main.jpg");
+        ShopProductImage detail = new ShopProductImage();
+        detail.setImageType("DETAIL");
+        detail.setImageUrl("https://legacy.example.com/detail.jpg");
+        when(productMapper.selectImages(10L)).thenReturn(List.of(main, detail));
+        when(productMapper.updateMerchantProduct(any(ShopProduct.class))).thenReturn(1);
+
+        ShopProductBody body = validBody();
+        body.setCoverUrl(existing.getCoverUrl());
+        body.setMainImageUrls(List.of(main.getImageUrl()));
+        body.setDetailImageUrls(List.of(detail.getImageUrl()));
+
+        productService.update(10L, body, "merchant");
+
+        var captor = org.mockito.ArgumentCaptor.forClass(ShopProduct.class);
+        verify(productMapper).updateMerchantProduct(captor.capture());
+        assertEquals("https://legacy.example.com/cover.jpg", captor.getValue().getCoverUrl());
+        verify(certificationService, never())
+                .invalidateForCriticalProductChange(anyLong(), anyLong(), anyString());
     }
 
 }

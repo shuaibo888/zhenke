@@ -21,7 +21,6 @@ import {
   type TrialApplicationDto,
   type VerificationReportDto,
 } from '@/services/shopContent';
-import { formatDateTime } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
 
 const statusMeta: Record<TrialApplicationDto['status'], { label: string; color: string; description: string }> = {
@@ -199,8 +198,8 @@ export default function TrialDetailPage() {
           <div className={styles.businessSectionTitle}><FileTextOutlined /><h3>申请信息</h3></div>
           <dl className={styles.businessDefinitionList}>
             <div><dt>申请编号</dt><dd>{trial.applicationId}</dd></div>
-            <div><dt>申请时间</dt><dd>{formatDateTime(trial.createTime)}</dd></div>
-            {trial.applicationDeadline && <div><dt>招募截止</dt><dd>{formatDateTime(trial.applicationDeadline)}</dd></div>}
+            <div><dt>申请时间</dt><dd>{trial.createTime}</dd></div>
+            {trial.applicationDeadline && <div><dt>招募截止</dt><dd>{trial.applicationDeadline}</dd></div>}
             <div className={styles.businessLongValue}><dt>申请理由</dt><dd>{trial.applyReason}</dd></div>
             {trial.auditRemark && <div className={styles.businessLongValue}><dt>审核说明</dt><dd>{trial.auditRemark}</dd></div>}
           </dl>
@@ -224,7 +223,7 @@ export default function TrialDetailPage() {
               <div className={index === timeline.length - 1 ? styles.businessTimelineCurrent : ''} key={`${item.label}-${index}`}>
                 <i />
                 <span><strong>{item.label}</strong>{item.note && <small>{item.note}</small>}</span>
-                <time>{formatDateTime(item.time)}</time>
+                <time>{item.time}</time>
               </div>
             ))}
           </div>

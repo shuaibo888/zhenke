@@ -3,11 +3,7 @@ package com.ruoyi.shop.service;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -43,6 +39,7 @@ import com.ruoyi.shop.map.TencentMapService;
 import com.ruoyi.shop.mapper.ShopMerchantMapper;
 import com.ruoyi.shop.qualification.AliyunLicenseService;
 import com.ruoyi.shop.qualification.LicenseVerifyResult;
+import com.ruoyi.shop.util.ShopPlatformMediaPathUtils;
 import com.ruoyi.system.service.ISysUserService;
 
 @Service
@@ -435,29 +432,37 @@ public class ShopMerchantService
         {
             throw new ServiceException("门店证明材料类型无效");
         }
-        String address = StringUtils.trim(value);
+        String resourcePath;
         try
         {
-            String resourcePath = URI.create(address).getPath();
-            String expectedExtension = IMAGE.equals(mediaType) ? "jpg|jpeg|png" : "mp4";
-            if (resourcePath == null
-                    || !resourcePath.matches("^/profile/upload/merchant-proof/"
-                            + "\\d{4}/\\d{2}/\\d{2}/[A-Za-z0-9_-]+\\.(?i:" + expectedExtension + ")$"))
-            {
-                throw new ServiceException("请上传有效的门店证明材料");
-            }
-            Path profile = Paths.get(RuoYiConfig.getProfile()).toAbsolutePath().normalize();
-            Path uploaded = profile.resolve(resourcePath.substring("/profile/".length())).normalize();
-            if (!uploaded.startsWith(profile) || !Files.isRegularFile(uploaded))
-            {
-                throw new ServiceException("门店证明材料不存在，请重新上传");
-            }
-            return address;
+            resourcePath = ShopPlatformMediaPathUtils.normalize(value);
         }
-        catch (IllegalArgumentException exception)
+        catch (ServiceException exception)
         {
             throw new ServiceException("门店证明材料地址无效，请重新上传");
         }
+        String expectedExtension = IMAGE.equals(mediaType) ? "jpg|jpeg|png" : "mp4";
+        if (!resourcePath.matches("^/profile/upload/merchant-proof/"
+                + "\\d{4}/\\d{2}/\\d{2}/[A-Za-z0-9_-]+\\.(?i:" + expectedExtension + ")$"))
+        {
+            throw new ServiceException("请上传有效的门店证明材料");
+        }
+        try
+        {
+            if (IMAGE.equals(mediaType))
+            {
+                ShopPlatformMediaPathUtils.requireStoredImage(resourcePath);
+            }
+            else
+            {
+                ShopPlatformMediaPathUtils.requireStoredFile(resourcePath);
+            }
+        }
+        catch (ServiceException exception)
+        {
+            throw new ServiceException("门店证明材料不存在或内容无效，请重新上传");
+        }
+        return resourcePath;
     }
 
     private String extension(String fileName)
@@ -504,10 +509,9 @@ public class ShopMerchantService
     {
         try
         {
-            String path = URI.create(address).getPath();
-            return path == null ? "" : path;
+            return ShopPlatformMediaPathUtils.normalize(address);
         }
-        catch (IllegalArgumentException exception)
+        catch (ServiceException exception)
         {
             return "";
         }
@@ -515,28 +519,29 @@ public class ShopMerchantService
 
     private String validateBusinessLicenseAddress(String value)
     {
-        String address = StringUtils.trim(value);
+        String resourcePath;
         try
         {
-            String resourcePath = URI.create(address).getPath();
-            if (resourcePath == null
-                    || !resourcePath.matches("^/profile/upload/merchant-license/"
-                            + "\\d{4}/\\d{2}/\\d{2}/[A-Za-z0-9_-]+\\.(?i:jpg|jpeg|png)$"))
-            {
-                throw new ServiceException("请上传有效的营业执照图片");
-            }
-            Path profile = Paths.get(RuoYiConfig.getProfile()).toAbsolutePath().normalize();
-            Path uploaded = profile.resolve(resourcePath.substring("/profile/".length())).normalize();
-            if (!uploaded.startsWith(profile) || !Files.isRegularFile(uploaded))
-            {
-                throw new ServiceException("营业执照图片不存在，请重新上传");
-            }
-            return address;
+            resourcePath = ShopPlatformMediaPathUtils.normalize(value);
         }
-        catch (IllegalArgumentException exception)
+        catch (ServiceException exception)
         {
             throw new ServiceException("营业执照地址无效，请重新上传");
         }
+        if (!resourcePath.matches("^/profile/upload/merchant-license/"
+                + "\\d{4}/\\d{2}/\\d{2}/[A-Za-z0-9_-]+\\.(?i:jpg|jpeg|png)$"))
+        {
+            throw new ServiceException("请上传有效的营业执照图片");
+        }
+        try
+        {
+            ShopPlatformMediaPathUtils.requireStoredImage(resourcePath);
+        }
+        catch (ServiceException exception)
+        {
+            throw new ServiceException("营业执照图片不存在或内容无效，请重新上传");
+        }
+        return resourcePath;
     }
 
     private ShopMerchant requireMerchant(long merchantId)

@@ -68,7 +68,12 @@ public class ShopPublicMediaService {
   }
 
   public ShopZhenkeEnjoy enjoy(ShopZhenkeEnjoy value) {
-    if (value != null) value.setCoverUrl(publicUrl(value.getCoverUrl()));
+    if (value != null) {
+      value.setCoverUrl(publicUrl(value.getCoverUrl()));
+      if (value.getMediaUrls() != null) {
+        value.setMediaUrls(value.getMediaUrls().stream().map(this::publicUrl).toList());
+      }
+    }
     return value;
   }
 

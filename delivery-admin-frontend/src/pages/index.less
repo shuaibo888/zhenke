@@ -561,6 +561,31 @@
   line-height: 1.6;
 }
 
+.mediaDropzone :global(.ant-upload-drag) {
+  border-radius: 12px;
+  border-color: rgba(31, 111, 91, 0.24);
+  background: #f7faf8;
+}
+
+.mediaDropzone :global(.ant-upload-drag:hover) {
+  border-color: #1f6f5b;
+  background: #fff;
+}
+
+.mediaDropzone :global(.ant-upload-drag-icon) {
+  margin-bottom: 8px !important;
+}
+
+.mediaDropzone :global(.ant-upload-drag-icon .anticon) {
+  color: #1f6f5b;
+  font-size: 30px;
+}
+
+.mediaDropzone :global(.ant-upload-text) {
+  color: #273c35 !important;
+  font-weight: 700;
+}
+
 .productImageUploader {
   padding: 14px;
   border: 1px solid rgba(31, 111, 91, 0.13);
@@ -570,6 +595,7 @@
 
 .productImageUploader :global(.ant-upload-list) {
   gap: 10px;
+  margin-top: 12px;
 }
 
 .productImageUploader :global(.ant-upload-list-item-container),
@@ -607,6 +633,25 @@
   gap: 7px;
   color: #49655b;
   font-size: 12px;
+}
+
+.productImageDropzone :global(.ant-upload-drag) {
+  min-height: 112px;
+  padding: 16px;
+  border-radius: 12px;
+  border-color: rgba(31, 111, 91, 0.22);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.productImageDropzone :global(.ant-upload-drag:hover) {
+  border-color: #1f6f5b;
+  background: #fff;
+}
+
+.productImageUploadButton small {
+  color: #7a8580;
+  font-size: 12px;
+  font-weight: 400;
 }
 
 .productImageUploadButton :global(.anticon) {

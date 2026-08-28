@@ -62,7 +62,6 @@ export default function MallPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
-  const [categoryError, setCategoryError] = useState('');
   const [commerceFeed, setCommerceFeed] = useState<HomeFeedItemDto[]>([]);
   const [commerceFeedTotal, setCommerceFeedTotal] = useState(0);
   const [commerceFeedPage, setCommerceFeedPage] = useState(1);
@@ -72,12 +71,11 @@ export default function MallPage() {
   const categoryRailRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    setCategoryError('');
     fetchProductCategories().then((rows) => {
       setCategories(rows);
     }).catch((reason) => {
       setCategories([]);
-      setCategoryError(reason instanceof Error ? reason.message : '商品分类加载失败');
+      message.error(reason instanceof Error ? reason.message : '商品分类加载失败');
     }).finally(() => {
       setCategoriesLoading(false);
     });
@@ -387,13 +385,6 @@ export default function MallPage() {
           ><RightOutlined /></button>
         </div>
       )}
-      {categoryError && (
-        <div className={styles.contextNotice} role="alert">
-          <span>商品分类暂时无法加载：{categoryError}。当前仍可浏览全部商品。</span>
-          <Button type="link" onClick={() => window.location.reload()}>重新加载分类</Button>
-        </div>
-      )}
-
       <ZkSectionTitle
         title={keyword
           ? `“${keyword}”的搜索结果`

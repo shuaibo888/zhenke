@@ -2,9 +2,9 @@ import {
   CopyOutlined,
   DeleteOutlined,
   ExportOutlined,
+  InboxOutlined,
   SafetyCertificateOutlined,
   SearchOutlined,
-  UploadOutlined,
 } from '@ant-design/icons';
 import { Alert, Button, Form, Input, Modal, Switch, Upload, message } from 'antd';
 import type { UploadProps } from 'antd';
@@ -23,6 +23,7 @@ import {
 import type { Merchant, MerchantProofMedia } from '@/types';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { copyText } from '@/utils/shop';
+import { mediaPreviewUrl } from '@/utils/mediaUrl';
 import styles from '@/styles/commerce.less';
 
 const MERCHANT_ADMIN_LOGIN_URL = '/admin/';
@@ -108,7 +109,13 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
     setUploading(true);
     try {
       const result = await uploadMerchantBusinessLicense(file);
-      form.setFieldValue('businessLicense', result.url);
+      form.setFieldsValue({
+        businessLicense: result.path,
+        companyCreditCode: undefined,
+        companyName: undefined,
+        companyAddress: undefined,
+        legalPerson: undefined,
+      });
       setLicenseVerified(false);
       if (result.recognized) {
         form.setFieldsValue({
@@ -123,7 +130,7 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
         setVerifyStatus({ tone: 'error', text: result.verifyMessage || '未能识别营业执照内容' });
         message.success('营业执照上传成功');
       }
-      options.onSuccess?.({ url: result.url });
+      options.onSuccess?.({ url: result.previewUrl });
     } catch (error) {
       const uploadError = error instanceof Error ? error : new Error('营业执照上传失败');
       message.error(uploadError.message);
@@ -184,18 +191,6 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
     proofMediaRef.current = next;
     form.setFieldValue('storeProofMedia', next);
     form.validateFields(['storeProofMedia']).catch(() => undefined);
-  };
-
-  const resetLicenseUpload = () => {
-    form.setFieldsValue({
-      businessLicense: undefined,
-      companyCreditCode: undefined,
-      companyName: undefined,
-      companyAddress: undefined,
-      legalPerson: undefined,
-    });
-    setLicenseVerified(false);
-    setVerifyStatus(null);
   };
 
   const verifyLicense = async () => {
@@ -461,29 +456,25 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
             </Form.Item>
             <div className={styles.merchantLicenseField}>
               <label>营业执照</label>
-              {businessLicense ? (
-                <Button block size="large" icon={<UploadOutlined />} onClick={() => void resetLicenseUpload()}>
-                  重新上传营业执照
-                </Button>
-              ) : (
-                <Upload
-                  accept=".jpg,.jpeg,.png"
-                  customRequest={uploadLicense}
-                  maxCount={1}
-                  showUploadList={false}
-                >
-                  <Button block size="large" icon={<UploadOutlined />} loading={uploading}>
-                    上传营业执照
-                  </Button>
-                </Upload>
-              )}
+              <Upload.Dragger
+                className={styles.merchantDropzone}
+                accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                customRequest={uploadLicense}
+                maxCount={1}
+                showUploadList={false}
+                disabled={uploading}
+              >
+                <InboxOutlined />
+                <strong>{uploading ? '正在上传…' : businessLicense ? '点击或拖拽重新上传营业执照' : '点击或拖拽上传营业执照'}</strong>
+                <small>JPG / PNG，文件不超过 5MB</small>
+              </Upload.Dragger>
               <small>
                 {businessLicense
-                  ? '营业执照已上传，可重新上传；请核对识别结果并完成营业执照核验。'
+                  ? '营业执照已上传；如需替换，可直接在上方重新选择或拖入文件。请核对识别结果并完成核验。'
                   : '支持 JPG、PNG，文件不超过 5MB；上传成功后自动识别企业信息。'}
               </small>
               {businessLicense && (
-                <img src={businessLicense} alt="营业执照预览" className={styles.merchantLicensePreview} />
+                <img src={mediaPreviewUrl(businessLicense)} alt="营业执照预览" className={styles.merchantLicensePreview} />
               )}
             </div>
             {businessLicense && (
@@ -584,31 +575,32 @@ export function MerchantApplicationModal({ open, onClose }: { open: boolean; onC
                   </div>
                   <span>{storeProofMedia.length}/9</span>
                 </div>
-                <Upload
+                <Upload.Dragger
+                  className={styles.merchantDropzone}
                   accept=".jpg,.jpeg,.png,.mp4"
                   customRequest={uploadStoreProof}
                   multiple
                   showUploadList={false}
                   disabled={storeProofMedia.length + pendingProofUploadsRef.current >= 9}
                 >
-                  <Button
-                    block
-                    size="large"
-                    icon={<UploadOutlined />}
-                    loading={proofUploading}
-                    disabled={storeProofMedia.length + pendingProofUploadsRef.current >= 9}
-                  >
-                    {storeProofMedia.length >= 9 ? '已上传9个材料' : '上传门店照片或视频'}
-                  </Button>
-                </Upload>
+                  <InboxOutlined />
+                  <strong>
+                    {proofUploading
+                      ? '正在上传…'
+                      : storeProofMedia.length >= 9
+                        ? '已上传 9 个材料'
+                        : '点击选择或拖拽门店照片、视频到这里'}
+                  </strong>
+                  <small>支持一次选择多个文件，也可以继续追加</small>
+                </Upload.Dragger>
                 {storeProofMedia.length > 0 && (
                   <div className={styles.merchantProofGrid}>
                     {storeProofMedia.map((item, index) => (
                       <div className={styles.merchantProofItem} key={`${item.mediaUrl}-${index}`}>
                         {item.mediaType === 'IMAGE' ? (
-                          <img src={item.mediaUrl} alt={`门店证明照片${index + 1}`} />
+                          <img src={mediaPreviewUrl(item.mediaUrl)} alt={`门店证明照片${index + 1}`} />
                         ) : (
-                          <video src={item.mediaUrl} controls preload="metadata" />
+                          <video src={mediaPreviewUrl(item.mediaUrl)} controls preload="metadata" />
                         )}
                         <Button
                           type="text"

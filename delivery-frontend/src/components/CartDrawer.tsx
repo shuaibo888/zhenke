@@ -1,5 +1,5 @@
 import { DeleteOutlined, MinusOutlined, PlusOutlined, ShoppingCartOutlined } from '@ant-design/icons';
-import { Alert, Button, Drawer, Spin, Tag, message } from 'antd';
+import { Button, Drawer, Spin, Tag, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -124,16 +124,6 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           <div className={styles.emptyCart}><Spin /></div>
         ) : (
           <>
-            {loadError && (
-              <Alert
-                type="error"
-                showIcon
-                message="购物车暂时无法加载"
-                description={loadError}
-                action={<Button size="small" danger onClick={() => void loadCart()}>重新加载</Button>}
-                style={{ marginBottom: 16 }}
-              />
-            )}
             {!loadError && cart.length === 0 ? (
               <div className={styles.emptyCart}>
                 <ShoppingCartOutlined />

@@ -2,9 +2,6 @@ package com.ruoyi.shop.service;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -12,6 +9,7 @@ import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.file.FileUploadUtils;
 import com.ruoyi.shop.security.ShopAccountIdentity;
+import com.ruoyi.shop.util.ShopPlatformMediaPathUtils;
 
 @Service
 public class ShopReportResourceService
@@ -21,7 +19,6 @@ public class ShopReportResourceService
     private static final double MAX_VIDEO_SECONDS = 30D;
     private static final String[] IMAGE_EXTENSIONS = { "jpg", "jpeg", "png" };
     private static final String[] VIDEO_EXTENSIONS = { "mp4" };
-    private static final String RESOURCE_PREFIX = "/profile/";
     private static final String REPORT_UPLOAD_PREFIX = "/profile/upload/report/user-";
 
     public String upload(MultipartFile file)
@@ -61,16 +58,9 @@ public class ShopReportResourceService
 
     public String normalizeOwnedResourceUrl(long shopUserId, String resourceType, String rawUrl)
     {
-        String value = rawUrl == null ? "" : rawUrl.trim();
-        int pathIndex = value.indexOf(RESOURCE_PREFIX);
-        if (pathIndex < 0)
-        {
-            throw new ServiceException("甄客验媒体地址无效，请重新上传");
-        }
-        String resourcePath = value.substring(pathIndex).replace('\\', '/');
+        String resourcePath = ShopPlatformMediaPathUtils.normalize(rawUrl);
         String ownerPrefix = REPORT_UPLOAD_PREFIX + shopUserId + "/";
-        if (!resourcePath.startsWith(ownerPrefix) || resourcePath.contains("?")
-                || resourcePath.contains("#") || resourcePath.contains(".."))
+        if (!resourcePath.startsWith(ownerPrefix))
         {
             throw new ServiceException("只能使用当前账号刚上传的甄客验媒体");
         }
@@ -83,7 +73,7 @@ public class ShopReportResourceService
         {
             throw new ServiceException("甄客验媒体类型与文件不一致");
         }
-        requireStoredFile(resourcePath);
+        ShopPlatformMediaPathUtils.requireStoredFile(resourcePath);
         return resourcePath;
     }
 
@@ -96,29 +86,6 @@ public class ShopReportResourceService
     private String normalizeStoredPath(String path)
     {
         return path == null ? null : path.replace('\\', '/');
-    }
-
-    private void requireStoredFile(String resourcePath)
-    {
-        try
-        {
-            Path profileRoot = Paths.get(RuoYiConfig.getProfile()).toRealPath();
-            String relativePath = resourcePath.substring(RESOURCE_PREFIX.length());
-            Path candidate = profileRoot.resolve(relativePath).normalize();
-            if (!candidate.startsWith(profileRoot) || !Files.isRegularFile(candidate)
-                    || !candidate.toRealPath().startsWith(profileRoot))
-            {
-                throw new ServiceException("甄客验媒体不存在或已失效，请重新上传");
-            }
-        }
-        catch (ServiceException e)
-        {
-            throw e;
-        }
-        catch (Exception e)
-        {
-            throw new ServiceException("甄客验媒体不存在或已失效，请重新上传");
-        }
     }
 
     private void validateImage(MultipartFile file, String extension) throws Exception

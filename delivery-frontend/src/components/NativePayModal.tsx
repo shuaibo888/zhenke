@@ -1,4 +1,4 @@
-import { Alert, Button, Modal, QRCode, message } from 'antd';
+import { Button, Modal, QRCode, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -16,7 +16,6 @@ export function NativePayModal() {
   const activeOrderIdRef = useRef<number | null>(nativePayment?.orderId ?? null);
   activeOrderIdRef.current = nativePayment?.orderId ?? null;
   const [checking, setChecking] = useState(false);
-  const [pollError, setPollError] = useState('');
 
   const stopPolling = useCallback(() => {
     if (timerRef.current !== null) {
@@ -33,7 +32,6 @@ export function NativePayModal() {
     try {
       const refreshed = await reconcileWechatPayment(orderId);
       if (activeOrderIdRef.current !== orderId) return;
-      setPollError('');
       if (refreshed.status === 'PAID') {
         stopPolling();
         clearNativePayment();
@@ -46,7 +44,6 @@ export function NativePayModal() {
     } catch (error) {
       if (activeOrderIdRef.current !== orderId) return;
       const reason = error instanceof Error ? error.message : '微信支付状态确认失败';
-      setPollError(reason);
       if (manual) message.error(reason);
     } finally {
       checkingRef.current = false;
@@ -56,7 +53,6 @@ export function NativePayModal() {
 
   useEffect(() => {
     if (!nativePayment) return;
-    setPollError('');
     void reconcile(false);
     timerRef.current = window.setInterval(() => void reconcile(false), NATIVE_POLL_INTERVAL_MS);
     return stopPolling;
@@ -89,14 +85,6 @@ export function NativePayModal() {
         <p style={{ margin: 0 }}>
           请使用微信扫一扫完成支付，支付成功后本页将自动跳转。
         </p>
-        {pollError && (
-          <Alert
-            type="error"
-            showIcon
-            message="支付状态暂时无法查询"
-            description={pollError}
-          />
-        )}
         <div style={{ display: 'flex', gap: 12 }}>
           <Button onClick={clearNativePayment}>稍后支付</Button>
           <Button type="primary" loading={checking} onClick={() => void reconcile(true)}>我已完成支付</Button>

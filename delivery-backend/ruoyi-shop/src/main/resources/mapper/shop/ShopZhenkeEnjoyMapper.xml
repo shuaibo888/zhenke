@@ -9,8 +9,24 @@
     <result property="coverUrl" column="cover_url"/>
     <result property="content" column="content"/>
     <result property="highlights" column="highlights"/>
-    <result property="placeName" column="place_name"/>
-    <result property="placeAddress" column="place_address"/>
+    <result property="serviceSummary" column="service_summary"/>
+    <result property="openingHours" column="opening_hours"/>
+    <result property="contactPhone" column="contact_phone"/>
+    <result property="placeId" column="place_id"/>
+    <result property="placeProvider" column="selected_place_provider"/>
+    <result property="placeProviderId" column="selected_place_provider_id"/>
+    <result property="placeName" column="selected_place_name"/>
+    <result property="placeType" column="selected_place_type"/>
+    <result property="placeAddress" column="selected_place_address"/>
+    <result property="placeProvince" column="selected_place_province"/>
+    <result property="placeCity" column="selected_place_city"/>
+    <result property="placeDistrict" column="selected_place_district"/>
+    <result property="placeProvinceCode" column="selected_place_province_code"/>
+    <result property="placeCityCode" column="selected_place_city_code"/>
+    <result property="placeDistrictCode" column="selected_place_district_code"/>
+    <result property="placeLatitude" column="selected_place_latitude"/>
+    <result property="placeLongitude" column="selected_place_longitude"/>
+    <result property="placeCoordinateSystem" column="selected_place_coordinate_system"/>
     <result property="displaySort" column="display_sort"/>
     <result property="status" column="status"/>
     <result property="delFlag" column="del_flag"/>
@@ -21,27 +37,36 @@
     <result property="updateTime" column="update_time"/>
     <result property="likeCount" column="like_count"/>
     <result property="commentCount" column="comment_count"/>
+    <result property="mediaCount" column="media_count"/>
     <result property="likedByMe" column="liked_by_me"/>
   </resultMap>
 
   <sql id="enjoyView">
     select e.*,
+      p.provider selected_place_provider,p.provider_place_id selected_place_provider_id,
+      coalesce(p.place_name,e.place_name) selected_place_name,p.place_type selected_place_type,
+      coalesce(p.address,e.place_address) selected_place_address,
+      p.province selected_place_province,p.city selected_place_city,p.district selected_place_district,
+      p.province_code selected_place_province_code,p.city_code selected_place_city_code,
+      p.district_code selected_place_district_code,p.latitude selected_place_latitude,
+      p.longitude selected_place_longitude,p.coordinate_system selected_place_coordinate_system,
       (select count(*) from shop_zhenke_enjoy_like l where l.enjoy_id=e.enjoy_id) like_count,
       (select count(*) from shop_zhenke_enjoy_comment c where c.enjoy_id=e.enjoy_id and c.del_flag='0') comment_count,
+      (select count(*) from shop_zhenke_enjoy_resource r where r.enjoy_id=e.enjoy_id) media_count,
       case when #{currentUserId} is not null and exists(
         select 1 from shop_zhenke_enjoy_like mine where mine.enjoy_id=e.enjoy_id and mine.shop_user_id=#{currentUserId}
       ) then true else false end liked_by_me
-    from shop_zhenke_enjoy e
+    from shop_zhenke_enjoy e left join shop_place p on p.place_id=e.place_id and p.status='0'
   </sql>
 
   <select id="selectEnjoys" resultMap="enjoy">
     <include refid="enjoyView"/>
     <where>
-      <if test="!includeDeleted">e.del_flag='0' and e.status='0'</if>
+      <if test="!includeDeleted">e.del_flag='0' and e.status='0' and p.place_id is not null</if>
       <if test="includeDeleted and status != null and status != '' and status != 'DELETED'">and e.del_flag='0' and e.status=#{status}</if>
       <if test="includeDeleted and status == 'DELETED'">and e.del_flag!='0'</if>
       <if test="category != null and category != ''">and e.category=#{category}</if>
-      <if test="keyword != null and keyword != ''">and (e.title like concat('%',#{keyword},'%') or e.subtitle like concat('%',#{keyword},'%') or e.place_name like concat('%',#{keyword},'%'))</if>
+      <if test="keyword != null and keyword != ''">and (e.title like concat('%',#{keyword},'%') or e.subtitle like concat('%',#{keyword},'%') or coalesce(p.place_name,e.place_name) like concat('%',#{keyword},'%'))</if>
     </where>
     order by e.display_sort asc,e.published_at desc,e.enjoy_id desc
   </select>
@@ -49,21 +74,25 @@
   <select id="selectEnjoy" resultMap="enjoy">
     <include refid="enjoyView"/>
     where e.enjoy_id=#{enjoyId}
-    <if test="!includeDeleted">and e.del_flag='0' and e.status='0'</if>
+    <if test="!includeDeleted">and e.del_flag='0' and e.status='0' and p.place_id is not null</if>
   </select>
 
   <insert id="insertEnjoy" useGeneratedKeys="true" keyProperty="enjoyId">
-    insert into shop_zhenke_enjoy(category,title,subtitle,cover_url,content,highlights,place_name,place_address,display_sort,status,del_flag,published_at,create_by,create_time,update_by,update_time)
-    values(#{category},#{title},#{subtitle},#{coverUrl},#{content},#{highlights},#{placeName},#{placeAddress},#{displaySort},#{status},'0',case when #{status}='0' then sysdate() else null end,#{createBy},sysdate(),#{updateBy},sysdate())
+    insert into shop_zhenke_enjoy(category,title,subtitle,cover_url,service_summary,content,highlights,opening_hours,contact_phone,place_id,place_name,place_address,display_sort,status,del_flag,published_at,create_by,create_time,update_by,update_time)
+    values(#{category},#{title},#{subtitle},#{coverUrl},#{serviceSummary},#{content},#{highlights},#{openingHours},#{contactPhone},#{placeId},#{placeName},#{placeAddress},#{displaySort},#{status},'0',case when #{status}='0' then sysdate() else null end,#{createBy},sysdate(),#{updateBy},sysdate())
   </insert>
 
   <update id="updateEnjoy">
-    update shop_zhenke_enjoy set category=#{category},title=#{title},subtitle=#{subtitle},cover_url=#{coverUrl},content=#{content},highlights=#{highlights},place_name=#{placeName},place_address=#{placeAddress},display_sort=#{displaySort},status=#{status},published_at=case when #{status}='0' then coalesce(published_at,sysdate()) else published_at end,update_by=#{updateBy},update_time=sysdate()
+    update shop_zhenke_enjoy set category=#{category},title=#{title},subtitle=#{subtitle},cover_url=#{coverUrl},service_summary=#{serviceSummary},content=#{content},highlights=#{highlights},opening_hours=#{openingHours},contact_phone=#{contactPhone},place_id=#{placeId},place_name=#{placeName},place_address=#{placeAddress},display_sort=#{displaySort},status=#{status},published_at=case when #{status}='0' then coalesce(published_at,sysdate()) else published_at end,update_by=#{updateBy},update_time=sysdate()
     where enjoy_id=#{enjoyId} and del_flag='0'
   </update>
 
   <update id="deleteEnjoy">update shop_zhenke_enjoy set del_flag='2',update_by=#{user},update_time=sysdate() where enjoy_id=#{enjoyId} and del_flag='0'</update>
   <update id="updateEnjoyStatus">update shop_zhenke_enjoy set status=#{status},published_at=case when #{status}='0' then coalesce(published_at,sysdate()) else published_at end,update_by=#{user},update_time=sysdate() where enjoy_id=#{enjoyId} and del_flag='0'</update>
+  <select id="countPublishReady" resultType="int">select count(*) from shop_zhenke_enjoy e join shop_place p on p.place_id=e.place_id and p.status='0' where e.enjoy_id=#{enjoyId} and e.del_flag='0' and e.cover_url is not null and e.cover_url!='' and e.service_summary is not null and e.service_summary!='' and exists(select 1 from shop_zhenke_enjoy_resource r where r.enjoy_id=e.enjoy_id)</select>
+  <select id="selectMediaUrls" resultType="string">select resource_url from shop_zhenke_enjoy_resource where enjoy_id=#{enjoyId} order by resource_sort,resource_id</select>
+  <insert id="insertMedia">insert into shop_zhenke_enjoy_resource(enjoy_id,resource_url,resource_sort,create_time) values(#{enjoyId},#{mediaUrl},#{mediaSort},sysdate())</insert>
+  <delete id="deleteMedia">delete from shop_zhenke_enjoy_resource where enjoy_id=#{enjoyId}</delete>
   <insert id="insertLike">insert ignore into shop_zhenke_enjoy_like(enjoy_id,shop_user_id,create_time) select #{enjoyId},#{shopUserId},sysdate() from shop_zhenke_enjoy where enjoy_id=#{enjoyId} and del_flag='0' and status='0'</insert>
   <delete id="deleteLike">delete from shop_zhenke_enjoy_like where enjoy_id=#{enjoyId} and shop_user_id=#{shopUserId}</delete>
   <select id="countLike" resultType="int">select count(*) from shop_zhenke_enjoy_like where enjoy_id=#{enjoyId} and shop_user_id=#{shopUserId}</select>
@@ -84,7 +113,7 @@
   <sql id="commentView">select c.*,u.user_name,u.nick_name,u.avatar,coalesce(ru.nick_name,ru.user_name) reply_to_name from shop_zhenke_enjoy_comment c join shop_zhenke_enjoy e on e.enjoy_id=c.enjoy_id and e.del_flag='0' join shop_user u on u.user_id=c.shop_user_id left join shop_zhenke_enjoy_comment rc on rc.comment_id=c.reply_to_comment_id left join shop_user ru on ru.user_id=rc.shop_user_id</sql>
   <select id="selectComments" resultMap="comment"><include refid="commentView"/> where c.enjoy_id=#{enjoyId} and c.del_flag='0' order by coalesce(c.parent_comment_id,c.comment_id),c.create_time,c.comment_id</select>
   <select id="selectComment" resultMap="comment"><include refid="commentView"/> where c.enjoy_id=#{enjoyId} and c.comment_id=#{commentId} and c.del_flag='0'</select>
-  <insert id="insertComment" useGeneratedKeys="true" keyProperty="commentId">insert into shop_zhenke_enjoy_comment(enjoy_id,parent_comment_id,reply_to_comment_id,shop_user_id,content,del_flag,create_time,update_time) values(#{enjoyId},#{parentCommentId},#{replyToCommentId},#{shopUserId},#{content},'0',sysdate(),sysdate())</insert>
+  <insert id="insertComment" useGeneratedKeys="true" keyProperty="commentId">insert into shop_zhenke_enjoy_comment(enjoy_id,parent_comment_id,reply_to_comment_id,shop_user_id,content,del_flag,create_time,update_time) select #{enjoyId},#{parentCommentId},#{replyToCommentId},#{shopUserId},#{content},'0',sysdate(),sysdate() from shop_zhenke_enjoy where enjoy_id=#{enjoyId} and del_flag='0' and status='0'</insert>
   <update id="deleteComment">update shop_zhenke_enjoy_comment set del_flag='2',delete_time=sysdate(),update_time=sysdate() where enjoy_id=#{enjoyId} and comment_id=#{commentId} and shop_user_id=#{shopUserId} and del_flag='0'</update>
   <update id="deleteCommentTree">update shop_zhenke_enjoy_comment set del_flag='2',delete_time=sysdate(),update_time=sysdate() where enjoy_id=#{enjoyId} and del_flag='0' and (comment_id=#{commentId} or parent_comment_id=#{commentId}) and exists(select 1 from (select comment_id from shop_zhenke_enjoy_comment where enjoy_id=#{enjoyId} and comment_id=#{commentId} and shop_user_id=#{shopUserId} and parent_comment_id is null and del_flag='0') owned)</update>
 </mapper>

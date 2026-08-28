@@ -1,9 +1,10 @@
-import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
-import { Alert, Button, DatePicker, Form, Image, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Upload, message } from 'antd';
+import { InboxOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, DatePicker, Form, Image, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Upload, message } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useCallback, useEffect, useState } from 'react';
 import { requestApi, uploadBannerImage } from '@/services/adminApi';
 import { useAdminPermission } from '@/app/AdminPageContext';
+import { mediaPreviewUrl, mediaStoragePath, validateJpegPngImage } from '@/utils/media';
 import styles from '@/pages/index.less';
 
 type Banner = {
@@ -30,22 +31,20 @@ export default function HomeBannersPage() {
   const canChangeStatus = useAdminPermission('shop:banner:status');
   const [data, setData] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState('');
   const [saving, setSaving] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<Banner>();
   const [form] = Form.useForm<BannerForm>();
+  const imagePath = Form.useWatch('imageUrl', form);
 
   const load = useCallback(async () => {
     setLoading(true);
-    setLoadError('');
     try {
       const result = await requestApi<{ code: number; msg: string; data?: Banner[] }>('/shop/admin/zhenke/banners', {}, true);
       setData(result.data ?? []);
     } catch (error) {
       const reason = error instanceof Error ? error.message : '轮播列表加载失败';
-      setLoadError(reason);
-      message.error(reason);
+      message.error({ key: 'home-banners-load', content: reason });
     } finally {
       setLoading(false);
     }
@@ -59,6 +58,7 @@ export default function HomeBannersPage() {
     form.resetFields();
     form.setFieldsValue(banner ? {
       ...banner,
+      imageUrl: mediaStoragePath(banner.imageUrl),
       range: banner.startTime && banner.endTime ? [dayjs(banner.startTime), dayjs(banner.endTime)] : undefined,
     } : { jumpType: 'INTERNAL', status: '0', bannerSort: 0 });
   };
@@ -69,6 +69,7 @@ export default function HomeBannersPage() {
       const { range, ...fields } = values;
       const body = {
         ...fields,
+        imageUrl: mediaStoragePath(fields.imageUrl),
         startTime: range?.[0]?.format('YYYY-MM-DD'),
         endTime: range?.[1]?.format('YYYY-MM-DD'),
       };
@@ -112,26 +113,15 @@ export default function HomeBannersPage() {
         {canAdd && <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>新增轮播</Button>}
       </div>
 
-      {loadError && (
-        <Alert
-          type="error"
-          showIcon
-          message="轮播列表暂时无法加载"
-          description={loadError}
-          action={<Button size="small" danger onClick={() => void load()}>重新加载</Button>}
-          style={{ marginBottom: 16 }}
-        />
-      )}
-
       <Table<Banner>
         rowKey="bannerId"
         loading={loading}
         dataSource={data}
         scroll={{ x: 1040 }}
         pagination={false}
-        locale={{ emptyText: loadError ? '加载失败，请重试' : '暂无首页轮播' }}
+        locale={{ emptyText: '暂无首页轮播' }}
         columns={[
-          { title: '图片', width: 150, render: (_, row) => <Image width={120} height={68} style={{ objectFit: 'cover', borderRadius: 8 }} src={row.imageUrl} /> },
+          { title: '图片', width: 150, render: (_, row) => <Image width={120} height={68} style={{ objectFit: 'cover', borderRadius: 8 }} src={mediaPreviewUrl(row.imageUrl)} /> },
           { title: '标题', dataIndex: 'title', width: 180, ellipsis: true },
           { title: '副标题', dataIndex: 'subtitle', width: 200, ellipsis: true, render: (value) => value || '-' },
           { title: '跳转类型', width: 100, render: (_, row) => row.jumpType === 'INTERNAL' ? '站内路由' : 'HTTPS 外链' },
@@ -180,26 +170,47 @@ export default function HomeBannersPage() {
         <Form form={form} layout="vertical" requiredMark={false} onFinish={(values) => void save(values)}>
           <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入标题' }]}><Input maxLength={120} showCount /></Form.Item>
           <Form.Item name="subtitle" label="副标题"><Input maxLength={240} showCount /></Form.Item>
-          <Form.Item name="imageUrl" label="轮播图片" rules={[{ required: true, message: '请上传轮播图片' }]}>
-            <Input placeholder="上传后自动填入，或填写已有 HTTPS 图片地址" />
+          <Form.Item name="imageUrl" hidden rules={[{ required: true, message: '请上传轮播图片' }]}><Input /></Form.Item>
+          <Form.Item label="轮播图片" required extra="支持点击选择或拖拽 JPG / PNG 图片；重新上传会替换当前图片。">
+            {imagePath && (
+              <Image
+                src={mediaPreviewUrl(imagePath)}
+                width={240}
+                height={135}
+                style={{ display: 'block', objectFit: 'cover', borderRadius: 10, marginBottom: 12 }}
+              />
+            )}
+            <Upload.Dragger
+              className={styles.mediaDropzone}
+              accept="image/jpeg,image/png"
+              maxCount={1}
+              showUploadList={false}
+              beforeUpload={(file) => {
+                try {
+                  validateJpegPngImage(file as File, '轮播图片');
+                  return true;
+                } catch (error) {
+                  message.error(error instanceof Error ? error.message : '轮播图片格式不符合要求');
+                  return Upload.LIST_IGNORE;
+                }
+              }}
+              customRequest={async (options) => {
+                try {
+                  const path = await uploadBannerImage(options.file as File);
+                  form.setFieldValue('imageUrl', path);
+                  form.validateFields(['imageUrl']).catch(() => undefined);
+                  options.onSuccess?.({ path });
+                } catch (error) {
+                  options.onError?.(error as Error);
+                  message.error(error instanceof Error ? error.message : '轮播图片上传失败');
+                }
+              }}
+            >
+              <p className="ant-upload-drag-icon"><InboxOutlined /></p>
+              <p className="ant-upload-text">点击选择，或将图片拖到这里上传</p>
+              <p className="ant-upload-hint">仅支持 JPG / PNG</p>
+            </Upload.Dragger>
           </Form.Item>
-          <Upload
-            accept="image/jpeg,image/png"
-            maxCount={1}
-            showUploadList={false}
-            customRequest={async (options) => {
-              try {
-                const url = await uploadBannerImage(options.file as File);
-                form.setFieldValue('imageUrl', url);
-                options.onSuccess?.(url);
-              } catch (error) {
-                options.onError?.(error as Error);
-                message.error((error as Error).message);
-              }
-            }}
-          >
-            <Button icon={<UploadOutlined />}>上传 JPG / PNG</Button>
-          </Upload>
           <Form.Item name="jumpType" label="跳转类型" rules={[{ required: true }]}>
             <Select options={[{ value: 'INTERNAL', label: '站内正式路由' }, { value: 'EXTERNAL', label: 'HTTPS 外链' }]} />
           </Form.Item>

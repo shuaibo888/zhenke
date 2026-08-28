@@ -8,6 +8,7 @@ import com.ruoyi.shop.domain.dto.*;
 import com.ruoyi.shop.map.TencentMapService;
 import com.ruoyi.shop.mapper.ShopZhenkeMapper;
 import com.ruoyi.shop.security.ShopAccountIdentity;
+import com.ruoyi.shop.util.ShopPlatformMediaPathUtils;
 import java.net.URI;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -71,10 +72,11 @@ public class ShopZhenkeService {
   @Transactional
   public String registerUpload(String resourceUrl, String originalFilename) {
     long uid = ShopAccountIdentity.requireShopUserId();
-    String path = StringUtils.trim(resourceUrl);
-    if (!path.startsWith("/profile/upload/") || path.contains("..")) {
+    String path = ShopPlatformMediaPathUtils.normalize(resourceUrl);
+    if (!path.startsWith("/profile/upload/report/user-" + uid + "/")) {
       throw new ServiceException("上传资源地址无效");
     }
+    ShopPlatformMediaPathUtils.requireStoredFile(path);
     String filename = StringUtils.trim(originalFilename).toLowerCase(Locale.ROOT);
     String resourceType = filename.endsWith(".mp4") ? "VIDEO" : "IMAGE";
     if (mapper.insertPendingUpload(uid, path, resourceType) != 1) {
@@ -87,7 +89,7 @@ public class ShopZhenkeService {
   public ShopZhenkePost publish(ShopZhenkePostBody b) {
     long uid = ShopAccountIdentity.requireShopUserId();
     validateResources(b.getResources());
-    ShopPlace p = resolvePlace(b.getPlace());
+    ShopPlace p = resolveSelectedPlace(b.getPlace());
     if (b.getMerchantId() != null && mapper.countActiveMerchant(b.getMerchantId()) != 1)
       throw new ServiceException("关联商家不存在、未审核或已停用");
     ShopZhenkePost z = new ShopZhenkePost();
@@ -255,12 +257,12 @@ public class ShopZhenkeService {
 
   @Transactional
   public ShopHomeBanner saveBanner(Long id, ShopHomeBannerBody b, String user) {
-    validateBanner(b);
+    String imagePath = validateBanner(b);
     ShopHomeBanner x = new ShopHomeBanner();
     x.setBannerId(id);
     x.setTitle(StringUtils.trim(b.getTitle()));
     x.setSubtitle(StringUtils.trim(b.getSubtitle()));
-    x.setImageUrl(StringUtils.trim(b.getImageUrl()));
+    x.setImageUrl(imagePath);
     x.setJumpType(b.getJumpType());
     x.setJumpTarget(StringUtils.trim(b.getJumpTarget()));
     x.setBannerSort(b.getBannerSort());
@@ -302,7 +304,7 @@ public class ShopZhenkeService {
     return rows;
   }
 
-  private ShopPlace resolvePlace(ShopZhenkePostBody.PlaceSelection s) {
+  public ShopPlace resolveSelectedPlace(ShopZhenkePostBody.PlaceSelection s) {
     if (!"TENCENT".equalsIgnoreCase(s.getProvider())) throw new ServiceException("当前仅支持腾讯地图选点结果");
     String providerPlaceId = StringUtils.trim(s.getProviderPlaceId());
     ShopPlace p = mapper.selectPlaceByProvider("TENCENT", providerPlaceId);
@@ -344,32 +346,15 @@ public class ShopZhenkeService {
   }
 
   private String normalizeClaimedResourceUrl(String rawUrl) {
-    String value = StringUtils.trim(rawUrl).replace('\\', '/');
-    try {
-      URI uri = URI.create(value);
-      if (uri.isAbsolute()) {
-        if (!("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme()))
-            || uri.getHost() == null
-            || uri.getUserInfo() != null
-            || uri.getRawQuery() != null
-            || uri.getRawFragment() != null) {
-          throw new ServiceException("媒体地址无效");
-        }
-        value = uri.getPath();
-      }
-    } catch (IllegalArgumentException e) {
+    String value = ShopPlatformMediaPathUtils.normalize(rawUrl);
+    if (!value.startsWith("/profile/upload/report/user-")) {
       throw new ServiceException("媒体地址无效");
     }
-    if (!value.startsWith("/profile/upload/report/user-")
-        || value.contains("..")
-        || value.contains("?")
-        || value.contains("#")) {
-      throw new ServiceException("媒体地址无效");
-    }
+    ShopPlatformMediaPathUtils.requireStoredFile(value);
     return value;
   }
 
-  private void validateBanner(ShopHomeBannerBody b) {
+  private String validateBanner(ShopHomeBannerBody b) {
     if ((b.getStartTime() == null) != (b.getEndTime() == null)) {
       throw new ServiceException("请同时选择轮播开始日期和结束日期");
     }
@@ -377,7 +362,7 @@ public class ShopZhenkeService {
         && b.getEndTime().isBefore(b.getStartTime())) {
       throw new ServiceException("轮播结束日期不能早于开始日期");
     }
-    validateBannerImage(StringUtils.trim(b.getImageUrl()));
+    String imagePath = normalizeBannerImage(b.getImageUrl());
     String t = StringUtils.trim(b.getJumpTarget());
     if ("INTERNAL".equals(b.getJumpType())) {
       validateInternalRoute(t);
@@ -391,6 +376,7 @@ public class ShopZhenkeService {
       } catch (IllegalArgumentException e) {
         throw new ServiceException("外链格式无效");
       }
+    return imagePath;
   }
 
   private Date atBannerTime(LocalDate value, LocalTime time) {
@@ -427,19 +413,16 @@ public class ShopZhenkeService {
     }
   }
 
-  private void validateBannerImage(String imageUrl) {
-    if (imageUrl.startsWith("/profile/upload/") && !imageUrl.contains("..") && !imageUrl.contains("\\")) {
-      return;
+  private String normalizeBannerImage(String imageUrl) {
+    String value = ShopPlatformMediaPathUtils.normalize(imageUrl);
+    String lowerValue = value.toLowerCase(Locale.ROOT);
+    if (!value.startsWith("/profile/upload/")
+        || !(lowerValue.endsWith(".jpg")
+            || lowerValue.endsWith(".jpeg")
+            || lowerValue.endsWith(".png"))) {
+      throw new ServiceException("轮播图片必须使用平台上传的 JPG 或 PNG 文件");
     }
-    try {
-      URI image = URI.create(imageUrl);
-      if (!"https".equalsIgnoreCase(image.getScheme())
-          || image.getHost() == null
-          || image.getUserInfo() != null) {
-        throw new ServiceException("轮播图片必须使用平台上传地址或 HTTPS 图片地址");
-      }
-    } catch (IllegalArgumentException e) {
-      throw new ServiceException("轮播图片地址格式无效");
-    }
+    ShopPlatformMediaPathUtils.requireStoredImage(value);
+    return value;
   }
 }

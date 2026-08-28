@@ -4997,6 +4997,35 @@ button.checkoutFulfillmentOption:focus-visible {
   display: none;
 }
 
+.avatarDropzone :global(.ant-upload-drag) {
+  min-height: 112px;
+  padding: 14px;
+  background: #fffaf6;
+  border-color: #d9b9a7;
+  border-radius: 12px;
+}
+
+.avatarDropzone :global(.ant-upload-drag-container) {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  color: #8a3f32;
+}
+
+.avatarDropzone :global(.anticon) {
+  font-size: 24px;
+}
+
+.avatarDropzone strong {
+  color: #3f302c;
+  font-size: 13px;
+}
+
+.avatarDropzone small {
+  color: #96827b;
+  font-size: 11px;
+}
+
 .avatarPicker p {
   margin: 0;
   color: #64716b;
@@ -7544,10 +7573,40 @@ button.checkoutFulfillmentOption:focus-visible {
 }
 
 .reviewUploadButtons {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
   gap: 10px;
+  width: 100%;
+}
+
+.reviewDropzone :global(.ant-upload-drag) {
+  min-height: 116px;
+  padding: 12px;
+  background: #fffaf6;
+  border-color: #d9b9a7;
+  border-radius: 10px;
+}
+
+.reviewDropzone :global(.ant-upload-drag-container) {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+}
+
+.reviewDropzone :global(.anticon) {
+  color: #8a3f32;
+  font-size: 24px;
+}
+
+.reviewDropzone strong {
+  color: #3f302c;
+  font-size: 13px;
+}
+
+.reviewDropzone small {
+  color: #7f8b85;
+  font-size: 11px;
 }
 
 .reviewUploadRules {
@@ -9298,6 +9357,35 @@ button.checkoutFulfillmentOption:focus-visible {
 .merchantLicenseField > :global(.ant-upload-wrapper) :global(.ant-upload-select) {
   display: block;
   width: 100%;
+}
+
+.merchantDropzone :global(.ant-upload-drag) {
+  min-height: 128px;
+  padding: 16px;
+  background: #fffaf6;
+  border-color: #d9b9a7;
+  border-radius: 12px;
+}
+
+.merchantDropzone :global(.ant-upload-drag-container) {
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+}
+
+.merchantDropzone :global(.anticon) {
+  color: #8a3f32;
+  font-size: 28px;
+}
+
+.merchantDropzone strong {
+  color: #3f302c;
+  font-size: 14px;
+}
+
+.merchantDropzone small {
+  color: #7a8882;
+  font-size: 12px;
 }
 
 .merchantLicenseField small {

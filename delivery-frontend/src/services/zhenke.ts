@@ -1,4 +1,5 @@
 import { requestApi, type ApiResponse, type TableResponse } from "./apiClient";
+import { extractPlatformMediaPath } from "@/utils/mediaUrl";
 export type Perspective = "LOCAL" | "TOURIST" | "HOMETOWNER";
 export type EnjoyCategory = "MALL" | "RESTAURANT" | "SCENIC" | "HOTEL";
 export interface Place {
@@ -107,15 +108,29 @@ export interface ZhenkeEnjoy {
   title: string;
   subtitle?: string;
   coverUrl: string;
+  mediaUrls?: string[];
+  serviceSummary: string;
   content: string;
   highlights?: string;
+  openingHours?: string;
+  contactPhone?: string;
+  placeId?: number;
+  placeProvider?: string;
+  placeProviderId?: string;
   placeName?: string;
+  placeType?: string;
   placeAddress?: string;
+  placeProvince?: string;
+  placeCity?: string;
+  placeDistrict?: string;
+  placeLatitude?: number;
+  placeLongitude?: number;
   displaySort: number;
   status: "0" | "1";
   publishedAt?: string;
   likeCount: number;
   commentCount: number;
+  mediaCount?: number;
   likedByMe: boolean;
 }
 export interface EnjoyComment {
@@ -161,12 +176,17 @@ export async function mine(pageNum = 1) {
   return { rows: r.rows ?? [], total: r.total ?? 0 };
 }
 export async function publish(body: PublishPostBody) {
+  const resources = body.resources.map((resource) => {
+    const resourceUrl = extractPlatformMediaPath(resource.resourceUrl);
+    if (!resourceUrl) throw new Error("帖子媒体地址无效，请重新上传");
+    return { ...resource, resourceUrl };
+  });
   return (
     await requestApi<ApiResponse<ZhenkePost>>(
       "/shop/zhenke/posts",
       {
         method: "POST",
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, resources }),
       },
       true,
     )
@@ -218,16 +238,17 @@ export async function deleteComment(id: number, cid: number) {
 export async function upload(file: File) {
   const f = new FormData();
   f.append("file", file);
-  return (
-    await requestApi<ApiResponse<string>>(
-      "/shop/zhenke/resources",
-      {
-        method: "POST",
-        body: f,
-      },
-      true,
-    )
-  ).data!;
+  const result = await requestApi<ApiResponse<string>>(
+    "/shop/zhenke/resources",
+    {
+      method: "POST",
+      body: f,
+    },
+    true,
+  );
+  const path = extractPlatformMediaPath(result.data);
+  if (!path) throw new Error("帖子媒体上传结果无效，请重试");
+  return path;
 }
 export async function place(id: number) {
   return (await requestApi<ApiResponse<Place>>(`/shop/zhenke/places/${id}`))

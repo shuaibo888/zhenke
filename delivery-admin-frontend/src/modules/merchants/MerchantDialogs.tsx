@@ -1,6 +1,7 @@
 import { Button, Form, Image, Input, Modal, Select, Tag } from 'antd';
 import type { FormInstance } from 'antd';
 import type { MerchantAccount } from '@/types';
+import { mediaPreviewUrl } from '@/utils/media';
 import styles from '@/pages/index.less';
 
 export interface MerchantFormValues {
@@ -22,12 +23,6 @@ export interface MerchantDetailDialogProps {
 }
 
 const responsiveModalProps = { rootClassName: styles.responsiveModal } as const;
-
-function formatDateTime(value?: string, emptyText = '-') {
-  if (!value) return emptyText;
-  const match = value.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})/);
-  return match ? `${match[1]} ${match[2]}` : value;
-}
 
 export function MerchantAuditDialog(props: MerchantAuditDialogProps) {
   return (
@@ -113,7 +108,7 @@ export function MerchantDetailDialog(props: MerchantDetailDialogProps) {
               </div>
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>入驻时间</span>
-                <span>{formatDateTime(props.detailMerchant.registeredAt)}</span>
+                <span>{props.detailMerchant.registeredAt || '-'}</span>
               </div>
             </div>
 
@@ -122,7 +117,7 @@ export function MerchantDetailDialog(props: MerchantDetailDialogProps) {
               {props.detailMerchant.businessLicense && (
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>营业执照</span>
-                  <Image src={props.detailMerchant.businessLicense} alt="营业执照" className={styles.licenseImage} />
+                  <Image src={mediaPreviewUrl(props.detailMerchant.businessLicense)} alt="营业执照" className={styles.licenseImage} />
                 </div>
               )}
               <div className={styles.detailRow}>
@@ -146,9 +141,9 @@ export function MerchantDetailDialog(props: MerchantDetailDialogProps) {
                     {props.detailMerchant.storeProofMedia.map((item, index) => (
                       <div className={styles.merchantProofItem} key={item.mediaId ?? `${item.mediaUrl}-${index}`}>
                         {item.mediaType === 'IMAGE' ? (
-                          <Image src={item.mediaUrl} alt={`实体门店证明照片${index + 1}`} />
+                          <Image src={mediaPreviewUrl(item.mediaUrl)} alt={`实体门店证明照片${index + 1}`} />
                         ) : (
-                          <video src={item.mediaUrl} controls preload="metadata" />
+                          <video src={mediaPreviewUrl(item.mediaUrl)} controls preload="metadata" />
                         )}
                       </div>
                     ))}

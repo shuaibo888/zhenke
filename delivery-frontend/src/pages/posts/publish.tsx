@@ -2,18 +2,19 @@ import {
   ArrowLeftOutlined,
   CloseOutlined,
   EnvironmentOutlined,
+  InboxOutlined,
   ShopOutlined,
-  UploadOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { Button, Checkbox, Form, Input, Radio, Select, Upload, message } from 'antd';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'umi';
+import { useLocation, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
 import { ZkState } from '@/components/ZkPage';
 import {
   merchantOptions,
+  place as fetchPlace,
   publish,
   upload,
   type MerchantOption,
@@ -22,6 +23,7 @@ import {
 } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
 import { loadCurrentLocation } from '@/utils/currentLocation';
+import { mediaPreviewUrl } from '@/utils/mediaUrl';
 
 type Poi = Omit<Place, 'placeId' | 'coordinateSystem'>;
 
@@ -62,6 +64,7 @@ async function videoDuration(file: File) {
 
 export default function PublishPostPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, authLoading } = useShop();
   const [form] = Form.useForm<PublishValues>();
   const [media, setMedia] = useState<PostResource[]>([]);
@@ -82,6 +85,38 @@ export default function PublishPostPage() {
   const mediaRef = useRef<PostResource[]>([]);
   const pendingMediaRef = useRef<Array<{ id: number; resourceType: PostResource['resourceType'] }>>([]);
   const uploadSequenceRef = useRef(0);
+
+  useEffect(() => {
+    const placeId = Number(new URLSearchParams(location.search).get('placeId'));
+    if (!Number.isSafeInteger(placeId) || placeId <= 0) return;
+    let active = true;
+    void fetchPlace(placeId)
+      .then((selected) => {
+        if (!active) return;
+        const poi: Poi = {
+          provider: selected.provider,
+          providerPlaceId: selected.providerPlaceId,
+          placeName: selected.placeName,
+          placeType: selected.placeType,
+          address: selected.address,
+          province: selected.province,
+          city: selected.city,
+          district: selected.district,
+          provinceCode: selected.provinceCode,
+          cityCode: selected.cityCode,
+          districtCode: selected.districtCode,
+          latitude: selected.latitude,
+          longitude: selected.longitude,
+        };
+        setPois([poi]);
+        setPlaceSearchKeyword(selected.placeName);
+        form.setFieldValue('place', `${selected.provider}:${selected.providerPlaceId}`);
+      })
+      .catch((reason) => {
+        if (active) message.warning(reason instanceof Error ? reason.message : '专题地点暂时无法带入，请重新搜索');
+      });
+    return () => { active = false; };
+  }, [form, location.search]);
 
   useEffect(() => () => {
     if (placeSearchTimer.current) clearTimeout(placeSearchTimer.current);
@@ -343,7 +378,7 @@ export default function PublishPostPage() {
 
         <Form.Item label="封面图片与视频" required>
           <div className={styles.mediaUploader}>
-            <Upload
+            <Upload.Dragger
               accept="image/jpeg,image/png,video/mp4"
               multiple
               showUploadList={false}
@@ -359,10 +394,12 @@ export default function PublishPostPage() {
                 }
               }}
             >
-              <Button icon={<UploadOutlined />} loading={mediaUploading}>
-                {mediaUploading ? '正在上传…' : '选择图片或 MP4 视频'}
-              </Button>
-            </Upload>
+              <InboxOutlined className={styles.mediaDropzoneIcon} />
+              <p className={styles.mediaDropzoneTitle}>
+                {mediaUploading ? '正在上传…' : '点击选择或将图片、MP4 视频拖到这里'}
+              </p>
+              <span className={styles.mediaDropzoneHint}>支持一次选择多个文件，也可以继续追加</span>
+            </Upload.Dragger>
             <p className={styles.selectionHint}>
               至少上传 1 张图片作为封面；可再上传 1 个视频，图片和视频合计最多 9 个。
               图片 JPG/PNG ≤ 5MB；MP4 ≤ 10MB 且 ≤ 30 秒。
@@ -372,8 +409,8 @@ export default function PublishPostPage() {
                 {media.map((item, index) => (
                   <div key={`${item.resourceUrl}-${index}`} className={styles.mediaItem}>
                     {item.resourceType === 'VIDEO'
-                      ? <video src={item.resourceUrl} muted playsInline />
-                      : <img src={item.resourceUrl} alt={`待发布媒体 ${index + 1}`} />}
+                      ? <video src={mediaPreviewUrl(item.resourceUrl)} muted playsInline />
+                      : <img src={mediaPreviewUrl(item.resourceUrl)} alt={`待发布媒体 ${index + 1}`} />}
                     <button
                       type="button"
                       className={styles.mediaRemove}

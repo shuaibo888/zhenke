@@ -3,13 +3,14 @@ package com.ruoyi.shop.service;
 import com.github.pagehelper.PageHelper;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.shop.domain.ShopPlace;
 import com.ruoyi.shop.domain.ShopZhenkeEnjoy;
 import com.ruoyi.shop.domain.ShopZhenkeEnjoyComment;
 import com.ruoyi.shop.domain.dto.ShopZhenkeCommentBody;
 import com.ruoyi.shop.domain.dto.ShopZhenkeEnjoyBody;
 import com.ruoyi.shop.mapper.ShopZhenkeEnjoyMapper;
 import com.ruoyi.shop.security.ShopAccountIdentity;
-import java.net.URI;
+import com.ruoyi.shop.util.ShopPlatformMediaPathUtils;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -21,9 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class ShopZhenkeEnjoyService {
   private static final Set<String> CATEGORIES = Set.of("MALL", "RESTAURANT", "SCENIC", "HOTEL");
   private final ShopZhenkeEnjoyMapper mapper;
+  private final ShopZhenkeService placeService;
 
-  public ShopZhenkeEnjoyService(ShopZhenkeEnjoyMapper mapper) {
+  public ShopZhenkeEnjoyService(ShopZhenkeEnjoyMapper mapper, ShopZhenkeService placeService) {
     this.mapper = mapper;
+    this.placeService = placeService;
   }
 
   public List<ShopZhenkeEnjoy> enjoys(String category, int pageNum, int pageSize) {
@@ -36,6 +39,7 @@ public class ShopZhenkeEnjoyService {
     ShopZhenkeEnjoy enjoy =
         mapper.selectEnjoy(enjoyId, false, ShopAccountIdentity.currentShopUserIdOrNull());
     if (enjoy == null) throw new ServiceException("甄必享内容不存在或已下线");
+    hydrateMedia(enjoy);
     return enjoy;
   }
 
@@ -43,12 +47,19 @@ public class ShopZhenkeEnjoyService {
   public Map<String, Object> toggleLike(long enjoyId) {
     long userId = ShopAccountIdentity.requireShopUserId();
     detail(enjoyId);
-    if (mapper.countLike(enjoyId, userId) > 0) {
+    boolean removing = mapper.countLike(enjoyId, userId) > 0;
+    if (removing) {
       mapper.deleteLike(enjoyId, userId);
-    } else if (mapper.insertLike(enjoyId, userId) != 1) {
-      throw new ServiceException("点赞失败，请刷新后重试");
+    } else {
+      // INSERT IGNORE may report 0 when another request has already created the
+      // same unique relation. Re-read the persisted state instead of reporting
+      // a false failure to the user.
+      mapper.insertLike(enjoyId, userId);
     }
     boolean liked = mapper.countLike(enjoyId, userId) > 0;
+    if (!removing && !liked) {
+      throw new ServiceException("点赞失败，请刷新后重试");
+    }
     ShopZhenkeEnjoy refreshed = detail(enjoyId);
     return Map.of("liked", liked, "likeCount", refreshed.getLikeCount());
   }
@@ -109,21 +120,28 @@ public class ShopZhenkeEnjoyService {
   public ShopZhenkeEnjoy adminDetail(long enjoyId) {
     ShopZhenkeEnjoy enjoy = mapper.selectEnjoy(enjoyId, true, null);
     if (enjoy == null) throw new ServiceException("甄必享内容不存在");
+    hydrateMedia(enjoy);
     return enjoy;
   }
 
   @Transactional
   public ShopZhenkeEnjoy save(Long enjoyId, ShopZhenkeEnjoyBody body, String user) {
+    ShopPlace place = placeService.resolveSelectedPlace(body.getPlace());
+    List<String> mediaUrls = normalizeMediaUrls(body.getMediaUrls());
     ShopZhenkeEnjoy enjoy = new ShopZhenkeEnjoy();
     enjoy.setEnjoyId(enjoyId);
     enjoy.setCategory(normalizeCategory(body.getCategory()));
     enjoy.setTitle(StringUtils.trim(body.getTitle()));
     enjoy.setSubtitle(StringUtils.trim(body.getSubtitle()));
-    enjoy.setCoverUrl(normalizeCoverUrl(body.getCoverUrl()));
+    enjoy.setCoverUrl(mediaUrls.get(0));
+    enjoy.setServiceSummary(StringUtils.trim(body.getServiceSummary()));
     enjoy.setContent(StringUtils.trim(body.getContent()));
     enjoy.setHighlights(StringUtils.trim(body.getHighlights()));
-    enjoy.setPlaceName(StringUtils.trim(body.getPlaceName()));
-    enjoy.setPlaceAddress(StringUtils.trim(body.getPlaceAddress()));
+    enjoy.setOpeningHours(StringUtils.trim(body.getOpeningHours()));
+    enjoy.setContactPhone(StringUtils.trim(body.getContactPhone()));
+    enjoy.setPlaceId(place.getPlaceId());
+    enjoy.setPlaceName(place.getPlaceName());
+    enjoy.setPlaceAddress(place.getAddress());
     enjoy.setDisplaySort(body.getDisplaySort() == null ? 0 : body.getDisplaySort());
     enjoy.setStatus(body.getStatus());
     enjoy.setCreateBy(user);
@@ -135,6 +153,13 @@ public class ShopZhenkeEnjoyService {
     } else if (mapper.updateEnjoy(enjoy) != 1) {
       throw new ServiceException("甄必享内容不存在或已删除");
     }
+    if (enjoyId != null) mapper.deleteMedia(enjoy.getEnjoyId());
+    int mediaSort = 1;
+    for (String mediaUrl : mediaUrls) {
+      if (mapper.insertMedia(enjoy.getEnjoyId(), mediaUrl, mediaSort++) != 1) {
+        throw new ServiceException("甄必享图片保存失败，请重试");
+      }
+    }
     return adminDetail(enjoy.getEnjoyId());
   }
 
@@ -145,6 +170,9 @@ public class ShopZhenkeEnjoyService {
 
   @Transactional
   public void updateStatus(long enjoyId, String status, String user) {
+    if ("0".equals(status) && mapper.countPublishReady(enjoyId) != 1) {
+      throw new ServiceException("请先完成地点、图片和内容信息后再发布");
+    }
     if (!Set.of("0", "1").contains(status)
         || mapper.updateEnjoyStatus(enjoyId, status, user) != 1) {
       throw new ServiceException("甄必享状态无效或内容不存在");
@@ -158,19 +186,36 @@ public class ShopZhenkeEnjoyService {
     return normalized;
   }
 
-  private String normalizeCoverUrl(String rawValue) {
-    String value = StringUtils.trim(rawValue).replace('\\', '/');
-    if (value.startsWith("/profile/upload/") && !value.contains("..")) return value;
-    try {
-      URI uri = URI.create(value);
-      if (!"https".equalsIgnoreCase(uri.getScheme())
-          || uri.getHost() == null
-          || uri.getUserInfo() != null) {
-        throw new ServiceException("封面必须使用平台上传地址或 HTTPS 图片地址");
-      }
-      return value;
-    } catch (IllegalArgumentException e) {
-      throw new ServiceException("封面图片地址格式无效");
+  private List<String> normalizeMediaUrls(List<String> rawValues) {
+    if (rawValues == null || rawValues.isEmpty() || rawValues.size() > 9) {
+      throw new ServiceException("请上传1至9张地点图片");
+    }
+    List<String> normalized = rawValues.stream().map(this::normalizeMediaUrl).distinct().toList();
+    if (normalized.size() != rawValues.size()) throw new ServiceException("请勿重复上传同一张图片");
+    return normalized;
+  }
+
+  private String normalizeMediaUrl(String rawValue) {
+    String value = ShopPlatformMediaPathUtils.normalize(rawValue);
+    String lowerValue = value.toLowerCase(Locale.ROOT);
+    if (!value.startsWith("/profile/upload/")
+        || !(lowerValue.endsWith(".jpg")
+            || lowerValue.endsWith(".jpeg")
+            || lowerValue.endsWith(".png"))) {
+      throw new ServiceException("图片必须使用平台上传的 JPG 或 PNG 文件");
+    }
+    ShopPlatformMediaPathUtils.requireStoredImage(value);
+    return value;
+  }
+
+  private void hydrateMedia(ShopZhenkeEnjoy enjoy) {
+    List<String> mediaUrls = mapper.selectMediaUrls(enjoy.getEnjoyId());
+    if (mediaUrls != null && !mediaUrls.isEmpty()) {
+      enjoy.setMediaUrls(mediaUrls);
+    } else if (StringUtils.isNotEmpty(enjoy.getCoverUrl())) {
+      enjoy.setMediaUrls(List.of(enjoy.getCoverUrl()));
+    } else {
+      enjoy.setMediaUrls(List.of());
     }
   }
 }

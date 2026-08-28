@@ -4,12 +4,6 @@ import type { ColumnsType } from 'antd/es/table';
 import type { MerchantAccount } from '@/types';
 import styles from '@/pages/index.less';
 
-function formatDateTime(value?: string, emptyText = '-') {
-  if (!value) return emptyText;
-  const match = value.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})/);
-  return match ? `${match[1]} ${match[2]}` : value;
-}
-
 export interface MerchantsModuleProps {
   merchants: MerchantAccount[];
   loading: boolean;
@@ -34,7 +28,7 @@ export default function MerchantsModule(props: MerchantsModuleProps) {
       dataIndex: 'registeredAt',
       width: 170,
       responsive: ['md'],
-      render: (value?: string) => <span className={styles.tableDateTime}>{formatDateTime(value)}</span>,
+      render: (value?: string) => <span className={styles.tableDateTime}>{value || '-'}</span>,
     },
     {
       title: '状态',

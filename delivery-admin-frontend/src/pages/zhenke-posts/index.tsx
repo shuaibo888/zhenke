@@ -1,9 +1,10 @@
-import { Alert, Button, DatePicker, Descriptions, Image, Input, Modal, Select, Space, Table, Tag, message } from 'antd';
+import { Button, DatePicker, Descriptions, Image, Input, Modal, Select, Space, Table, Tag, message } from 'antd';
 import type { TablePaginationConfig } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { useCallback, useEffect, useState } from 'react';
 import { requestApi } from '@/services/adminApi';
 import { useAdminPermission } from '@/app/AdminPageContext';
+import { mediaPreviewUrl } from '@/utils/media';
 import styles from '@/pages/index.less';
 
 type PostResource = {
@@ -43,7 +44,6 @@ export default function ZhenkePostsPage() {
   const [data, setData] = useState<Post[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState('');
   const [keyword, setKeyword] = useState('');
   const [status, setStatus] = useState<string>();
   const [merchantId, setMerchantId] = useState<number>();
@@ -56,7 +56,6 @@ export default function ZhenkePostsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    setLoadError('');
     try {
       const query = new URLSearchParams({ pageNum: String(page), pageSize: String(pageSize) });
       if (keyword.trim()) query.set('keyword', keyword.trim());
@@ -75,8 +74,7 @@ export default function ZhenkePostsPage() {
       setTotal(result.total ?? 0);
     } catch (error) {
       const reason = error instanceof Error ? error.message : '甄客帖列表加载失败';
-      setLoadError(reason);
-      message.error(reason);
+      message.error({ key: 'zhenke-posts-load', content: reason });
     } finally {
       setLoading(false);
     }
@@ -188,24 +186,13 @@ export default function ZhenkePostsPage() {
         </Space>
       </div>
 
-      {loadError && (
-        <Alert
-          type="error"
-          showIcon
-          message="甄客帖列表暂时无法加载"
-          description={loadError}
-          action={<Button size="small" danger onClick={() => void load()}>重新加载</Button>}
-          style={{ marginBottom: 16 }}
-        />
-      )}
-
       <Table<Post>
         rowKey="postId"
         loading={loading}
         dataSource={data}
         onChange={changePage}
         scroll={{ x: 1080 }}
-        locale={{ emptyText: loadError ? '加载失败，请重试' : '暂无甄客帖' }}
+        locale={{ emptyText: '暂无甄客帖' }}
         pagination={{ current: page, pageSize, total, showSizeChanger: true, showTotal: (value) => `共 ${value} 条` }}
         columns={[
           { title: '标题', dataIndex: 'title', width: 240, ellipsis: true },
@@ -247,9 +234,9 @@ export default function ZhenkePostsPage() {
             {detail.suggestion && <div><strong>给后来者的建议</strong><p>{detail.suggestion}</p></div>}
             <Space wrap align="start">
               {detail.resources?.map((resource) => resource.resourceType === 'IMAGE' ? (
-                <Image key={resource.resourceId} width={180} src={resource.resourceUrl} />
+                <Image key={resource.resourceId} width={180} src={mediaPreviewUrl(resource.resourceUrl)} />
               ) : (
-                <video key={resource.resourceId} controls width={360} src={resource.resourceUrl} />
+                <video key={resource.resourceId} controls width={360} src={mediaPreviewUrl(resource.resourceUrl)} />
               ))}
             </Space>
           </Space>

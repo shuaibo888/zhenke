@@ -72,8 +72,11 @@ export default function AuthPage() {
   }, [countdown]);
 
   useEffect(() => {
-    form.resetFields(['code']);
-  }, [captcha.uuid, form]);
+    // The account form is not mounted while phone login is active. Calling a
+    // useForm instance before its Form mounts makes Ant Design report a
+    // disconnected form and can leave stale captcha input behind.
+    if (!phoneMode) form.resetFields(['code']);
+  }, [captcha.uuid, form, phoneMode]);
 
   const submit = async (values: AuthValues) => {
     try {
@@ -183,9 +186,9 @@ export default function AuthPage() {
             <p>登录后发布地点内容、参与互动，并在同一个账号中管理订单、核销和权益。</p>
           </div>
           <div className={styles.authRules}>
-            <span><CheckCircleFilled /> 地点内容真实持久化</span>
-            <span><CheckCircleFilled /> 甄客帖与甄客验明确区分</span>
-            <span><CheckCircleFilled /> 交易与到店核销完整承接</span>
+            <span><CheckCircleFilled /> 围绕真实地点安心分享</span>
+            <span><CheckCircleFilled /> 分享与消费体验清晰区分</span>
+            <span><CheckCircleFilled /> 订单、核销与权益统一管理</span>
           </div>
         </section>
         <section className={`${styles.authCard} ${phoneMode ? styles.phoneAuthCard : ''}`}>

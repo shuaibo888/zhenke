@@ -109,6 +109,7 @@ export default function HomePage() {
   const [bannerError, setBannerError] = useState('');
   const [initialLocation] = useState(loadCurrentLocation);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>(() => initialLocation ? 'located' : 'idle');
+  const [locationError, setLocationError] = useState('');
   const [currentArea, setCurrentArea] = useState(() => locationCityLabel(initialLocation));
   const [cityPickerOpen, setCityPickerOpen] = useState(false);
   const [citySearch, setCitySearch] = useState('');
@@ -167,9 +168,10 @@ export default function HomePage() {
   const locate = useCallback(() => {
     if (!navigator.geolocation) {
       setLocationStatus('failed');
-      message.warning('当前浏览器不支持设备定位，可在发布页通过关键词选择地点');
+      setLocationError('当前浏览器不支持设备定位，请手动选择城市');
       return;
     }
+    setLocationError('');
     setLocationStatus('locating');
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
@@ -192,16 +194,17 @@ export default function HomePage() {
             source: 'DEVICE',
           });
           setLocationStatus('located');
+          setLocationError('');
           setCityPickerOpen(false);
           setCitySearch('');
-        } catch (error) {
+        } catch {
           setLocationStatus('failed');
-          message.warning(error instanceof Error ? error.message : '地图服务暂时不可用');
+          setLocationError('地图服务暂时不可用，请手动选择城市');
         }
       },
       () => {
         setLocationStatus('failed');
-        message.info('未获得定位权限，仍可浏览全平台内容，并在发布时手动选点');
+        setLocationError('未获得定位权限，请手动选择城市');
       },
       { timeout: 8000, maximumAge: 300000, enableHighAccuracy: false },
     );
@@ -220,6 +223,7 @@ export default function HomePage() {
     setCurrentArea(city.name);
     saveCurrentLocation({ label: city.name, city: city.name, source: 'MANUAL' });
     setLocationStatus('located');
+    setLocationError('');
     setCityPickerOpen(false);
     setCitySearch('');
     message.success('当前城市已更新');
@@ -227,6 +231,7 @@ export default function HomePage() {
 
   return (
     <main className={styles.page}>
+      <h1 className={styles.visuallyHidden}>甄客行城市生活发现与分享</h1>
       <div className={styles.homeLocationRow}>
         <button
           type="button"
@@ -244,6 +249,18 @@ export default function HomePage() {
           </span>
           <DownOutlined className={styles.cityChipArrow} />
         </button>
+        {locationError && (
+          <button
+            type="button"
+            className={styles.locationFallbackHint}
+            onClick={() => {
+              setCitySearch('');
+              setCityPickerOpen(true);
+            }}
+          >
+            {locationError}
+          </button>
+        )}
       </div>
 
       <section className={styles.homeLead} aria-label="甄客行今日精选">
@@ -267,7 +284,7 @@ export default function HomePage() {
                   <div className={styles.bannerCopy}>
                     <div className={styles.bannerText}>
                       <span className={styles.eyebrow}>甄客行精选</span>
-                      <h1>{banner.title}</h1>
+                      <h2>{banner.title}</h2>
                       {banner.subtitle && <p>{banner.subtitle}</p>}
                     </div>
                     <button type="button" className={styles.bannerAction} onClick={() => openBanner(banner)}>
@@ -282,7 +299,7 @@ export default function HomePage() {
           <div className={`${styles.bannerFallback} ${loading ? styles.bannerFallbackLoading : ''}`}>
             <div>
               <span className={styles.eyebrow}>{loading ? '正在准备今日精选' : '甄客行'}</span>
-              <h1>{loading ? '正在打开城市生活…' : '发现城市里值得分享的地方'}</h1>
+              <h2>{loading ? '正在打开城市生活…' : '发现城市里值得分享的地方'}</h2>
               {!loading && bannerError && <p>{bannerError}</p>}
             </div>
           </div>

@@ -3,16 +3,12 @@ import { Pagination, Spin, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LoginRedirect } from '@/components/LoginRedirect';
 import { useShop } from '@/app/ShopContext';
-import { ZkRefreshError, ZkTaskHeader } from '@/components/ZkPage';
+import { ZkTaskHeader } from '@/components/ZkPage';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import { fetchMyPointRecords, type ShopPointRecord } from '@/services/shopAuth';
 import styles from '@/styles/commerce.less';
 
 const PAGE_SIZE = 20;
-
-function formatDate(value: string) {
-  return value?.replace('T', ' ').slice(0, 16);
-}
 
 export default function PointRecordsPage() {
   const { user } = useShop();
@@ -42,7 +38,7 @@ export default function PointRecordsPage() {
     requestVersion.current += 1;
   }, []);
 
-  const { refreshError, retry } = useRefreshOnRoute('/profile/point-records', refreshRecords, '积分记录刷新失败');
+  useRefreshOnRoute('/profile/point-records', refreshRecords, '积分记录刷新失败');
 
   if (!user) {
     return <LoginRedirect />;
@@ -57,7 +53,6 @@ export default function PointRecordsPage() {
   return (
     <main className={`${styles.profileDetailPage} ${styles.pointsPage}`}>
         <ZkTaskHeader eyebrow="权益资产" title="积分明细" description="每一笔增加与扣减均来自真实业务记录。" backTo="/profile/points" />
-      <ZkRefreshError error={refreshError} onRetry={() => void retry()} />
       <section className={styles.orderPanel}>
         <div className={styles.orderPanelHeading}>
           <div>
@@ -79,7 +74,7 @@ export default function PointRecordsPage() {
                   <div className={styles.pointRecordCopy}>
                     <strong>{record.changeReason}</strong>
                     <small>
-                      {record.sourceName ? `${record.sourceName} · ` : ''}{formatDate(record.createTime)}
+                      {record.sourceName ? `${record.sourceName} · ` : ''}{record.createTime}
                     </small>
                   </div>
                   <div className={styles.pointRecordAmount}>

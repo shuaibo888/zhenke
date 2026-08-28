@@ -1,3 +1,5 @@
+import { resolveMediaUrlsDeep } from '@/utils/mediaUrl';
+
 const tokenStorageKey = 'zhenke_access_token';
 
 export interface ApiResponse<T = unknown> {
@@ -55,7 +57,8 @@ export async function requestApi<T extends ApiResponse>(
     headers.set('Authorization', `Bearer ${token}`);
   }
   const response = await fetch(`/api${path}`, { ...init, headers });
-  const payload = (await response.json().catch(() => null)) as T | null;
+  const rawPayload = (await response.json().catch(() => null)) as T | null;
+  const payload = rawPayload ? resolveMediaUrlsDeep(rawPayload) : null;
   if (!response.ok || !payload || payload.code !== 200) {
     const authExpired = authenticated && (response.status === 401 || payload?.code === 401);
     if (authExpired) {

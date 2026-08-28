@@ -77,16 +77,6 @@ function formatMoney(value: number) {
   return `¥${value.toFixed(2)}`;
 }
 
-function formatDateTime(value?: string, emptyText = '-') {
-  if (!value) return emptyText;
-  const match = value.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})/);
-  return match ? `${match[1]} ${match[2]}` : value;
-}
-
-function formatDate(value?: string, emptyText = '-') {
-  return value ? value.slice(0, 10) : emptyText;
-}
-
 function toDateInput(value?: string) {
   return value?.slice(0, 10) ?? '';
 }
@@ -477,8 +467,8 @@ export default function CouponModule({ session }: CouponModuleProps) {
       responsive: ['md'],
       render: (_, coupon) => (
         <div>
-          <div>{formatDate(coupon.startTime)}</div>
-          <div className={styles.subText}>至 {formatDate(coupon.endTime)}</div>
+          <div>{coupon.startTime || '-'}</div>
+          <div className={styles.subText}>至 {coupon.endTime || '-'}</div>
         </div>
       ),
     },
@@ -801,7 +791,7 @@ export default function CouponModule({ session }: CouponModuleProps) {
           loading={historyLoading}
           dataSource={history}
           columns={[
-            { title: '下发时间', dataIndex: 'createTime', render: (value: string) => formatDateTime(value) },
+            { title: '下发时间', dataIndex: 'createTime', render: (value?: string) => value || '-' },
             {
               title: '方式',
               dataIndex: 'grantType',
@@ -889,7 +879,7 @@ export default function CouponModule({ session }: CouponModuleProps) {
           dataSource={redemptions}
           scroll={{ x: 'max-content' }}
           columns={[
-            { title: '核销时间', dataIndex: 'redeemedAt', render: (value: string) => formatDateTime(value) },
+            { title: '核销时间', dataIndex: 'redeemedAt', render: (value?: string) => value || '-' },
             { title: '优惠券', dataIndex: 'couponName' },
             { title: '用户', render: (_, row: ManagedCouponRedemption) => `${row.nickName || row.userName}（${row.userName}）` },
             { title: '优惠金额', dataIndex: 'discountAmount', render: (value: number) => formatMoney(value) },

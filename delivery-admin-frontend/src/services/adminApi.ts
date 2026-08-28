@@ -1,4 +1,5 @@
 import type { AdminSession, CouponRedeemPreview, ManagedCoupon, ManagedCouponGrant, ManagedCouponRedemption, ManagedLogisticsTrace, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, MerchantAuditLog, ProductCategoryOption, ShopMemberLevel, ShopUserAccount } from '@/types';
+import { mediaStoragePath, uploadedMediaPath } from '@/utils/media';
 
 const tokenStorageKey = 'zhenke_admin_access_token';
 
@@ -293,12 +294,6 @@ export interface DashboardSummaryDto {
   orderDailyCounts: Array<{ date: string; count: number }>;
 }
 
-function formatApiDateTime(value?: string) {
-  if (!value) return undefined;
-  const match = value.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})/);
-  return match ? `${match[1]} ${match[2]}` : value;
-}
-
 function toMerchantAccount(dto: MerchantDto): MerchantAccount {
   return {
     id: dto.merchantId,
@@ -310,7 +305,7 @@ function toMerchantAccount(dto: MerchantDto): MerchantAccount {
     ownerName: dto.contactName,
     phone: dto.contactPhone,
     companyAddress: dto.companyAddress,
-    businessLicense: dto.businessLicense,
+    businessLicense: mediaStoragePath(dto.businessLicense) || undefined,
     companyCreditCode: dto.companyCreditCode,
     legalPerson: dto.legalPerson,
     licenseVerified: dto.licenseVerified === '1',
@@ -318,14 +313,17 @@ function toMerchantAccount(dto: MerchantDto): MerchantAccount {
     originTraceability: dto.originTraceability,
     acceptsVerificationRecruitment: dto.acceptsVerificationRecruitment === '0',
     acceptsPublicWelfare: dto.acceptsPublicWelfare === '0',
-    registeredAt: formatApiDateTime(dto.createTime),
+    registeredAt: dto.createTime,
     auditStatus: ({ PENDING: 'pending', APPROVED: 'approved', REJECTED: 'rejected' } as const)[dto.auditStatus],
     auditRemark: dto.auditRemark,
     auditBy: dto.auditBy,
     auditTime: dto.auditTime,
     status: dto.status === '0' ? 'active' : 'disabled',
     auditLogs: dto.auditLogs,
-    storeProofMedia: dto.storeProofMedia ?? [],
+    storeProofMedia: (dto.storeProofMedia ?? []).map((item) => ({
+      ...item,
+      mediaUrl: mediaStoragePath(item.mediaUrl),
+    })),
   };
 }
 
@@ -341,9 +339,9 @@ function toManagedProduct(dto: ProductDto): ManagedProduct {
     categoryId: dto.categoryId,
     categoryName: dto.categoryName,
     status: ({ DRAFT: 'draft', ON_SALE: 'onSale', OFF_SALE: 'offSale' } as const)[dto.status],
-    imageUrl: dto.coverUrl,
-    mainImageUrls: dto.mainImageUrls ?? [],
-    detailImageUrls: dto.detailImageUrls ?? [],
+    imageUrl: mediaStoragePath(dto.coverUrl),
+    mainImageUrls: (dto.mainImageUrls ?? []).map(mediaStoragePath),
+    detailImageUrls: (dto.detailImageUrls ?? []).map(mediaStoragePath),
     price: Number(dto.price),
     cost: 0,
     stock: dto.stock,
@@ -397,21 +395,21 @@ function toManagedOrder(dto: ShopOrderDto): ManagedOrder {
     refundReason: dto.refundReason,
     refundReviewRequired: dto.refundReviewRequired === '1',
     refundAuditRemark: dto.refundAuditRemark,
-    refundRequestedAt: formatApiDateTime(dto.refundRequestTime),
-    refundAuditedAt: formatApiDateTime(dto.refundAuditTime),
-    refundCompletedAt: formatApiDateTime(dto.refundCompleteTime),
-    createdAt: formatApiDateTime(dto.createTime) ?? '',
-    paidAt: formatApiDateTime(dto.payTime),
+    refundRequestedAt: dto.refundRequestTime,
+    refundAuditedAt: dto.refundAuditTime,
+    refundCompletedAt: dto.refundCompleteTime,
+    createdAt: dto.createTime,
+    paidAt: dto.payTime,
     carrier: dto.carrier,
     trackingNo: dto.trackingNo,
-    shippedAt: formatApiDateTime(dto.shipTime),
-    receivedAt: formatApiDateTime(dto.receiveTime),
+    shippedAt: dto.shipTime,
+    receivedAt: dto.receiveTime,
     logisticsEvents: (Array.isArray(dto.logisticsEvents) ? dto.logisticsEvents : []).map((event) => ({
       eventId: event.eventId,
       eventCode: event.eventCode,
       description: event.description,
       location: event.location,
-      eventTime: formatApiDateTime(event.eventTime) ?? event.eventTime,
+      eventTime: event.eventTime,
       source: event.source,
     })),
   };
@@ -942,7 +940,7 @@ function toManagedTrial(dto: TrialCampaignDto): ManagedTrialRecruitment {
     deadline: dto.applicationDeadline?.slice(0, 10) ?? '',
     applicantCount: dto.applicantCount,
     status: ({ DRAFT: 'draft', RECRUITING: 'recruiting', CLOSED: 'closed', FINISHED: 'finished' } as const)[dto.status],
-    createdAt: formatApiDateTime(dto.publishedAt ?? dto.createTime) ?? '',
+    createdAt: dto.publishedAt ?? dto.createTime ?? '',
   };
 }
 
@@ -976,9 +974,9 @@ function toManagedReport(dto: VerificationReportDto): ManagedReport {
     // aiScore: dto.aiScore === undefined || dto.aiScore === null ? undefined : Number(dto.aiScore),
     // aiScoreStatus: dto.aiScoreStatus,
     // aiScoreReason: dto.aiScoreReason,
-    // aiScoredAt: formatApiDateTime(dto.aiScoredAt),
+    // aiScoredAt: dto.aiScoredAt,
     usefulCount: Number(dto.usefulCount ?? 0),
-    createdAt: formatApiDateTime(dto.publishedAt) ?? '',
+    createdAt: dto.publishedAt,
   };
 }
 
@@ -1183,11 +1181,30 @@ export async function uploadAdminFile(
     headers: { Authorization: `Bearer ${token}` },
     body,
   });
-  const payload = (await response.json().catch(() => null)) as (ApiResponse & { url?: string }) | null;
-  if (!response.ok || !payload || payload.code !== 200 || !payload.url) {
+  const payload = (await response.json().catch(() => null)) as (ApiResponse & { path?: string; fileName?: string; url?: string }) | null;
+  if (!response.ok || !payload || payload.code !== 200) {
     throw new Error(payload?.msg || '文件上传失败');
   }
-  return payload.url;
+  return uploadedMediaPath(payload);
 }
 
-export async function uploadBannerImage(file: File) { const token=getToken(); if(!token) throw new Error('请先登录'); const body=new FormData(); body.append('file',file); const response=await fetch('/api/common/upload',{method:'POST',headers:{Authorization:`Bearer ${token}`},body}); const payload=await response.json(); if(!response.ok||payload.code!==200||!payload.url) throw new Error(payload.msg||'轮播图片上传失败'); return payload.url as string; }
+export async function uploadBannerImage(file: File) {
+  const token = getToken();
+  if (!token) throw new Error('请先登录');
+  const body = new FormData();
+  body.append('file', file);
+  const response = await fetch('/api/common/upload', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+  });
+  const payload = (await response.json().catch(() => null)) as (ApiResponse & {
+    path?: string;
+    fileName?: string;
+    url?: string;
+  }) | null;
+  if (!response.ok || !payload || payload.code !== 200) {
+    throw new Error(payload?.msg || '图片上传失败');
+  }
+  return uploadedMediaPath(payload);
+}

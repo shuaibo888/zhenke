@@ -1,6 +1,5 @@
 package com.ruoyi.shop.controller;
 
-import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import jakarta.validation.Valid;
@@ -27,6 +26,7 @@ import com.ruoyi.shop.qualification.LicenseVerifyResult;
 import com.ruoyi.shop.domain.vo.ShopMerchantPublicView;
 import com.ruoyi.shop.map.TencentMapService;
 import com.ruoyi.shop.service.ShopMerchantService;
+import com.ruoyi.shop.util.ShopPlatformMediaPathUtils;
 
 @RestController
 @RequestMapping("/shop/merchants")
@@ -87,13 +87,7 @@ public class ShopMerchantController {
     }
 
     private String resourcePathOf(String url) {
-        try {
-            String path = URI.create(url).getPath();
-            return path == null ? "" : path;
-        }
-        catch (IllegalArgumentException exception) {
-            return "";
-        }
+        return ShopPlatformMediaPathUtils.normalize(url);
     }
 
     @Anonymous

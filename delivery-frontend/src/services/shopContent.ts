@@ -1,4 +1,5 @@
 import { getToken, requestApi, type ApiResponse, type TableResponse } from './apiClient';
+import { extractPlatformMediaPath } from '@/utils/mediaUrl';
 
 export interface PublicMerchantDto {
   merchantId: number;
@@ -725,9 +726,14 @@ export async function publishVerificationReport(body: {
   recommend: boolean;
   resources: Array<{ resourceType: 'IMAGE' | 'VIDEO'; resourceUrl: string }>;
 }) {
+  const resources = body.resources.map((resource) => {
+    const resourceUrl = extractPlatformMediaPath(resource.resourceUrl);
+    if (!resourceUrl) throw new Error('甄客验媒体地址无效，请重新上传');
+    return { ...resource, resourceUrl };
+  });
   const result = await requestApi<ApiResponse<VerificationReportDto>>(
     '/shop/reports',
-    { method: 'POST', body: JSON.stringify(body) },
+    { method: 'POST', body: JSON.stringify({ ...body, resources }) },
     true,
   );
   if (!result.data) throw new Error('验证报告发布失败');
@@ -755,9 +761,14 @@ export async function publishPurchaseVerificationReport(body: {
   serviceAttitude: number;
   resources: Array<{ resourceType: 'IMAGE' | 'VIDEO'; resourceUrl: string }>;
 }) {
+  const resources = body.resources.map((resource) => {
+    const resourceUrl = extractPlatformMediaPath(resource.resourceUrl);
+    if (!resourceUrl) throw new Error('甄客验媒体地址无效，请重新上传');
+    return { ...resource, resourceUrl };
+  });
   const result = await requestApi<ApiResponse<VerificationReportDto>>(
     '/shop/reports/purchase',
-    { method: 'POST', body: JSON.stringify(body) },
+    { method: 'POST', body: JSON.stringify({ ...body, resources }) },
     true,
   );
   if (!result.data) throw new Error('购买甄客验发布失败');
@@ -797,6 +808,7 @@ export async function uploadShopContentFile(file: File) {
     { method: 'POST', body },
     true,
   );
-  if (!result.data) throw new Error('甄客验资源上传失败');
-  return result.data;
+  const path = extractPlatformMediaPath(result.data);
+  if (!path) throw new Error('甄客验资源上传结果无效，请重试');
+  return path;
 }

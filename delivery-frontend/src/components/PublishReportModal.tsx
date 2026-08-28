@@ -1,4 +1,4 @@
-import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, InboxOutlined } from '@ant-design/icons';
 import { Button, Form, Input, Modal, Radio, Rate, Upload, message } from 'antd';
 import { useState } from 'react';
 import {
@@ -10,6 +10,7 @@ import {
   type VerificationReportDto,
 } from '@/services/shopContent';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { mediaPreviewUrl } from '@/utils/mediaUrl';
 import styles from '@/styles/commerce.less';
 
 type PurchaseItem = ShopOrderDto['items'][number];
@@ -243,8 +244,8 @@ export function PublishReportModal({
                 key={`${resource.resourceUrl}-${index}`}
               >
                 {resource.resourceType === 'IMAGE'
-                  ? <img src={resource.resourceUrl} alt={`体验资源${index + 1}`} />
-                  : <video src={resource.resourceUrl} controls playsInline preload="metadata" />}
+                  ? <img src={mediaPreviewUrl(resource.resourceUrl)} alt={`体验资源${index + 1}`} />
+                  : <video src={mediaPreviewUrl(resource.resourceUrl)} controls playsInline preload="metadata" />}
                 <span className={styles.reviewMediaBadge}>
                   {resource.resourceType === 'VIDEO'
                     ? `视频${resource.durationSeconds ? ` · ${resource.durationSeconds}秒` : ''}`
@@ -262,21 +263,29 @@ export function PublishReportModal({
             ))}
             {resources.length < MAX_RESOURCE_COUNT && (
               <div className={styles.reviewUploadButtons}>
-                <Upload
+                <Upload.Dragger
+                  className={styles.reviewDropzone}
                   accept=".jpg,.jpeg,.png,image/jpeg,image/png"
                   showUploadList={false}
+                  disabled={uploading}
                   beforeUpload={(file) => upload(file as File, 'IMAGE')}
                 >
-                  <Button icon={<UploadOutlined />} loading={uploading} disabled={uploading}>上传图片（必传）</Button>
-                </Upload>
+                  <InboxOutlined />
+                  <strong>{uploading ? '正在上传…' : '点击或拖拽上传图片'}</strong>
+                  <small>JPG / PNG，单张不超过 5MB</small>
+                </Upload.Dragger>
                 {!resources.some((item) => item.resourceType === 'VIDEO') && (
-                  <Upload
+                  <Upload.Dragger
+                    className={styles.reviewDropzone}
                     accept=".mp4,video/mp4"
                     showUploadList={false}
+                    disabled={uploading}
                     beforeUpload={(file) => upload(file as File, 'VIDEO')}
                   >
-                    <Button icon={<UploadOutlined />} loading={uploading} disabled={uploading}>上传视频（选传）</Button>
-                  </Upload>
+                    <InboxOutlined />
+                    <strong>{uploading ? '正在上传…' : '点击或拖拽上传视频'}</strong>
+                    <small>MP4，不超过 10MB / 30 秒</small>
+                  </Upload.Dragger>
                 )}
               </div>
             )}

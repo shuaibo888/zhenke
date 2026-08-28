@@ -3,6 +3,7 @@ package com.ruoyi.shop.service;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -17,6 +18,7 @@ import com.ruoyi.shop.domain.ShopProductImage;
 import com.ruoyi.shop.domain.dto.ShopProductBody;
 import com.ruoyi.shop.domain.dto.ShopProductCategoryBody;
 import com.ruoyi.shop.mapper.ShopProductMapper;
+import com.ruoyi.shop.util.ShopPlatformMediaPathUtils;
 
 @Service
 public class ShopProductService
@@ -151,15 +153,17 @@ public class ShopProductService
     {
         ShopMerchant merchant = merchantService.currentMerchantAccount();
         requireEnabledCategory(body.getCategoryId());
-        requireCreateImages(body);
-        ShopProduct product = fromBody(body);
+        long merchantId = merchant.getMerchantId();
+        ProductMedia media = normalizeProductMedia(body, merchantId, Set.of());
+        requireCreateImages(media);
+        ShopProduct product = fromBody(body, media.coverUrl());
         product.setMerchantId(merchant.getMerchantId());
         product.setStatus(DRAFT);
         product.setDelFlag("0");
         product.setCreateBy(operator);
         product.setUpdateBy(operator);
         productMapper.insertProduct(product);
-        replaceImages(product.getProductId(), body.getMainImageUrls(), body.getDetailImageUrls());
+        replaceImages(product.getProductId(), media.mainImageUrls(), media.detailImageUrls());
         return merchantProduct(product.getProductId());
     }
 
@@ -182,8 +186,11 @@ public class ShopProductService
     {
         ShopProduct existing = requireVisibleProduct(productMapper.selectMerchantProduct(merchantId, productId));
         requireEnabledCategory(body.getCategoryId());
-        boolean criticalChange = hasCertificationCriticalChange(existing, body);
-        ShopProduct product = fromBody(body);
+        Set<String> legacyMedia = legacyMediaValues(existing);
+        ProductMedia media = normalizeProductMedia(body, merchantId, legacyMedia);
+        boolean criticalChange = hasCertificationCriticalChange(
+                existing, body, media, merchantId, legacyMedia);
+        ShopProduct product = fromBody(body, media.coverUrl());
         product.setProductId(productId);
         product.setMerchantId(merchantId);
         product.setUpdateBy(operator);
@@ -191,7 +198,7 @@ public class ShopProductService
         {
             throw new ServiceException("商品不存在");
         }
-        replaceImages(productId, body.getMainImageUrls(), body.getDetailImageUrls());
+        replaceImages(productId, media.mainImageUrls(), media.detailImageUrls());
         if (criticalChange)
         {
             certificationService.invalidateForCriticalProductChange(merchantId, productId, operator);
@@ -248,7 +255,7 @@ public class ShopProductService
                 : requireVisibleProduct(productMapper.selectMerchantProduct(merchantId, productId));
     }
 
-    private ShopProduct fromBody(ShopProductBody body)
+    private ShopProduct fromBody(ShopProductBody body, String coverUrl)
     {
         ShopProduct product = new ShopProduct();
         product.setCategoryId(body.getCategoryId());
@@ -262,7 +269,7 @@ public class ShopProductService
         product.setReservationRequired(Boolean.TRUE.equals(body.getReservationRequired()) ? "1" : "0");
         product.setReservationNotice(StringUtils.trim(body.getReservationNotice()));
         product.setRefundExpiryRule(StringUtils.trim(body.getRefundExpiryRule()));
-        product.setCoverUrl(normalizeProductImageUrl(body.getCoverUrl()));
+        product.setCoverUrl(coverUrl);
         product.setPrice(body.getPrice());
         boolean stockUnlimited = Boolean.TRUE.equals(body.getStockUnlimited());
         if (!stockUnlimited && body.getStock() == null)
@@ -316,14 +323,24 @@ public class ShopProductService
         product.setSupportsOffline(offline ? "1" : "0");
     }
 
-    private List<String> normalizedImageUrls(List<String> imageUrls)
+    private ProductMedia normalizeProductMedia(
+            ShopProductBody body, long merchantId, Set<String> legacyMedia)
+    {
+        return new ProductMedia(
+                normalizeProductImageUrl(body.getCoverUrl(), merchantId, legacyMedia),
+                normalizedImageUrls(body.getMainImageUrls(), merchantId, legacyMedia),
+                normalizedImageUrls(body.getDetailImageUrls(), merchantId, legacyMedia));
+    }
+
+    private List<String> normalizedImageUrls(
+            List<String> imageUrls, long merchantId, Set<String> legacyMedia)
     {
         Set<String> unique = new LinkedHashSet<>();
         if (imageUrls != null)
         {
             for (String imageUrl : imageUrls)
             {
-                String value = normalizeProductImageUrl(imageUrl);
+                String value = normalizeProductImageUrl(imageUrl, merchantId, legacyMedia);
                 if (StringUtils.isNotEmpty(value))
                 {
                     unique.add(value);
@@ -333,45 +350,78 @@ public class ShopProductService
         return new ArrayList<>(unique);
     }
 
-    private String normalizeProductImageUrl(String imageUrl)
+    private String normalizeProductImageUrl(
+            String imageUrl, long merchantId, Set<String> legacyMedia)
     {
-        String value = StringUtils.trim(imageUrl);
-        if (StringUtils.isEmpty(value))
+        String submittedValue = StringUtils.trim(imageUrl);
+        if (StringUtils.isEmpty(submittedValue))
         {
-            return value;
+            return submittedValue;
         }
-        int productPathIndex = value.indexOf(PRODUCT_IMAGE_PATH_PREFIX);
-        return productPathIndex >= 0 ? value.substring(productPathIndex) : value;
+        try
+        {
+            String normalized = ShopPlatformMediaPathUtils.normalize(submittedValue);
+            String ownerPrefix = PRODUCT_IMAGE_PATH_PREFIX + "merchant-" + merchantId + "/";
+            String lowerValue = normalized.toLowerCase(Locale.ROOT);
+            if (normalized.startsWith(ownerPrefix)
+                    && (lowerValue.endsWith(".jpg")
+                            || lowerValue.endsWith(".jpeg")
+                            || lowerValue.endsWith(".png")))
+            {
+                ShopPlatformMediaPathUtils.requireStoredImage(normalized);
+                return normalized;
+            }
+        }
+        catch (ServiceException exception)
+        {
+            // Exact legacy values may remain unchanged while an existing product is edited.
+        }
+        if (legacyMedia.contains(submittedValue))
+        {
+            return submittedValue;
+        }
+        throw new ServiceException("商品图片必须通过当前商家账号上传");
     }
 
-    private void requireCreateImages(ShopProductBody body)
+    private void requireCreateImages(ProductMedia media)
     {
-        if (normalizedImageUrls(body.getMainImageUrls()).isEmpty())
+        if (StringUtils.isEmpty(media.coverUrl()))
+        {
+            throw new ServiceException("请上传商品封面图");
+        }
+        if (media.mainImageUrls().isEmpty())
         {
             throw new ServiceException("请至少上传1张商品主图");
         }
-        if (normalizedImageUrls(body.getDetailImageUrls()).isEmpty())
+        if (media.detailImageUrls().isEmpty())
         {
             throw new ServiceException("请至少上传1张商品详情图");
         }
     }
 
-    private boolean hasCertificationCriticalChange(ShopProduct existing, ShopProductBody body)
+    private boolean hasCertificationCriticalChange(
+            ShopProduct existing, ShopProductBody body, ProductMedia submittedMedia,
+            long merchantId, Set<String> legacyMedia)
     {
         return !Objects.equals(existing.getCategoryId(), body.getCategoryId())
                 || !Objects.equals(StringUtils.trim(existing.getBrandName()), StringUtils.trim(body.getBrandName()))
                 || !Objects.equals(StringUtils.trim(existing.getProductName()), StringUtils.trim(body.getProductName()))
-                || !Objects.equals(normalizeProductImageUrl(existing.getCoverUrl()),
-                        normalizeProductImageUrl(body.getCoverUrl()))
-                || !Objects.equals(normalizedImageUrls(existing.getMainImageUrls()), normalizedImageUrls(body.getMainImageUrls()))
-                || !Objects.equals(normalizedImageUrls(existing.getDetailImageUrls()), normalizedImageUrls(body.getDetailImageUrls()));
+                || !Objects.equals(
+                        normalizeProductImageUrl(existing.getCoverUrl(), merchantId, legacyMedia),
+                        submittedMedia.coverUrl())
+                || !Objects.equals(
+                        normalizedImageUrls(existing.getMainImageUrls(), merchantId, legacyMedia),
+                        submittedMedia.mainImageUrls())
+                || !Objects.equals(
+                        normalizedImageUrls(existing.getDetailImageUrls(), merchantId, legacyMedia),
+                        submittedMedia.detailImageUrls());
     }
 
     private void replaceImages(Long productId, List<String> mainImageUrls, List<String> detailImageUrls)
     {
         productMapper.deleteImages(productId);
         int sort = 1;
-        for (String imageUrl : normalizedImageUrls(mainImageUrls))
+        for (String imageUrl : mainImageUrls)
         {
             ShopProductImage image = new ShopProductImage();
             image.setProductId(productId);
@@ -381,7 +431,7 @@ public class ShopProductService
             productMapper.insertImage(image);
         }
         sort = 1;
-        for (String imageUrl : normalizedImageUrls(detailImageUrls))
+        for (String imageUrl : detailImageUrls)
         {
             ShopProductImage image = new ShopProductImage();
             image.setProductId(productId);
@@ -390,6 +440,35 @@ public class ShopProductService
             image.setImageSort(sort++);
             productMapper.insertImage(image);
         }
+    }
+
+    private Set<String> legacyMediaValues(ShopProduct product)
+    {
+        Set<String> values = new LinkedHashSet<>();
+        addLegacyMediaValue(values, product.getCoverUrl());
+        if (product.getMainImageUrls() != null)
+        {
+            product.getMainImageUrls().forEach(value -> addLegacyMediaValue(values, value));
+        }
+        if (product.getDetailImageUrls() != null)
+        {
+            product.getDetailImageUrls().forEach(value -> addLegacyMediaValue(values, value));
+        }
+        return values;
+    }
+
+    private void addLegacyMediaValue(Set<String> values, String value)
+    {
+        String normalized = StringUtils.trim(value);
+        if (StringUtils.isNotEmpty(normalized))
+        {
+            values.add(normalized);
+        }
+    }
+
+    private record ProductMedia(
+            String coverUrl, List<String> mainImageUrls, List<String> detailImageUrls)
+    {
     }
 
     private ShopProduct requireVisibleProduct(ShopProduct product)

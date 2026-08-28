@@ -110,6 +110,7 @@ import RedeemConfirmModal from '@/modules/trials/RedeemConfirmModal';
 import { AdminPageContext, type AdminPagePropsMap } from '@/app/AdminPageContext';
 import { adminNavPaths, getAdminNavKey } from '@/app/adminRoutes';
 import { filterRowsForSession, getAvailableNavKeys, hasGlobalAccess } from '@/utils/access';
+import { mediaPreviewUrl, mediaStoragePath } from '@/utils/media';
 import { getManagedOrderStatusMeta, type OrderStatusFilter } from '@/utils/orderManagement';
 import { type ProductCategoryFilter, type ProductStatusFilter } from '@/utils/productFilters';
 import styles from '@/pages/index.less';
@@ -177,12 +178,6 @@ const productStatusMeta: Record<ProductStatus, { label: string; color: string }>
 
 function formatMoney(value: number) {
   return `¥${value.toFixed(2)}`;
-}
-
-function formatDateTime(value?: string, emptyText = '-') {
-  if (!value) return emptyText;
-  const match = value.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})/);
-  return match ? `${match[1]} ${match[2]}` : value;
 }
 
 function getManagedReportTypeMeta(report: ManagedReport) {
@@ -784,14 +779,14 @@ function AdminWorkspace() {
         reservationRequired: Boolean(values.reservationRequired),
         reservationNotice: values.reservationNotice?.trim(),
         refundExpiryRule: values.refundExpiryRule?.trim(),
-        coverUrl: values.imageUrl.trim(),
+        coverUrl: mediaStoragePath(values.imageUrl),
         price: values.price,
         stock: values.stockUnlimited ? undefined : values.stock,
         stockUnlimited: values.stockUnlimited,
         supportsOnline: values.supportsOnline,
         supportsOffline: values.supportsOffline,
-        mainImageUrls: values.mainImageUrls ?? [],
-        detailImageUrls: values.detailImageUrls ?? [],
+        mainImageUrls: (values.mainImageUrls ?? []).map(mediaStoragePath),
+        detailImageUrls: (values.detailImageUrls ?? []).map(mediaStoragePath),
       };
       if (editingProductId) await updateMerchantProduct(session, editingProductId, body);
       else if (session.loginType === 'merchant') await createMerchantProduct(body);
@@ -1304,7 +1299,7 @@ function AdminWorkspace() {
       responsive: ['md'],
       render: (_, user) => (
         <div>
-          <div>{formatDateTime(user.loginDate, '尚未登录')}</div>
+          <div>{user.loginDate || '尚未登录'}</div>
           {user.loginIp && <div className={styles.subText}>{user.loginIp}</div>}
         </div>
       ),
@@ -1313,7 +1308,7 @@ function AdminWorkspace() {
       title: '注册时间',
       dataIndex: 'createTime',
       responsive: ['md'],
-      render: (value?: string) => formatDateTime(value),
+      render: (value?: string) => value || '-',
     },
     {
       title: '注册来源',
@@ -1347,7 +1342,7 @@ function AdminWorkspace() {
       dataIndex: 'title',
       render: (_, product) => (
         <div className={styles.productCell}>
-          <div className={styles.productThumb} style={{ backgroundImage: `url(${product.imageUrl})` }} />
+          <div className={styles.productThumb} style={{ backgroundImage: `url(${mediaPreviewUrl(product.imageUrl)})` }} />
           <div>
             <div className={styles.strongText}>{product.title}</div>
             <div className={styles.subText}>品牌：{product.brandName}</div>

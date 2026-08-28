@@ -100,16 +100,10 @@ export default function CheckoutPage() {
   const [loadedPaymentOrder, setLoadedPaymentOrder] = useState<ShopOrderDto | null>(null);
   const [orderLoading, setOrderLoading] = useState(orderMode);
   const [orderLoadError, setOrderLoadError] = useState('');
-  const [orderReloadVersion, setOrderReloadVersion] = useState(0);
   const [productLoading, setProductLoading] = useState(!orderMode && source === 'buy');
-  const [productLoadError, setProductLoadError] = useState('');
-  const [productReloadVersion, setProductReloadVersion] = useState(0);
   const [checkoutRefreshError, setCheckoutRefreshError] = useState('');
-  const [checkoutRefreshVersion, setCheckoutRefreshVersion] = useState(0);
   const [availableCoupons, setAvailableCoupons] = useState<ShopCouponDto[]>([]);
   const [couponsLoading, setCouponsLoading] = useState(false);
-  const [couponLoadError, setCouponLoadError] = useState('');
-  const [couponReloadVersion, setCouponReloadVersion] = useState(0);
   const [selectedCouponIds, setSelectedCouponIds] = useState<number[]>([]);
   const [draftCouponIds, setDraftCouponIds] = useState<number[]>([]);
   const [couponOpen, setCouponOpen] = useState(false);
@@ -130,7 +124,7 @@ export default function CheckoutPage() {
       setCheckoutRefreshError(reason);
       message.error(reason);
     });
-  }, [checkoutRefreshVersion, orderMode, refreshAddresses, refreshCart, refreshCoupons, source, user]);
+  }, [orderMode, refreshAddresses, refreshCart, refreshCoupons, source, user]);
 
   useEffect(() => {
     if (!orderMode || !orderId || !user) {
@@ -160,24 +154,22 @@ export default function CheckoutPage() {
     return () => {
       mounted = false;
     };
-  }, [orderId, orderMode, orderReloadVersion, user]);
+  }, [orderId, orderMode, user]);
 
   useEffect(() => {
     if (orderMode || source !== 'buy') {
       setProductLoading(false);
-      setProductLoadError('');
       return;
     }
     if (!Number.isSafeInteger(productId) || productId <= 0) {
       setProduct(null);
-      setProductLoadError('商品编号无效');
+      message.error({ key: 'checkout-product-load', content: '商品编号无效' });
       setProductLoading(false);
       return;
     }
     let mounted = true;
     setProductLoading(true);
     setProduct(null);
-    setProductLoadError('');
     fetchPublicProduct(productId)
       .then((nextProduct) => {
         if (mounted) setProduct(nextProduct);
@@ -185,8 +177,7 @@ export default function CheckoutPage() {
       .catch((error) => {
         if (mounted) {
           const reason = error instanceof Error ? error.message : '商品加载失败';
-          setProductLoadError(reason);
-          message.error(reason);
+          message.error({ key: 'checkout-product-load', content: reason });
         }
       })
       .finally(() => {
@@ -195,7 +186,7 @@ export default function CheckoutPage() {
     return () => {
       mounted = false;
     };
-  }, [orderMode, productId, productReloadVersion, source]);
+  }, [orderMode, productId, source]);
 
   useEffect(() => {
     if (selectedAddressId && addresses.some((address) => address.id === selectedAddressId)) return;
@@ -337,7 +328,6 @@ export default function CheckoutPage() {
     }
     let mounted = true;
     setCouponsLoading(true);
-    setCouponLoadError('');
     setAvailableCoupons([]);
     setSelectedCouponIds([]);
     setDraftCouponIds([]);
@@ -352,7 +342,6 @@ export default function CheckoutPage() {
       .catch((error) => {
         if (mounted) {
           const reason = error instanceof Error ? error.message : '可用优惠券加载失败';
-          setCouponLoadError(reason);
           message.error(reason);
         }
       })
@@ -362,7 +351,7 @@ export default function CheckoutPage() {
     return () => {
       mounted = false;
     };
-  }, [couponReloadVersion, merchants, orderMode, singleCheckoutGroup, subtotal, user]);
+  }, [merchants, orderMode, singleCheckoutGroup, subtotal, user]);
 
   if (!user) {
     return <LoginRedirect />;
@@ -499,50 +488,7 @@ export default function CheckoutPage() {
           paymentOnly={orderMode}
         />
 
-        {!orderMode && checkoutRefreshError && (
-          <Alert
-            className={styles.checkoutOrderState}
-            type="error"
-            showIcon
-            message="结算所需信息未能完整加载"
-            description={checkoutRefreshError}
-            action={<Button danger onClick={() => setCheckoutRefreshVersion((value) => value + 1)}>重新加载</Button>}
-          />
-        )}
-
         <Spin spinning={pageLoading}>
-          {orderMode && !pageLoading && (!paymentOrder || orderLoadError) && (
-            <Alert
-              className={styles.checkoutOrderState}
-              type="error"
-              showIcon
-              message="订单暂时无法加载"
-              description={orderLoadError || '订单不存在、无权查看或状态已经变化。'}
-              action={(
-                <Space wrap>
-                  {orderLoadError && <Button danger onClick={() => setOrderReloadVersion((value) => value + 1)}>重新加载</Button>}
-                  <Button onClick={() => navigate('/profile/orders')}>返回订单</Button>
-                </Space>
-              )}
-            />
-          )}
-          {!orderMode && source === 'buy' && !pageLoading && !product && (
-            <Alert
-              className={styles.checkoutOrderState}
-              type="error"
-              showIcon
-              message="商品暂时无法加载"
-              description={productLoadError || '商品不存在或已经下架。'}
-              action={(
-                <Space wrap>
-                  {Number.isSafeInteger(productId) && productId > 0 && (
-                    <Button danger onClick={() => setProductReloadVersion((value) => value + 1)}>重新加载</Button>
-                  )}
-                  <Button onClick={() => navigate('/mall')}>返回商城</Button>
-                </Space>
-              )}
-            />
-          )}
           {!orderMode && source === 'cart' && !pageLoading && lines.length === 0 && !checkoutRefreshError && (
             <Alert
               className={styles.checkoutOrderState}
@@ -770,16 +716,6 @@ export default function CheckoutPage() {
                   </span>
                   {availableCoupons.length > 0 && singleCheckoutGroup && <RightOutlined />}
                 </button>}
-                {!orderMode && couponLoadError && singleCheckoutGroup && (
-                  <Alert
-                    className={styles.checkoutCouponAlert}
-                    type="error"
-                    showIcon
-                    message="可用优惠券加载失败"
-                    description={couponLoadError}
-                    action={<Button size="small" danger onClick={() => setCouponReloadVersion((value) => value + 1)}>重试</Button>}
-                  />
-                )}
               </section>
             </div>
 

@@ -1,6 +1,8 @@
-import { Button, Input, Modal, Space, Spin, message } from 'antd';
+import { InboxOutlined } from '@ant-design/icons';
+import { Button, Input, Modal, Spin, Upload, message } from 'antd';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { validateJpegPngImage } from '@/utils/media';
 import styles from '@/pages/index.less';
 
 const REDEEM_CODE_PATTERN = /^(?:[0-9a-f]{32}|CP[0-9a-f]{32})$/i;
@@ -136,10 +138,8 @@ export default function RedeemScanModal({
 
   useEffect(() => () => { void stopScanner(); }, [stopScanner]);
 
-  const scanFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file || busyRef.current) return;
+  const scanFile = async (file: File) => {
+    if (busyRef.current) return;
     busyRef.current = true;
     setFileLoading(true);
     try {
@@ -227,18 +227,27 @@ export default function RedeemScanModal({
             <Button onClick={() => void startScanner()}>重试摄像头</Button>
           </div>
         )}
-        <Space style={{ justifyContent: 'space-between' }}>
-          <Button loading={fileLoading} onClick={() => document.getElementById('redeem-file-input')?.click()}>
-            上传二维码图片
-          </Button>
-          <input
-            id="redeem-file-input"
-            type="file"
-            accept="image/*"
-            style={{ display: 'none' }}
-            onChange={(event) => void scanFile(event)}
-          />
-        </Space>
+        <Upload.Dragger
+          className={styles.mediaDropzone}
+          accept="image/jpeg,image/png"
+          maxCount={1}
+          multiple={false}
+          showUploadList={false}
+          disabled={fileLoading || redeeming}
+          beforeUpload={(file) => {
+            try {
+              validateJpegPngImage(file as File, '二维码图片');
+              void scanFile(file as File);
+            } catch (error) {
+              message.error(error instanceof Error ? error.message : '二维码图片格式不符合要求');
+            }
+            return Upload.LIST_IGNORE;
+          }}
+        >
+          <p className="ant-upload-drag-icon"><InboxOutlined /></p>
+          <p className="ant-upload-text">点击选择，或拖拽二维码图片到这里识别</p>
+          <p className="ant-upload-hint">仅在本地解析，不会上传到服务器；支持 JPG / PNG，不超过 5MB</p>
+        </Upload.Dragger>
         <div style={{ display: 'flex', gap: 8 }}>
           <Input
             placeholder="手动输入核销码"

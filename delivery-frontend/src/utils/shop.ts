@@ -4,11 +4,6 @@ export function formatPrice(value: number) {
   return `¥${Number(value || 0).toFixed(2)}`;
 }
 
-export function formatDateTime(value?: string) {
-  if (!value) return '';
-  return value.replace('T', ' ').replace(/\.\d+$/, '').slice(0, 19);
-}
-
 export function getCartCount(items: Array<{ quantity: number }>) {
   return items.reduce((total, item) => total + item.quantity, 0);
 }

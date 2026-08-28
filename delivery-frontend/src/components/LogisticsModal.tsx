@@ -1,8 +1,7 @@
 import { TruckOutlined } from '@ant-design/icons';
-import { Alert, Button, Modal, Spin, Tag } from 'antd';
+import { Modal, Spin, Tag } from 'antd';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import type { LogisticsTraceDto } from '@/services/shopContent';
-import { formatDateTime } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
 
 const stateMeta: Record<LogisticsTraceDto['state'], { label: string; color: string }> = {
@@ -19,8 +18,6 @@ export function LogisticsModal({
   title,
   referenceNo,
   trace,
-  error,
-  onRetry,
   onClose,
 }: {
   open: boolean;
@@ -36,15 +33,7 @@ export function LogisticsModal({
   return (
     <Modal title={title} open={open} onCancel={onClose} footer={null} width={560} rootClassName={styles.responsiveModal}>
       <Spin spinning={loading}>
-        {!loading && error ? (
-          <Alert
-            type="error"
-            showIcon
-            message="物流信息暂时无法查询"
-            description={error}
-            action={onRetry ? <Button size="small" danger onClick={onRetry}>重新查询</Button> : undefined}
-          />
-        ) : trace ? (
+        {trace ? (
           <div className={styles.logisticsOverview}>
             <section className={styles.logisticsSummaryCard}>
               <div className={styles.logisticsSummaryHeader}>
@@ -72,7 +61,7 @@ export function LogisticsModal({
                   <div>
                     <strong>{event.description}</strong>
                     {event.location && <span>{event.location}</span>}
-                    {event.eventTime && <time>{formatDateTime(event.eventTime)}</time>}
+                    {event.eventTime && <time>{event.eventTime}</time>}
                   </div>
                 </article>
               ))}

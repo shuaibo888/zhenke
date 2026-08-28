@@ -10,7 +10,7 @@ import {
   ShareAltOutlined,
   ZoomInOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Drawer, Image, Input, Modal, Spin, Tag, message } from 'antd';
+import { Button, Drawer, Image, Input, Modal, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -457,16 +457,6 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
             </Button>
           </div>
           <Spin spinning={commentsLoading}>
-            {commentsError && (
-              <Alert
-                type="error"
-                showIcon
-                message="评论暂时无法加载"
-                description={commentsError}
-                action={<Button size="small" danger onClick={() => void refreshComments()}>重新加载</Button>}
-                style={{ marginBottom: 16 }}
-              />
-            )}
             <div className={styles.commentList}>
               {comments.map((item) => (
                 <div key={item.commentId} className={styles.commentThread}>

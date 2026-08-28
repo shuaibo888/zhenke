@@ -12,7 +12,7 @@ import {
   TruckOutlined,
   ZoomInOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Drawer, Form, Image, Input, Modal, Spin, Tag, message } from 'antd';
+import { Button, Drawer, Form, Image, Input, Modal, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -112,7 +112,6 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   const [reportLoadFailed, setReportLoadFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [productError, setProductError] = useState('');
-  const [relatedContentError, setRelatedContentError] = useState('');
   const [reloadVersion, setReloadVersion] = useState(0);
   const [trialChoiceOpen, setTrialChoiceOpen] = useState(false);
   const [trialOpen, setTrialOpen] = useState(false);
@@ -149,7 +148,6 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
     setLoading(true);
     setProduct(null);
     setProductError('');
-    setRelatedContentError('');
     setProductContentTab('DETAIL');
     reportLoadRequestRef.current = null;
     setReportsLoadingMore(false);
@@ -188,7 +186,8 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
           setReportLoadFailed(true);
           relatedErrors.push(reportResult.reason instanceof Error ? reportResult.reason.message : '甄客验暂时无法加载');
         }
-        setRelatedContentError(relatedErrors.join('；'));
+        const relatedError = relatedErrors.join('；');
+        if (relatedError) message.error({ key: 'product-related-content', content: relatedError });
         setReportPage(1);
       })
       .finally(() => {
@@ -460,16 +459,6 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
             <ShareAltOutlined />
           </button>
         </header>
-
-        {relatedContentError && (
-          <Alert
-            type="warning"
-            showIcon
-            message="商品信息已加载，部分关联内容暂不可用"
-            description={relatedContentError}
-            action={<Button size="small" onClick={() => setReloadVersion((value) => value + 1)}>重试关联内容</Button>}
-          />
-        )}
 
         <section className={styles.trialHero}>
           <div className={styles.productImageGallery}>

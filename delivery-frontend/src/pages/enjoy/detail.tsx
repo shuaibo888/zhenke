@@ -1,5 +1,5 @@
-import { ArrowLeftOutlined, EnvironmentOutlined, HeartFilled, HeartOutlined, MessageOutlined, SendOutlined, ShareAltOutlined } from '@ant-design/icons';
-import { Button, Input, Popconfirm, message } from 'antd';
+import { AimOutlined, ArrowLeftOutlined, ClockCircleOutlined, EditOutlined, EnvironmentOutlined, HeartFilled, HeartOutlined, MessageOutlined, PhoneOutlined, PictureOutlined, SendOutlined, ShareAltOutlined } from '@ant-design/icons';
+import { Button, Image, Input, Popconfirm, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -27,7 +27,6 @@ export default function EnjoyDetailPage() {
   const [comments, setComments] = useState<EnjoyComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [commentsError, setCommentsError] = useState('');
   const [commentText, setCommentText] = useState('');
   const [replyTarget, setReplyTarget] = useState<EnjoyComment>();
   const [submitting, setSubmitting] = useState(false);
@@ -36,7 +35,6 @@ export default function EnjoyDetailPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
-    setCommentsError('');
     const [detailResult, commentResult] = await Promise.allSettled([
       enjoyDetail(enjoyId),
       enjoyComments(enjoyId),
@@ -49,7 +47,7 @@ export default function EnjoyDetailPage() {
     if (commentResult.status === 'fulfilled') setComments(commentResult.value);
     else {
       setComments([]);
-      setCommentsError(commentResult.reason instanceof Error ? commentResult.reason.message : '评论暂时无法加载');
+      message.error(commentResult.reason instanceof Error ? commentResult.reason.message : '评论暂时无法加载');
     }
     setLoading(false);
   }, [enjoyId]);
@@ -110,13 +108,23 @@ export default function EnjoyDetailPage() {
   if (loading) return <main className={`${styles.page} ${styles.enjoyDetailPage}`}><ZkState kind="loading" title="正在打开甄必享" /></main>;
   if (!detail || error) return <main className={`${styles.page} ${styles.enjoyDetailPage}`}><ZkState kind="error" title="这条甄必享内容已不可见" description={error} actionText="返回甄必享" onAction={() => navigate('/enjoy')} /></main>;
 
+  const gallery = detail.mediaUrls?.length ? detail.mediaUrls : [detail.coverUrl];
+  const highlights = detail.highlights?.split(/[、,，\n]/).map((item) => item.trim()).filter(Boolean) ?? [];
+  const openNavigation = () => {
+    if (detail.placeId) window.location.assign(`/api/shop/zhenke/places/${detail.placeId}/navigation`);
+  };
+  const publishForPlace = () => {
+    if (!requireLogin() || !detail.placeId) return;
+    navigate(`/posts/publish?placeId=${detail.placeId}`);
+  };
+
   const renderComment = (comment: EnjoyComment, isReply = false) => (
     <article key={comment.commentId} className={`${styles.commentItem} ${isReply ? styles.replyItem : ''}`}>
       <span className={styles.authorAvatar}>{comment.avatar ? <img src={comment.avatar} alt="" /> : (comment.nickName || comment.userName || '甄').slice(0, 1)}</span>
       <div className={styles.commentMain}>
         <strong>{comment.nickName || comment.userName}</strong>
         <p>{comment.replyToName && `回复 ${comment.replyToName}：`}{comment.content}</p>
-        <small>{new Date(comment.createTime).toLocaleString()}</small>
+        <small>{comment.createTime}</small>
         <div className={styles.actionRow}>
           <Button size="small" type="text" onClick={() => { if (requireLogin()) setReplyTarget(comment); }}>回复</Button>
           {user?.id === comment.shopUserId && (
@@ -134,17 +142,58 @@ export default function EnjoyDetailPage() {
     <main className={`${styles.page} ${styles.enjoyDetailPage}`}>
       <div className={styles.detailTopbar}>
         <button type="button" className={styles.backButton} aria-label="返回" onClick={() => navigate(-1)}><ArrowLeftOutlined /></button>
-        <div className={styles.enjoyOfficialIdentity}><span>甄</span><div><strong>甄客行官方精选</strong><small>{enjoyCategoryNames[detail.category]}</small></div></div>
+        <div className={styles.enjoyOfficialIdentity}><span>甄</span><div><strong>甄客行官方精选</strong><small>{enjoyCategoryNames[detail.category]} · 地点专题</small></div></div>
         <Button shape="circle" icon={<ShareAltOutlined />} aria-label="分享" onClick={() => void share()} />
       </div>
-      <img className={styles.enjoyDetailCover} src={detail.coverUrl} alt={detail.title} />
-      <article className={`${styles.surface} ${styles.enjoyDetailContent}`}>
-        <span className={styles.eyebrow}>{enjoyCategoryNames[detail.category]} · 官方发布</span>
+
+      <header className={styles.enjoyFeatureHeader}>
+        <span className={styles.eyebrow}>{enjoyCategoryNames[detail.category]} · 官方实地精选</span>
         <h1>{detail.title}</h1>
+        <button type="button" className={styles.enjoyFeatureLocation} disabled={!detail.placeId} onClick={() => detail.placeId && navigate(`/places/${detail.placeId}`)}>
+          <EnvironmentOutlined />
+          <span>{detail.placeName}{detail.placeAddress && ` · ${detail.placeAddress}`}</span>
+        </button>
         {detail.subtitle && <p className={styles.enjoyDetailLead}>{detail.subtitle}</p>}
-        {detail.highlights && <div className={styles.enjoyHighlights}>{detail.highlights.split(/[、,，\n]/).filter(Boolean).map((item) => <span key={item}>{item.trim()}</span>)}</div>}
+      </header>
+
+      <Image.PreviewGroup>
+        <section className={styles.enjoyMediaGallery} aria-label={`地点图片，共 ${gallery.length} 张`}>
+          <div className={styles.enjoyMediaHero}>
+            <Image src={gallery[0]} alt={`${detail.title}封面`} preview={{ mask: <><PictureOutlined /> 查看大图</> }} />
+            <span className={styles.enjoyGalleryCount}><PictureOutlined /> {gallery.length}</span>
+          </div>
+          {gallery.length > 1 && <div className={styles.enjoyMediaRail}>{gallery.slice(1).map((url, index) => <Image key={`${url}-${index}`} src={url} alt={`${detail.title}图片 ${index + 2}`} />)}</div>}
+        </section>
+      </Image.PreviewGroup>
+
+      <article className={`${styles.surface} ${styles.enjoyServiceCard}`}>
+        <p className={styles.enjoyServiceSummary}>{detail.serviceSummary}</p>
+        {highlights.length > 0 && <div className={styles.enjoyHighlights}>{highlights.map((item) => <span key={item}>{item}</span>)}</div>}
+
+        <div className={styles.enjoyInfoList}>
+          <button type="button" className={styles.enjoyInfoRow} disabled={!detail.placeId} onClick={() => detail.placeId && navigate(`/places/${detail.placeId}`)}>
+            <span><EnvironmentOutlined /> 地址</span>
+            <strong>{detail.placeAddress || detail.placeName}<b>›</b></strong>
+          </button>
+          <div className={styles.enjoyInfoRow}>
+            <span><ClockCircleOutlined /> 营业 / 开放</span>
+            <strong>{detail.openingHours || '以地点当日公示为准'}</strong>
+          </div>
+          {detail.contactPhone && <a className={styles.enjoyInfoRow} href={`tel:${detail.contactPhone.replace(/\s/g, '')}`}>
+            <span><PhoneOutlined /> 电话</span><strong>{detail.contactPhone}</strong>
+          </a>}
+        </div>
+
+        <div className={styles.enjoyFeatureActions}>
+          <Button size="large" icon={<AimOutlined />} disabled={!detail.placeId} onClick={openNavigation}>地图导航</Button>
+          <Button size="large" type="primary" icon={<EditOutlined />} disabled={!detail.placeId} onClick={publishForPlace}>发布甄客帖</Button>
+        </div>
+        <p className={styles.enjoyActionHint}>去过这里？发布真实体验，帮助更多人做决定。</p>
+      </article>
+
+      <article className={`${styles.surface} ${styles.enjoyStorySection}`}>
+        <div className={styles.sectionTitle}><div><span className={styles.eyebrow}>ZHENKE EDITORIAL</span><h2>官方详细攻略</h2></div></div>
         <div className={styles.prose}>{detail.content}</div>
-        {(detail.placeName || detail.placeAddress) && <div className={styles.enjoyPlaceLine}><EnvironmentOutlined /><div><strong>{detail.placeName}</strong><p>{detail.placeAddress}</p></div></div>}
         <div className={styles.actionRow}>
           <Button type={detail.likedByMe ? 'primary' : 'default'} icon={detail.likedByMe ? <HeartFilled /> : <HeartOutlined />} loading={liking} onClick={async () => {
             if (!requireLogin() || liking) return;
@@ -159,7 +208,6 @@ export default function EnjoyDetailPage() {
       </article>
       <section id="enjoy-comments" className={`${styles.surface} ${styles.commentsPanel}`}>
         <div className={styles.sectionTitle}><div><h2>评价与交流</h2><p>{comments.length} 条公开评论</p></div></div>
-        {commentsError && <div className={styles.contextNotice} role="alert"><span>{commentsError}</span><Button type="link" size="small" onClick={() => void load()}>重新加载</Button></div>}
         <div className={styles.commentComposer}>
           {replyTarget && <div className={styles.contextNotice}>正在回复 {replyTarget.nickName || replyTarget.userName}<Button type="link" size="small" onClick={() => setReplyTarget(undefined)}>取消回复</Button></div>}
           <Input.TextArea rows={3} maxLength={500} showCount value={commentText} placeholder={user ? '说说你对这条精选内容的看法' : '登录后参与评价和交流'} onFocus={() => requireLogin()} onChange={(event) => setCommentText(event.target.value)} />

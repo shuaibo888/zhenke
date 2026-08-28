@@ -26,10 +26,6 @@ const statusMeta: Record<ShopCouponDto['availabilityStatus'], { label: string; c
   DISABLED: { label: '已下架', color: 'red' },
 };
 
-function formatDate(value?: string) {
-  return value?.replace('T', ' ').slice(0, 19) || '-';
-}
-
 export default function CouponDetailPage() {
   const { user, refreshCoupons } = useShop();
   const navigate = useNavigate();
@@ -129,9 +125,9 @@ export default function CouponDetailPage() {
         <h2>使用说明</h2>
         <dl>
           <div><dt>使用方式</dt><dd>{coupon.usageMode === 'ORDER' ? '商城下单' : coupon.usageMode === 'OFFLINE' ? '到店核销' : '商城下单或到店核销'}</dd></div>
-          <div><dt>有效期</dt><dd>{formatDate(coupon.startTime)} 至 {formatDate(coupon.endTime)}</dd></div>
+          <div><dt>有效期</dt><dd>{coupon.startTime} 至 {coupon.endTime}</dd></div>
           <div><dt>说明</dt><dd>{coupon.redeemInstructions || coupon.description || '请在有效期内使用'}</dd></div>
-          {coupon.availabilityStatus === 'USED' && <div><dt>使用时间</dt><dd>{formatDate(coupon.usedTime)}</dd></div>}
+          {coupon.availabilityStatus === 'USED' && <div><dt>使用时间</dt><dd>{coupon.usedTime || '-'}</dd></div>}
           {coupon.redeemedMerchantName && <div><dt>核销门店</dt><dd>{coupon.redeemedMerchantName}</dd></div>}
           {coupon.consumptionAmount != null && <div><dt>消费金额</dt><dd>{formatPrice(coupon.consumptionAmount)}</dd></div>}
           {coupon.actualAmount != null && <div><dt>优惠后金额</dt><dd>{formatPrice(coupon.actualAmount)}</dd></div>}

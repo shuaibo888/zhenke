@@ -73,7 +73,8 @@ class ShopReportResourceServiceSecurityTest {
 
       assertTrue(resourcePath.startsWith("/profile/upload/report/user-18/"));
       assertEquals(resourcePath,
-          service.normalizeOwnedResourceUrl(18L, "IMAGE", "https://dzshop.vip" + resourcePath));
+          service.normalizeOwnedResourceUrl(
+              18L, "IMAGE", "http://127.0.0.1:8080/api" + resourcePath));
       assertThrows(ServiceException.class,
           () -> service.normalizeOwnedResourceUrl(19L, "IMAGE", resourcePath));
       assertThrows(ServiceException.class,

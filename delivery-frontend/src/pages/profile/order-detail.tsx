@@ -26,7 +26,6 @@ import {
   type VerificationReportDto,
 } from '@/services/shopContent';
 import {
-  formatDateTime,
   formatPrice,
   getOrderStatusMeta,
   orderStatusMeta,
@@ -297,14 +296,14 @@ export default function OrderDetailPage() {
               <div className={index === logs.length - 1 ? styles.businessTimelineCurrent : ''} key={log.logId}>
                 <i />
                 <span><strong>{statusLabel(log.toStatus, order.fulfillmentType)}</strong><small>{log.remark}</small></span>
-                <time>{formatDateTime(log.createTime)}</time>
+                <time>{log.createTime}</time>
               </div>
             ))}
           </div>
           <dl className={styles.businessDefinitionList}>
-            <div><dt>下单时间</dt><dd>{formatDateTime(order.createTime)}</dd></div>
+            <div><dt>下单时间</dt><dd>{order.createTime}</dd></div>
             <div><dt>配送方式</dt><dd>{order.fulfillmentType === 'OFFLINE' ? '到店核销' : '快递配送'}</dd></div>
-            {order.payTime && <div><dt>支付时间</dt><dd>{formatDateTime(order.payTime)}</dd></div>}
+            {order.payTime && <div><dt>支付时间</dt><dd>{order.payTime}</dd></div>}
             {order.trackingNo && <div><dt>物流单号</dt><dd>{order.carrier ? `${order.carrier} · ` : ''}{order.trackingNo}</dd></div>}
             {order.refundReason && <div><dt>退款原因</dt><dd>{order.refundReason}</dd></div>}
             {order.refundAuditRemark && <div><dt>售后说明</dt><dd>{order.refundAuditRemark}</dd></div>}

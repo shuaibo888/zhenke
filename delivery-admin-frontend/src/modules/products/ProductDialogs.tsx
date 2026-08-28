@@ -1,4 +1,4 @@
-import { CheckCircleOutlined, DeleteOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, DeleteOutlined, InboxOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   App as AntApp,
   Button,
@@ -21,6 +21,7 @@ import type { FormInstance, UploadFile } from 'antd';
 import { useEffect, useState } from 'react';
 import type { AdminSession, ProductCategoryOption } from '@/types';
 import { uploadAdminFile } from '@/services/adminApi';
+import { mediaPreviewUrl, mediaStoragePath } from '@/utils/media';
 import styles from '@/pages/index.less';
 
 export interface ProductFormValues {
@@ -102,8 +103,8 @@ function ProductImageUploader({ kind, maxCount, value, onChange, session, produc
     uid: `${kind}-${index}-${url}`,
     name: `${label}${index + 1}`,
     status: 'done',
-    url,
-    thumbUrl: url,
+    url: mediaPreviewUrl(url),
+    thumbUrl: mediaPreviewUrl(url),
   }));
 
   const updateUrls = (nextUrls: string[]) => {
@@ -112,7 +113,8 @@ function ProductImageUploader({ kind, maxCount, value, onChange, session, produc
 
   return (
     <div className={styles.productImageUploader}>
-      <Upload
+      <Upload.Dragger
+        className={styles.productImageDropzone}
         accept="image/jpeg,image/png"
         listType="picture-card"
         fileList={fileList}
@@ -122,6 +124,9 @@ function ProductImageUploader({ kind, maxCount, value, onChange, session, produc
         showUploadList={{ showPreviewIcon: false, showDownloadIcon: false, showRemoveIcon: true }}
         beforeUpload={(file) => {
           try {
+            if (kind !== 'COVER' && urls.length >= maxCount) {
+              throw new Error(`${label}最多上传 ${maxCount} 张`);
+            }
             validateProductImage(file as File);
             return true;
           } catch (error) {
@@ -130,15 +135,16 @@ function ProductImageUploader({ kind, maxCount, value, onChange, session, produc
           }
         }}
         onRemove={(file) => {
-          updateUrls(urls.filter((url) => url !== file.url));
+          const removedPath = mediaStoragePath(file.url);
+          updateUrls(urls.filter((url) => url !== removedPath));
           return true;
         }}
         customRequest={async (options) => {
           setUploading(true);
           try {
-            const url = await uploadAdminFile(session, productId, options.file as File, kind);
-            updateUrls(kind === 'COVER' ? [url] : [...urls.filter((item) => item !== url), url]);
-            options.onSuccess?.({ url });
+            const path = await uploadAdminFile(session, productId, options.file as File, kind);
+            updateUrls(kind === 'COVER' ? [path] : [...urls.filter((item) => item !== path), path]);
+            options.onSuccess?.({ path });
             message.success(`${label}上传成功`);
           } catch (error) {
             options.onError?.(error as Error);
@@ -148,13 +154,12 @@ function ProductImageUploader({ kind, maxCount, value, onChange, session, produc
           }
         }}
       >
-        {urls.length < maxCount && (
-          <div className={styles.productImageUploadButton}>
-            <UploadOutlined />
-            <span>{uploading ? '上传中' : '上传图片'}</span>
-          </div>
-        )}
-      </Upload>
+        <div className={styles.productImageUploadButton}>
+          <InboxOutlined />
+          <span>{uploading ? '上传中' : '点击或拖拽上传图片'}</span>
+          <small>{kind === 'COVER' && urls.length ? '重新上传将替换当前封面' : `JPG / PNG · ${urls.length}/${maxCount}`}</small>
+        </div>
+      </Upload.Dragger>
     </div>
   );
 }

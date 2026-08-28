@@ -1,5 +1,5 @@
 import { CheckCircleFilled, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { Alert, Button, Cascader, Form, Input, Modal, Radio, Spin, Tag, message } from 'antd';
+import { Button, Cascader, Form, Input, Modal, Radio, Spin, Tag, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import pcaCode from 'china-division/dist/pca-code.json';
 import { useShop } from '@/app/ShopContext';
@@ -143,16 +143,6 @@ export function AddressManager({
           </div>
         )}
         <Spin spinning={addressesLoading}>
-          {loadError && (
-            <Alert
-              type="error"
-              showIcon
-              message="收货地址暂时无法加载"
-              description={loadError}
-              action={<Button size="small" danger onClick={() => void loadAddresses()}>重新加载</Button>}
-              style={{ marginBottom: 16 }}
-            />
-          )}
           <div className={picker ? styles.addressPickerList : styles.addressList}>
             {!loadError && addresses.length === 0 ? (
               <div className={styles.empty}>

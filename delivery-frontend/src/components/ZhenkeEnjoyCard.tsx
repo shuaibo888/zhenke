@@ -1,4 +1,4 @@
-import { EnvironmentOutlined, HeartFilled, HeartOutlined, MessageOutlined } from '@ant-design/icons';
+import { EnvironmentOutlined, HeartFilled, HeartOutlined, MessageOutlined, PictureOutlined } from '@ant-design/icons';
 import { useNavigate } from 'umi';
 import type { ZhenkeEnjoy } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
@@ -22,13 +22,14 @@ export function ZhenkeEnjoyCard({ item }: { item: ZhenkeEnjoy }) {
       >
         <img src={item.coverUrl} alt={item.title} loading="lazy" />
         <span>{enjoyCategoryNames[item.category]}</span>
+        {(item.mediaCount ?? item.mediaUrls?.length ?? 1) > 1 && <em><PictureOutlined /> {item.mediaCount ?? item.mediaUrls?.length}</em>}
       </button>
       <div className={styles.enjoyEditorialCopy}>
         <button type="button" onClick={() => navigate(`/enjoy/${item.enjoyId}`)}>
           <strong>{item.title}</strong>
-          {item.subtitle && <p>{item.subtitle}</p>}
+          <p>{item.serviceSummary || item.subtitle}</p>
         </button>
-        {item.placeName && <small><EnvironmentOutlined /> {item.placeName}</small>}
+        {item.placeName && <small><EnvironmentOutlined /> {item.placeName}{item.placeAddress ? ` · ${item.placeAddress}` : ''}</small>}
         <footer>
           <span>{item.likedByMe ? <HeartFilled /> : <HeartOutlined />} {item.likeCount ?? 0}</span>
           <span><MessageOutlined /> {item.commentCount ?? 0}</span>

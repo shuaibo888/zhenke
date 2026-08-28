@@ -1,4 +1,4 @@
-import { SafetyCertificateOutlined, UploadOutlined } from '@ant-design/icons';
+import { InboxOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import {
   Alert,
   Button,
@@ -113,7 +113,8 @@ export default function ProductCertificationDialog(props: Props) {
     files: UploadFile[],
     setFiles: (files: UploadFile[]) => void,
   ) => (
-    <Upload
+    <Upload.Dragger
+      className={styles.mediaDropzone}
       accept={kind === 'PROOF' ? 'image/jpeg,image/png,application/pdf,.pdf' : 'image/jpeg,image/png'}
       maxCount={1}
       fileList={files}
@@ -133,8 +134,12 @@ export default function ProductCertificationDialog(props: Props) {
       }}
       showUploadList={{ showPreviewIcon: false, showDownloadIcon: false, showRemoveIcon: true }}
     >
-      {files.length === 0 && <Button icon={<UploadOutlined />}>选择文件</Button>}
-    </Upload>
+      <p className="ant-upload-drag-icon"><InboxOutlined /></p>
+      <p className="ant-upload-text">点击选择，或将{materialLabels[kind]}拖到这里</p>
+      <p className="ant-upload-hint">
+        {files.length > 0 ? '重新选择会替换当前文件' : kind === 'PROOF' ? '支持 JPG / PNG / PDF' : '支持 JPG / PNG'}
+      </p>
+    </Upload.Dragger>
   );
 
   const retainedMaterialLink = (kind: keyof typeof materialLabels) => {

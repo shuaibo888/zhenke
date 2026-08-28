@@ -1,5 +1,5 @@
 import { CheckCircleFilled, SafetyCertificateOutlined } from '@ant-design/icons';
-import { Alert, Button, Space, Spin, message } from 'antd';
+import { Alert, Button, Spin, message } from 'antd';
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -18,7 +18,6 @@ export default function CheckoutSuccessPage() {
   const [loadedOrder, setLoadedOrder] = useState<ShopOrderDto | null>(null);
   const [loading, setLoading] = useState(Boolean(orderId));
   const [loadError, setLoadError] = useState('');
-  const [reloadVersion, setReloadVersion] = useState(0);
   const order = loadedOrder ?? contextOrder;
 
   useEffect(() => {
@@ -48,7 +47,7 @@ export default function CheckoutSuccessPage() {
     return () => {
       mounted = false;
     };
-  }, [orderId, reloadVersion, user]);
+  }, [orderId, user]);
 
   if (!user) {
     return <LoginRedirect />;
@@ -90,21 +89,7 @@ export default function CheckoutSuccessPage() {
             </Button>
             <small><SafetyCertificateOutlined /> 支付结果已确认</small>
           </section>
-        ) : !loading && loadError ? (
-          <Alert
-            className={styles.checkoutSuccessError}
-            type="error"
-            showIcon
-            message="支付结果暂时无法查询"
-            description={loadError}
-            action={(
-              <Space wrap>
-                <Button danger onClick={() => setReloadVersion((value) => value + 1)}>重新查询</Button>
-                <Button onClick={() => navigate('/profile/orders')}>返回订单列表</Button>
-              </Space>
-            )}
-          />
-        ) : !loading ? (
+        ) : !loading && !loadError ? (
           <Alert
             className={styles.checkoutSuccessError}
             type="warning"
@@ -113,9 +98,9 @@ export default function CheckoutSuccessPage() {
             description="暂未确认支付成功，请返回订单查看最新状态。"
             action={<Button onClick={() => navigate('/profile/orders')}>返回订单列表</Button>}
           />
-        ) : (
+        ) : loading ? (
           <div className={styles.checkoutSuccessLoading}>正在确认支付结果…</div>
-        )}
+        ) : null}
       </Spin>
     </main>
   );

@@ -1,5 +1,6 @@
 import type { Merchant, MerchantProofMedia } from '@/types';
 import type { AuthUser } from '@/utils/authRules';
+import { extractPlatformMediaPath, mediaPreviewUrl } from '@/utils/mediaUrl';
 import { getToken, storeToken, requestApi, type ApiResponse, type TableResponse } from './apiClient';
 
 const merchantApplicationStorageKey = 'zhenke_merchant_application_phone';
@@ -569,7 +570,8 @@ export interface MerchantLicenseRecognized {
 }
 
 export interface MerchantLicenseUploadResult {
-  url: string;
+  path: string;
+  previewUrl: string;
   recognized: MerchantLicenseRecognized | null;
   verifyMessage?: string;
 }
@@ -577,13 +579,20 @@ export interface MerchantLicenseUploadResult {
 export async function uploadMerchantBusinessLicense(file: File) {
   const formData = new FormData();
   formData.append('file', file);
-  const result = await requestApi<ApiResponse & { url?: string; recognized?: MerchantLicenseRecognized; verifyMessage?: string }>(
+  const result = await requestApi<ApiResponse & {
+    fileName?: string;
+    url?: string;
+    recognized?: MerchantLicenseRecognized;
+    verifyMessage?: string;
+  }>(
     '/shop/merchants/license',
     { method: 'POST', body: formData },
   );
-  if (!result.url) throw new Error('营业执照上传失败');
+  const path = extractPlatformMediaPath(result.fileName) ?? extractPlatformMediaPath(result.url);
+  if (!path) throw new Error('营业执照上传结果无效，请重试');
   return {
-    url: result.url,
+    path,
+    previewUrl: mediaPreviewUrl(path),
     recognized: result.recognized ?? null,
     verifyMessage: result.verifyMessage,
   } satisfies MerchantLicenseUploadResult;
@@ -592,12 +601,17 @@ export async function uploadMerchantBusinessLicense(file: File) {
 export async function uploadMerchantStoreProofMedia(file: File) {
   const formData = new FormData();
   formData.append('file', file);
-  const result = await requestApi<ApiResponse & { url?: string; mediaType?: 'IMAGE' | 'VIDEO' }>(
+  const result = await requestApi<ApiResponse & {
+    fileName?: string;
+    url?: string;
+    mediaType?: 'IMAGE' | 'VIDEO';
+  }>(
     '/shop/merchants/proof-media',
     { method: 'POST', body: formData },
   );
-  if (!result.url || !result.mediaType) throw new Error('门店证明材料上传失败');
-  return { mediaUrl: result.url, mediaType: result.mediaType } satisfies MerchantProofMedia;
+  const mediaUrl = extractPlatformMediaPath(result.fileName) ?? extractPlatformMediaPath(result.url);
+  if (!mediaUrl || !result.mediaType) throw new Error('门店证明材料上传结果无效，请重试');
+  return { mediaUrl, mediaType: result.mediaType } satisfies MerchantProofMedia;
 }
 
 export interface MerchantLicenseVerifyResult {
@@ -611,18 +625,35 @@ export async function verifyMerchantBusinessLicense(
   companyName: string,
   legalPerson: string,
 ) {
+  const path = extractPlatformMediaPath(url);
+  if (!path) throw new Error('营业执照地址无效，请重新上传');
   const result = await requestApi<ApiResponse & { verified?: boolean; verifyMessage?: string }>(
     '/shop/merchants/license/verify',
-    { method: 'POST', body: JSON.stringify({ url, creditCode, companyName, legalPerson }) },
+    { method: 'POST', body: JSON.stringify({ url: path, creditCode, companyName, legalPerson }) },
   );
   return { verified: result.verified === true, verifyMessage: result.verifyMessage } satisfies MerchantLicenseVerifyResult;
 }
 
 export async function submitMerchantApplication(body: MerchantApplicationBody) {
   const { agreeProtocol, ...application } = body;
+  const businessLicense = extractPlatformMediaPath(application.businessLicense);
+  if (!businessLicense) throw new Error('营业执照地址无效，请重新上传');
+  const storeProofMedia = application.storeProofMedia.map((item) => {
+    const mediaUrl = extractPlatformMediaPath(item.mediaUrl);
+    if (!mediaUrl) throw new Error('门店证明材料地址无效，请重新上传');
+    return { ...item, mediaUrl };
+  });
   const result = await requestApi<ApiResponse<{ merchant: Merchant }>>(
     '/shop/merchants/apply',
-    { method: 'POST', body: JSON.stringify({ ...application, protocolAgreed: agreeProtocol }) },
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        ...application,
+        businessLicense,
+        storeProofMedia,
+        protocolAgreed: agreeProtocol,
+      }),
+    },
   );
   if (!result.data?.merchant) throw new Error('商家入驻申请提交失败');
   const lookup = { contactPhone: body.contactPhone.trim() };

@@ -5,6 +5,7 @@ import {
   ExclamationCircleFilled,
   FileTextOutlined,
   GiftOutlined,
+  InboxOutlined,
   LogoutOutlined,
   ProfileOutlined,
   RightOutlined,
@@ -14,14 +15,13 @@ import {
   TrophyOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
-import { Button, Form, Input, Modal, message } from 'antd';
-import { useCallback, useRef, useState } from 'react';
+import { Button, Form, Input, Modal, Upload, message } from 'antd';
+import { useCallback, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
 import { AddressManager } from '@/components/AddressManager';
 import { AccountSecurityPanel } from '@/components/AccountSecurityPanel';
-import { ZkRefreshError } from '@/components/ZkPage';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import {
@@ -32,6 +32,7 @@ import {
 } from '@/services/shopAuth';
 import legacyStyles from '@/styles/commerce.less';
 import styles from '@/styles/zhenke.less';
+import { mediaPreviewUrl } from '@/utils/mediaUrl';
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 const ALLOWED_AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif']);
@@ -46,7 +47,6 @@ export default function ProfilePage() {
   const [overview, setOverview] = useState<ShopUserOverview | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [nameForm] = Form.useForm<{ name: string }>();
-  const avatarInput = useRef<HTMLInputElement | null>(null);
   useBodyScrollLock(profileOpen || addressOpen);
 
   const loadOverview = useCallback(async () => {
@@ -57,7 +57,7 @@ export default function ProfilePage() {
       setOverviewLoading(false);
     }
   }, []);
-  const { refreshError, retry } = useRefreshOnRoute('/profile', loadOverview, '个人中心数据刷新失败');
+  useRefreshOnRoute('/profile', loadOverview, '个人中心数据刷新失败');
 
   if (!user) {
     return <LoginRedirect />;
@@ -158,7 +158,6 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        <ZkRefreshError error={refreshError} onRetry={() => void retry()} />
 
         {(!user.usernameInitialized || !user.passwordInitialized) && (
           <div className={styles.setupNotice} role="status">
@@ -269,27 +268,25 @@ export default function ProfilePage() {
               <div className={legacyStyles.profileEditAvatarRow}>
                 <div className={`${legacyStyles.profileAvatar} ${legacyStyles.profileEditAvatar}`}>
                   {user.avatarType === 'image' && user.avatarImage
-                    ? <img src={user.avatarImage} alt={user.name} />
+                    ? <img src={mediaPreviewUrl(user.avatarImage)} alt={user.name} />
                     : <span>{(user.name || user.username).slice(0, 1)}</span>}
                 </div>
                 <div className={legacyStyles.avatarPicker}>
-                  <input
-                    ref={avatarInput}
-                    type="file"
+                  <Upload.Dragger
+                    className={legacyStyles.avatarDropzone}
                     accept="image/jpeg,image/png,image/gif"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      event.target.value = '';
-                      void uploadAvatar(file);
+                    maxCount={1}
+                    showUploadList={false}
+                    disabled={avatarLoading}
+                    beforeUpload={(file) => {
+                      void uploadAvatar(file as File);
+                      return false;
                     }}
-                  />
-                  <Button
-                    icon={<UploadOutlined />}
-                    loading={avatarLoading}
-                    onClick={() => avatarInput.current?.click()}
                   >
-                    选择图片
-                  </Button>
+                    <InboxOutlined />
+                    <strong>{avatarLoading ? '正在上传…' : '点击选择或将头像拖到这里'}</strong>
+                    <small>上传后立即更新</small>
+                  </Upload.Dragger>
                   <p>支持 JPG、PNG、GIF，文件不超过 5MB。</p>
                 </div>
               </div>

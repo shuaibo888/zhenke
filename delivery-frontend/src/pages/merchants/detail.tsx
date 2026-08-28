@@ -11,7 +11,7 @@ import {
 } from '@ant-design/icons';
 import { Button, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'umi';
+import { Link, useNavigate, useParams } from 'umi';
 import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
 import {
   fetchMallProducts,
@@ -145,10 +145,10 @@ export default function MerchantDetailPage() {
       ) : (
         <div className={styles.productGrid}>
           {products.map((product) => (
-            <article key={product.productId} className={styles.productCard} onClick={() => navigate(`/products/${product.productId}`)}>
+            <Link key={product.productId} className={styles.productCard} to={`/products/${product.productId}`}>
               <span className={styles.productCover}><img src={product.coverUrl} alt={product.productName} /><em>{product.categoryName}</em></span>
               <span className={styles.productCardBody}><small>{product.brandName}</small><h3>{product.productName}</h3><p>{product.subtitle}</p><span className={styles.productCardFooter}><strong className={styles.productPrice}>¥{Number(product.price).toFixed(2)}</strong><span className={styles.productSales}>已售 {product.salesCount}</span></span></span>
-            </article>
+            </Link>
           ))}
         </div>
       )}

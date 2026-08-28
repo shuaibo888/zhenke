@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
-import { ZkRefreshError, ZkTaskHeader } from '@/components/ZkPage';
+import { ZkTaskHeader } from '@/components/ZkPage';
 import { LogisticsModal } from '@/components/LogisticsModal';
 import { OrderRedeemCodeModal } from '@/components/OrderRedeemCodeModal';
 import { PublishReportModal } from '@/components/PublishReportModal';
@@ -60,7 +60,7 @@ export default function OrdersPage() {
   const [reportItem, setReportItem] = useState<PurchaseItem | null>(null);
   const [redeemOrder, setRedeemOrder] = useState<ShopOrderDto | null>(null);
   useBodyScrollLock(logisticsOpen || Boolean(refundOrder) || Boolean(reportItem) || Boolean(redeemOrder));
-  const { refreshError, retry } = useRefreshOnRoute('/profile/orders', refreshOrders, '订单记录刷新失败');
+  useRefreshOnRoute('/profile/orders', refreshOrders, '订单记录刷新失败');
 
   useEffect(() => {
     const timer = window.setInterval(() => setClock(Date.now()), 1000);
@@ -173,7 +173,6 @@ export default function OrdersPage() {
     <>
       <main className={`${styles.profileDetailPage} ${styles.ordersPage}`}>
         <ZkTaskHeader eyebrow="消费履约" title="我的订单与核销" description="配送、到店核销、支付、退款和甄客验资格都在这里处理。" backTo="/profile" />
-        <ZkRefreshError error={refreshError} onRetry={() => void retry()} />
         <section className={styles.orderPanel}>
           <div className={styles.orderPanelHeading}>
             <div>

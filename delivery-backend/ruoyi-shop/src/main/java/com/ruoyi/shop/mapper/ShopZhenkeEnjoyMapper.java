@@ -23,6 +23,13 @@ public interface ShopZhenkeEnjoyMapper {
   int deleteEnjoy(@Param("enjoyId") Long enjoyId, @Param("user") String user);
   int updateEnjoyStatus(
       @Param("enjoyId") Long enjoyId, @Param("status") String status, @Param("user") String user);
+  int countPublishReady(Long enjoyId);
+  List<String> selectMediaUrls(Long enjoyId);
+  int insertMedia(
+      @Param("enjoyId") Long enjoyId,
+      @Param("mediaUrl") String mediaUrl,
+      @Param("mediaSort") int mediaSort);
+  int deleteMedia(Long enjoyId);
 
   int insertLike(@Param("enjoyId") Long enjoyId, @Param("shopUserId") Long shopUserId);
   int deleteLike(@Param("enjoyId") Long enjoyId, @Param("shopUserId") Long shopUserId);

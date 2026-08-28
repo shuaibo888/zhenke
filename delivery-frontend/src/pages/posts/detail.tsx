@@ -37,7 +37,6 @@ export default function PostDetailPage() {
   const [commentRows, setCommentRows] = useState<PostComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [commentsError, setCommentsError] = useState('');
   const [commentText, setCommentText] = useState('');
   const [replyTarget, setReplyTarget] = useState<PostComment>();
   const [commentSubmitting, setCommentSubmitting] = useState(false);
@@ -53,7 +52,6 @@ export default function PostDetailPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
-    setCommentsError('');
     try {
       const [postResult, commentResult] = await Promise.allSettled([post(postId), comments(postId)]);
       if (postResult.status === 'fulfilled') {
@@ -66,7 +64,7 @@ export default function PostDetailPage() {
         setCommentRows(commentResult.value);
       } else {
         setCommentRows([]);
-        setCommentsError(commentResult.reason instanceof Error ? commentResult.reason.message : '评论暂时无法加载');
+        message.error(commentResult.reason instanceof Error ? commentResult.reason.message : '评论暂时无法加载');
       }
     } finally {
       setLoading(false);
@@ -173,7 +171,7 @@ export default function PostDetailPage() {
           {comment.postAuthor && ' · 作者'}
         </strong>
         <p>{comment.replyToName && `回复 ${comment.replyToName}：`}{comment.content}</p>
-        <small>{new Date(comment.createTime).toLocaleString()}</small>
+        <small>{comment.createTime}</small>
         <div className={styles.actionRow}>
           <Button size="small" type="text" onClick={() => {
             if (!requireLogin()) return;
@@ -210,7 +208,7 @@ export default function PostDetailPage() {
           <span className={styles.authorAvatar}>{detail.avatar ? <img src={detail.avatar} alt="" /> : authorInitial}</span>
           <span className={styles.authorCopy}>
             <strong>{authorName}</strong>
-            <small>{perspectiveNames[detail.perspective]} · {new Date(detail.publishedAt).toLocaleString()}</small>
+            <small>{perspectiveNames[detail.perspective]} · {detail.publishedAt}</small>
           </span>
         </div>
         <Button shape="circle" icon={<ShareAltOutlined />} aria-label="分享" onClick={() => void share()} />
@@ -299,12 +297,6 @@ export default function PostDetailPage() {
         <div className={styles.sectionTitle}>
           <div><h2>评论与回复</h2><p>{commentRows.length} 条公开交流</p></div>
         </div>
-        {commentsError && (
-          <div className={styles.contextNotice} role="alert">
-            <span>{commentsError}，帖子正文仍可正常浏览。</span>
-            <Button type="link" size="small" onClick={() => void load()}>重新加载评论</Button>
-          </div>
-        )}
         <div className={styles.commentComposer}>
           {replyTarget && (
             <div className={styles.contextNotice}>

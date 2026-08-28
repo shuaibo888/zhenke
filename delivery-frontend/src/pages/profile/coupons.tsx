@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
-import { ZkRefreshError, ZkTaskHeader } from '@/components/ZkPage';
+import { ZkTaskHeader } from '@/components/ZkPage';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import type { ShopCouponDto } from '@/services/shopContent';
 import { formatPrice } from '@/utils/shop';
@@ -23,15 +23,11 @@ const availabilityMeta: Record<ShopCouponDto['availabilityStatus'], {
   DISABLED: { label: '已下架', color: 'red' },
 };
 
-function formatDate(value: string) {
-  return value?.replace('T', ' ').slice(0, 19);
-}
-
 export default function CouponsPage() {
   const { user, coupons, couponsLoading, refreshCoupons } = useShop();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<CouponFilter>('all');
-  const { refreshError, retry } = useRefreshOnRoute('/profile/coupons', refreshCoupons, '优惠券刷新失败');
+  useRefreshOnRoute('/profile/coupons', refreshCoupons, '优惠券刷新失败');
 
   const filtered = useMemo(() => coupons.filter((coupon) => {
     if (filter === 'all') return true;
@@ -46,7 +42,6 @@ export default function CouponsPage() {
   return (
     <main className={`${styles.profileDetailPage} ${styles.couponsPage}`}>
         <ZkTaskHeader eyebrow="权益资产" title="我的优惠券" description="集中查看下单券、到店核销券及其有效状态。" backTo="/profile" />
-      <ZkRefreshError error={refreshError} onRetry={() => void retry()} />
       <section className={styles.orderPanel}>
         <div className={styles.orderPanelHeading}>
           <div>
@@ -112,8 +107,8 @@ export default function CouponsPage() {
                       <div>
                         <dt>有效期</dt>
                         <dd className={styles.couponWalletValidity}>
-                          <span>{formatDate(coupon.startTime)} 至</span>
-                          <span>{formatDate(coupon.endTime)}</span>
+                          <span>{coupon.startTime} 至</span>
+                          <span>{coupon.endTime}</span>
                         </dd>
                       </div>
                       <div><dt>券码</dt><dd>{coupon.couponCode}</dd></div>

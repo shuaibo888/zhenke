@@ -11,6 +11,15 @@ import '@/styles/zhenke.less';
 
 captureWechatEntryUrl();
 
+// Ant Design's static message/modal helpers render outside the normal React tree.
+// Give those helpers the same theme context so they do not fall back to an
+// unthemed holder or emit dynamic-theme warnings at runtime.
+ConfigProvider.config({
+  holderRender: (children) => (
+    <ConfigProvider theme={commerceTheme}>{children}</ConfigProvider>
+  ),
+});
+
 function CommerceApplication() {
   const { authLoading } = useShop();
   const location = useLocation();

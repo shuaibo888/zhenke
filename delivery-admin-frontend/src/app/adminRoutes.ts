@@ -14,10 +14,15 @@ export const adminNavPaths: Record<NavKey, string> = {
   merchants: '/merchants',
 };
 
-const navKeys = new Set<NavKey>(Object.keys(adminNavPaths) as NavKey[]);
+const navPathEntries = Object.entries(adminNavPaths) as Array<[NavKey, string]>;
 
 export function getAdminNavKey(pathname: string): NavKey | null {
-  const section = pathname.split('/').filter(Boolean)[0];
-  if (!section) return 'dashboard';
-  return navKeys.has(section as NavKey) ? section as NavKey : null;
+  let normalizedPath = `/${(pathname.split(/[?#]/)[0] || '').split('/').filter(Boolean).join('/')}`;
+  if (normalizedPath === '/admin') normalizedPath = '/';
+  else if (normalizedPath.startsWith('/admin/')) normalizedPath = normalizedPath.slice('/admin'.length);
+  if (normalizedPath === '/') return 'dashboard';
+
+  return navPathEntries.find(([, path]) => (
+    normalizedPath === path || normalizedPath.startsWith(`${path}/`)
+  ))?.[0] ?? null;
 }

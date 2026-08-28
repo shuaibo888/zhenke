@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.exception.ServiceException;
@@ -20,6 +21,9 @@ import com.ruoyi.shop.map.TencentMapService;
 import com.ruoyi.shop.mapper.ShopZhenkeMapper;
 import com.ruoyi.shop.security.ShopAccountIdentity;
 import java.math.BigDecimal;
+import java.awt.image.BufferedImage;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -28,18 +32,34 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.imageio.ImageIO;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 class ShopZhenkeServiceTest {
+  @TempDir Path tempDirectory;
+
+  private String previousProfile;
   private final ShopZhenkeMapper mapper = mock(ShopZhenkeMapper.class);
   private final TencentMapService mapService = mock(TencentMapService.class);
+
+  @BeforeEach
+  void setUpStoredMedia() throws Exception {
+    previousProfile = RuoYiConfig.getProfile();
+    new RuoYiConfig().setProfile(tempDirectory.toString());
+    writeImage("upload/banner/a.jpg", "jpg");
+    writeImage("upload/report/user-18/photo.png", "png");
+    writeImage("upload/report/user-18/2026/08/photo.png", "png");
+  }
 
   @AfterEach
   void clearSecurityContext() {
     SecurityContextHolder.clearContext();
+    new RuoYiConfig().setProfile(previousProfile);
   }
 
   @Test
@@ -62,9 +82,13 @@ class ShopZhenkeServiceTest {
     ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
 
     assertEquals(
-        "/profile/upload/2026/08/photo.png",
-        service.registerUpload("/profile/upload/2026/08/photo.png", "photo.png"));
-    verify(mapper).insertPendingUpload(18L, "/profile/upload/2026/08/photo.png", "IMAGE");
+        "/profile/upload/report/user-18/2026/08/photo.png",
+        service.registerUpload(
+            "http://127.0.0.1:8080/api/profile/upload/report/user-18/2026/08/photo.png",
+            "photo.png"));
+    verify(mapper)
+        .insertPendingUpload(
+            18L, "/profile/upload/report/user-18/2026/08/photo.png", "IMAGE");
     assertThrows(
         ServiceException.class,
         () -> service.registerUpload("https://attacker.example/photo.png", "photo.png"));
@@ -170,8 +194,10 @@ class ShopZhenkeServiceTest {
               return 1;
             });
     when(mapper.selectBanner(1L)).thenReturn(new ShopHomeBanner());
-    assertNotNull(
-        service.saveBanner(null, banner("https://events.example.com/x", "EXTERNAL"), "admin"));
+    assertNotNull(service.saveBanner(null, banner("https://events.example.com/x", "EXTERNAL"), "admin"));
+    var captor = org.mockito.ArgumentCaptor.forClass(ShopHomeBanner.class);
+    verify(mapper).insertBanner(captor.capture());
+    assertEquals("/profile/upload/banner/a.jpg", captor.getValue().getImageUrl());
   }
 
   @Test
@@ -373,6 +399,18 @@ class ShopZhenkeServiceTest {
   }
 
   @Test
+  void commentFailsWhenPostIsDeletedBeforeInsert() {
+    authenticateShopUser(18L);
+    when(mapper.selectPost(71L, false, 18L)).thenReturn(savedPost(71L));
+    when(mapper.insertComment(any())).thenReturn(0);
+    ShopZhenkeCommentBody body = new ShopZhenkeCommentBody();
+    body.setContent("删除中的帖子不能继续评论");
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
+
+    assertThrows(ServiceException.class, () -> service.comment(71L, body));
+  }
+
+  @Test
   void deletingRootCommentUsesOwnedTreeDeleteAndRejectsForeignComment() {
     authenticateShopUser(18L);
     ShopZhenkePostComment root = new ShopZhenkePostComment();
@@ -450,12 +488,18 @@ class ShopZhenkeServiceTest {
   private ShopHomeBannerBody banner(String target, String type) {
     ShopHomeBannerBody body = new ShopHomeBannerBody();
     body.setTitle("标题");
-    body.setImageUrl("https://cdn.example/a.jpg");
+    body.setImageUrl("http://127.0.0.1:8080/api/profile/upload/banner/a.jpg");
     body.setJumpType(type);
     body.setJumpTarget(target);
     body.setStatus("0");
     body.setBannerSort(1);
     return body;
+  }
+
+  private void writeImage(String relativePath, String format) throws Exception {
+    Path file = tempDirectory.resolve(relativePath);
+    Files.createDirectories(file.getParent());
+    ImageIO.write(new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB), format, file.toFile());
   }
 
   private void stubExistingPlaceAndSavedPost(long userId, long postId) {
