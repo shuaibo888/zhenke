@@ -15,7 +15,7 @@ public interface ShopZhenkeMapper {
   int insertPlace(ShopPlace place);
 
   List<ShopZhenkePost> selectPosts(
-      @Param("zone") String zone,
+      @Param("perspectiveFilter") String perspectiveFilter,
       @Param("authorId") Long authorId,
       @Param("placeId") Long placeId,
       @Param("keyword") String keyword,
@@ -24,7 +24,8 @@ public interface ShopZhenkeMapper {
       @Param("includeDeleted") boolean includeDeleted,
       @Param("publishedFrom") Date publishedFrom,
       @Param("publishedTo") Date publishedTo,
-      @Param("currentUserId") Long currentUserId);
+      @Param("currentUserId") Long currentUserId,
+      @Param("city") String city);
 
   ShopZhenkePost selectPost(
       @Param("postId") Long postId,
@@ -32,6 +33,9 @@ public interface ShopZhenkeMapper {
       @Param("currentUserId") Long currentUserId);
 
   List<ShopZhenkePostResource> selectResources(Long postId);
+
+  List<ShopZhenkePostResource> selectResourcesByPostIds(
+      @Param("postIds") List<Long> postIds);
 
   int insertPost(ShopZhenkePost post);
 
@@ -58,7 +62,15 @@ public interface ShopZhenkeMapper {
 
   int countUseful(@Param("postId") Long postId, @Param("shopUserId") Long shopUserId);
 
-  List<ShopZhenkePostComment> selectComments(Long postId);
+  List<ShopZhenkePostComment> selectRootComments(Long postId);
+
+  List<ShopZhenkePostComment> selectReplyPreviews(
+      @Param("postId") Long postId,
+      @Param("rootCommentIds") List<Long> rootCommentIds,
+      @Param("previewSize") int previewSize);
+
+  List<ShopZhenkePostComment> selectReplies(
+      @Param("postId") Long postId, @Param("rootCommentId") Long rootCommentId);
 
   ShopZhenkePostComment selectComment(
       @Param("postId") Long postId, @Param("commentId") Long commentId);

@@ -69,6 +69,8 @@ export default function MallPage() {
   const [commerceFeedLoadingMore, setCommerceFeedLoadingMore] = useState(false);
   const [commerceFeedError, setCommerceFeedError] = useState('');
   const categoryRailRef = useRef<HTMLElement>(null);
+  const productRequestVersionRef = useRef(0);
+  const commerceFeedRequestVersionRef = useRef(0);
 
   useEffect(() => {
     fetchProductCategories().then((rows) => {
@@ -97,17 +99,22 @@ export default function MallPage() {
     return categories.find((item) => item.categoryCode === activeModule);
   }, [activeModule, categories, legacyCategories, requestedCategory]);
   const activeCategoryId = activeCategory?.categoryId;
+  const localLifeModuleUnavailable = activeModule !== 'MALL' && !activeCategoryId;
 
   const loadProducts = useCallback(async () => {
     if (categoriesLoading) return;
+    const requestVersion = ++productRequestVersionRef.current;
     if (activeModule !== 'MALL' && !activeCategoryId) {
       setProducts([]);
       setTotal(0);
       setPage(1);
       setLoading(false);
+      setLoadingMore(false);
+      setError('');
       return;
     }
     setLoading(true);
+    setLoadingMore(false);
     setError('');
     try {
       const result = await fetchMallProducts({
@@ -117,13 +124,15 @@ export default function MallPage() {
         pageNum: 1,
         pageSize: PAGE_SIZE,
       });
+      if (requestVersion !== productRequestVersionRef.current) return;
       setProducts(result.rows);
       setTotal(result.total);
       setPage(1);
     } catch (reason) {
+      if (requestVersion !== productRequestVersionRef.current) return;
       setError(reason instanceof Error ? reason.message : '商城商品加载失败');
     } finally {
-      setLoading(false);
+      if (requestVersion === productRequestVersionRef.current) setLoading(false);
     }
   }, [activeCategoryId, activeModule, categoriesLoading, keyword]);
 
@@ -133,14 +142,18 @@ export default function MallPage() {
 
   const loadCommerceFeed = useCallback(async () => {
     if (categoriesLoading) return;
+    const requestVersion = ++commerceFeedRequestVersionRef.current;
     if (activeModule !== 'MALL' && !activeCategoryId) {
       setCommerceFeed([]);
       setCommerceFeedTotal(0);
       setCommerceFeedPage(1);
       setCommerceFeedLoading(false);
+      setCommerceFeedLoadingMore(false);
+      setCommerceFeedError('');
       return;
     }
     setCommerceFeedLoading(true);
+    setCommerceFeedLoadingMore(false);
     setCommerceFeedError('');
     try {
       const result = await fetchHomeFeed({
@@ -152,13 +165,15 @@ export default function MallPage() {
         pageNum: 1,
         pageSize: 8,
       });
+      if (requestVersion !== commerceFeedRequestVersionRef.current) return;
       setCommerceFeed(result.rows);
       setCommerceFeedTotal(result.total);
       setCommerceFeedPage(1);
     } catch (reason) {
+      if (requestVersion !== commerceFeedRequestVersionRef.current) return;
       setCommerceFeedError(reason instanceof Error ? reason.message : '商城试用与甄客验加载失败');
     } finally {
-      setCommerceFeedLoading(false);
+      if (requestVersion === commerceFeedRequestVersionRef.current) setCommerceFeedLoading(false);
     }
   }, [activeCategory?.categoryCode, activeCategoryId, activeModule, categoriesLoading, keyword]);
 
@@ -166,12 +181,12 @@ export default function MallPage() {
     void loadCommerceFeed();
   }, [loadCommerceFeed]);
 
+  useEffect(() => () => {
+    productRequestVersionRef.current += 1;
+    commerceFeedRequestVersionRef.current += 1;
+  }, []);
+
   const selectModule = (code: BusinessModuleCode) => {
-    const category = categories.find((item) => item.categoryCode === code);
-    if (code !== 'MALL' && !category) {
-      message.warning('该本地生活分类尚未完成数据库初始化，请管理员先执行增量 SQL 并启用分类');
-      return;
-    }
     const next = new URLSearchParams({ module: code });
     if (keyword) next.set('keyword', keyword);
     setSearchParams(next);
@@ -211,6 +226,7 @@ export default function MallPage() {
   }, [activeCategoryId]);
 
   const loadMore = async () => {
+    const requestVersion = ++productRequestVersionRef.current;
     setLoadingMore(true);
     try {
       const nextPage = page + 1;
@@ -221,6 +237,7 @@ export default function MallPage() {
         pageNum: nextPage,
         pageSize: PAGE_SIZE,
       });
+      if (requestVersion !== productRequestVersionRef.current) return;
       setProducts((current) => {
         const ids = new Set(current.map((item) => item.productId));
         return [...current, ...result.rows.filter((item) => !ids.has(item.productId))];
@@ -228,13 +245,15 @@ export default function MallPage() {
       setTotal(result.total);
       setPage(nextPage);
     } catch (reason) {
+      if (requestVersion !== productRequestVersionRef.current) return;
       message.error(reason instanceof Error ? reason.message : '更多商城商品加载失败');
     } finally {
-      setLoadingMore(false);
+      if (requestVersion === productRequestVersionRef.current) setLoadingMore(false);
     }
   };
 
   const loadMoreCommerceFeed = async () => {
+    const requestVersion = ++commerceFeedRequestVersionRef.current;
     setCommerceFeedLoadingMore(true);
     try {
       const nextPage = commerceFeedPage + 1;
@@ -247,6 +266,7 @@ export default function MallPage() {
         pageNum: nextPage,
         pageSize: 8,
       });
+      if (requestVersion !== commerceFeedRequestVersionRef.current) return;
       setCommerceFeed((current) => {
         const keys = new Set(current.map((item) => `${item.contentType}-${item.contentId}`));
         return [...current, ...result.rows.filter((item) => !keys.has(`${item.contentType}-${item.contentId}`))];
@@ -254,9 +274,10 @@ export default function MallPage() {
       setCommerceFeedTotal(result.total);
       setCommerceFeedPage(nextPage);
     } catch (reason) {
+      if (requestVersion !== commerceFeedRequestVersionRef.current) return;
       message.error(reason instanceof Error ? reason.message : '更多商城内容加载失败');
     } finally {
-      setCommerceFeedLoadingMore(false);
+      if (requestVersion === commerceFeedRequestVersionRef.current) setCommerceFeedLoadingMore(false);
     }
   };
 
@@ -397,6 +418,11 @@ export default function MallPage() {
           <ZkState kind="loading" title="正在加载商城商品" />
         ) : error ? (
           <ZkState kind="error" title="商城暂时无法加载" description={error} onAction={() => void loadProducts()} />
+        ) : localLifeModuleUnavailable ? (
+          <ZkState
+            title={`${businessModules.find((item) => item.code === activeModule)?.title ?? '本地生活'}服务正在准备`}
+            description="平台正在整理可购买的套餐与服务，上线后会在这里展示。"
+          />
         ) : products.length === 0 ? (
           <ZkState
             title={keyword ? '没有找到相关商品' : '当前模块还没有在售商品'}
@@ -467,6 +493,11 @@ export default function MallPage() {
           <ZkState kind="loading" title="正在加载试用与甄客验" />
         ) : commerceFeedError ? (
           <ZkState kind="error" title="试用与甄客验暂时无法加载" description={commerceFeedError} onAction={() => void loadCommerceFeed()} />
+        ) : localLifeModuleUnavailable ? (
+          <ZkState
+            title="相关体验内容正在准备"
+            description="有新的试用活动或甄客验时，会展示在这里。"
+          />
         ) : commerceFeed.length === 0 ? (
           <ZkState
             title="当前分类暂无试用或推荐甄客验"

@@ -20,7 +20,7 @@ type Banner = {
   endTime?: string;
 };
 
-type BannerForm = Omit<Banner, 'bannerId' | 'startTime' | 'endTime'> & {
+type BannerForm = Omit<Banner, 'bannerId' | 'status' | 'startTime' | 'endTime'> & {
   range?: [Dayjs, Dayjs];
 };
 
@@ -57,10 +57,14 @@ export default function HomeBannersPage() {
     setEditorOpen(true);
     form.resetFields();
     form.setFieldsValue(banner ? {
-      ...banner,
+      title: banner.title,
+      subtitle: banner.subtitle,
+      jumpType: banner.jumpType,
+      jumpTarget: banner.jumpTarget,
+      bannerSort: banner.bannerSort,
       imageUrl: mediaStoragePath(banner.imageUrl),
       range: banner.startTime && banner.endTime ? [dayjs(banner.startTime), dayjs(banner.endTime)] : undefined,
-    } : { jumpType: 'INTERNAL', status: '0', bannerSort: 0 });
+    } : { jumpType: 'INTERNAL', bannerSort: 0 });
   };
 
   const save = async (values: BannerForm) => {
@@ -217,7 +221,6 @@ export default function HomeBannersPage() {
           <Form.Item name="jumpTarget" label="跳转目标" rules={[{ required: true, message: '请输入跳转目标' }]}><Input /></Form.Item>
           <Space align="start" wrap>
             <Form.Item name="bannerSort" label="排序"><InputNumber min={0} precision={0} /></Form.Item>
-            <Form.Item name="status" label="状态"><Select style={{ width: 120 }} options={[{ value: '0', label: '启用' }, { value: '1', label: '停用' }]} /></Form.Item>
           </Space>
           <Form.Item name="range" label="有效日期">
             <DatePicker.RangePicker

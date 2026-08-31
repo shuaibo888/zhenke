@@ -86,9 +86,11 @@
       <if test="status != null and status != ''">and p.status=#{status}</if>
       <if test="publishedFrom != null">and p.published_at &gt;= #{publishedFrom}</if>
       <if test="publishedTo != null">and p.published_at &lt;= #{publishedTo}</if>
+      <if test="city != null and city != ''">and p.place_city=#{city}</if>
       <if test="keyword != null and keyword != ''">and (p.title like concat('%',#{keyword},'%') or u.user_name like concat('%',#{keyword},'%') or u.nick_name like concat('%',#{keyword},'%') or p.place_name like concat('%',#{keyword},'%'))</if>
-      <if test="zone == 'LOCAL'">and p.perspective='LOCAL'</if>
-      <if test="zone == 'OUTSIDE'">and p.perspective in ('TOURIST','HOMETOWNER')</if>
+      <if test="perspectiveFilter == 'LOCAL'">and p.perspective='LOCAL'</if>
+      <if test="perspectiveFilter == 'TOURIST'">and p.perspective='TOURIST'</if>
+      <if test="perspectiveFilter == 'HOMETOWNER'">and p.perspective='HOMETOWNER'</if>
     </where>
     order by p.published_at desc,p.post_id desc
   </select>
@@ -98,6 +100,12 @@
     <if test="!includeDeleted"> and p.del_flag='0' and p.status='PUBLISHED'</if>
   </select>
   <select id="selectResources" resultMap="resource">select * from shop_zhenke_post_resource where post_id=#{postId} order by resource_sort,resource_id</select>
+  <select id="selectResourcesByPostIds" resultMap="resource">
+    select * from shop_zhenke_post_resource
+    where post_id in
+    <foreach collection="postIds" item="postId" open="(" separator="," close=")">#{postId}</foreach>
+    order by post_id,resource_sort,resource_id
+  </select>
   <insert id="insertPost" useGeneratedKeys="true" keyProperty="postId">insert into shop_zhenke_post(shop_user_id,title,content,suggestion,perspective,place_id,place_name,place_address,place_province,place_city,place_district,place_latitude,place_longitude,merchant_id,status,published_at,del_flag,create_time,update_time) values(#{shopUserId},#{title},#{content},#{suggestion},#{perspective},#{placeId},#{placeName},#{placeAddress},#{placeProvince},#{placeCity},#{placeDistrict},#{placeLatitude},#{placeLongitude},#{merchantId},'PUBLISHED',sysdate(),'0',sysdate(),sysdate())</insert>
   <insert id="insertResource" useGeneratedKeys="true" keyProperty="resourceId">insert into shop_zhenke_post_resource(post_id,resource_type,resource_url,resource_sort,create_time) values(#{postId},#{resourceType},#{resourceUrl},#{resourceSort},sysdate())</insert>
   <insert id="insertPendingUpload">insert into shop_zhenke_upload(shop_user_id,resource_url,resource_type,expire_time,create_time) values(#{shopUserId},#{resourceUrl},#{resourceType},date_add(sysdate(),interval 24 hour),sysdate())</insert>
@@ -120,9 +128,26 @@
     <result property="postAuthor" column="post_author"/>
     <result property="content" column="content"/>
     <result property="createTime" column="create_time"/>
+    <result property="replyCount" column="reply_count"/>
   </resultMap>
-  <sql id="commentView">select c.*,u.user_name,u.nick_name,u.avatar,coalesce(ru.nick_name,ru.user_name) reply_to_name,c.shop_user_id=p.shop_user_id post_author from shop_zhenke_post_comment c join shop_zhenke_post p on p.post_id=c.post_id and p.del_flag='0' join shop_user u on u.user_id=c.shop_user_id left join shop_zhenke_post_comment rc on rc.comment_id=c.reply_to_comment_id left join shop_user ru on ru.user_id=rc.shop_user_id</sql>
-  <select id="selectComments" resultMap="comment"><include refid="commentView"/> where c.post_id=#{postId} and c.del_flag='0' order by coalesce(c.parent_comment_id,c.comment_id),c.create_time,c.comment_id</select>
+  <sql id="commentView">select c.*,u.user_name,u.nick_name,u.avatar,coalesce(ru.nick_name,ru.user_name) reply_to_name,c.shop_user_id=p.shop_user_id post_author,case when c.parent_comment_id is null then (select count(*) from shop_zhenke_post_comment reply_count where reply_count.post_id=c.post_id and reply_count.parent_comment_id=c.comment_id and reply_count.del_flag='0') else 0 end reply_count from shop_zhenke_post_comment c join shop_zhenke_post p on p.post_id=c.post_id and p.del_flag='0' join shop_user u on u.user_id=c.shop_user_id left join shop_zhenke_post_comment rc on rc.comment_id=c.reply_to_comment_id left join shop_user ru on ru.user_id=rc.shop_user_id</sql>
+  <select id="selectRootComments" resultMap="comment"><include refid="commentView"/> where c.post_id=#{postId} and c.parent_comment_id is null and c.del_flag='0' order by c.create_time desc,c.comment_id desc</select>
+  <select id="selectReplyPreviews" resultMap="comment">
+    select ranked.* from (
+      select c.*,u.user_name,u.nick_name,u.avatar,coalesce(ru.nick_name,ru.user_name) reply_to_name,c.shop_user_id=p.shop_user_id post_author,0 reply_count,
+             row_number() over(partition by c.parent_comment_id order by c.create_time,c.comment_id) reply_rank
+      from shop_zhenke_post_comment c
+      join shop_zhenke_post p on p.post_id=c.post_id and p.del_flag='0'
+      join shop_user u on u.user_id=c.shop_user_id
+      left join shop_zhenke_post_comment rc on rc.comment_id=c.reply_to_comment_id
+      left join shop_user ru on ru.user_id=rc.shop_user_id
+      where c.post_id=#{postId} and c.del_flag='0' and c.parent_comment_id in
+      <foreach collection="rootCommentIds" item="rootCommentId" open="(" separator="," close=")">#{rootCommentId}</foreach>
+    ) ranked
+    where ranked.reply_rank &lt;= #{previewSize}
+    order by ranked.parent_comment_id,ranked.create_time,ranked.comment_id
+  </select>
+  <select id="selectReplies" resultMap="comment"><include refid="commentView"/> where c.post_id=#{postId} and c.parent_comment_id=#{rootCommentId} and c.del_flag='0' order by c.create_time,c.comment_id</select>
   <select id="selectComment" resultMap="comment"><include refid="commentView"/> where c.post_id=#{postId} and c.comment_id=#{commentId} and c.del_flag='0'</select>
   <insert id="insertComment" useGeneratedKeys="true" keyProperty="commentId">insert into shop_zhenke_post_comment(post_id,parent_comment_id,reply_to_comment_id,shop_user_id,content,del_flag,create_time,update_time) select #{postId},#{parentCommentId},#{replyToCommentId},#{shopUserId},#{content},'0',sysdate(),sysdate() from shop_zhenke_post where post_id=#{postId} and del_flag='0' and status='PUBLISHED'</insert>
   <update id="deleteComment">update shop_zhenke_post_comment set del_flag='2',delete_time=sysdate(),update_time=sysdate() where post_id=#{postId} and comment_id=#{commentId} and shop_user_id=#{shopUserId} and del_flag='0'</update>
@@ -143,16 +168,20 @@
     <result property="updateBy" column="update_by"/>
     <result property="updateTime" column="update_time"/>
   </resultMap>
-  <select id="selectActiveBanners" resultMap="banner">select * from shop_home_banner where status='0' and (start_time is null or start_time&lt;=sysdate()) and (end_time is null or end_time&gt;sysdate()) order by banner_sort,banner_id</select>
+  <select id="selectActiveBanners" resultMap="banner">select * from shop_home_banner where status='0' and (start_time is null or start_time&lt;=sysdate()) and (end_time is null or end_time&gt;sysdate()) order by banner_sort,banner_id limit 10</select>
   <select id="selectBanners" resultMap="banner">select * from shop_home_banner order by banner_sort,banner_id</select>
   <select id="selectBanner" resultMap="banner">select * from shop_home_banner where banner_id=#{id}</select>
   <insert id="insertBanner" useGeneratedKeys="true" keyProperty="bannerId">insert into shop_home_banner(title,subtitle,image_url,jump_type,jump_target,banner_sort,status,start_time,end_time,create_by,create_time,update_by,update_time) values(#{title},#{subtitle},#{imageUrl},#{jumpType},#{jumpTarget},#{bannerSort},#{status},#{startTime},#{endTime},#{createBy},sysdate(),#{updateBy},sysdate())</insert>
-  <update id="updateBanner">update shop_home_banner set title=#{title},subtitle=#{subtitle},image_url=#{imageUrl},jump_type=#{jumpType},jump_target=#{jumpTarget},banner_sort=#{bannerSort},status=#{status},start_time=#{startTime},end_time=#{endTime},update_by=#{updateBy},update_time=sysdate() where banner_id=#{bannerId}</update>
+  <update id="updateBanner">update shop_home_banner set title=#{title},subtitle=#{subtitle},image_url=#{imageUrl},jump_type=#{jumpType},jump_target=#{jumpTarget},banner_sort=#{bannerSort},start_time=#{startTime},end_time=#{endTime},update_by=#{updateBy},update_time=sysdate() where banner_id=#{bannerId}</update>
   <delete id="deleteBanner">delete from shop_home_banner where banner_id=#{id}</delete>
   <update id="updateBannerStatus">update shop_home_banner set status=#{status},update_by=#{user},update_time=sysdate() where banner_id=#{id}</update>
   <select id="countActiveMerchant" resultType="int">select count(*) from shop_merchant where merchant_id=#{merchantId} and audit_status='APPROVED' and status='0' and del_flag='0'</select>
-  <select id="selectActiveMerchantOptions" resultType="ShopMerchantOption">
-  select merchant_id, shop_name
+  <resultMap id="merchantOption" type="ShopMerchantOption">
+    <id property="merchantId" column="merchant_id"/>
+    <result property="shopName" column="option_shop_name"/>
+  </resultMap>
+  <select id="selectActiveMerchantOptions" resultMap="merchantOption">
+  select merchant_id,coalesce(nullif(trim(shop_name),''),company_name) option_shop_name
   from shop_merchant
   where audit_status = 'APPROVED' and status = '0' and del_flag = '0'
     <if test="keyword != null and keyword != ''">

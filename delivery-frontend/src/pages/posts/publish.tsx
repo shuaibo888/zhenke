@@ -7,7 +7,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { Button, Checkbox, Form, Input, Radio, Select, Upload, message } from 'antd';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
@@ -43,6 +43,7 @@ const perspectiveOptions = [
 ];
 
 const PLACE_SEARCH_DEBOUNCE_MS = 600;
+const MERCHANT_SEARCH_DEBOUNCE_MS = 400;
 const MIN_PLACE_KEYWORD_LENGTH = 2;
 
 async function videoDuration(file: File) {
@@ -67,6 +68,7 @@ export default function PublishPostPage() {
   const location = useLocation();
   const { user, authLoading } = useShop();
   const [form] = Form.useForm<PublishValues>();
+  const selectedPlaceKey = Form.useWatch('place', form);
   const [media, setMedia] = useState<PostResource[]>([]);
   const hasCoverImage = media.some((item) => item.resourceType === 'IMAGE');
   const [mediaUploading, setMediaUploading] = useState(false);
@@ -82,9 +84,18 @@ export default function PublishPostPage() {
   const placeSearchVersion = useRef(0);
   const placeSearchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const placeSearchAbort = useRef<AbortController | undefined>(undefined);
+  const merchantSearchVersion = useRef(0);
+  const merchantSearchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const mediaRef = useRef<PostResource[]>([]);
   const pendingMediaRef = useRef<Array<{ id: number; resourceType: PostResource['resourceType'] }>>([]);
+  const uploadResultsRef = useRef(new Map<number, PostResource | null>());
   const uploadSequenceRef = useRef(0);
+  const nextUploadCommitRef = useRef(1);
+  const selectedPlace = useMemo(
+    () => pois.find((item) => `${item.provider}:${item.providerPlaceId}` === selectedPlaceKey),
+    [pois, selectedPlaceKey],
+  );
+  const selectedCity = selectedPlace?.city?.trim() || selectedPlace?.province?.trim() || '';
 
   useEffect(() => {
     const placeId = Number(new URLSearchParams(location.search).get('placeId'));
@@ -121,6 +132,8 @@ export default function PublishPostPage() {
   useEffect(() => () => {
     if (placeSearchTimer.current) clearTimeout(placeSearchTimer.current);
     placeSearchAbort.current?.abort();
+    if (merchantSearchTimer.current) clearTimeout(merchantSearchTimer.current);
+    merchantSearchVersion.current += 1;
   }, []);
 
   if (authLoading) return <main className={styles.page}><ZkState kind="loading" title="正在确认登录状态" /></main>;
@@ -169,14 +182,49 @@ export default function PublishPostPage() {
     }, PLACE_SEARCH_DEBOUNCE_MS);
   };
 
-  const searchMerchants = async (keyword: string) => {
+  const searchMerchants = async (keyword: string, version: number) => {
     setMerchantSearching(true);
     try {
-      setMerchants(await merchantOptions(keyword.trim()));
+      const result = await merchantOptions(keyword);
+      if (version === merchantSearchVersion.current) setMerchants(result);
     } catch (reason) {
-      message.error(reason instanceof Error ? reason.message : '入驻商家加载失败');
+      if (version === merchantSearchVersion.current) {
+        message.error(reason instanceof Error ? reason.message : '入驻商家加载失败');
+      }
     } finally {
-      setMerchantSearching(false);
+      if (version === merchantSearchVersion.current) setMerchantSearching(false);
+    }
+  };
+
+  const scheduleMerchantSearch = (keyword: string, immediate = false) => {
+    const normalized = keyword.trim();
+    const version = ++merchantSearchVersion.current;
+    if (merchantSearchTimer.current) clearTimeout(merchantSearchTimer.current);
+    setMerchantSearching(false);
+    const execute = () => {
+      merchantSearchTimer.current = undefined;
+      void searchMerchants(normalized, version);
+    };
+    if (immediate) execute();
+    else merchantSearchTimer.current = setTimeout(execute, MERCHANT_SEARCH_DEBOUNCE_MS);
+  };
+
+  const commitUploadResult = (reservationId: number, result: PostResource | null) => {
+    uploadResultsRef.current.set(reservationId, result);
+    let nextMedia = mediaRef.current;
+    let changed = false;
+    while (uploadResultsRef.current.has(nextUploadCommitRef.current)) {
+      const nextResult = uploadResultsRef.current.get(nextUploadCommitRef.current);
+      uploadResultsRef.current.delete(nextUploadCommitRef.current);
+      nextUploadCommitRef.current += 1;
+      if (nextResult) {
+        nextMedia = [...nextMedia, nextResult];
+        changed = true;
+      }
+    }
+    if (changed) {
+      mediaRef.current = nextMedia;
+      setMedia(nextMedia);
     }
   };
 
@@ -187,7 +235,6 @@ export default function PublishPostPage() {
     if (isImage && file.size > 5 * 1024 * 1024) throw new Error('单张图片不能超过 5MB');
     if (isVideo) {
       if (file.size > 10 * 1024 * 1024) throw new Error('视频不能超过 10MB');
-      if ((await videoDuration(file)) > 30.5) throw new Error('视频时长不能超过 30 秒');
     }
     const resourceType: PostResource['resourceType'] = isVideo ? 'VIDEO' : 'IMAGE';
     if (mediaRef.current.length + pendingMediaRef.current.length >= 9) {
@@ -203,10 +250,14 @@ export default function PublishPostPage() {
     pendingMediaRef.current.push({ id: reservationId, resourceType });
     setMediaUploading(true);
     try {
+      if (isVideo && (await videoDuration(file)) > 30.5) {
+        throw new Error('视频时长不能超过 30 秒');
+      }
       const resourceUrl = await upload(file);
-      const nextMedia = [...mediaRef.current, { resourceType, resourceUrl }];
-      mediaRef.current = nextMedia;
-      setMedia(nextMedia);
+      commitUploadResult(reservationId, { resourceType, resourceUrl });
+    } catch (reason) {
+      commitUploadResult(reservationId, null);
+      throw reason;
     } finally {
       pendingMediaRef.current = pendingMediaRef.current.filter((item) => item.id !== reservationId);
       setMediaUploading(pendingMediaRef.current.length > 0);
@@ -275,24 +326,10 @@ export default function PublishPostPage() {
         layout="vertical"
         requiredMark={false}
         className={`${styles.surface} ${styles.publishCard}`}
-        initialValues={{ perspective: 'LOCAL' }}
         onFinish={(values) => void submit(values)}
       >
         <span className={styles.eyebrow}>CREATE A STORY</span>
         <h1>记录一个地点，分享一种体验视角。</h1>
-
-        <Form.Item
-          label={<><UserOutlined /> 体验视角</>}
-          name="perspective"
-          rules={[{ required: true, message: '请选择体验视角' }]}
-        >
-          <Radio.Group
-            className={styles.perspectiveOptions}
-            optionType="button"
-            buttonStyle="solid"
-            options={perspectiveOptions}
-          />
-        </Form.Item>
 
         <Form.Item
           label="标题"
@@ -357,6 +394,22 @@ export default function PublishPostPage() {
         </Form.Item>
 
         <Form.Item
+          label={<><UserOutlined /> 你与这座城市的关系</>}
+          name="perspective"
+          extra={selectedCity
+            ? `将以“${selectedCity}”为参照展示身份。`
+            : '请先选择地点，再选择你与地点所在城市的关系。'}
+          rules={[{ required: true, message: '请选择你与这座城市的关系' }]}
+        >
+          <Radio.Group
+            className={styles.perspectiveOptions}
+            optionType="button"
+            buttonStyle="solid"
+            options={perspectiveOptions}
+          />
+        </Form.Item>
+
+        <Form.Item
           label={<><ShopOutlined /> 关联已入驻商家（选填）</>}
           name="merchantId"
           extra="如果内容与平台商家有关，可以选择关联。"
@@ -367,8 +420,9 @@ export default function PublishPostPage() {
             showSearch
             filterOption={false}
             loading={merchantSearching}
-            onFocus={() => merchants.length === 0 && void searchMerchants('')}
-            onSearch={(value) => void searchMerchants(value)}
+            onFocus={() => merchants.length === 0 && scheduleMerchantSearch('', true)}
+            onSearch={(value) => scheduleMerchantSearch(value)}
+            notFoundContent={merchantSearching ? '正在加载已入驻商家…' : '暂无匹配的已审核商家'}
             placeholder="不关联商家"
             options={merchants
               .filter((item): item is MerchantOption => item != null)
@@ -402,6 +456,7 @@ export default function PublishPostPage() {
             </Upload.Dragger>
             <p className={styles.selectionHint}>
               至少上传 1 张图片作为封面；可再上传 1 个视频，图片和视频合计最多 9 个。
+              媒体会按选择顺序展示，第一张图片作为封面。
               图片 JPG/PNG ≤ 5MB；MP4 ≤ 10MB 且 ≤ 30 秒。
             </p>
             {media.length > 0 && (

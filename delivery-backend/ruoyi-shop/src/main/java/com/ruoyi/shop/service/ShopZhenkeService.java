@@ -19,7 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ShopZhenkeService {
-  private static final Set<String> ZONES = Set.of("RECOMMEND", "LOCAL", "OUTSIDE");
+  private static final Set<String> PERSPECTIVE_FILTERS =
+      Set.of("RECOMMEND", "LOCAL", "TOURIST", "HOMETOWNER");
+  private static final int COMMENT_PREVIEW_SIZE = 3;
   private final ShopZhenkeMapper mapper;
   private final TencentMapService mapService;
 
@@ -28,14 +30,22 @@ public class ShopZhenkeService {
     this.mapService = mapService;
   }
 
-  public List<ShopZhenkePost> posts(String zone, Long placeId, int pageNum, int pageSize) {
-    String z = StringUtils.trim(zone).toUpperCase(Locale.ROOT);
-    if (z.isEmpty()) z = "RECOMMEND";
-    if (!ZONES.contains(z)) throw new ServiceException("帖子分区无效");
+  public List<ShopZhenkePost> posts(
+      String perspectiveFilter, Long placeId, int pageNum, int pageSize) {
+    return posts(perspectiveFilter, placeId, null, pageNum, pageSize);
+  }
+
+  public List<ShopZhenkePost> posts(
+      String perspectiveFilter, Long placeId, String city, int pageNum, int pageSize) {
+    String filter = StringUtils.trim(perspectiveFilter).toUpperCase(Locale.ROOT);
+    if (filter.isEmpty()) filter = "RECOMMEND";
+    if (!PERSPECTIVE_FILTERS.contains(filter)) {
+      throw new ServiceException("帖子身份筛选无效");
+    }
     PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(50, pageSize)));
     return hydrate(
         mapper.selectPosts(
-            z,
+            filter,
             null,
             placeId,
             null,
@@ -44,8 +54,31 @@ public class ShopZhenkeService {
             false,
             null,
             null,
-            ShopAccountIdentity.currentShopUserIdOrNull()),
+            ShopAccountIdentity.currentShopUserIdOrNull(),
+            normalizeCity(city)),
         false);
+  }
+
+  public List<ShopZhenkePost> homePosts(String city, int pageSize) {
+    PageHelper.startPage(1, Math.max(1, Math.min(20, pageSize)), false);
+    try {
+      return hydrate(
+          mapper.selectPosts(
+              "RECOMMEND",
+              null,
+              null,
+              null,
+              null,
+              null,
+              false,
+              null,
+              null,
+              ShopAccountIdentity.currentShopUserIdOrNull(),
+              normalizeCity(city)),
+          false);
+    } finally {
+      PageHelper.clearPage();
+    }
   }
 
   public ShopZhenkePost detail(long id) {
@@ -65,7 +98,7 @@ public class ShopZhenkeService {
     long uid = ShopAccountIdentity.requireAuthenticatedShopUserId();
     PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(50, pageSize)));
     return hydrate(
-        mapper.selectPosts("RECOMMEND", uid, null, null, null, null, true, null, null, uid),
+        mapper.selectPosts("RECOMMEND", uid, null, null, null, null, true, null, null, uid, null),
         false);
   }
 
@@ -135,7 +168,10 @@ public class ShopZhenkeService {
   @Transactional
   public Map<String, Object> toggleUseful(long id) {
     long uid = ShopAccountIdentity.requireShopUserId();
-    detail(id);
+    ShopZhenkePost post = detail(id);
+    if (Objects.equals(post.getShopUserId(), uid)) {
+      throw new ServiceException("不能将自己的甄客帖标记为有用");
+    }
     if (mapper.countUseful(id, uid) > 0) {
       mapper.deleteUseful(id, uid);
     } else {
@@ -146,9 +182,32 @@ public class ShopZhenkeService {
     return Map.of("useful", active, "usefulCount", p.getUsefulCount());
   }
 
-  public List<ShopZhenkePostComment> comments(long id) {
+  public List<ShopZhenkePostComment> comments(long id, int pageNum, int pageSize) {
     detail(id);
-    return mapper.selectComments(id);
+    PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(20, pageSize)));
+    List<ShopZhenkePostComment> roots;
+    try {
+      roots = mapper.selectRootComments(id);
+    } finally {
+      PageHelper.clearPage();
+    }
+    attachCommentPreviews(id, roots);
+    return roots;
+  }
+
+  public List<ShopZhenkePostComment> commentReplies(
+      long id, long rootCommentId, int pageNum, int pageSize) {
+    detail(id);
+    ShopZhenkePostComment root = mapper.selectComment(id, rootCommentId);
+    if (root == null || root.getParentCommentId() != null) {
+      throw new ServiceException("一级评论不存在或已删除");
+    }
+    PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(50, pageSize)));
+    try {
+      return mapper.selectReplies(id, rootCommentId);
+    } finally {
+      PageHelper.clearPage();
+    }
   }
 
   @Transactional
@@ -186,6 +245,27 @@ public class ShopZhenkeService {
             ? mapper.deleteCommentTree(id, cid, uid)
             : mapper.deleteComment(id, cid, uid);
     if (n == 0) throw new ServiceException("只能删除自己的评论");
+  }
+
+  private void attachCommentPreviews(long postId, List<ShopZhenkePostComment> roots) {
+    if (roots == null || roots.isEmpty()) return;
+    List<Long> rootIds = roots.stream().map(ShopZhenkePostComment::getCommentId).toList();
+    Map<Long, List<ShopZhenkePostComment>> repliesByRoot = new HashMap<>();
+    List<ShopZhenkePostComment> previews =
+        mapper.selectReplyPreviews(postId, rootIds, COMMENT_PREVIEW_SIZE);
+    if (previews != null) {
+      for (ShopZhenkePostComment reply : previews) {
+        if (reply.getParentCommentId() != null) {
+          repliesByRoot
+              .computeIfAbsent(reply.getParentCommentId(), ignored -> new ArrayList<>())
+              .add(reply);
+        }
+      }
+    }
+    for (ShopZhenkePostComment root : roots) {
+      root.setReplies(repliesByRoot.getOrDefault(root.getCommentId(), List.of()));
+      if (root.getReplyCount() == null) root.setReplyCount(0L);
+    }
   }
 
   public List<com.ruoyi.shop.domain.vo.ShopMerchantOption> merchantOptions(String keyword) {
@@ -239,8 +319,14 @@ public class ShopZhenkeService {
             true,
             publishedFrom,
             publishedTo,
+            null,
             null),
         true);
+  }
+
+  private String normalizeCity(String city) {
+    String normalized = StringUtils.trim(city);
+    return normalized.isEmpty() ? null : normalized;
   }
 
   public ShopZhenkePost adminDetail(long id) {
@@ -257,6 +343,14 @@ public class ShopZhenkeService {
 
   @Transactional
   public ShopHomeBanner saveBanner(Long id, ShopHomeBannerBody b, String user) {
+    String persistedStatus = "1";
+    if (id != null) {
+      ShopHomeBanner existing = mapper.selectBanner(id);
+      if (existing == null || !Set.of("0", "1").contains(existing.getStatus())) {
+        throw new ServiceException("轮播不存在");
+      }
+      persistedStatus = existing.getStatus();
+    }
     String imagePath = validateBanner(b);
     ShopHomeBanner x = new ShopHomeBanner();
     x.setBannerId(id);
@@ -266,7 +360,9 @@ public class ShopZhenkeService {
     x.setJumpType(b.getJumpType());
     x.setJumpTarget(StringUtils.trim(b.getJumpTarget()));
     x.setBannerSort(b.getBannerSort());
-    x.setStatus(b.getStatus());
+    // Add/edit permissions do not imply publish permission. Only bannerStatus
+    // may change this field, and that endpoint has its own authority check.
+    x.setStatus(persistedStatus);
     x.setStartTime(atBannerTime(b.getStartTime(), LocalTime.MIDNIGHT));
     x.setEndTime(atBannerTime(b.getEndTime(), LocalTime.of(23, 59, 59)));
     x.setCreateBy(user);
@@ -294,12 +390,32 @@ public class ShopZhenkeService {
   }
 
   private List<ShopZhenkePost> hydrate(List<ShopZhenkePost> rows, boolean includeDeletedResources) {
-    for (var p : rows) {
-      if (includeDeletedResources || !"DELETED".equals(p.getStatus())) {
-        p.setResources(mapper.selectResources(p.getPostId()));
-      } else {
-        p.setResources(List.of());
+    if (rows == null || rows.isEmpty()) return rows;
+    List<Long> postIds =
+        rows.stream()
+            .filter(p -> includeDeletedResources || !"DELETED".equals(p.getStatus()))
+            .map(ShopZhenkePost::getPostId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+    Map<Long, List<ShopZhenkePostResource>> resourcesByPost = new HashMap<>();
+    if (!postIds.isEmpty()) {
+      List<ShopZhenkePostResource> resources = mapper.selectResourcesByPostIds(postIds);
+      if (resources != null) {
+        for (ShopZhenkePostResource resource : resources) {
+          if (resource != null && resource.getPostId() != null) {
+            resourcesByPost
+                .computeIfAbsent(resource.getPostId(), ignored -> new ArrayList<>())
+                .add(resource);
+          }
+        }
       }
+    }
+    for (ShopZhenkePost post : rows) {
+      post.setResources(
+          includeDeletedResources || !"DELETED".equals(post.getStatus())
+              ? resourcesByPost.getOrDefault(post.getPostId(), List.of())
+              : List.of());
     }
     return rows;
   }

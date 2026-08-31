@@ -1,12 +1,15 @@
 package com.ruoyi.shop.domain;
 
 import java.util.Date;
+import java.util.List;
 
 public class ShopZhenkePostComment {
   private Long commentId, postId, parentCommentId, replyToCommentId, shopUserId;
   private String userName, nickName, avatar, replyToName, content;
   private Boolean postAuthor;
   private Date createTime;
+  private Long replyCount;
+  private List<ShopZhenkePostComment> replies;
 
   public Long getCommentId() {
     return commentId;
@@ -102,5 +105,21 @@ public class ShopZhenkePostComment {
 
   public void setCreateTime(Date v) {
     createTime = v;
+  }
+
+  public Long getReplyCount() {
+    return replyCount;
+  }
+
+  public void setReplyCount(Long v) {
+    replyCount = v;
+  }
+
+  public List<ShopZhenkePostComment> getReplies() {
+    return replies;
+  }
+
+  public void setReplies(List<ShopZhenkePostComment> v) {
+    replies = v;
   }
 }

@@ -8,13 +8,14 @@ import {
   ShopOutlined,
 } from '@ant-design/icons';
 import { Button, Input, Popconfirm, message } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { perspectiveNames } from '@/components/ZhenkePostCard';
 import { ZkState } from '@/components/ZkPage';
 import {
-  comments,
+  commentReplies,
+  comments as fetchComments,
   createComment,
   deleteComment,
   post,
@@ -35,12 +36,20 @@ export default function PostDetailPage() {
   const { user } = useShop();
   const [detail, setDetail] = useState<ZhenkePost>();
   const [commentRows, setCommentRows] = useState<PostComment[]>([]);
+  const [commentTotal, setCommentTotal] = useState(0);
+  const [commentPage, setCommentPage] = useState(0);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsError, setCommentsError] = useState('');
+  const [replyPages, setReplyPages] = useState<Record<number, number>>({});
+  const [replyLoading, setReplyLoading] = useState<Record<number, boolean>>({});
+  const [replyErrors, setReplyErrors] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [commentText, setCommentText] = useState('');
   const [replyTarget, setReplyTarget] = useState<PostComment>();
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [usefulSubmitting, setUsefulSubmitting] = useState(false);
+  const commentRequestId = useRef(0);
   const sharePreviewImage = detail?.resources.find((item) => item.resourceType === 'IMAGE')?.resourceUrl ?? '';
   const prepareWechatShare = useWechatShare(detail && sharePreviewImage ? {
     title: `甄客帖｜${detail.title}`,
@@ -53,45 +62,76 @@ export default function PostDetailPage() {
     setLoading(true);
     setError('');
     try {
-      const [postResult, commentResult] = await Promise.allSettled([post(postId), comments(postId)]);
-      if (postResult.status === 'fulfilled') {
-        setDetail(postResult.value);
-      } else {
-        setDetail(undefined);
-        setError(postResult.reason instanceof Error ? postResult.reason.message : '甄客帖不存在或已删除');
-      }
-      if (commentResult.status === 'fulfilled') {
-        setCommentRows(commentResult.value);
-      } else {
-        setCommentRows([]);
-        message.error(commentResult.reason instanceof Error ? commentResult.reason.message : '评论暂时无法加载');
-      }
+      setDetail(await post(postId));
+    } catch (reason) {
+      setDetail(undefined);
+      setError(reason instanceof Error ? reason.message : '甄客帖不存在或已删除');
     } finally {
       setLoading(false);
     }
   }, [postId]);
 
+  const loadComments = useCallback(async (page = 1, append = false) => {
+    const requestId = ++commentRequestId.current;
+    setCommentsLoading(true);
+    setCommentsError('');
+    try {
+      const result = await fetchComments(postId, page, 10);
+      if (requestId !== commentRequestId.current) return;
+      setCommentRows((current) => {
+        if (!append) return result.rows;
+        const merged = new Map(current.map((item) => [item.commentId, item]));
+        result.rows.forEach((item) => merged.set(item.commentId, item));
+        return Array.from(merged.values());
+      });
+      setCommentTotal(result.total);
+      setCommentPage(page);
+      if (!append) {
+        setReplyPages({});
+        setReplyErrors({});
+      }
+    } catch (reason) {
+      if (requestId === commentRequestId.current) {
+        setCommentsError(reason instanceof Error ? reason.message : '评论暂时无法加载');
+      }
+    } finally {
+      if (requestId === commentRequestId.current) setCommentsLoading(false);
+    }
+  }, [postId]);
+
+  const loadReplies = useCallback(async (rootCommentId: number, page = 1, append = false) => {
+    setReplyLoading((current) => ({ ...current, [rootCommentId]: true }));
+    setReplyErrors((current) => ({ ...current, [rootCommentId]: '' }));
+    try {
+      const result = await commentReplies(postId, rootCommentId, page, 20);
+      setCommentRows((current) => current.map((root) => {
+        if (root.commentId !== rootCommentId) return root;
+        const merged = new Map((append ? (root.replies ?? []) : []).map((item) => [item.commentId, item]));
+        result.rows.forEach((item) => merged.set(item.commentId, item));
+        return { ...root, replies: Array.from(merged.values()), replyCount: result.total };
+      }));
+      setReplyPages((current) => ({ ...current, [rootCommentId]: page }));
+    } catch (reason) {
+      setReplyErrors((current) => ({
+        ...current,
+        [rootCommentId]: reason instanceof Error ? reason.message : '回复暂时无法加载',
+      }));
+    } finally {
+      setReplyLoading((current) => ({ ...current, [rootCommentId]: false }));
+    }
+  }, [postId]);
+
   useEffect(() => {
-    if (Number.isSafeInteger(postId) && postId > 0) void load();
+    if (Number.isSafeInteger(postId) && postId > 0) {
+      void load();
+      void loadComments();
+    }
     else {
       setLoading(false);
       setError('甄客帖链接无效');
     }
-  }, [load, postId]);
-
-  const rootComments = useMemo(
-    () => commentRows.filter((item) => !item.parentCommentId),
-    [commentRows],
-  );
-  const repliesByRoot = useMemo(() => {
-    const result = new Map<number, PostComment[]>();
-    commentRows.filter((item) => item.parentCommentId).forEach((item) => {
-      const list = result.get(item.parentCommentId!) ?? [];
-      list.push(item);
-      result.set(item.parentCommentId!, list);
-    });
-    return result;
-  }, [commentRows]);
+    return () => { commentRequestId.current += 1; };
+  }, [load, loadComments, postId]);
 
   const requireLogin = () => {
     if (user) return true;
@@ -102,13 +142,31 @@ export default function PostDetailPage() {
 
   const submitComment = async () => {
     if (!requireLogin() || !commentText.trim() || commentSubmitting) return;
+    const replying = Boolean(replyTarget);
     setCommentSubmitting(true);
     try {
-      await createComment(postId, commentText.trim(), replyTarget?.commentId);
+      const saved = await createComment(postId, commentText.trim(), replyTarget?.commentId);
       setCommentText('');
       setReplyTarget(undefined);
-      await load();
-      message.success(replyTarget ? '回复已发布' : '评论已发布');
+      setDetail((current) => current
+        ? { ...current, commentCount: (current.commentCount ?? 0) + 1 }
+        : current);
+      if (saved.parentCommentId) {
+        setCommentRows((current) => current.map((root) => {
+          if (root.commentId !== saved.parentCommentId) return root;
+          const replies = root.replies ?? [];
+          return {
+            ...root,
+            replyCount: (root.replyCount ?? replies.length) + 1,
+            replies: replies.some((item) => item.commentId === saved.commentId)
+              ? replies
+              : [...replies, saved],
+          };
+        }));
+      } else {
+        await loadComments(1, false);
+      }
+      message.success(replying ? '回复已发布' : '评论已发布');
     } catch (reason) {
       message.error(reason instanceof Error ? reason.message : '评论发布失败');
     } finally {
@@ -159,6 +217,7 @@ export default function PostDetailPage() {
 
   const authorName = detail.nickName || detail.userName || '甄客行用户';
   const authorInitial = authorName.slice(0, 1);
+  const firstImageIndex = detail.resources.findIndex((resource) => resource.resourceType === 'IMAGE');
 
   const renderComment = (comment: PostComment, reply = false) => (
     <article key={comment.commentId} className={`${styles.commentItem} ${reply ? styles.replyItem : ''}`}>
@@ -183,7 +242,11 @@ export default function PostDetailPage() {
               onConfirm={async () => {
                 try {
                   await deleteComment(postId, comment.commentId);
-                  await load();
+                  const removedCount = reply ? 1 : 1 + (comment.replyCount ?? 0);
+                  setDetail((current) => current
+                    ? { ...current, commentCount: Math.max(0, (current.commentCount ?? 0) - removedCount) }
+                    : current);
+                  await loadComments(1, false);
                   message.success(reply ? '回复已删除' : '评论已删除');
                 } catch (reason) {
                   message.error(reason instanceof Error ? reason.message : '评论删除失败');
@@ -208,17 +271,23 @@ export default function PostDetailPage() {
           <span className={styles.authorAvatar}>{detail.avatar ? <img src={detail.avatar} alt="" /> : authorInitial}</span>
           <span className={styles.authorCopy}>
             <strong>{authorName}</strong>
-            <small>{perspectiveNames[detail.perspective]} · {detail.publishedAt}</small>
+            <small>{detail.placeCity || detail.placeProvince || '城市待补充'} · {perspectiveNames[detail.perspective]} · {detail.publishedAt}</small>
           </span>
         </div>
         <Button shape="circle" icon={<ShareAltOutlined />} aria-label="分享" onClick={() => void share()} />
       </div>
 
       <div className={styles.detailGallery}>
-        {detail.resources.map((resource) => resource.resourceType === 'VIDEO' ? (
+        {detail.resources.map((resource, index) => resource.resourceType === 'VIDEO' ? (
           <video key={resource.resourceId ?? resource.resourceUrl} controls playsInline preload="metadata" src={resource.resourceUrl} />
         ) : (
-          <img key={resource.resourceId ?? resource.resourceUrl} src={resource.resourceUrl} alt={detail.title} />
+          <img
+            key={resource.resourceId ?? resource.resourceUrl}
+            src={resource.resourceUrl}
+            alt={detail.title}
+            loading={index === firstImageIndex ? 'eager' : 'lazy'}
+            decoding="async"
+          />
         ))}
       </div>
 
@@ -295,7 +364,7 @@ export default function PostDetailPage() {
 
       <section id="post-comments" className={`${styles.surface} ${styles.commentsPanel}`}>
         <div className={styles.sectionTitle}>
-          <div><h2>评论与回复</h2><p>{commentRows.length} 条公开交流</p></div>
+          <div><h2>评论与回复</h2><p>{detail.commentCount ?? 0} 条公开交流 · {commentTotal} 条一级评论</p></div>
         </div>
         <div className={styles.commentComposer}>
           {replyTarget && (
@@ -321,14 +390,56 @@ export default function PostDetailPage() {
             onClick={() => void submitComment()}
           >{replyTarget ? '发布回复' : '发表评论'}</Button>
         </div>
-        {rootComments.length === 0 ? (
+        {commentsLoading && commentRows.length === 0 && (
+          <ZkState kind="loading" title="正在加载评论" />
+        )}
+        {commentsError && (
+          <ZkState
+            kind="error"
+            title="评论暂时无法加载"
+            description={commentsError}
+            actionText="重试"
+            onAction={() => void loadComments(commentRows.length > 0 ? commentPage + 1 : 1, commentRows.length > 0)}
+          />
+        )}
+        {!commentsLoading && !commentsError && commentRows.length === 0 ? (
           <ZkState title="还没有评论" description="说说你对这篇分享或这个地点的看法。" />
-        ) : rootComments.map((root) => (
-          <div key={root.commentId}>
-            {renderComment(root)}
-            {(repliesByRoot.get(root.commentId) ?? []).map((reply) => renderComment(reply, true))}
+        ) : commentRows.map((root) => {
+          const shownReplies = root.replies ?? [];
+          const replyPage = replyPages[root.commentId] ?? 0;
+          const remainingReplies = Math.max(0, (root.replyCount ?? 0) - shownReplies.length);
+          return (
+            <div key={root.commentId}>
+              {renderComment(root)}
+              {shownReplies.map((reply) => renderComment(reply, true))}
+              {replyErrors[root.commentId] && (
+                <div className={styles.loadMore}>
+                  <Button
+                    type="link"
+                    danger
+                    onClick={() => void loadReplies(root.commentId, replyPage > 0 ? replyPage + 1 : 1, replyPage > 0)}
+                  >回复加载失败，点击重试</Button>
+                </div>
+              )}
+              {!replyErrors[root.commentId] && remainingReplies > 0 && (
+                <div className={styles.loadMore}>
+                  <Button
+                    type="link"
+                    loading={replyLoading[root.commentId]}
+                    onClick={() => void loadReplies(root.commentId, replyPage > 0 ? replyPage + 1 : 1, replyPage > 0)}
+                  >{replyPage > 0 ? `继续加载回复（剩余 ${remainingReplies} 条）` : `查看其余 ${remainingReplies} 条回复`}</Button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {commentRows.length < commentTotal && (
+          <div className={styles.loadMore}>
+            <Button loading={commentsLoading} onClick={() => void loadComments(commentPage + 1, true)}>
+              加载更多评论（剩余 {commentTotal - commentRows.length} 条）
+            </Button>
           </div>
-        ))}
+        )}
       </section>
     </main>
   );

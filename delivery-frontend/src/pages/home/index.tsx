@@ -9,16 +9,14 @@ import {
   ShoppingOutlined,
 } from '@ant-design/icons';
 import { Carousel, Image, Input, Modal, message } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'umi';
-import pcaCode from 'china-division/dist/pca-code.json';
+import pcCode from 'china-division/dist/pc-code.json';
 import { ZhenkeEnjoyCard } from '@/components/ZhenkeEnjoyCard';
 import { ZhenkePostCard } from '@/components/ZhenkePostCard';
 import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
 import {
-  banners,
-  enjoys,
-  posts,
+  homeContent,
   type Banner,
   type EnjoyCategory,
   type ZhenkeEnjoy,
@@ -34,7 +32,7 @@ type CityOption = { code: string; name: string; province: string };
 const PROVINCE_AS_CITY = new Set(['11', '12', '31', '50', '71', '81', '82']);
 const HOT_CITY_NAMES = ['北京市', '上海市', '广州市', '深圳市', '杭州市', '成都市', '重庆市', '天津市', '南京市', '武汉市', '西安市', '苏州市'];
 
-const cityGroups = (pcaCode as RegionNode[]).map((province) => {
+const cityGroups = (pcCode as RegionNode[]).map((province) => {
   let cities: CityOption[];
   if (PROVINCE_AS_CITY.has(province.code)) {
     cities = [{ code: province.code, name: province.name, province: province.name }];
@@ -91,6 +89,8 @@ const emptyEnjoyFeeds: Record<EnjoyCategory, ZhenkeEnjoy[]> = {
   HOTEL: [],
 };
 
+type EnjoyLoadErrors = Partial<Record<EnjoyCategory, string>>;
+
 const locationCityLabel = (location: ReturnType<typeof loadCurrentLocation>) => {
   if (!location) return '选择城市';
   if (location.city) return location.city;
@@ -102,8 +102,7 @@ export default function HomePage() {
   const [feed, setFeed] = useState<ZhenkePost[]>([]);
   const [bannerRows, setBannerRows] = useState<Banner[]>([]);
   const [enjoyFeeds, setEnjoyFeeds] = useState<Record<EnjoyCategory, ZhenkeEnjoy[]>>(emptyEnjoyFeeds);
-  const [activeEnjoy, setActiveEnjoy] = useState<EnjoyCategory>('MALL');
-  const [enjoyError, setEnjoyError] = useState('');
+  const [enjoyErrors, setEnjoyErrors] = useState<EnjoyLoadErrors>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [bannerError, setBannerError] = useState('');
@@ -113,6 +112,8 @@ export default function HomePage() {
   const [currentArea, setCurrentArea] = useState(() => locationCityLabel(initialLocation));
   const [cityPickerOpen, setCityPickerOpen] = useState(false);
   const [citySearch, setCitySearch] = useState('');
+  const homeRequestVersion = useRef(0);
+  const locationRequestVersion = useRef(0);
 
   const citySearchResults = useMemo(() => {
     const keyword = citySearch.trim();
@@ -124,48 +125,51 @@ export default function HomePage() {
   }, [citySearch]);
 
   const loadHome = useCallback(async () => {
+    const requestVersion = ++homeRequestVersion.current;
     setLoading(true);
     setLoadError('');
     setBannerError('');
-    setEnjoyError('');
-    const [postResult, bannerResult, enjoyResult] = await Promise.allSettled([
-      posts('RECOMMEND', 1, 9),
-      banners(),
-      Promise.all(zhenEnjoyEntries.map(async (entry) => [
-        entry.code,
-        (await enjoys(entry.code, 1, 6)).rows,
-      ] as const)),
-    ]);
-    if (postResult.status === 'fulfilled') {
-      setFeed(postResult.value.rows);
-    } else {
-      setFeed([]);
-      setLoadError(postResult.reason instanceof Error ? postResult.reason.message : '首页内容加载失败');
-    }
-    if (bannerResult.status === 'fulfilled') {
-      setBannerRows(bannerResult.value);
-    } else {
-      setBannerRows([]);
-      setBannerError('今日精选暂时没有加载成功，请稍后再试。');
-    }
-    if (enjoyResult.status === 'fulfilled') {
+    setEnjoyErrors({});
+    try {
+      const result = await homeContent();
+      if (requestVersion !== homeRequestVersion.current) return;
+      setFeed(result.posts ?? []);
+      setBannerRows(result.banners ?? []);
+      setLoadError(result.postError ?? '');
+      setBannerError(result.bannerError ?? '');
       const next = { ...emptyEnjoyFeeds };
-      enjoyResult.value.forEach(([category, rows]) => { next[category] = rows; });
+      zhenEnjoyEntries.forEach((entry) => {
+        next[entry.code] = result.enjoys?.[entry.code] ?? [];
+      });
       setEnjoyFeeds(next);
-      const firstPopulated = zhenEnjoyEntries.find((entry) => next[entry.code].length > 0);
-      if (firstPopulated) setActiveEnjoy(firstPopulated.code);
-    } else {
+      setEnjoyErrors(result.enjoyError
+        ? Object.fromEntries(
+          zhenEnjoyEntries.map((entry) => [entry.code, result.enjoyError]),
+        ) as EnjoyLoadErrors
+        : {});
+    } catch (reason) {
+      if (requestVersion !== homeRequestVersion.current) return;
+      setFeed([]);
+      setBannerRows([]);
       setEnjoyFeeds({ ...emptyEnjoyFeeds });
-      setEnjoyError('甄必享内容暂时没有加载成功');
+      const error = reason instanceof Error ? reason.message : '首页内容加载失败';
+      setLoadError(error);
+      setBannerError('今日精选暂时没有加载成功，请稍后再试。');
+      setEnjoyErrors(Object.fromEntries(
+        zhenEnjoyEntries.map((entry) => [entry.code, error]),
+      ) as EnjoyLoadErrors);
+    } finally {
+      if (requestVersion === homeRequestVersion.current) setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
     void loadHome();
+    return () => { homeRequestVersion.current += 1; };
   }, [loadHome]);
 
   const locate = useCallback(() => {
+    const requestVersion = ++locationRequestVersion.current;
     if (!navigator.geolocation) {
       setLocationStatus('failed');
       setLocationError('当前浏览器不支持设备定位，请手动选择城市');
@@ -175,11 +179,13 @@ export default function HomePage() {
     setLocationStatus('locating');
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
+        if (requestVersion !== locationRequestVersion.current) return;
         try {
           const response = await fetch(
             `/api/shop/zhenke/map/reverse?latitude=${coords.latitude}&longitude=${coords.longitude}`,
           );
           const payload = await response.json();
+          if (requestVersion !== locationRequestVersion.current) return;
           if (!response.ok || payload.code !== 200) throw new Error(payload.msg || '定位解析失败');
           const city = payload.data?.city;
           const district = payload.data?.district;
@@ -197,12 +203,15 @@ export default function HomePage() {
           setLocationError('');
           setCityPickerOpen(false);
           setCitySearch('');
+          void loadHome();
         } catch {
+          if (requestVersion !== locationRequestVersion.current) return;
           setLocationStatus('failed');
           setLocationError('地图服务暂时不可用，请手动选择城市');
         }
       },
       () => {
+        if (requestVersion !== locationRequestVersion.current) return;
         setLocationStatus('failed');
         setLocationError('未获得定位权限，请手动选择城市');
       },
@@ -214,12 +223,17 @@ export default function HomePage() {
     if (!initialLocation) locate();
   }, [initialLocation, locate]);
 
+  useEffect(() => () => {
+    locationRequestVersion.current += 1;
+  }, [loadHome]);
+
   const openBanner = (banner: Banner) => {
     if (banner.jumpType === 'INTERNAL') navigate(banner.jumpTarget);
     else window.location.assign(banner.jumpTarget);
   };
 
   const selectCity = (city: CityOption) => {
+    locationRequestVersion.current += 1;
     setCurrentArea(city.name);
     saveCurrentLocation({ label: city.name, city: city.name, source: 'MANUAL' });
     setLocationStatus('located');
@@ -227,6 +241,7 @@ export default function HomePage() {
     setCityPickerOpen(false);
     setCitySearch('');
     message.success('当前城市已更新');
+    void loadHome();
   };
 
   return (
@@ -265,36 +280,45 @@ export default function HomePage() {
 
       <section className={styles.homeLead} aria-label="甄客行今日精选">
         {bannerRows.length > 0 ? (
-          <Carousel autoplay dots className={styles.bannerCarousel}>
-            {bannerRows.map((banner) => (
-              <div key={banner.bannerId}>
-                <article className={styles.bannerSlide}>
-                  <div className={styles.bannerMedia}>
-                    <Image
-                      src={banner.imageUrl}
-                      alt={`${banner.title}轮播图`}
-                      classNames={{
-                        root: styles.bannerPreview,
-                        image: styles.bannerImage,
-                        cover: styles.bannerPreviewCover,
-                      }}
-                      preview={{ mask: '查看大图' }}
-                    />
-                  </div>
-                  <div className={styles.bannerCopy}>
-                    <div className={styles.bannerText}>
-                      <span className={styles.eyebrow}>甄客行精选</span>
-                      <h2>{banner.title}</h2>
-                      {banner.subtitle && <p>{banner.subtitle}</p>}
+          <>
+            <Carousel
+              autoplay={bannerRows.length > 1}
+              autoplaySpeed={5000}
+              dots
+              className={styles.bannerCarousel}
+            >
+              {bannerRows.map((banner, index) => (
+                <div key={banner.bannerId}>
+                  <article className={styles.bannerSlide}>
+                    <div className={styles.bannerMedia}>
+                      <Image
+                        src={banner.imageUrl}
+                        alt={`${banner.title}轮播图`}
+                        loading={index === 0 ? 'eager' : 'lazy'}
+                        decoding="async"
+                        classNames={{
+                          root: styles.bannerPreview,
+                          image: styles.bannerImage,
+                          cover: styles.bannerPreviewCover,
+                        }}
+                        preview={{ mask: '查看大图' }}
+                      />
                     </div>
-                    <button type="button" className={styles.bannerAction} onClick={() => openBanner(banner)}>
-                      进入专题 <ArrowRightOutlined />
-                    </button>
-                  </div>
-                </article>
-              </div>
-            ))}
-          </Carousel>
+                    <div className={styles.bannerCopy}>
+                      <div className={styles.bannerText}>
+                        <span className={styles.eyebrow}>甄客行精选</span>
+                        <h2>{banner.title}</h2>
+                        {banner.subtitle && <p>{banner.subtitle}</p>}
+                      </div>
+                      <button type="button" className={styles.bannerAction} onClick={() => openBanner(banner)}>
+                        进入专题 <ArrowRightOutlined />
+                      </button>
+                    </div>
+                  </article>
+                </div>
+              ))}
+            </Carousel>
+          </>
         ) : (
           <div className={`${styles.bannerFallback} ${loading ? styles.bannerFallbackLoading : ''}`}>
             <div>
@@ -308,7 +332,7 @@ export default function HomePage() {
 
       <ZkSectionTitle
         title="城市里的甄客帖"
-        description="看看大家最近发现了哪些值得去的地方。"
+        description="沿着本地土著、外地游客和在外家乡人的视角，发现城市日常。"
         action={<button type="button" className={styles.textButton} onClick={() => navigate('/posts')}>查看全部 →</button>}
       />
 
@@ -317,7 +341,7 @@ export default function HomePage() {
       ) : loadError ? (
         <ZkState kind="error" title="首页暂时没有连接成功" description={loadError} onAction={() => void loadHome()} />
       ) : feed.length > 0 ? (
-        <div className={styles.postGrid}>
+        <div className={styles.homePostTrack} aria-label="城市里的甄客帖，横向滑动查看更多">
           {feed.map((post) => <ZhenkePostCard key={post.postId} post={post} />)}
         </div>
       ) : (
@@ -334,42 +358,63 @@ export default function HomePage() {
           <div>
             <span>甄选城市生活</span>
             <h2 id="zhen-enjoy-title">甄必享</h2>
+            <p>按购、吃、玩、住慢慢逛，每一类都是一段独立的城市灵感。</p>
           </div>
-          <button type="button" className={styles.textButton} onClick={() => navigate(`/enjoy?category=${activeEnjoy}`)}>查看全部 →</button>
         </header>
-        <div className={styles.zhenEnjoyRail}>
-          {zhenEnjoyEntries.map((entry, index) => (
-            <button
-              key={entry.code}
-              type="button"
-              className={`${styles.zhenEnjoyCard} ${activeEnjoy === entry.code ? styles.zhenEnjoyCardActive : ''}`}
-              aria-pressed={activeEnjoy === entry.code}
-              onClick={() => setActiveEnjoy(entry.code)}
-            >
-              <span className={styles.zhenEnjoyIndex}>{String(index + 1).padStart(2, '0')}</span>
-              <span className={styles.zhenEnjoyIcon}>{entry.icon}</span>
-              <strong>{entry.title}</strong>
-              <p>{entry.caption}</p>
-              <em>{enjoyFeeds[entry.code].length > 0 ? `${enjoyFeeds[entry.code].length} 条精选` : '内容筹备中'}</em>
-            </button>
-          ))}
-        </div>
-        <div className={styles.zhenEnjoyContent}>
-          {enjoyError ? (
-            <ZkState kind="error" title="甄必享暂时没有连接成功" description={enjoyError} onAction={() => void loadHome()} />
-          ) : enjoyFeeds[activeEnjoy].length > 0 ? (
-            <div className={styles.enjoyEditorialGrid}>
-              {enjoyFeeds[activeEnjoy].map((item) => <ZhenkeEnjoyCard key={item.enjoyId} item={item} />)}
-            </div>
-          ) : (
-            <div className={styles.zhenEnjoyEmpty}>
-              <span>{zhenEnjoyEntries.find((entry) => entry.code === activeEnjoy)?.icon}</span>
-              <div>
-                <strong>{zhenEnjoyEntries.find((entry) => entry.code === activeEnjoy)?.title}正在准备</strong>
-                <p>平台运营团队正在整理本期精选内容。</p>
-              </div>
-            </div>
-          )}
+        <div className={styles.zhenEnjoyGroups}>
+          {zhenEnjoyEntries.map((entry, index) => {
+            const rows = enjoyFeeds[entry.code];
+            const error = enjoyErrors[entry.code];
+            const titleId = `zhen-enjoy-${entry.code.toLowerCase()}`;
+            return (
+              <section key={entry.code} className={styles.zhenEnjoyGroup} aria-labelledby={titleId}>
+                <header className={styles.zhenEnjoyGroupHeader}>
+                  <span className={styles.zhenEnjoyGroupIcon} aria-hidden="true">{entry.icon}</span>
+                  <div>
+                    <small>{String(index + 1).padStart(2, '0')} · ZHEN PICKS</small>
+                    <h3 id={titleId}>{entry.title}</h3>
+                    <p>{entry.caption}</p>
+                  </div>
+                  <div className={styles.zhenEnjoyGroupMeta}>
+                    <em>{rows.length > 0 ? `展示 ${rows.length} 条精选` : '内容筹备中'}</em>
+                    <button type="button" className={styles.textButton} onClick={() => navigate(`/enjoy?category=${entry.code}`)}>
+                      查看全部 →
+                    </button>
+                  </div>
+                </header>
+                {loading ? (
+                  <div className={styles.zhenEnjoyEmpty} aria-live="polite">
+                    <span>{entry.icon}</span>
+                    <div>
+                      <strong>正在加载{entry.title}</strong>
+                      <p>正在为你整理本期城市精选。</p>
+                    </div>
+                  </div>
+                ) : error ? (
+                  <div className={`${styles.zhenEnjoyEmpty} ${styles.zhenEnjoyEmptyError}`}>
+                    <span>{entry.icon}</span>
+                    <div>
+                      <strong>{entry.title}暂时没有连接成功</strong>
+                      <p>{error}</p>
+                    </div>
+                    <button type="button" onClick={() => void loadHome()}>重新加载</button>
+                  </div>
+                ) : rows.length > 0 ? (
+                  <div className={styles.zhenEnjoyGroupList}>
+                    {rows.map((item) => <ZhenkeEnjoyCard key={item.enjoyId} item={item} />)}
+                  </div>
+                ) : (
+                  <div className={styles.zhenEnjoyEmpty}>
+                    <span>{entry.icon}</span>
+                    <div>
+                      <strong>{entry.title}正在准备</strong>
+                      <p>平台运营团队正在整理本期精选内容。</p>
+                    </div>
+                  </div>
+                )}
+              </section>
+            );
+          })}
         </div>
       </section>
       <Modal
@@ -385,7 +430,7 @@ export default function HomePage() {
         destroyOnHidden
       >
         <p className={styles.manualAreaHint}>
-          定位和城市选择只更新当前城市显示，不会限制你浏览其他城市的内容。
+          当前城市用于地点展示；平台开启城市内容模式后，也会作为甄客帖与甄必享的展示范围。
         </p>
         <Input
           size="large"

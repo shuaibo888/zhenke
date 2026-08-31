@@ -20,7 +20,7 @@ export function ZhenkeEnjoyCard({ item }: { item: ZhenkeEnjoy }) {
         onClick={() => navigate(`/enjoy/${item.enjoyId}`)}
         aria-label={`查看${item.title}`}
       >
-        <img src={item.coverUrl} alt={item.title} loading="lazy" />
+        <img src={item.coverUrl} alt={item.title} loading="lazy" decoding="async" />
         <span>{enjoyCategoryNames[item.category]}</span>
         {(item.mediaCount ?? item.mediaUrls?.length ?? 1) > 1 && <em><PictureOutlined /> {item.mediaCount ?? item.mediaUrls?.length}</em>}
       </button>

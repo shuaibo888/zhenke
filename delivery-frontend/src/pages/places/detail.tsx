@@ -5,13 +5,15 @@ import {
   CompassOutlined,
 } from '@ant-design/icons';
 import { Button, message } from 'antd';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { ZhenkePostCard } from '@/components/ZhenkePostCard';
 import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
 import { place, posts, type Place, type ZhenkePost } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
 import { openPlaceNavigation } from '@/utils/merchantNavigation';
+
+const POST_PAGE_SIZE = 20;
 
 export default function PlaceDetailPage() {
   const { placeId: rawPlaceId } = useParams<{ placeId: string }>();
@@ -22,16 +24,25 @@ export default function PlaceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [feedError, setFeedError] = useState('');
+  const [feedPage, setFeedPage] = useState(1);
+  const [feedTotal, setFeedTotal] = useState(0);
+  const [feedLoadingMore, setFeedLoadingMore] = useState(false);
+  const [feedLoadMoreError, setFeedLoadMoreError] = useState('');
+  const requestVersionRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestVersion = ++requestVersionRef.current;
     setLoading(true);
     setError('');
     setFeedError('');
+    setFeedLoadMoreError('');
+    setFeedLoadingMore(false);
     try {
       const [placeResult, postResult] = await Promise.allSettled([
         place(placeId),
-        posts('RECOMMEND', 1, 20, placeId),
+        posts('RECOMMEND', 1, POST_PAGE_SIZE, placeId),
       ]);
+      if (requestVersion !== requestVersionRef.current) return;
       if (placeResult.status === 'fulfilled') {
         setDetail(placeResult.value);
       } else {
@@ -40,12 +51,16 @@ export default function PlaceDetailPage() {
       }
       if (postResult.status === 'fulfilled') {
         setFeed(postResult.value.rows);
+        setFeedTotal(postResult.value.total);
+        setFeedPage(1);
       } else {
         setFeed([]);
+        setFeedTotal(0);
+        setFeedPage(1);
         setFeedError(postResult.reason instanceof Error ? postResult.reason.message : '地点关联帖子暂时无法加载');
       }
     } finally {
-      setLoading(false);
+      if (requestVersion === requestVersionRef.current) setLoading(false);
     }
   }, [placeId]);
 
@@ -56,6 +71,32 @@ export default function PlaceDetailPage() {
       setError('地点链接无效');
     }
   }, [load, placeId]);
+
+  useEffect(() => () => {
+    requestVersionRef.current += 1;
+  }, []);
+
+  const loadMoreFeed = async () => {
+    const requestVersion = ++requestVersionRef.current;
+    const nextPage = feedPage + 1;
+    setFeedLoadingMore(true);
+    setFeedLoadMoreError('');
+    try {
+      const result = await posts('RECOMMEND', nextPage, POST_PAGE_SIZE, placeId);
+      if (requestVersion !== requestVersionRef.current) return;
+      setFeed((current) => {
+        const ids = new Set(current.map((item) => item.postId));
+        return [...current, ...result.rows.filter((item) => !ids.has(item.postId))];
+      });
+      setFeedTotal(result.total);
+      setFeedPage(nextPage);
+    } catch (reason) {
+      if (requestVersion !== requestVersionRef.current) return;
+      setFeedLoadMoreError(reason instanceof Error ? reason.message : '更多地点帖子加载失败');
+    } finally {
+      if (requestVersion === requestVersionRef.current) setFeedLoadingMore(false);
+    }
+  };
 
   if (loading) return <main className={styles.page}><ZkState kind="loading" title="正在打开地点" /></main>;
   if (!detail || error) {
@@ -115,6 +156,7 @@ export default function PlaceDetailPage() {
       <ZkSectionTitle
         title="这个地点的甄客帖"
         description="按公开时间展示与地点关联的全平台帖子，不按你当前所在城市过滤。"
+        action={<Button type="link" onClick={() => navigate(`/posts/publish?placeId=${detail.placeId}`)}>围绕此地发布</Button>}
       />
       {feedError ? (
         <ZkState
@@ -124,13 +166,27 @@ export default function PlaceDetailPage() {
           onAction={() => void load()}
         />
       ) : feed.length > 0 ? (
-        <div className={styles.postGrid}>{feed.map((item) => <ZhenkePostCard key={item.postId} post={item} />)}</div>
+        <>
+          <div className={styles.postGrid}>{feed.map((item) => <ZhenkePostCard key={item.postId} post={item} />)}</div>
+          {feed.length < feedTotal && (
+            <div className={styles.loadMore}>
+              <Button
+                danger={Boolean(feedLoadMoreError)}
+                loading={feedLoadingMore}
+                title={feedLoadMoreError || undefined}
+                onClick={() => void loadMoreFeed()}
+              >
+                {feedLoadMoreError ? '更多帖子加载失败，点击重试' : '加载更多地点帖子'}
+              </Button>
+            </div>
+          )}
+        </>
       ) : (
         <ZkState
           title="这里还没有公开帖子"
           description="如果你熟悉这个地点，可以围绕它分享第一篇甄客帖。"
           actionText="围绕此地发布"
-          onAction={() => navigate('/posts/publish')}
+          onAction={() => navigate(`/posts/publish?placeId=${detail.placeId}`)}
         />
       )}
     </main>

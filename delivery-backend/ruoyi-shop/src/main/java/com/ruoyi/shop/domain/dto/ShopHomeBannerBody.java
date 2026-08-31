@@ -28,9 +28,9 @@ public class ShopHomeBannerBody {
   @Min(0)
   private Integer bannerSort = 0;
 
-  @NotBlank
-  @Pattern(regexp = "0|1")
-  private String status = "0";
+  // Legacy clients may still send this field. It is intentionally ignored by
+  // save operations; enable/disable is handled by the status endpoint.
+  private String status;
 
   @JsonFormat(pattern = "yyyy-MM-dd")
   private LocalDate startTime;

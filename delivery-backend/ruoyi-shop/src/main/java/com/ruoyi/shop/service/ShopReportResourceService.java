@@ -1,15 +1,21 @@
 package com.ruoyi.shop.service;
 
-import java.io.File;
-import java.nio.charset.StandardCharsets;
-import java.util.Locale;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.file.FileUploadUtils;
 import com.ruoyi.shop.security.ShopAccountIdentity;
 import com.ruoyi.shop.util.ShopPlatformMediaPathUtils;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Iterator;
+import java.util.Locale;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ShopReportResourceService
@@ -17,6 +23,7 @@ public class ShopReportResourceService
     private static final long MAX_IMAGE_SIZE = 5 * 1024 * 1024L;
     private static final long MAX_VIDEO_SIZE = 10 * 1024 * 1024L;
     private static final double MAX_VIDEO_SECONDS = 30D;
+    private static final int MAX_MP4_BOX_DEPTH = 4;
     private static final String[] IMAGE_EXTENSIONS = { "jpg", "jpeg", "png" };
     private static final String[] VIDEO_EXTENSIONS = { "mp4" };
     private static final String REPORT_UPLOAD_PREFIX = "/profile/upload/report/user-";
@@ -94,7 +101,11 @@ public class ShopReportResourceService
         {
             throw new ServiceException("单张图片不能超过5MB");
         }
-        byte[] header = file.getInputStream().readNBytes(8);
+        byte[] header;
+        try (InputStream input = file.getInputStream())
+        {
+            header = input.readNBytes(8);
+        }
         boolean jpeg = header.length >= 3
                 && (header[0] & 0xff) == 0xff
                 && (header[1] & 0xff) == 0xd8
@@ -112,6 +123,22 @@ public class ShopReportResourceService
         {
             throw new ServiceException("图片内容与文件格式不一致");
         }
+        ImageReader reader = null;
+        try (InputStream rawInput = file.getInputStream();
+             ImageInputStream imageInput = ImageIO.createImageInputStream(rawInput))
+        {
+            if (imageInput == null) throw new ServiceException("无法读取图片内容");
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInput);
+            if (!readers.hasNext()) throw new ServiceException("无法读取图片内容");
+            reader = readers.next();
+            reader.setInput(imageInput, true, true);
+            ShopPlatformMediaPathUtils.requireSafeImageDimensions(
+                    reader.getWidth(0), reader.getHeight(0));
+        }
+        finally
+        {
+            if (reader != null) reader.dispose();
+        }
     }
 
     private void validateVideo(MultipartFile file) throws Exception
@@ -120,13 +147,21 @@ public class ShopReportResourceService
         {
             throw new ServiceException("视频不能超过10MB");
         }
-        byte[] content = file.getBytes();
-        if (content.length < 12
-                || !"ftyp".equals(new String(content, 4, 4, StandardCharsets.US_ASCII)))
+        byte[] header;
+        try (InputStream input = file.getInputStream())
+        {
+            header = input.readNBytes(12);
+        }
+        if (header.length < 12
+                || !"ftyp".equals(new String(header, 4, 4, StandardCharsets.US_ASCII)))
         {
             throw new ServiceException("视频文件不是有效的MP4格式");
         }
-        Double seconds = findMovieDuration(content, 0, content.length);
+        Double seconds;
+        try (InputStream input = file.getInputStream())
+        {
+            seconds = findMovieDuration(input, file.getSize());
+        }
         if (seconds == null || !Double.isFinite(seconds) || seconds <= 0)
         {
             throw new ServiceException("无法读取视频时长，请重新导出为MP4后上传");
@@ -137,59 +172,71 @@ public class ShopReportResourceService
         }
     }
 
-    private Double findMovieDuration(byte[] data, int start, int end)
+    private Double findMovieDuration(InputStream input, long length) throws IOException
     {
-        int position = start;
-        while (position + 8 <= end)
+        return findMovieDuration(input, length, 0);
+    }
+
+    private Double findMovieDuration(InputStream input, long length, int depth) throws IOException
+    {
+        if (depth > MAX_MP4_BOX_DEPTH) return null;
+        long remaining = length;
+        while (remaining >= 8)
         {
-            long boxSize = readUnsignedInt(data, position);
-            int headerSize = 8;
+            byte[] header = input.readNBytes(8);
+            if (header.length != 8) return null;
+            long boxSize = readUnsignedInt(header, 0);
+            long headerSize = 8;
             if (boxSize == 1)
             {
-                if (position + 16 > end) return null;
-                boxSize = readLong(data, position + 8);
+                byte[] extendedSize = input.readNBytes(8);
+                if (extendedSize.length != 8) return null;
+                boxSize = readLong(extendedSize, 0);
                 headerSize = 16;
             }
             else if (boxSize == 0)
             {
-                boxSize = end - position;
+                boxSize = remaining;
             }
-            if (boxSize < headerSize || boxSize > end - position || boxSize > Integer.MAX_VALUE)
+            if (boxSize < headerSize || boxSize > remaining)
             {
                 return null;
             }
 
-            String type = new String(data, position + 4, 4, StandardCharsets.US_ASCII);
-            int payloadStart = position + headerSize;
-            int boxEnd = position + (int) boxSize;
+            String type = new String(header, 4, 4, StandardCharsets.US_ASCII);
+            long payloadSize = boxSize - headerSize;
             if ("mvhd".equals(type))
             {
-                return readMovieHeaderDuration(data, payloadStart, boxEnd);
+                return readMovieHeaderDuration(input, payloadSize);
             }
             if ("moov".equals(type))
             {
-                Double duration = findMovieDuration(data, payloadStart, boxEnd);
+                Double duration = findMovieDuration(input, payloadSize, depth + 1);
                 if (duration != null) return duration;
+                return null;
             }
-            position = boxEnd;
+            input.skipNBytes(payloadSize);
+            remaining -= boxSize;
         }
         return null;
     }
 
-    private Double readMovieHeaderDuration(byte[] data, int start, int end)
+    private Double readMovieHeaderDuration(InputStream input, long payloadSize) throws IOException
     {
-        if (start + 20 > end) return null;
-        int version = data[start] & 0xff;
+        if (payloadSize < 20) return null;
+        byte[] data = input.readNBytes((int) Math.min(payloadSize, 32));
+        if (data.length < 20) return null;
+        int version = data[0] & 0xff;
         if (version == 0)
         {
-            long timescale = readUnsignedInt(data, start + 12);
-            long duration = readUnsignedInt(data, start + 16);
+            long timescale = readUnsignedInt(data, 12);
+            long duration = readUnsignedInt(data, 16);
             return timescale > 0 ? (double) duration / timescale : null;
         }
-        if (version == 1 && start + 32 <= end)
+        if (version == 1 && data.length >= 32)
         {
-            long timescale = readUnsignedInt(data, start + 20);
-            long duration = readLong(data, start + 24);
+            long timescale = readUnsignedInt(data, 20);
+            long duration = readLong(data, 24);
             return timescale > 0 && duration > 0 ? (double) duration / timescale : null;
         }
         return null;

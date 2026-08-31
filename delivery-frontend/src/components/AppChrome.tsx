@@ -70,6 +70,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const publishPage = location.pathname === '/posts/publish';
   const immersiveDetailPage = location.pathname.startsWith('/products/')
     || location.pathname.startsWith('/reports/');
+  const contextualPublishPage = /^\/(?:places|enjoy)\/\d+\/?$/.test(location.pathname);
   const hideMobileNav = authPage || checkoutPage || publishPage || immersiveDetailPage;
   const showCartFloat = !authPage && !checkoutPage
     && (activeNav === 'mall' || location.pathname.startsWith('/products'));
@@ -215,7 +216,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
         </nav>
       )}
 
-      {!authPage && !checkoutPage && !publishPage && !immersiveDetailPage && (
+      {!authPage && !checkoutPage && !publishPage && !immersiveDetailPage && !contextualPublishPage && (
         <button type="button" className={styles.floatingPublish} onClick={goPublish}>
           <EditOutlined />
           <span className={styles.floatingPublishText}>发布甄客帖</span>

@@ -7,6 +7,8 @@ import com.ruoyi.shop.domain.ShopZhenkeEnjoy;
 import com.ruoyi.shop.domain.ShopZhenkeEnjoyComment;
 import com.ruoyi.shop.domain.ShopZhenkePost;
 import com.ruoyi.shop.domain.ShopZhenkePostComment;
+import com.ruoyi.shop.domain.vo.ShopHomeBannerPublicView;
+import com.ruoyi.shop.domain.vo.ShopZhenkeEnjoyPublicView;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -48,7 +50,10 @@ public class ShopPublicMediaService {
   }
 
   public ShopZhenkePostComment comment(ShopZhenkePostComment value) {
-    if (value != null) value.setAvatar(publicUrl(value.getAvatar()));
+    if (value != null) {
+      value.setAvatar(publicUrl(value.getAvatar()));
+      if (value.getReplies() != null) value.getReplies().forEach(this::comment);
+    }
     return value;
   }
 
@@ -60,6 +65,21 @@ public class ShopPublicMediaService {
   public ShopHomeBanner banner(ShopHomeBanner value) {
     if (value != null) value.setImageUrl(publicUrl(value.getImageUrl()));
     return value;
+  }
+
+  public List<ShopHomeBannerPublicView> publicBanners(List<ShopHomeBanner> rows) {
+    return rows.stream()
+        .map(
+            value ->
+                new ShopHomeBannerPublicView(
+                    value.getBannerId(),
+                    value.getTitle(),
+                    value.getSubtitle(),
+                    publicUrl(value.getImageUrl()),
+                    value.getJumpType(),
+                    value.getJumpTarget(),
+                    value.getBannerSort()))
+        .toList();
   }
 
   public List<ShopZhenkeEnjoy> enjoys(List<ShopZhenkeEnjoy> rows) {
@@ -77,13 +97,55 @@ public class ShopPublicMediaService {
     return value;
   }
 
+  public List<ShopZhenkeEnjoyPublicView> publicEnjoys(List<ShopZhenkeEnjoy> rows) {
+    return rows.stream().map(this::publicEnjoy).toList();
+  }
+
+  public ShopZhenkeEnjoyPublicView publicEnjoy(ShopZhenkeEnjoy value) {
+    if (value == null) return null;
+    List<String> mediaUrls =
+        value.getMediaUrls() == null
+            ? List.of()
+            : value.getMediaUrls().stream().map(this::publicUrl).toList();
+    return new ShopZhenkeEnjoyPublicView(
+        value.getEnjoyId(),
+        value.getCategory(),
+        value.getTitle(),
+        value.getSubtitle(),
+        publicUrl(value.getCoverUrl()),
+        value.getContent(),
+        value.getHighlights(),
+        value.getServiceSummary(),
+        value.getOpeningHours(),
+        value.getContactPhone(),
+        value.getPlaceId(),
+        value.getPlaceName(),
+        value.getPlaceType(),
+        value.getPlaceAddress(),
+        value.getPlaceProvince(),
+        value.getPlaceCity(),
+        value.getPlaceDistrict(),
+        value.getPlaceLatitude(),
+        value.getPlaceLongitude(),
+        mediaUrls,
+        value.getDisplaySort(),
+        value.getPublishedAt(),
+        value.getLikeCount(),
+        value.getCommentCount(),
+        value.getMediaCount(),
+        value.getLikedByMe());
+  }
+
   public List<ShopZhenkeEnjoyComment> enjoyComments(List<ShopZhenkeEnjoyComment> rows) {
     rows.forEach(this::enjoyComment);
     return rows;
   }
 
   public ShopZhenkeEnjoyComment enjoyComment(ShopZhenkeEnjoyComment value) {
-    if (value != null) value.setAvatar(publicUrl(value.getAvatar()));
+    if (value != null) {
+      value.setAvatar(publicUrl(value.getAvatar()));
+      if (value.getReplies() != null) value.getReplies().forEach(this::enjoyComment);
+    }
     return value;
   }
 }

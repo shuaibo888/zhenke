@@ -46,6 +46,7 @@ export default function ProfilePage() {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [overview, setOverview] = useState<ShopUserOverview | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(true);
+  const [overviewError, setOverviewError] = useState('');
   const [nameForm] = Form.useForm<{ name: string }>();
   useBodyScrollLock(profileOpen || addressOpen);
 
@@ -53,6 +54,11 @@ export default function ProfilePage() {
     setOverviewLoading(true);
     try {
       setOverview(await fetchMyOverview());
+      setOverviewError('');
+    } catch (error) {
+      setOverview(null);
+      setOverviewError(error instanceof Error ? error.message : '消费与权益数据暂时不可用');
+      throw error;
     } finally {
       setOverviewLoading(false);
     }
@@ -150,14 +156,21 @@ export default function ProfilePage() {
           </div>
           <div className={styles.profileStats}>
             <button type="button" className={styles.profileStat} onClick={() => navigate('/profile/orders')}>
-              <strong>{overviewLoading ? '--' : overview?.orderCount ?? 0}</strong><small>全部订单</small>
+              <strong>{overviewLoading || overviewError ? '--' : overview?.orderCount ?? '--'}</strong><small>全部订单</small>
             </button>
             <button type="button" className={styles.profileStat} onClick={() => navigate('/profile/points')}>
-              <strong>{overviewLoading ? '--' : overview?.pointsBalance ?? 0}</strong><small>可用积分</small>
+              <strong>{overviewLoading || overviewError ? '--' : overview?.pointsBalance ?? '--'}</strong><small>可用积分</small>
             </button>
           </div>
         </section>
 
+        {overviewError && (
+          <div className={styles.setupNotice} role="alert">
+            <ExclamationCircleFilled />
+            <strong>消费与权益数据暂时不可用，当前页面不会把未知数据显示为 0</strong>
+            <Button size="small" onClick={() => void loadOverview().catch(() => undefined)}>重新加载</Button>
+          </div>
+        )}
 
         {(!user.usernameInitialized || !user.passwordInitialized) && (
           <div className={styles.setupNotice} role="status">
@@ -177,7 +190,7 @@ export default function ProfilePage() {
             </header>
             <div className={styles.profileEntryGrid}>
               {profileEntry({ icon: <FileTextOutlined />, title: '我的甄客帖', description: '围绕地点主动发布的生活内容', onClick: () => navigate('/profile/posts') })}
-              {profileEntry({ icon: <SafetyCertificateOutlined />, title: '我的甄客验', description: '基于订单、试用或核销资格的可信体验', meta: overviewLoading ? '…' : `${overview?.reportCount ?? 0} 篇`, onClick: () => navigate('/profile/reports') })}
+              {profileEntry({ icon: <SafetyCertificateOutlined />, title: '我的甄客验', description: '基于订单、试用或核销资格的可信体验', meta: overviewLoading || overviewError ? '—' : `${overview?.reportCount ?? 0} 篇`, onClick: () => navigate('/profile/reports') })}
             </div>
           </section>
 
@@ -186,7 +199,7 @@ export default function ProfilePage() {
               <h2>消费履约</h2>
             </header>
             <div className={styles.profileEntryGrid}>
-              {profileEntry({ icon: <ShoppingCartOutlined />, title: '我的订单与核销', description: '待付款、待使用、物流、退款与已完成', meta: overviewLoading ? '…' : `${overview?.orderCount ?? 0} 笔`, onClick: () => navigate('/profile/orders') })}
+              {profileEntry({ icon: <ShoppingCartOutlined />, title: '我的订单与核销', description: '待付款、待使用、物流、退款与已完成', meta: overviewLoading || overviewError ? '—' : `${overview?.orderCount ?? 0} 笔`, onClick: () => navigate('/profile/orders') })}
               {profileEntry({ icon: <EnvironmentOutlined />, title: '收货地址', description: '仅用于需要快递配送的订单', onClick: () => setAddressOpen(true) })}
             </div>
           </section>
@@ -196,8 +209,8 @@ export default function ProfilePage() {
               <h2>权益资产</h2>
             </header>
             <div className={styles.profileEntryGrid}>
-              {profileEntry({ icon: <GiftOutlined />, title: '优惠券', description: '可用、待生效、已使用与失效', meta: overviewLoading ? '…' : `${overview?.couponAvailableCount ?? 0} 张`, onClick: () => navigate('/profile/coupons') })}
-              {profileEntry({ icon: <TrophyOutlined />, title: '积分与记录', description: '查看余额、兑换和积分明细', meta: overviewLoading ? '…' : `${overview?.pointsBalance ?? 0} 分`, onClick: () => navigate('/profile/points') })}
+              {profileEntry({ icon: <GiftOutlined />, title: '优惠券', description: '可用、待生效、已使用与失效', meta: overviewLoading || overviewError ? '—' : `${overview?.couponAvailableCount ?? 0} 张`, onClick: () => navigate('/profile/coupons') })}
+              {profileEntry({ icon: <TrophyOutlined />, title: '积分与记录', description: '查看余额、兑换和积分明细', meta: overviewLoading || overviewError ? '—' : `${overview?.pointsBalance ?? 0} 分`, onClick: () => navigate('/profile/points') })}
             </div>
           </section>
 
@@ -206,7 +219,7 @@ export default function ProfilePage() {
               <h2>参与服务</h2>
             </header>
             <div className={styles.profileEntryGrid}>
-              {profileEntry({ icon: <ProfileOutlined />, title: '我的试用', description: '申请、审核、物流、核销与报告进度', meta: overviewLoading ? '…' : `${overview?.trialCount ?? 0} 项`, onClick: () => navigate('/profile/trials') })}
+              {profileEntry({ icon: <ProfileOutlined />, title: '我的试用', description: '申请、审核、物流、核销与报告进度', meta: overviewLoading || overviewError ? '—' : `${overview?.trialCount ?? 0} 项`, onClick: () => navigate('/profile/trials') })}
             </div>
           </section>
 

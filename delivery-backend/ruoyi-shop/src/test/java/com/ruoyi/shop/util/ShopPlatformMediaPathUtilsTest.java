@@ -1,6 +1,7 @@
 package com.ruoyi.shop.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.ruoyi.common.config.RuoYiConfig;
@@ -82,5 +83,16 @@ class ShopPlatformMediaPathUtilsTest {
     } finally {
       new RuoYiConfig().setProfile(previousProfile);
     }
+  }
+
+  @Test
+  void rejectsImageDimensionsThatCouldExhaustTheHeap() {
+    assertDoesNotThrow(() -> ShopPlatformMediaPathUtils.requireSafeImageDimensions(8_000, 5_000));
+    assertThrows(
+        ServiceException.class,
+        () -> ShopPlatformMediaPathUtils.requireSafeImageDimensions(12_000, 12_000));
+    assertThrows(
+        ServiceException.class,
+        () -> ShopPlatformMediaPathUtils.requireSafeImageDimensions(20_000, 1_000));
   }
 }

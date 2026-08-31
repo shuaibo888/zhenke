@@ -1,5 +1,6 @@
 package com.ruoyi.shop.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.math.BigDecimal;
 import java.util.Date;
 
@@ -15,6 +16,8 @@ public class ShopOrderItem
     private BigDecimal unitPrice;
     private Integer quantity;
     private String fulfillmentType;
+    /** 1 表示创建订单时实际扣减了有限库存，0 表示当时为无限库存。 */
+    private String stockDeducted;
     private BigDecimal lineAmount;
     private Date createTime;
 
@@ -38,6 +41,8 @@ public class ShopOrderItem
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
     public String getFulfillmentType() { return fulfillmentType; }
     public void setFulfillmentType(String fulfillmentType) { this.fulfillmentType = fulfillmentType; }
+    @JsonIgnore public String getStockDeducted() { return stockDeducted; }
+    public void setStockDeducted(String stockDeducted) { this.stockDeducted = stockDeducted; }
     public BigDecimal getLineAmount() { return lineAmount; }
     public void setLineAmount(BigDecimal lineAmount) { this.lineAmount = lineAmount; }
     public Date getCreateTime() { return createTime; }

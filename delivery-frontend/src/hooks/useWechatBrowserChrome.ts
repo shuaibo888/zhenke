@@ -5,6 +5,12 @@ const APP_TITLE = '甄客行';
 
 function routeTitle(pathname: string) {
   if (pathname === '/') return APP_TITLE;
+  if (pathname === '/posts/publish') return `发布甄客帖｜${APP_TITLE}`;
+  if (pathname.startsWith('/posts/')) return `甄客帖详情｜${APP_TITLE}`;
+  if (pathname.startsWith('/posts')) return `甄客帖｜${APP_TITLE}`;
+  if (pathname.startsWith('/enjoy/')) return `甄必享详情｜${APP_TITLE}`;
+  if (pathname.startsWith('/enjoy')) return `甄必享｜${APP_TITLE}`;
+  if (pathname.startsWith('/places/')) return `地点详情｜${APP_TITLE}`;
   if (pathname.startsWith('/mall')) return `商城｜${APP_TITLE}`;
   if (pathname.startsWith('/products/')) return `商品详情｜${APP_TITLE}`;
   if (pathname.startsWith('/merchants/')) return `商家详情｜${APP_TITLE}`;

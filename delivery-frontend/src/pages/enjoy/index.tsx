@@ -1,6 +1,6 @@
 import { CoffeeOutlined, CompassOutlined, HomeOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'umi';
 import { ZhenkeEnjoyCard } from '@/components/ZhenkeEnjoyCard';
 import { ZkState } from '@/components/ZkPage';
@@ -27,25 +27,51 @@ export default function EnjoyListPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
+  const [loadMoreError, setLoadMoreError] = useState('');
+  const requestVersionRef = useRef(0);
 
   const load = useCallback(async (nextPage = 1) => {
-    nextPage === 1 ? setLoading(true) : setLoadingMore(true);
-    setError('');
+    const requestVersion = ++requestVersionRef.current;
+    if (nextPage === 1) {
+      setLoading(true);
+      setLoadingMore(false);
+      setError('');
+    } else {
+      setLoadingMore(true);
+    }
+    setLoadMoreError('');
     try {
       const result = await enjoys(activeCategory, nextPage, 12);
-      setRows((current) => nextPage === 1 ? result.rows : [...current, ...result.rows]);
+      if (requestVersion !== requestVersionRef.current) return;
+      setRows((current) => {
+        if (nextPage === 1) return result.rows;
+        const ids = new Set(current.map((item) => item.enjoyId));
+        return [...current, ...result.rows.filter((item) => !ids.has(item.enjoyId))];
+      });
       setTotal(result.total);
       setPage(nextPage);
     } catch (reason) {
-      if (nextPage === 1) setRows([]);
-      setError(reason instanceof Error ? reason.message : '甄必享内容加载失败');
+      if (requestVersion !== requestVersionRef.current) return;
+      const message = reason instanceof Error ? reason.message : '甄必享内容加载失败';
+      if (nextPage === 1) {
+        setRows([]);
+        setError(message);
+      } else {
+        setLoadMoreError(message);
+      }
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (requestVersion === requestVersionRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, [activeCategory]);
 
   useEffect(() => { void load(1); }, [load]);
+
+  useEffect(() => () => {
+    requestVersionRef.current += 1;
+  }, []);
 
   const activeMeta = categories.find((item) => item.value === activeCategory)!;
 
@@ -80,7 +106,17 @@ export default function EnjoyListPage() {
         ) : rows.length > 0 ? (
           <>
             <div className={styles.enjoyEditorialGrid}>{rows.map((item) => <ZhenkeEnjoyCard key={item.enjoyId} item={item} />)}</div>
-            {rows.length < total && <Button block loading={loadingMore} onClick={() => void load(page + 1)}>加载更多</Button>}
+            {rows.length < total && (
+              <Button
+                block
+                danger={Boolean(loadMoreError)}
+                loading={loadingMore}
+                title={loadMoreError || undefined}
+                onClick={() => void load(page + 1)}
+              >
+                {loadMoreError ? '更多内容加载失败，点击重试' : '加载更多'}
+              </Button>
+            )}
           </>
         ) : (
           <ZkState title={`${activeMeta.label}正在准备`} description="平台运营团队正在整理本期精选内容。" />

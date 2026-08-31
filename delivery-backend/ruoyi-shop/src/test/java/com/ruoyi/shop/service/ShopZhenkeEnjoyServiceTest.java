@@ -55,17 +55,32 @@ class ShopZhenkeEnjoyServiceTest {
 
   @Test
   void publicListOnlyRequestsPublishedContentAndNormalizesCategory() {
-    when(mapper.selectEnjoys(any(), any(), any(), anyBoolean(), any())).thenReturn(List.of());
+    when(mapper.selectEnjoys(any(), any(), any(), anyBoolean(), any(), any())).thenReturn(List.of());
 
     assertTrue(service.enjoys(" restaurant ", 1, 12).isEmpty());
+    assertTrue(service.enjoys(" restaurant ", " 保定市 ", 1, 12).isEmpty());
 
-    verify(mapper).selectEnjoys("RESTAURANT", null, null, false, null);
+    verify(mapper).selectEnjoys("RESTAURANT", null, null, false, null, null);
+    verify(mapper).selectEnjoys("RESTAURANT", null, null, false, null, "保定市");
     assertThrows(ServiceException.class, () -> service.enjoys("POST", 1, 12));
+  }
+
+  @Test
+  void homepageLoadsAllFourCategoriesWithOneMapperCall() {
+    ShopZhenkeEnjoy row = new ShopZhenkeEnjoy();
+    row.setEnjoyId(9L);
+    row.setCategory("SCENIC");
+    when(mapper.selectHomeEnjoys("保定市", null, 2)).thenReturn(List.of(row));
+
+    assertEquals(List.of(row), service.homeEnjoys(" 保定市 ", 2));
+
+    verify(mapper).selectHomeEnjoys("保定市", null, 2);
   }
 
   @Test
   void adminSavePersistsOfficialContentWithoutAnyPostRelationship() {
     ShopZhenkeEnjoyBody body = body();
+    body.setStatus("0");
     when(placeService.resolveSelectedPlace(body.getPlace())).thenReturn(place());
     when(mapper.insertEnjoy(any(ShopZhenkeEnjoy.class)))
         .thenAnswer(
@@ -90,7 +105,28 @@ class ShopZhenkeEnjoyServiceTest {
     assertEquals("服务端确认地点", captor.getValue().getPlaceName());
     assertEquals("/profile/upload/banner/cover.jpg", captor.getValue().getCoverUrl());
     assertEquals("admin", captor.getValue().getCreateBy());
+    assertEquals("1", captor.getValue().getStatus());
     verify(mapper).insertMedia(31L, "/profile/upload/banner/cover.jpg", 1);
+  }
+
+  @Test
+  void editingContentPreservesPersistedStatus() {
+    ShopZhenkeEnjoyBody body = body();
+    body.setStatus("0");
+    ShopZhenkeEnjoy existing = new ShopZhenkeEnjoy();
+    existing.setEnjoyId(31L);
+    existing.setStatus("1");
+    when(mapper.selectEnjoy(31L, true, null)).thenReturn(existing);
+    when(placeService.resolveSelectedPlace(body.getPlace())).thenReturn(place());
+    when(mapper.updateEnjoy(any(ShopZhenkeEnjoy.class))).thenReturn(1);
+    when(mapper.insertMedia(anyLong(), anyString(), anyInt())).thenReturn(1);
+    when(mapper.selectMediaUrls(31L)).thenReturn(List.of("/profile/upload/banner/cover.jpg"));
+
+    service.save(31L, body, "editor-only");
+
+    var captor = org.mockito.ArgumentCaptor.forClass(ShopZhenkeEnjoy.class);
+    verify(mapper).updateEnjoy(captor.capture());
+    assertEquals("1", captor.getValue().getStatus());
   }
 
   @Test
@@ -206,6 +242,28 @@ class ShopZhenkeEnjoyServiceTest {
 
     when(mapper.deleteComment(7L, 13L, 18L)).thenReturn(0);
     assertThrows(ServiceException.class, () -> service.deleteComment(7L, 13L));
+  }
+
+  @Test
+  void commentPagesContainOnlyRootsAndABoundedReplyPreview() {
+    ShopZhenkeEnjoy published = new ShopZhenkeEnjoy();
+    published.setEnjoyId(7L);
+    when(mapper.selectEnjoy(7L, false, null)).thenReturn(published);
+    when(mapper.selectMediaUrls(7L)).thenReturn(List.of());
+    ShopZhenkeEnjoyComment root = new ShopZhenkeEnjoyComment();
+    root.setCommentId(10L);
+    root.setReplyCount(6L);
+    ShopZhenkeEnjoyComment reply = new ShopZhenkeEnjoyComment();
+    reply.setCommentId(12L);
+    reply.setParentCommentId(10L);
+    when(mapper.selectRootComments(7L)).thenReturn(List.of(root));
+    when(mapper.selectReplyPreviews(7L, List.of(10L), 3)).thenReturn(List.of(reply));
+
+    List<ShopZhenkeEnjoyComment> result = service.comments(7L, 1, 500);
+
+    assertEquals(List.of(reply), result.get(0).getReplies());
+    assertEquals(6L, result.get(0).getReplyCount());
+    verify(mapper).selectReplyPreviews(7L, List.of(10L), 3);
   }
 
   private ShopZhenkeEnjoyBody body() {

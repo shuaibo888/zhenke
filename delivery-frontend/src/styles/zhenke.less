@@ -311,6 +311,14 @@
   margin: 38px 0 16px;
 }
 
+.sectionTitle > div {
+  min-width: 0;
+}
+
+.sectionTitle > button {
+  flex: none;
+}
+
 .taskHeader {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) auto;
@@ -415,6 +423,7 @@
 }
 
 .homeLead {
+  position: relative;
   margin-bottom: 34px;
 }
 
@@ -747,16 +756,28 @@
 .bannerCarousel :global(.slick-dots) {
   right: auto;
   bottom: 13px;
-  left: 26px;
-  justify-content: flex-start;
+  left: 50%;
+  justify-content: center;
   width: auto;
   margin: 0;
+  transform: translateX(-50%);
 }
 
 .bannerCarousel :global(.slick-dots li button) {
   height: 4px;
   background: fade(@primary, 48%);
   border-radius: 99px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .appShell *,
+  .appShell *::before,
+  .appShell *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .bannerSlide {
@@ -767,7 +788,7 @@
 .bannerMedia {
   position: relative;
   display: grid;
-  height: clamp(280px, 27vw, 380px);
+  height: clamp(240px, 24vw, 340px);
   overflow: hidden;
   place-items: center;
   background:
@@ -815,8 +836,8 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 22px;
   align-items: center;
-  min-height: 126px;
-  padding: 20px 26px 34px;
+  min-height: 112px;
+  padding: 18px 24px 32px;
   color: @ink;
   background: @surface;
 }
@@ -922,23 +943,27 @@
   }
 }
 
-.zoneTabs {
-  display: flex;
-  gap: 8px;
+.identityFilterBlock {
+  display: grid;
+  gap: 9px;
   margin-bottom: 22px;
+}
+
+.identityTabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
   padding: 5px;
-  overflow-x: auto;
   background: fade(@surfaceStrong, 74%);
   border: 1px solid @line;
   border-radius: 999px;
-  width: max-content;
+  width: min(560px, 100%);
   max-width: 100%;
 }
 
-.zoneTab {
-  flex: none;
+.identityTab {
   min-height: 38px;
-  padding: 0 18px;
+  padding: 0 14px;
   color: @muted;
   background: transparent;
   border: 0;
@@ -948,9 +973,19 @@
   white-space: nowrap;
 }
 
-.zoneActive {
+.identityActive {
   color: #fff;
   background: @primary;
+}
+
+.identityContextHint {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0 6px;
+  color: @muted;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .contextNotice {
@@ -971,6 +1006,23 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
+}
+
+.homePostTrack {
+  display: flex;
+  gap: 16px;
+  padding: 4px 2px 18px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  scrollbar-color: #d4b9a8 transparent;
+  scrollbar-width: thin;
+}
+
+.homePostTrack .postCard {
+  flex: 0 0 clamp(300px, 31vw, 360px);
+  scroll-snap-align: start;
 }
 
 .postCard {
@@ -1089,8 +1141,11 @@
 }
 
 .authorCopy small {
+  overflow: hidden;
   color: @muted;
   font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .postBody h3 {
@@ -1565,113 +1620,132 @@
   font-size: clamp(27px, 3.2vw, 38px);
 }
 
-.zhenEnjoyRail {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 13px;
-}
-
-.zhenEnjoyCard {
-  position: relative;
-  display: flex;
-  min-height: 210px;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-end;
-  padding: 20px;
-  overflow: hidden;
-  color: #fff;
-  background:
-    radial-gradient(circle at 82% 17%, rgba(255, 225, 190, 0.27), transparent 34%),
-    linear-gradient(150deg, #5f3429, #9d5138);
-  border: 0;
-  border-radius: 24px;
-  box-shadow: @shadowSm;
-  cursor: pointer;
-  scroll-snap-align: start;
-  text-align: left;
-  transition: transform 180ms ease, box-shadow 180ms ease;
-}
-
-.zhenEnjoyCard:nth-child(2) {
-  background:
-    radial-gradient(circle at 78% 18%, rgba(255, 216, 166, 0.3), transparent 34%),
-    linear-gradient(150deg, #7d392d, #c46646);
-}
-
-.zhenEnjoyCard:nth-child(3) {
-  background:
-    radial-gradient(circle at 78% 18%, rgba(239, 224, 155, 0.28), transparent 34%),
-    linear-gradient(150deg, #514c31, #968047);
-}
-
-.zhenEnjoyCard:nth-child(4) {
-  background:
-    radial-gradient(circle at 78% 18%, rgba(255, 222, 190, 0.26), transparent 34%),
-    linear-gradient(150deg, #744536, #bb754b);
-}
-
-.zhenEnjoyCard:hover,
-.zhenEnjoyCard:focus-visible {
-  transform: translateY(-3px);
-  box-shadow: @shadowMd;
-  outline: 3px solid fade(@primary, 20%);
-  outline-offset: 2px;
-}
-
-.zhenEnjoyCardActive {
-  box-shadow: 0 0 0 4px #fffaf4, 0 0 0 7px fade(@orange, 48%), @shadowMd;
-  transform: translateY(-3px);
-}
-
-.zhenEnjoyIndex {
-  position: absolute;
-  top: 16px;
-  left: 18px;
-  color: rgba(255, 255, 255, 0.56);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-}
-
-.zhenEnjoyIcon {
-  position: absolute;
-  top: 16px;
-  right: 17px;
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 15px;
-  font-size: 20px;
-}
-
-.zhenEnjoyCard strong {
-  font-family: "STKaiti", "KaiTi", serif;
-  font-size: 27px;
-}
-
-.zhenEnjoyCard p {
-  min-height: 40px;
-  margin: 7px 0 14px;
-  color: rgba(255, 255, 255, 0.78);
+.zhenEnjoyHeader p {
+  max-width: 620px;
+  margin: 7px 0 0;
+  color: @muted;
   font-size: 13px;
-  line-height: 1.55;
+  line-height: 1.65;
 }
 
-.zhenEnjoyCard em {
-  display: flex;
+.zhenEnjoyGroups {
+  display: grid;
+  gap: 16px;
+}
+
+.zhenEnjoyGroup {
+  padding: 19px;
+  background: rgba(255, 253, 248, 0.92);
+  border: 1px solid @line;
+  border-radius: 22px;
+  box-shadow: 0 8px 24px rgba(91, 49, 36, 0.055);
+}
+
+.zhenEnjoyGroup:nth-child(2) {
+  background: linear-gradient(135deg, rgba(255, 249, 242, 0.96), rgba(255, 253, 248, 0.96));
+}
+
+.zhenEnjoyGroup:nth-child(3) {
+  background: linear-gradient(135deg, rgba(251, 249, 238, 0.96), rgba(255, 253, 248, 0.96));
+}
+
+.zhenEnjoyGroup:nth-child(4) {
+  background: linear-gradient(135deg, rgba(255, 248, 239, 0.96), rgba(255, 253, 248, 0.96));
+}
+
+.zhenEnjoyGroupHeader {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
   align-items: center;
-  gap: 6px;
+  margin-bottom: 15px;
+}
+
+.zhenEnjoyGroupIcon {
+  display: grid;
+  width: 50px;
+  height: 50px;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(145deg, #67372d, #a9543b);
+  border-radius: 16px;
+  box-shadow: 0 8px 18px rgba(103, 55, 45, 0.18);
+  font-size: 21px;
+}
+
+.zhenEnjoyGroup:nth-child(2) .zhenEnjoyGroupIcon {
+  background: linear-gradient(145deg, #8b3e2d, #d36b43);
+}
+
+.zhenEnjoyGroup:nth-child(3) .zhenEnjoyGroupIcon {
+  background: linear-gradient(145deg, #615938, #a68b4e);
+}
+
+.zhenEnjoyGroup:nth-child(4) .zhenEnjoyGroupIcon {
+  background: linear-gradient(145deg, #7d4938, #c27a4d);
+}
+
+.zhenEnjoyGroupHeader small {
+  display: block;
+  color: @orange;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.zhenEnjoyGroupHeader h3 {
+  margin: 2px 0 0;
+  color: @primaryDark;
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: 26px;
+  line-height: 1.2;
+}
+
+.zhenEnjoyGroupHeader p {
+  margin: 4px 0 0;
+  color: @muted;
+  font-size: 12px;
+}
+
+.zhenEnjoyGroupMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-end;
+}
+
+.zhenEnjoyGroupMeta em {
+  color: #9a7668;
   font-size: 12px;
   font-style: normal;
-  font-weight: 800;
+  white-space: nowrap;
 }
 
-.zhenEnjoyContent {
-  margin-top: 22px;
+.zhenEnjoyGroupList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.zhenEnjoyGroupList .enjoyEditorialCard {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(0, 1.25fr);
+  box-shadow: none;
+}
+
+.zhenEnjoyGroupList .enjoyEditorialCover {
+  height: 100%;
+  min-height: 190px;
+}
+
+.zhenEnjoyGroupList .enjoyEditorialCopy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.zhenEnjoyGroupList .enjoyEditorialCopy footer {
+  margin-top: auto;
 }
 
 .zhenEnjoyEmpty {
@@ -1719,6 +1793,12 @@
   border-radius: 999px;
   cursor: pointer;
   font-weight: 800;
+  white-space: nowrap;
+}
+
+.zhenEnjoyEmptyError {
+  border-style: solid;
+  border-color: #e5b9a4;
 }
 
 .profileGroups {
@@ -1906,24 +1986,8 @@
     font-size: 21px;
   }
 
-  .zhenEnjoyRail {
-    display: flex;
-    margin-right: -14px;
-    padding: 1px 14px 12px 1px;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-    touch-action: pan-x;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .zhenEnjoyRail::-webkit-scrollbar {
-    display: none;
-  }
-
-  .zhenEnjoyCard {
-    flex: 0 0 min(285px, 76vw);
+  .zhenEnjoyGroupList {
+    grid-template-columns: 1fr;
   }
 
   .floatingPublish {
@@ -2039,7 +2103,7 @@
   .bannerCopy {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 12px;
-    min-height: 116px;
+    min-height: 104px;
     padding: 15px 18px 31px;
   }
 
@@ -2061,7 +2125,22 @@
   .bannerCarousel :global(.slick-dots) {
     right: auto;
     bottom: 11px;
-    left: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .homePostTrack {
+    margin-right: -14px;
+    padding-right: 14px;
+    scrollbar-width: none;
+  }
+
+  .homePostTrack::-webkit-scrollbar {
+    display: none;
+  }
+
+  .homePostTrack .postCard {
+    flex-basis: min(82vw, 310px);
   }
 
   .postBody {
@@ -2071,10 +2150,6 @@
   .authorAvatar {
     width: 32px;
     height: 32px;
-  }
-
-  .authorCopy small {
-    display: none;
   }
 
   .postBody h3 {
@@ -2146,27 +2221,96 @@
     font-size: 12px;
   }
 
-  .zhenEnjoyCard {
-    min-height: 188px;
-    padding: 17px;
+  .zhenEnjoyGroup {
+    padding: 14px;
+  }
+
+  .zhenEnjoyGroupHeader {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 11px;
+    align-items: start;
+    margin-bottom: 12px;
+  }
+
+  .zhenEnjoyGroupIcon {
+    width: 43px;
+    height: 43px;
+    border-radius: 14px;
+    font-size: 18px;
+  }
+
+  .zhenEnjoyGroupHeader h3 {
+    font-size: 23px;
+  }
+
+  .zhenEnjoyGroupMeta {
+    grid-column: 2;
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .zhenEnjoyGroupList .enjoyEditorialCard {
+    grid-template-columns: 108px minmax(0, 1fr);
+  }
+
+  .zhenEnjoyGroupList .enjoyEditorialCover {
+    min-height: 158px;
+  }
+
+  .zhenEnjoyGroupList .enjoyEditorialCover span {
+    top: 8px;
+    left: 8px;
+    padding: 4px 7px;
+    font-size: 10px;
+  }
+
+  .zhenEnjoyGroupList .enjoyEditorialCover em {
+    right: 7px;
+    bottom: 7px;
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+
+  .zhenEnjoyGroupList .enjoyEditorialCopy {
+    padding: 12px;
+  }
+
+  .zhenEnjoyGroupList .enjoyEditorialCopy strong {
+    font-size: 17px;
+  }
+
+  .zhenEnjoyGroupList .enjoyEditorialCopy p {
+    min-height: 0;
+    margin-top: 5px;
+    font-size: 12px;
+  }
+
+  .zhenEnjoyGroupList .enjoyEditorialCopy > small {
+    margin-top: 8px;
+    font-size: 11px;
+  }
+
+  .zhenEnjoyGroupList .enjoyEditorialCopy footer {
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 8px;
+    font-size: 11px;
+  }
+
+  .zhenEnjoyGroupList .enjoyEditorialCopy footer button {
+    display: none;
   }
 
   .zhenEnjoyEmpty {
     grid-template-columns: auto minmax(0, 1fr);
+    padding: 15px;
   }
 
   .zhenEnjoyEmpty button {
     grid-column: 1 / -1;
     justify-content: center;
-  }
-
-  .zhenEnjoyCard strong {
-    font-size: 25px;
-  }
-
-  .zhenEnjoyCard p {
-    min-height: 0;
-    margin-bottom: 12px;
   }
 
   .profileEntryGrid {

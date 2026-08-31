@@ -3,20 +3,24 @@ package com.ruoyi.shop.util;
 import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
-import java.io.IOException;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Iterator;
 import java.util.Locale;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 
 /** Normalizes uploaded platform media references before they are persisted. */
 public final class ShopPlatformMediaPathUtils {
   private static final String PROFILE_PREFIX = "/profile/";
   private static final String API_PROFILE_PREFIX = "/api/profile/";
+  private static final int MAX_IMAGE_EDGE = 16_384;
+  private static final long MAX_IMAGE_PIXELS = 40_000_000L;
 
   private ShopPlatformMediaPathUtils() {}
 
@@ -81,12 +85,35 @@ public final class ShopPlatformMediaPathUtils {
     storedFile(rawValue);
   }
 
-  /** Requires the reference to resolve to a stored file whose bytes are a readable image. */
+  /**
+   * Requires the reference to resolve to a readable image with bounded dimensions.
+   *
+   * <p>Only image metadata is inspected. Fully decoding an attacker-controlled compressed image
+   * during a request can allocate hundreds of megabytes even when the upload itself is small.
+   */
   public static void requireStoredImage(String rawValue) {
     Path file = storedFile(rawValue);
-    try {
-      if (ImageIO.read(file.toFile()) == null) throw invalidStoredFile();
-    } catch (IOException exception) {
+    ImageReader reader = null;
+    try (ImageInputStream input = ImageIO.createImageInputStream(file.toFile())) {
+      if (input == null) throw invalidStoredFile();
+      Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
+      if (!readers.hasNext()) throw invalidStoredFile();
+      reader = readers.next();
+      reader.setInput(input, true, true);
+      requireSafeImageDimensions(reader.getWidth(0), reader.getHeight(0));
+    } catch (Exception exception) {
+      throw invalidStoredFile();
+    } finally {
+      if (reader != null) reader.dispose();
+    }
+  }
+
+  public static void requireSafeImageDimensions(int width, int height) {
+    if (width <= 0
+        || height <= 0
+        || width > MAX_IMAGE_EDGE
+        || height > MAX_IMAGE_EDGE
+        || (long) width * height > MAX_IMAGE_PIXELS) {
       throw invalidStoredFile();
     }
   }

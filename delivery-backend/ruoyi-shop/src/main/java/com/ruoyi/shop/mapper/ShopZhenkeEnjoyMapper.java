@@ -11,7 +11,13 @@ public interface ShopZhenkeEnjoyMapper {
       @Param("keyword") String keyword,
       @Param("status") String status,
       @Param("includeDeleted") boolean includeDeleted,
-      @Param("currentUserId") Long currentUserId);
+      @Param("currentUserId") Long currentUserId,
+      @Param("city") String city);
+
+  List<ShopZhenkeEnjoy> selectHomeEnjoys(
+      @Param("city") String city,
+      @Param("currentUserId") Long currentUserId,
+      @Param("perCategory") int perCategory);
 
   ShopZhenkeEnjoy selectEnjoy(
       @Param("enjoyId") Long enjoyId,
@@ -35,7 +41,13 @@ public interface ShopZhenkeEnjoyMapper {
   int deleteLike(@Param("enjoyId") Long enjoyId, @Param("shopUserId") Long shopUserId);
   int countLike(@Param("enjoyId") Long enjoyId, @Param("shopUserId") Long shopUserId);
 
-  List<ShopZhenkeEnjoyComment> selectComments(Long enjoyId);
+  List<ShopZhenkeEnjoyComment> selectRootComments(Long enjoyId);
+  List<ShopZhenkeEnjoyComment> selectReplyPreviews(
+      @Param("enjoyId") Long enjoyId,
+      @Param("rootCommentIds") List<Long> rootCommentIds,
+      @Param("previewSize") int previewSize);
+  List<ShopZhenkeEnjoyComment> selectReplies(
+      @Param("enjoyId") Long enjoyId, @Param("rootCommentId") Long rootCommentId);
   ShopZhenkeEnjoyComment selectComment(
       @Param("enjoyId") Long enjoyId, @Param("commentId") Long commentId);
   int insertComment(ShopZhenkeEnjoyComment comment);

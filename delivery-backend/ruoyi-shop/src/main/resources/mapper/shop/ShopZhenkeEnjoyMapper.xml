@@ -66,9 +66,29 @@
       <if test="includeDeleted and status != null and status != '' and status != 'DELETED'">and e.del_flag='0' and e.status=#{status}</if>
       <if test="includeDeleted and status == 'DELETED'">and e.del_flag!='0'</if>
       <if test="category != null and category != ''">and e.category=#{category}</if>
+      <if test="city != null and city != ''">and p.city=#{city}</if>
       <if test="keyword != null and keyword != ''">and (e.title like concat('%',#{keyword},'%') or e.subtitle like concat('%',#{keyword},'%') or coalesce(p.place_name,e.place_name) like concat('%',#{keyword},'%'))</if>
     </where>
     order by e.display_sort asc,e.published_at desc,e.enjoy_id desc
+  </select>
+
+  <select id="selectHomeEnjoys" resultMap="enjoy">
+    select ranked.*
+    from (
+      select base.*,
+        row_number() over(
+          partition by base.category
+          order by base.display_sort asc,base.published_at desc,base.enjoy_id desc
+        ) category_rank
+      from (
+        <include refid="enjoyView"/>
+        where e.del_flag='0' and e.status='0' and p.place_id is not null
+        <if test="city != null and city != ''">and p.city=#{city}</if>
+      ) base
+    ) ranked
+    where ranked.category_rank &lt;= #{perCategory}
+    order by field(ranked.category,'MALL','RESTAURANT','SCENIC','HOTEL'),
+             ranked.display_sort asc,ranked.published_at desc,ranked.enjoy_id desc
   </select>
 
   <select id="selectEnjoy" resultMap="enjoy">
@@ -83,7 +103,7 @@
   </insert>
 
   <update id="updateEnjoy">
-    update shop_zhenke_enjoy set category=#{category},title=#{title},subtitle=#{subtitle},cover_url=#{coverUrl},service_summary=#{serviceSummary},content=#{content},highlights=#{highlights},opening_hours=#{openingHours},contact_phone=#{contactPhone},place_id=#{placeId},place_name=#{placeName},place_address=#{placeAddress},display_sort=#{displaySort},status=#{status},published_at=case when #{status}='0' then coalesce(published_at,sysdate()) else published_at end,update_by=#{updateBy},update_time=sysdate()
+    update shop_zhenke_enjoy set category=#{category},title=#{title},subtitle=#{subtitle},cover_url=#{coverUrl},service_summary=#{serviceSummary},content=#{content},highlights=#{highlights},opening_hours=#{openingHours},contact_phone=#{contactPhone},place_id=#{placeId},place_name=#{placeName},place_address=#{placeAddress},display_sort=#{displaySort},update_by=#{updateBy},update_time=sysdate()
     where enjoy_id=#{enjoyId} and del_flag='0'
   </update>
 
@@ -109,9 +129,26 @@
     <result property="replyToName" column="reply_to_name"/>
     <result property="content" column="content"/>
     <result property="createTime" column="create_time"/>
+    <result property="replyCount" column="reply_count"/>
   </resultMap>
-  <sql id="commentView">select c.*,u.user_name,u.nick_name,u.avatar,coalesce(ru.nick_name,ru.user_name) reply_to_name from shop_zhenke_enjoy_comment c join shop_zhenke_enjoy e on e.enjoy_id=c.enjoy_id and e.del_flag='0' join shop_user u on u.user_id=c.shop_user_id left join shop_zhenke_enjoy_comment rc on rc.comment_id=c.reply_to_comment_id left join shop_user ru on ru.user_id=rc.shop_user_id</sql>
-  <select id="selectComments" resultMap="comment"><include refid="commentView"/> where c.enjoy_id=#{enjoyId} and c.del_flag='0' order by coalesce(c.parent_comment_id,c.comment_id),c.create_time,c.comment_id</select>
+  <sql id="commentView">select c.*,u.user_name,u.nick_name,u.avatar,coalesce(ru.nick_name,ru.user_name) reply_to_name,case when c.parent_comment_id is null then (select count(*) from shop_zhenke_enjoy_comment reply_count where reply_count.enjoy_id=c.enjoy_id and reply_count.parent_comment_id=c.comment_id and reply_count.del_flag='0') else 0 end reply_count from shop_zhenke_enjoy_comment c join shop_zhenke_enjoy e on e.enjoy_id=c.enjoy_id and e.del_flag='0' join shop_user u on u.user_id=c.shop_user_id left join shop_zhenke_enjoy_comment rc on rc.comment_id=c.reply_to_comment_id left join shop_user ru on ru.user_id=rc.shop_user_id</sql>
+  <select id="selectRootComments" resultMap="comment"><include refid="commentView"/> where c.enjoy_id=#{enjoyId} and c.parent_comment_id is null and c.del_flag='0' order by c.create_time desc,c.comment_id desc</select>
+  <select id="selectReplyPreviews" resultMap="comment">
+    select ranked.* from (
+      select c.*,u.user_name,u.nick_name,u.avatar,coalesce(ru.nick_name,ru.user_name) reply_to_name,0 reply_count,
+             row_number() over(partition by c.parent_comment_id order by c.create_time,c.comment_id) reply_rank
+      from shop_zhenke_enjoy_comment c
+      join shop_zhenke_enjoy e on e.enjoy_id=c.enjoy_id and e.del_flag='0'
+      join shop_user u on u.user_id=c.shop_user_id
+      left join shop_zhenke_enjoy_comment rc on rc.comment_id=c.reply_to_comment_id
+      left join shop_user ru on ru.user_id=rc.shop_user_id
+      where c.enjoy_id=#{enjoyId} and c.del_flag='0' and c.parent_comment_id in
+      <foreach collection="rootCommentIds" item="rootCommentId" open="(" separator="," close=")">#{rootCommentId}</foreach>
+    ) ranked
+    where ranked.reply_rank &lt;= #{previewSize}
+    order by ranked.parent_comment_id,ranked.create_time,ranked.comment_id
+  </select>
+  <select id="selectReplies" resultMap="comment"><include refid="commentView"/> where c.enjoy_id=#{enjoyId} and c.parent_comment_id=#{rootCommentId} and c.del_flag='0' order by c.create_time,c.comment_id</select>
   <select id="selectComment" resultMap="comment"><include refid="commentView"/> where c.enjoy_id=#{enjoyId} and c.comment_id=#{commentId} and c.del_flag='0'</select>
   <insert id="insertComment" useGeneratedKeys="true" keyProperty="commentId">insert into shop_zhenke_enjoy_comment(enjoy_id,parent_comment_id,reply_to_comment_id,shop_user_id,content,del_flag,create_time,update_time) select #{enjoyId},#{parentCommentId},#{replyToCommentId},#{shopUserId},#{content},'0',sysdate(),sysdate() from shop_zhenke_enjoy where enjoy_id=#{enjoyId} and del_flag='0' and status='0'</insert>
   <update id="deleteComment">update shop_zhenke_enjoy_comment set del_flag='2',delete_time=sysdate(),update_time=sysdate() where enjoy_id=#{enjoyId} and comment_id=#{commentId} and shop_user_id=#{shopUserId} and del_flag='0'</update>

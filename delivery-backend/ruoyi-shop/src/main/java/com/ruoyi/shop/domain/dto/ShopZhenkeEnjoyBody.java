@@ -28,7 +28,9 @@ public class ShopZhenkeEnjoyBody {
   @NotEmpty @Size(max = 9)
   private List<@NotBlank @Size(max = 500) String> mediaUrls;
   @Min(0) @Max(9999) private Integer displaySort;
-  @NotBlank @Pattern(regexp = "0|1", message = "甄必享状态无效") private String status;
+  // Kept for backward-compatible request deserialization. The service ignores
+  // this value; only the dedicated status endpoint may publish or unpublish.
+  private String status;
 
   public String getCategory() { return category; }
   public void setCategory(String value) { category = value; }

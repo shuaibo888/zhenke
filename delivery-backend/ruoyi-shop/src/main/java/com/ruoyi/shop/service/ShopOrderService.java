@@ -128,13 +128,7 @@ public class ShopOrderService
         {
             throw new ServiceException("订单状态已变化，请刷新后重试");
         }
-        for (ShopOrderItem item : orderMapper.selectOrderItems(orderId))
-        {
-            if (orderMapper.restoreStock(item.getProductId(), item.getQuantity()) == 0)
-            {
-                throw new ServiceException("订单库存恢复失败");
-            }
-        }
+        restoreDeductedStock(orderMapper.selectOrderItems(orderId), "订单库存恢复失败");
         couponService.releaseByOrder(orderId);
         insertStatusLog(orderId, PENDING_PAYMENT, CANCELLED, userId, "用户取消待付款订单");
         return hydrate(requireUserOrder(userId, orderId, false));
@@ -152,13 +146,7 @@ public class ShopOrderService
         {
             return false;
         }
-        for (ShopOrderItem item : orderMapper.selectOrderItems(orderId))
-        {
-            if (orderMapper.restoreStock(item.getProductId(), item.getQuantity()) == 0)
-            {
-                throw new ServiceException("超时订单库存恢复失败");
-            }
-        }
+        restoreDeductedStock(orderMapper.selectOrderItems(orderId), "超时订单库存恢复失败");
         couponService.releaseByOrder(orderId);
         insertStatusLog(orderId, PENDING_PAYMENT, CANCELLED, 0L,
                 "订单超过30分钟未支付，系统自动取消", "SYSTEM");
@@ -334,13 +322,7 @@ public class ShopOrderService
         }
         if ("0".equals(refund.getReviewRequired()))
         {
-            for (ShopOrderItem item : orderMapper.selectOrderItems(orderId))
-            {
-                if (orderMapper.restoreStock(item.getProductId(), item.getQuantity()) == 0)
-                {
-                    throw new ServiceException("订单库存恢复失败");
-                }
-            }
+            restoreDeductedStock(orderMapper.selectOrderItems(orderId), "订单库存恢复失败");
         }
         if (orderMapper.updateRefundStatus(refund.getRefundId(),
                 REFUND_STATUS_REFUNDING, REFUND_STATUS_REFUNDED) == 0)
@@ -483,6 +465,7 @@ public class ShopOrderService
                 item.setUnitPrice(line.product().getPrice());
                 item.setQuantity(line.quantity());
                 item.setFulfillmentType(group.fulfillmentType());
+                item.setStockDeducted(stockDeductedSnapshot(line.product()));
                 item.setLineAmount(line.product().getPrice().multiply(BigDecimal.valueOf(line.quantity())));
                 if (orderMapper.insertOrderItem(item) == 0)
                 {
@@ -497,6 +480,27 @@ public class ShopOrderService
             created.add(hydrate(requireUserOrder(userId, order.getOrderId(), false)));
         }
         return created;
+    }
+
+    String stockDeductedSnapshot(ShopProduct product)
+    {
+        return "1".equals(product.getStockUnlimited()) ? "0" : "1";
+    }
+
+    void restoreDeductedStock(List<ShopOrderItem> items, String failureMessage)
+    {
+        for (ShopOrderItem item : items)
+        {
+            // null 仅可能来自迁移前的旧行；历史商城均为有限库存，按已扣减处理保持兼容。
+            if ("0".equals(item.getStockDeducted()))
+            {
+                continue;
+            }
+            if (orderMapper.restoreStock(item.getProductId(), item.getQuantity()) == 0)
+            {
+                throw new ServiceException(failureMessage);
+            }
+        }
     }
 
     String resolveFulfillment(ShopProduct product, String requested)

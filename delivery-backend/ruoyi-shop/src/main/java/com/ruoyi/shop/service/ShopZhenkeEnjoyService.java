@@ -11,6 +11,8 @@ import com.ruoyi.shop.domain.dto.ShopZhenkeEnjoyBody;
 import com.ruoyi.shop.mapper.ShopZhenkeEnjoyMapper;
 import com.ruoyi.shop.security.ShopAccountIdentity;
 import com.ruoyi.shop.util.ShopPlatformMediaPathUtils;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ShopZhenkeEnjoyService {
   private static final Set<String> CATEGORIES = Set.of("MALL", "RESTAURANT", "SCENIC", "HOTEL");
+  private static final int COMMENT_PREVIEW_SIZE = 3;
   private final ShopZhenkeEnjoyMapper mapper;
   private final ShopZhenkeService placeService;
 
@@ -30,9 +33,26 @@ public class ShopZhenkeEnjoyService {
   }
 
   public List<ShopZhenkeEnjoy> enjoys(String category, int pageNum, int pageSize) {
+    return enjoys(category, null, pageNum, pageSize);
+  }
+
+  public List<ShopZhenkeEnjoy> enjoys(
+      String category, String city, int pageNum, int pageSize) {
     PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(50, pageSize)));
     return mapper.selectEnjoys(
-        normalizeCategory(category), null, null, false, ShopAccountIdentity.currentShopUserIdOrNull());
+        normalizeCategory(category),
+        null,
+        null,
+        false,
+        ShopAccountIdentity.currentShopUserIdOrNull(),
+        normalizeCity(city));
+  }
+
+  public List<ShopZhenkeEnjoy> homeEnjoys(String city, int perCategory) {
+    return mapper.selectHomeEnjoys(
+        normalizeCity(city),
+        ShopAccountIdentity.currentShopUserIdOrNull(),
+        Math.max(1, Math.min(6, perCategory)));
   }
 
   public ShopZhenkeEnjoy detail(long enjoyId) {
@@ -64,9 +84,32 @@ public class ShopZhenkeEnjoyService {
     return Map.of("liked", liked, "likeCount", refreshed.getLikeCount());
   }
 
-  public List<ShopZhenkeEnjoyComment> comments(long enjoyId) {
+  public List<ShopZhenkeEnjoyComment> comments(long enjoyId, int pageNum, int pageSize) {
     detail(enjoyId);
-    return mapper.selectComments(enjoyId);
+    PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(20, pageSize)));
+    List<ShopZhenkeEnjoyComment> roots;
+    try {
+      roots = mapper.selectRootComments(enjoyId);
+    } finally {
+      PageHelper.clearPage();
+    }
+    attachCommentPreviews(enjoyId, roots);
+    return roots;
+  }
+
+  public List<ShopZhenkeEnjoyComment> commentReplies(
+      long enjoyId, long rootCommentId, int pageNum, int pageSize) {
+    detail(enjoyId);
+    ShopZhenkeEnjoyComment root = mapper.selectComment(enjoyId, rootCommentId);
+    if (root == null || root.getParentCommentId() != null) {
+      throw new ServiceException("一级评论不存在或已删除");
+    }
+    PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(50, pageSize)));
+    try {
+      return mapper.selectReplies(enjoyId, rootCommentId);
+    } finally {
+      PageHelper.clearPage();
+    }
   }
 
   @Transactional
@@ -104,6 +147,27 @@ public class ShopZhenkeEnjoyService {
     if (affected == 0) throw new ServiceException("只能删除自己的评论");
   }
 
+  private void attachCommentPreviews(long enjoyId, List<ShopZhenkeEnjoyComment> roots) {
+    if (roots == null || roots.isEmpty()) return;
+    List<Long> rootIds = roots.stream().map(ShopZhenkeEnjoyComment::getCommentId).toList();
+    Map<Long, List<ShopZhenkeEnjoyComment>> repliesByRoot = new HashMap<>();
+    List<ShopZhenkeEnjoyComment> previews =
+        mapper.selectReplyPreviews(enjoyId, rootIds, COMMENT_PREVIEW_SIZE);
+    if (previews != null) {
+      for (ShopZhenkeEnjoyComment reply : previews) {
+        if (reply.getParentCommentId() != null) {
+          repliesByRoot
+              .computeIfAbsent(reply.getParentCommentId(), ignored -> new ArrayList<>())
+              .add(reply);
+        }
+      }
+    }
+    for (ShopZhenkeEnjoyComment root : roots) {
+      root.setReplies(repliesByRoot.getOrDefault(root.getCommentId(), List.of()));
+      if (root.getReplyCount() == null) root.setReplyCount(0L);
+    }
+  }
+
   public List<ShopZhenkeEnjoy> adminEnjoys(
       String keyword, String category, String status, int pageNum, int pageSize) {
     String normalizedKeyword = StringUtils.trim(keyword);
@@ -114,7 +178,7 @@ public class ShopZhenkeEnjoyService {
     }
     PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(50, pageSize)));
     return mapper.selectEnjoys(
-        normalizeCategory(category), normalizedKeyword, normalizedStatus, true, null);
+        normalizeCategory(category), normalizedKeyword, normalizedStatus, true, null, null);
   }
 
   public ShopZhenkeEnjoy adminDetail(long enjoyId) {
@@ -126,6 +190,14 @@ public class ShopZhenkeEnjoyService {
 
   @Transactional
   public ShopZhenkeEnjoy save(Long enjoyId, ShopZhenkeEnjoyBody body, String user) {
+    String persistedStatus = "1";
+    if (enjoyId != null) {
+      ShopZhenkeEnjoy existing = mapper.selectEnjoy(enjoyId, true, null);
+      if (existing == null || !Set.of("0", "1").contains(existing.getStatus())) {
+        throw new ServiceException("甄必享内容不存在或已删除");
+      }
+      persistedStatus = existing.getStatus();
+    }
     ShopPlace place = placeService.resolveSelectedPlace(body.getPlace());
     List<String> mediaUrls = normalizeMediaUrls(body.getMediaUrls());
     ShopZhenkeEnjoy enjoy = new ShopZhenkeEnjoy();
@@ -143,7 +215,9 @@ public class ShopZhenkeEnjoyService {
     enjoy.setPlaceName(place.getPlaceName());
     enjoy.setPlaceAddress(place.getAddress());
     enjoy.setDisplaySort(body.getDisplaySort() == null ? 0 : body.getDisplaySort());
-    enjoy.setStatus(body.getStatus());
+    // Creating or editing content must never grant publish privileges. Status is
+    // controlled exclusively by the separately-authorized /status endpoint.
+    enjoy.setStatus(persistedStatus);
     enjoy.setCreateBy(user);
     enjoy.setUpdateBy(user);
     if (enjoyId == null) {
@@ -184,6 +258,11 @@ public class ShopZhenkeEnjoyService {
     if (normalized.isEmpty()) return null;
     if (!CATEGORIES.contains(normalized)) throw new ServiceException("甄必享分类无效");
     return normalized;
+  }
+
+  private String normalizeCity(String city) {
+    String normalized = StringUtils.trim(city);
+    return normalized.isEmpty() ? null : normalized;
   }
 
   private List<String> normalizeMediaUrls(List<String> rawValues) {

@@ -23,30 +23,44 @@ public class ShopZhenkeController extends BaseController {
   private final ShopReportResourceService resources;
   private final ShopPublicMediaService publicMedia;
   private final com.ruoyi.shop.map.TencentMapService map;
+  private final ShopZhenkeCityScopeService cityScope;
+  private final ShopZhenkeHomeService homeService;
 
   public ShopZhenkeController(
       ShopZhenkeService s,
       ShopZhenkeEnjoyService enjoyService,
       ShopReportResourceService r,
       ShopPublicMediaService publicMedia,
-      com.ruoyi.shop.map.TencentMapService map) {
+      com.ruoyi.shop.map.TencentMapService map,
+      ShopZhenkeCityScopeService cityScope,
+      ShopZhenkeHomeService homeService) {
     service = s;
     this.enjoyService = enjoyService;
     resources = r;
     this.publicMedia = publicMedia;
     this.map = map;
+    this.cityScope = cityScope;
+    this.homeService = homeService;
+  }
+
+  @Anonymous
+  @GetMapping("/home")
+  public AjaxResult home(@RequestParam(required = false) String city) {
+    return AjaxResult.success(homeService.load(city));
   }
 
   @Anonymous
   @GetMapping("/posts")
   public TableDataInfo posts(
-      @RequestParam(defaultValue = "RECOMMEND") String zone,
+      @RequestParam(defaultValue = "RECOMMEND") String perspective,
       @RequestParam(required = false) Long placeId,
+      @RequestParam(required = false) String city,
       @RequestParam(defaultValue = "1") int pageNum,
       @RequestParam(defaultValue = "12") int pageSize) {
     PageHelper.clearPage();
+    String feedCity = placeId == null ? cityScope.resolvePublicFeedCity(city) : null;
     return getDataTable(
-        publicMedia.posts(service.posts(zone, placeId, pageNum, pageSize)));
+        publicMedia.posts(service.posts(perspective, placeId, feedCity, pageNum, pageSize)));
   }
 
   @Anonymous
@@ -80,8 +94,25 @@ public class ShopZhenkeController extends BaseController {
 
   @Anonymous
   @GetMapping("/posts/{id}/comments")
-  public AjaxResult comments(@PathVariable long id) {
-    return AjaxResult.success(publicMedia.comments(service.comments(id)));
+  public TableDataInfo comments(
+      @PathVariable long id,
+      @RequestParam(defaultValue = "1") int pageNum,
+      @RequestParam(defaultValue = "10") int pageSize) {
+    PageHelper.clearPage();
+    return getDataTable(publicMedia.comments(service.comments(id, pageNum, pageSize)));
+  }
+
+  @Anonymous
+  @GetMapping("/posts/{id}/comments/{rootCommentId}/replies")
+  public TableDataInfo commentReplies(
+      @PathVariable long id,
+      @PathVariable long rootCommentId,
+      @RequestParam(defaultValue = "1") int pageNum,
+      @RequestParam(defaultValue = "20") int pageSize) {
+    PageHelper.clearPage();
+    return getDataTable(
+        publicMedia.comments(
+            service.commentReplies(id, rootCommentId, pageNum, pageSize)));
   }
 
   @PostMapping("/posts/{id}/comments")
@@ -139,23 +170,29 @@ public class ShopZhenkeController extends BaseController {
   @Anonymous
   @GetMapping("/banners")
   public AjaxResult banners() {
-    return AjaxResult.success(publicMedia.banners(service.activeBanners()));
+    return AjaxResult.success(publicMedia.publicBanners(service.activeBanners()));
   }
 
   @Anonymous
   @GetMapping("/enjoys")
   public TableDataInfo enjoys(
       @RequestParam(required = false) String category,
+      @RequestParam(required = false) String city,
       @RequestParam(defaultValue = "1") int pageNum,
       @RequestParam(defaultValue = "12") int pageSize) {
     PageHelper.clearPage();
-    return getDataTable(publicMedia.enjoys(enjoyService.enjoys(category, pageNum, pageSize)));
+    var rows =
+        enjoyService.enjoys(
+            category, cityScope.resolvePublicFeedCity(city), pageNum, pageSize);
+    TableDataInfo result = getDataTable(rows);
+    result.setRows(publicMedia.publicEnjoys(rows));
+    return result;
   }
 
   @Anonymous
   @GetMapping("/enjoys/{id}")
   public AjaxResult enjoy(@PathVariable long id) {
-    return AjaxResult.success(publicMedia.enjoy(enjoyService.detail(id)));
+    return AjaxResult.success(publicMedia.publicEnjoy(enjoyService.detail(id)));
   }
 
   @PostMapping("/enjoys/{id}/like")
@@ -165,8 +202,26 @@ public class ShopZhenkeController extends BaseController {
 
   @Anonymous
   @GetMapping("/enjoys/{id}/comments")
-  public AjaxResult enjoyComments(@PathVariable long id) {
-    return AjaxResult.success(publicMedia.enjoyComments(enjoyService.comments(id)));
+  public TableDataInfo enjoyComments(
+      @PathVariable long id,
+      @RequestParam(defaultValue = "1") int pageNum,
+      @RequestParam(defaultValue = "10") int pageSize) {
+    PageHelper.clearPage();
+    return getDataTable(
+        publicMedia.enjoyComments(enjoyService.comments(id, pageNum, pageSize)));
+  }
+
+  @Anonymous
+  @GetMapping("/enjoys/{id}/comments/{rootCommentId}/replies")
+  public TableDataInfo enjoyCommentReplies(
+      @PathVariable long id,
+      @PathVariable long rootCommentId,
+      @RequestParam(defaultValue = "1") int pageNum,
+      @RequestParam(defaultValue = "20") int pageSize) {
+    PageHelper.clearPage();
+    return getDataTable(
+        publicMedia.enjoyComments(
+            enjoyService.commentReplies(id, rootCommentId, pageNum, pageSize)));
   }
 
   @PostMapping("/enjoys/{id}/comments")

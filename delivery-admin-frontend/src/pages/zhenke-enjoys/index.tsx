@@ -94,7 +94,6 @@ type EnjoyForm = {
   mediaUrls: string[];
   placeKey: string;
   displaySort: number;
-  status: '0' | '1';
 };
 
 const categoryLabel: Record<EnjoyCategory, string> = {
@@ -191,7 +190,7 @@ export default function ZhenkeEnjoysPage() {
     setPlaceSearchError('');
     form.resetFields();
     if (!item) {
-      form.setFieldsValue({ category: 'MALL', status: '1', displaySort: 0, mediaUrls: [] });
+      form.setFieldsValue({ category: 'MALL', displaySort: 0, mediaUrls: [] });
       return;
     }
     try {
@@ -212,7 +211,6 @@ export default function ZhenkeEnjoysPage() {
         mediaUrls: (full.mediaUrls?.length ? full.mediaUrls : [full.coverUrl]).map(mediaStoragePath),
         placeKey: place ? placeKey(place) : undefined,
         displaySort: full.displaySort,
-        status: full.status,
       });
     } catch (reason) {
       setEditorOpen(false);
@@ -290,7 +288,6 @@ export default function ZhenkeEnjoysPage() {
           longitude: selectedPlace.longitude,
         },
         displaySort: values.displaySort ?? 0,
-        status: values.status,
       };
       await requestApi(
         editing ? `/shop/admin/zhenke/enjoys/${editing.enjoyId}` : '/shop/admin/zhenke/enjoys',
@@ -375,7 +372,6 @@ export default function ZhenkeEnjoysPage() {
           <Form.Item name="mediaUrls" hidden><Input /></Form.Item>
           <Space align="start" wrap>
             <Form.Item name="category" label="所属分类" rules={[{ required: true }]}><Select style={{ width: 180 }} options={Object.entries(categoryLabel).map(([value, label]) => ({ value, label }))} /></Form.Item>
-            <Form.Item name="status" label="发布状态" rules={[{ required: true }]}><Select style={{ width: 160 }} options={[{ value: '1', label: '先保存为下线' }, { value: '0', label: '保存后立即发布' }]} /></Form.Item>
             <Form.Item name="displaySort" label="排序"><InputNumber min={0} max={9999} precision={0} /></Form.Item>
           </Space>
           <Form.Item name="title" label="专题标题" rules={[{ required: true, whitespace: true, message: '请输入专题标题' }]}><Input maxLength={120} showCount placeholder="例如：赛事专享雅致大床房" /></Form.Item>

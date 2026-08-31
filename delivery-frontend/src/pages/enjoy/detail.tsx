@@ -1,6 +1,6 @@
 import { AimOutlined, ArrowLeftOutlined, ClockCircleOutlined, EditOutlined, EnvironmentOutlined, HeartFilled, HeartOutlined, MessageOutlined, PhoneOutlined, PictureOutlined, SendOutlined, ShareAltOutlined } from '@ant-design/icons';
 import { Button, Image, Input, Popconfirm, message } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { enjoyCategoryNames } from '@/components/ZhenkeEnjoyCard';
@@ -9,6 +9,7 @@ import { buildLoginPath } from '@/utils/safeRedirect';
 import {
   createEnjoyComment,
   deleteEnjoyComment,
+  enjoyCommentReplies,
   enjoyComments,
   enjoyDetail,
   toggleEnjoyLike,
@@ -16,6 +17,7 @@ import {
   type ZhenkeEnjoy,
 } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
+import { isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
 
 export default function EnjoyDetailPage() {
   const { enjoyId: rawEnjoyId } = useParams<{ enjoyId: string }>();
@@ -25,49 +27,100 @@ export default function EnjoyDetailPage() {
   const { user } = useShop();
   const [detail, setDetail] = useState<ZhenkeEnjoy>();
   const [comments, setComments] = useState<EnjoyComment[]>([]);
+  const [commentTotal, setCommentTotal] = useState(0);
+  const [commentPage, setCommentPage] = useState(0);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsError, setCommentsError] = useState('');
+  const [replyPages, setReplyPages] = useState<Record<number, number>>({});
+  const [replyLoading, setReplyLoading] = useState<Record<number, boolean>>({});
+  const [replyErrors, setReplyErrors] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [commentText, setCommentText] = useState('');
   const [replyTarget, setReplyTarget] = useState<EnjoyComment>();
   const [submitting, setSubmitting] = useState(false);
   const [liking, setLiking] = useState(false);
+  const commentRequestId = useRef(0);
+  const prepareWechatShare = useWechatShare(detail?.coverUrl ? {
+    title: `甄必享｜${detail.title}`,
+    description: detail.subtitle || detail.serviceSummary,
+    link: `/enjoy/${detail.enjoyId}`,
+    imageUrl: detail.coverUrl,
+  } : null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
-    const [detailResult, commentResult] = await Promise.allSettled([
-      enjoyDetail(enjoyId),
-      enjoyComments(enjoyId),
-    ]);
-    if (detailResult.status === 'fulfilled') setDetail(detailResult.value);
-    else {
+    try {
+      setDetail(await enjoyDetail(enjoyId));
+    } catch (reason) {
       setDetail(undefined);
-      setError(detailResult.reason instanceof Error ? detailResult.reason.message : '甄必享内容不存在或已下线');
-    }
-    if (commentResult.status === 'fulfilled') setComments(commentResult.value);
-    else {
-      setComments([]);
-      message.error(commentResult.reason instanceof Error ? commentResult.reason.message : '评论暂时无法加载');
+      setError(reason instanceof Error ? reason.message : '甄必享内容不存在或已下线');
     }
     setLoading(false);
   }, [enjoyId]);
 
+  const loadComments = useCallback(async (page = 1, append = false) => {
+    const requestId = ++commentRequestId.current;
+    setCommentsLoading(true);
+    setCommentsError('');
+    try {
+      const result = await enjoyComments(enjoyId, page, 10);
+      if (requestId !== commentRequestId.current) return;
+      setComments((current) => {
+        if (!append) return result.rows;
+        const merged = new Map(current.map((item) => [item.commentId, item]));
+        result.rows.forEach((item) => merged.set(item.commentId, item));
+        return Array.from(merged.values());
+      });
+      setCommentTotal(result.total);
+      setCommentPage(page);
+      if (!append) {
+        setReplyPages({});
+        setReplyErrors({});
+      }
+    } catch (reason) {
+      if (requestId === commentRequestId.current) {
+        setCommentsError(reason instanceof Error ? reason.message : '评论暂时无法加载');
+      }
+    } finally {
+      if (requestId === commentRequestId.current) setCommentsLoading(false);
+    }
+  }, [enjoyId]);
+
+  const loadReplies = useCallback(async (rootCommentId: number, page = 1, append = false) => {
+    setReplyLoading((current) => ({ ...current, [rootCommentId]: true }));
+    setReplyErrors((current) => ({ ...current, [rootCommentId]: '' }));
+    try {
+      const result = await enjoyCommentReplies(enjoyId, rootCommentId, page, 20);
+      setComments((current) => current.map((root) => {
+        if (root.commentId !== rootCommentId) return root;
+        const merged = new Map((append ? (root.replies ?? []) : []).map((item) => [item.commentId, item]));
+        result.rows.forEach((item) => merged.set(item.commentId, item));
+        return { ...root, replies: Array.from(merged.values()), replyCount: result.total };
+      }));
+      setReplyPages((current) => ({ ...current, [rootCommentId]: page }));
+    } catch (reason) {
+      setReplyErrors((current) => ({
+        ...current,
+        [rootCommentId]: reason instanceof Error ? reason.message : '回复暂时无法加载',
+      }));
+    } finally {
+      setReplyLoading((current) => ({ ...current, [rootCommentId]: false }));
+    }
+  }, [enjoyId]);
+
   useEffect(() => {
-    if (Number.isSafeInteger(enjoyId) && enjoyId > 0) void load();
+    if (Number.isSafeInteger(enjoyId) && enjoyId > 0) {
+      void load();
+      void loadComments();
+    }
     else {
       setLoading(false);
       setError('甄必享链接无效');
     }
-  }, [enjoyId, load]);
-
-  const rootComments = useMemo(() => comments.filter((item) => !item.parentCommentId), [comments]);
-  const replies = useMemo(() => {
-    const result = new Map<number, EnjoyComment[]>();
-    comments.filter((item) => item.parentCommentId).forEach((item) => {
-      result.set(item.parentCommentId!, [...(result.get(item.parentCommentId!) ?? []), item]);
-    });
-    return result;
-  }, [comments]);
+    return () => { commentRequestId.current += 1; };
+  }, [enjoyId, load, loadComments]);
 
   const requireLogin = () => {
     if (user) return true;
@@ -78,13 +131,31 @@ export default function EnjoyDetailPage() {
 
   const submitComment = async () => {
     if (!requireLogin() || !commentText.trim() || submitting) return;
+    const replying = Boolean(replyTarget);
     setSubmitting(true);
     try {
-      await createEnjoyComment(enjoyId, commentText.trim(), replyTarget?.commentId);
+      const saved = await createEnjoyComment(enjoyId, commentText.trim(), replyTarget?.commentId);
       setCommentText('');
       setReplyTarget(undefined);
-      await load();
-      message.success(replyTarget ? '回复已发布' : '评论已发布');
+      setDetail((current) => current
+        ? { ...current, commentCount: (current.commentCount ?? 0) + 1 }
+        : current);
+      if (saved.parentCommentId) {
+        setComments((current) => current.map((root) => {
+          if (root.commentId !== saved.parentCommentId) return root;
+          const replies = root.replies ?? [];
+          return {
+            ...root,
+            replyCount: (root.replyCount ?? replies.length) + 1,
+            replies: replies.some((item) => item.commentId === saved.commentId)
+              ? replies
+              : [...replies, saved],
+          };
+        }));
+      } else {
+        await loadComments(1, false);
+      }
+      message.success(replying ? '回复已发布' : '评论已发布');
     } catch (reason) {
       message.error(reason instanceof Error ? reason.message : '评论发布失败');
     } finally {
@@ -95,6 +166,11 @@ export default function EnjoyDetailPage() {
   const share = async () => {
     if (!detail) return;
     try {
+      if (isWechatBrowser() && detail.coverUrl) {
+        await prepareWechatShare();
+        message.info('分享卡片已准备，请点击微信右上角发送给朋友或分享到朋友圈');
+        return;
+      }
       if (navigator.share) await navigator.share({ title: detail.title, text: detail.subtitle, url: window.location.href });
       else {
         await navigator.clipboard.writeText(window.location.href);
@@ -129,7 +205,15 @@ export default function EnjoyDetailPage() {
           <Button size="small" type="text" onClick={() => { if (requireLogin()) setReplyTarget(comment); }}>回复</Button>
           {user?.id === comment.shopUserId && (
             <Popconfirm title={isReply ? '确认删除这条回复？' : '确认删除评论及其全部回复？'} onConfirm={async () => {
-              try { await deleteEnjoyComment(enjoyId, comment.commentId); await load(); message.success('评论已删除'); }
+              try {
+                await deleteEnjoyComment(enjoyId, comment.commentId);
+                const removedCount = isReply ? 1 : 1 + (comment.replyCount ?? 0);
+                setDetail((current) => current
+                  ? { ...current, commentCount: Math.max(0, (current.commentCount ?? 0) - removedCount) }
+                  : current);
+                await loadComments(1, false);
+                message.success('评论已删除');
+              }
               catch (reason) { message.error(reason instanceof Error ? reason.message : '评论删除失败'); }
             }}><Button size="small" type="text" danger>删除</Button></Popconfirm>
           )}
@@ -147,7 +231,7 @@ export default function EnjoyDetailPage() {
       </div>
 
       <header className={styles.enjoyFeatureHeader}>
-        <span className={styles.eyebrow}>{enjoyCategoryNames[detail.category]} · 官方实地精选</span>
+        <span className={styles.eyebrow}>{enjoyCategoryNames[detail.category]} · 官方地点精选</span>
         <h1>{detail.title}</h1>
         <button type="button" className={styles.enjoyFeatureLocation} disabled={!detail.placeId} onClick={() => detail.placeId && navigate(`/places/${detail.placeId}`)}>
           <EnvironmentOutlined />
@@ -162,7 +246,7 @@ export default function EnjoyDetailPage() {
             <Image src={gallery[0]} alt={`${detail.title}封面`} preview={{ mask: <><PictureOutlined /> 查看大图</> }} />
             <span className={styles.enjoyGalleryCount}><PictureOutlined /> {gallery.length}</span>
           </div>
-          {gallery.length > 1 && <div className={styles.enjoyMediaRail}>{gallery.slice(1).map((url, index) => <Image key={`${url}-${index}`} src={url} alt={`${detail.title}图片 ${index + 2}`} />)}</div>}
+          {gallery.length > 1 && <div className={styles.enjoyMediaRail}>{gallery.slice(1).map((url, index) => <Image key={`${url}-${index}`} src={url} alt={`${detail.title}图片 ${index + 2}`} loading="lazy" decoding="async" />)}</div>}
         </section>
       </Image.PreviewGroup>
 
@@ -207,13 +291,60 @@ export default function EnjoyDetailPage() {
         </div>
       </article>
       <section id="enjoy-comments" className={`${styles.surface} ${styles.commentsPanel}`}>
-        <div className={styles.sectionTitle}><div><h2>评价与交流</h2><p>{comments.length} 条公开评论</p></div></div>
+        <div className={styles.sectionTitle}><div><h2>评价与交流</h2><p>{detail.commentCount ?? 0} 条公开交流 · {commentTotal} 条一级评论</p></div></div>
         <div className={styles.commentComposer}>
           {replyTarget && <div className={styles.contextNotice}>正在回复 {replyTarget.nickName || replyTarget.userName}<Button type="link" size="small" onClick={() => setReplyTarget(undefined)}>取消回复</Button></div>}
           <Input.TextArea rows={3} maxLength={500} showCount value={commentText} placeholder={user ? '说说你对这条精选内容的看法' : '登录后参与评价和交流'} onFocus={() => requireLogin()} onChange={(event) => setCommentText(event.target.value)} />
           <Button type="primary" icon={<SendOutlined />} loading={submitting} disabled={!commentText.trim()} onClick={() => void submitComment()}>{replyTarget ? '发布回复' : '发表评论'}</Button>
         </div>
-        {rootComments.length === 0 ? <ZkState title="还没有评价" description="成为第一个参与交流的人。" /> : rootComments.map((root) => <div key={root.commentId}>{renderComment(root)}{(replies.get(root.commentId) ?? []).map((item) => renderComment(item, true))}</div>)}
+        {commentsLoading && comments.length === 0 && <ZkState kind="loading" title="正在加载评论" />}
+        {commentsError && (
+          <ZkState
+            kind="error"
+            title="评论暂时无法加载"
+            description={commentsError}
+            actionText="重试"
+            onAction={() => void loadComments(comments.length > 0 ? commentPage + 1 : 1, comments.length > 0)}
+          />
+        )}
+        {!commentsLoading && !commentsError && comments.length === 0 ? (
+          <ZkState title="还没有评价" description="成为第一个参与交流的人。" />
+        ) : comments.map((root) => {
+          const shownReplies = root.replies ?? [];
+          const replyPage = replyPages[root.commentId] ?? 0;
+          const remainingReplies = Math.max(0, (root.replyCount ?? 0) - shownReplies.length);
+          return (
+            <div key={root.commentId}>
+              {renderComment(root)}
+              {shownReplies.map((item) => renderComment(item, true))}
+              {replyErrors[root.commentId] && (
+                <div className={styles.loadMore}>
+                  <Button
+                    type="link"
+                    danger
+                    onClick={() => void loadReplies(root.commentId, replyPage > 0 ? replyPage + 1 : 1, replyPage > 0)}
+                  >回复加载失败，点击重试</Button>
+                </div>
+              )}
+              {!replyErrors[root.commentId] && remainingReplies > 0 && (
+                <div className={styles.loadMore}>
+                  <Button
+                    type="link"
+                    loading={replyLoading[root.commentId]}
+                    onClick={() => void loadReplies(root.commentId, replyPage > 0 ? replyPage + 1 : 1, replyPage > 0)}
+                  >{replyPage > 0 ? `继续加载回复（剩余 ${remainingReplies} 条）` : `查看其余 ${remainingReplies} 条回复`}</Button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {comments.length < commentTotal && (
+          <div className={styles.loadMore}>
+            <Button loading={commentsLoading} onClick={() => void loadComments(commentPage + 1, true)}>
+              加载更多评论（剩余 {commentTotal - comments.length} 条）
+            </Button>
+          </div>
+        )}
       </section>
     </main>
   );

@@ -114,6 +114,7 @@
         <result property="unitPrice" column="unit_price" />
         <result property="quantity" column="quantity" />
         <result property="fulfillmentType" column="fulfillment_type" />
+        <result property="stockDeducted" column="stock_deducted" />
         <result property="lineAmount" column="line_amount" />
         <result property="createTime" column="create_time" />
     </resultMap>
@@ -232,8 +233,7 @@
 
     <update id="restoreStock">
         update shop_product
-        set stock = case when stock_unlimited = '1' then stock else stock + #{quantity} end,
-            update_time = sysdate()
+        set stock = stock + #{quantity}, update_time = sysdate()
         where product_id = #{productId} and del_flag = '0'
     </update>
 
@@ -262,9 +262,11 @@
 
     <insert id="insertOrderItem" parameterType="ShopOrderItem" useGeneratedKeys="true" keyProperty="orderItemId">
         insert into shop_order_item
-        (order_id, product_id, source_report_id, product_name, cover_url, unit_price, quantity, fulfillment_type, line_amount, create_time)
+        (order_id, product_id, source_report_id, product_name, cover_url, unit_price, quantity,
+         fulfillment_type, stock_deducted, line_amount, create_time)
         values
-        (#{orderId}, #{productId}, #{sourceReportId}, #{productName}, #{coverUrl}, #{unitPrice}, #{quantity}, #{fulfillmentType}, #{lineAmount}, sysdate())
+        (#{orderId}, #{productId}, #{sourceReportId}, #{productName}, #{coverUrl}, #{unitPrice}, #{quantity},
+         #{fulfillmentType}, #{stockDeducted}, #{lineAmount}, sysdate())
     </insert>
 
     <insert id="insertOrderAddress" parameterType="ShopOrderAddress" useGeneratedKeys="true" keyProperty="orderAddressId">
@@ -394,7 +396,8 @@
     <select id="selectOrderItems" parameterType="Long" resultMap="ShopOrderItemResult">
         select oi.order_item_id, oi.order_id, oi.product_id, oi.source_report_id,
                published.report_id as verification_report_id, oi.product_name, oi.cover_url,
-               oi.unit_price, oi.quantity, oi.fulfillment_type, oi.line_amount, oi.create_time
+               oi.unit_price, oi.quantity, oi.fulfillment_type, oi.stock_deducted,
+               oi.line_amount, oi.create_time
         from shop_order_item oi
         left join shop_verification_report published
           on published.order_item_id = oi.order_item_id and published.status = 'PUBLISHED'
@@ -405,7 +408,8 @@
     <select id="selectOrderItemsByOrderIds" resultMap="ShopOrderItemResult">
         select oi.order_item_id, oi.order_id, oi.product_id, oi.source_report_id,
                published.report_id as verification_report_id, oi.product_name, oi.cover_url,
-               oi.unit_price, oi.quantity, oi.fulfillment_type, oi.line_amount, oi.create_time
+               oi.unit_price, oi.quantity, oi.fulfillment_type, oi.stock_deducted,
+               oi.line_amount, oi.create_time
         from shop_order_item oi
         left join shop_verification_report published
           on published.order_item_id = oi.order_item_id and published.status = 'PUBLISHED'
@@ -450,7 +454,8 @@
     <select id="selectUserReceivedOrderItemForUpdate" resultMap="ShopOrderItemResult">
         select oi.order_item_id, oi.order_id, oi.product_id, oi.source_report_id,
                published.report_id as verification_report_id, oi.product_name, oi.cover_url,
-               oi.unit_price, oi.quantity, oi.fulfillment_type, oi.line_amount, oi.create_time
+               oi.unit_price, oi.quantity, oi.fulfillment_type, oi.stock_deducted,
+               oi.line_amount, oi.create_time
         from shop_order_item oi
         inner join shop_order o on o.order_id = oi.order_id
         left join shop_verification_report published

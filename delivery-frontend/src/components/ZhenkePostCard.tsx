@@ -18,7 +18,7 @@ function AuthorAvatar({ post }: { post: ZhenkePost }) {
   return (
     <span className={styles.authorAvatar}>
       {post.avatar
-        ? <img src={post.avatar} alt="" />
+        ? <img src={post.avatar} alt="" loading="lazy" decoding="async" />
         : (post.nickName || post.userName || '甄').slice(0, 1)}
     </span>
   );
@@ -28,6 +28,7 @@ export function ZhenkePostCard({ post, disabled = false }: { post: ZhenkePost; d
   const navigate = useNavigate();
   const cover = post.resources?.find((item) => item.resourceType === 'IMAGE');
   const authorName = post.nickName || post.userName || '甄客行用户';
+  const cityName = post.placeCity?.trim() || post.placeProvince?.trim() || '城市待补充';
 
   return (
     <article
@@ -60,7 +61,7 @@ export function ZhenkePostCard({ post, disabled = false }: { post: ZhenkePost; d
           <AuthorAvatar post={post} />
           <span className={styles.authorCopy}>
             <strong>{authorName}</strong>
-            <small>{perspectiveNames[post.perspective]}</small>
+            <small>{cityName} · {perspectiveNames[post.perspective]}</small>
           </span>
         </div>
         <h3>{post.title}</h3>

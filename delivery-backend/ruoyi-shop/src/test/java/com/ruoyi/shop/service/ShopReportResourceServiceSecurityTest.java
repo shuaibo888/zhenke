@@ -9,9 +9,14 @@ import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.shop.security.ShopAccountIdentity;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Set;
+import javax.imageio.ImageIO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -52,6 +57,43 @@ class ShopReportResourceServiceSecurityTest {
   }
 
   @Test
+  void validatesMp4AsAStreamWithoutMaterializingTheWholeUpload() {
+    String previousProfile = RuoYiConfig.getProfile();
+    try {
+      new RuoYiConfig().setProfile(tempDirectory.toString());
+      authenticateShopUser(18L);
+      ByteBuffer content = ByteBuffer.allocate(48);
+      content.putInt(12).put("ftyp".getBytes(StandardCharsets.US_ASCII)).put("isom".getBytes(StandardCharsets.US_ASCII));
+      content.putInt(36).put("moov".getBytes(StandardCharsets.US_ASCII));
+      content.putInt(28).put("mvhd".getBytes(StandardCharsets.US_ASCII));
+      content.putInt(0).putInt(0).putInt(0).putInt(1_000).putInt(30_000);
+      MockMultipartFile video = new StreamingOnlyMultipartFile(content.array());
+
+      String resourcePath = service.upload(video);
+
+      assertTrue(resourcePath.startsWith("/profile/upload/report/user-18/"));
+      assertTrue(resourcePath.endsWith(".mp4"));
+    } finally {
+      new RuoYiConfig().setProfile(previousProfile);
+    }
+  }
+
+  @Test
+  void rejectsPathologicallyNestedMp4BoxesWithoutOverflowingTheStack() {
+    authenticateShopUser(18L);
+    int nestedBoxes = 2_000;
+    ByteBuffer content = ByteBuffer.allocate(12 + nestedBoxes * 8);
+    content.putInt(12).put("ftyp".getBytes(StandardCharsets.US_ASCII)).put("isom".getBytes(StandardCharsets.US_ASCII));
+    for (int index = 0; index < nestedBoxes; index++) {
+      content.putInt((nestedBoxes - index) * 8);
+      content.put("moov".getBytes(StandardCharsets.US_ASCII));
+    }
+    MockMultipartFile video = new MockMultipartFile("file", "nested.mp4", "video/mp4", content.array());
+
+    assertThrows(ServiceException.class, () -> service.upload(video));
+  }
+
+  @Test
   void rejectsUnsupportedMediaExtensionBeforeWritingAFile() {
     authenticateShopUser(18L);
     MockMultipartFile gif =
@@ -61,13 +103,15 @@ class ShopReportResourceServiceSecurityTest {
   }
 
   @Test
-  void storesReportMediaInTheAuthenticatedUsersNamespaceAndVerifiesOwnership() {
+  void storesReportMediaInTheAuthenticatedUsersNamespaceAndVerifiesOwnership() throws Exception {
     String previousProfile = RuoYiConfig.getProfile();
     try {
       new RuoYiConfig().setProfile(tempDirectory.toString());
       authenticateShopUser(18L);
+      ByteArrayOutputStream imageBytes = new ByteArrayOutputStream();
+      ImageIO.write(new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB), "jpg", imageBytes);
       MockMultipartFile image = new MockMultipartFile(
-          "file", "visit.jpg", "image/jpeg", new byte[] {(byte) 0xff, (byte) 0xd8, (byte) 0xff, 0});
+          "file", "visit.jpg", "image/jpeg", imageBytes.toByteArray());
 
       String resourcePath = service.upload(image);
 
@@ -96,5 +140,16 @@ class ShopReportResourceServiceSecurityTest {
     SecurityContextHolder.getContext()
         .setAuthentication(
             new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
+  }
+
+  private static final class StreamingOnlyMultipartFile extends MockMultipartFile {
+    private StreamingOnlyMultipartFile(byte[] content) {
+      super("file", "clip.mp4", "video/mp4", content);
+    }
+
+    @Override
+    public byte[] getBytes() throws IOException {
+      throw new AssertionError("video validation must not allocate the complete upload");
+    }
   }
 }
