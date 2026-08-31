@@ -37,11 +37,28 @@ public class ShopZhenkeService {
 
   public List<ShopZhenkePost> posts(
       String perspectiveFilter, Long placeId, String city, int pageNum, int pageSize) {
-    String filter = StringUtils.trim(perspectiveFilter).toUpperCase(Locale.ROOT);
-    if (filter.isEmpty()) filter = "RECOMMEND";
-    if (!PERSPECTIVE_FILTERS.contains(filter)) {
-      throw new ServiceException("帖子身份筛选无效");
+    return posts(perspectiveFilter, placeId, city, null, pageNum, pageSize);
+  }
+
+  public List<ShopZhenkePost> posts(
+      String perspectiveFilter,
+      Long placeId,
+      String scopeCity,
+      String postCity,
+      int pageNum,
+      int pageSize) {
+    String filter = normalizePerspectiveFilter(perspectiveFilter);
+    String normalizedScopeCity = normalizeCity(scopeCity);
+    String normalizedPostCity = normalizeCity(postCity);
+    if (normalizedPostCity != null && normalizedPostCity.length() > 64) {
+      throw new ServiceException("帖子城市筛选无效");
     }
+    if (normalizedScopeCity != null
+        && normalizedPostCity != null
+        && !normalizedScopeCity.equals(normalizedPostCity)) {
+      return List.of();
+    }
+    String effectiveCity = normalizedPostCity != null ? normalizedPostCity : normalizedScopeCity;
     PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(50, pageSize)));
     return hydrate(
         mapper.selectPosts(
@@ -55,8 +72,22 @@ public class ShopZhenkeService {
             null,
             null,
             ShopAccountIdentity.currentShopUserIdOrNull(),
-            normalizeCity(city)),
+            effectiveCity),
         false);
+  }
+
+  public List<String> postCities(String perspectiveFilter, String scopeCity) {
+    return mapper.selectPostCities(
+        normalizePerspectiveFilter(perspectiveFilter), normalizeCity(scopeCity));
+  }
+
+  private String normalizePerspectiveFilter(String perspectiveFilter) {
+    String filter = StringUtils.trim(perspectiveFilter).toUpperCase(Locale.ROOT);
+    if (filter.isEmpty()) filter = "RECOMMEND";
+    if (!PERSPECTIVE_FILTERS.contains(filter)) {
+      throw new ServiceException("帖子身份筛选无效");
+    }
+    return filter;
   }
 
   public List<ShopZhenkePost> homePosts(String city, int pageSize) {

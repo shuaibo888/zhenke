@@ -81,6 +81,24 @@ class ShopZhenkeServiceTest {
   }
 
   @Test
+  void publishedCityFacetAndSelectedCityRemainIndependentFromPerspective() {
+    when(mapper.selectPostCities("LOCAL", "保定市")).thenReturn(List.of("保定市"));
+    when(mapper.selectPosts(
+            eq("TOURIST"), isNull(), isNull(), isNull(), isNull(), isNull(), eq(false),
+            isNull(), isNull(), isNull(), eq("邯郸市")))
+        .thenReturn(List.of());
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
+
+    assertEquals(List.of("保定市"), service.postCities("LOCAL", " 保定市 "));
+    service.posts("TOURIST", null, null, " 邯郸市 ", 1, 12);
+
+    verify(mapper).selectPosts(
+        "TOURIST", null, null, null, null, null, false, null, null, null, "邯郸市");
+    verify(mapper, never()).selectPosts(
+        eq("LOCAL"), any(), any(), any(), any(), any(), anyBoolean(), any(), any(), any(), any());
+  }
+
+  @Test
   void postListsHydrateAllMediaWithOneBatchQuery() {
     ShopZhenkePost first = savedPost(11L);
     ShopZhenkePost second = savedPost(12L);

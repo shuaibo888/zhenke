@@ -12,11 +12,12 @@ import {
 } from '@ant-design/icons';
 import { Badge, Dropdown, message } from 'antd';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { buildLoginPath } from '@/utils/safeRedirect';
 import { getCartCount } from '@/utils/shop';
+import { loadCurrentLocation } from '@/utils/currentLocation';
 import { AddressManager } from './AddressManager';
 import { CartDrawer } from './CartDrawer';
 import { NativePayModal } from './NativePayModal';
@@ -63,6 +64,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const { user, cart, logout } = useShop();
   const [cartOpen, setCartOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
+  const [headerCity, setHeaderCity] = useState(() => loadCurrentLocation()?.city || '选择城市');
   const activeNav = getActiveNav(location.pathname);
   const cartCount = getCartCount(cart);
   const authPage = location.pathname.startsWith('/auth') || location.pathname.startsWith('/sso/');
@@ -74,6 +76,12 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const hideMobileNav = authPage || checkoutPage || publishPage || immersiveDetailPage;
   const showCartFloat = !authPage && !checkoutPage
     && (activeNav === 'mall' || location.pathname.startsWith('/products'));
+
+  useEffect(() => {
+    const refreshCity = () => setHeaderCity(loadCurrentLocation()?.city || '选择城市');
+    window.addEventListener('zhenke:city-changed', refreshCity);
+    return () => window.removeEventListener('zhenke:city-changed', refreshCity);
+  }, []);
 
   const openPath = (item: MainNavItem) => {
     if (item.protected && !user) {
@@ -95,11 +103,24 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
   const brand = (
     <button type="button" className={styles.brand} onClick={() => navigate('/')} aria-label="返回甄客行首页">
-      <span className={styles.brandMark}>甄</span>
       <span className={styles.brandCopy}>
         <strong>甄客行</strong>
-        <small>城市生活 · 真实分享</small>
       </span>
+    </button>
+  );
+  const headerCityLabel = headerCity === '选择城市' ? headerCity : headerCity.replace(/市$/, '');
+  const headerCityButton = (
+    <button
+      type="button"
+      className={styles.headerCityButton}
+      aria-label={`${headerCity}，点击切换城市`}
+      onClick={() => {
+        if (location.pathname === '/') window.dispatchEvent(new Event('zhenke:open-city-picker'));
+        else navigate('/?cityPicker=1');
+      }}
+    >
+      <span>{headerCityLabel}</span>
+      <DownOutlined />
     </button>
   );
 
@@ -109,7 +130,10 @@ export function AppChrome({ children }: { children: ReactNode }) {
         <>
           <header className={styles.desktopHeader}>
             <div className={styles.headerInner}>
-              {brand}
+              <div className={styles.headerBrandGroup}>
+                {brand}
+                {headerCityButton}
+              </div>
               <nav className={styles.desktopNav} aria-label="甄客行主导航">
                 {navItems.map((item) => (
                   <button
@@ -175,7 +199,10 @@ export function AppChrome({ children }: { children: ReactNode }) {
           </header>
 
           <header className={styles.mobileTopbar}>
-            {brand}
+            <div className={styles.headerBrandGroup}>
+              {brand}
+              {headerCityButton}
+            </div>
             <div className={styles.headerActions}>
               <Badge count={cartCount} size="small">
                 <button

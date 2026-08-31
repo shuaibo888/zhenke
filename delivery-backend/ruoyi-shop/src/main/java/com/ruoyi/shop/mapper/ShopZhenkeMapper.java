@@ -27,6 +27,10 @@ public interface ShopZhenkeMapper {
       @Param("currentUserId") Long currentUserId,
       @Param("city") String city);
 
+  List<String> selectPostCities(
+      @Param("perspectiveFilter") String perspectiveFilter,
+      @Param("scopeCity") String scopeCity);
+
   ShopZhenkePost selectPost(
       @Param("postId") Long postId,
       @Param("includeDeleted") boolean includeDeleted,

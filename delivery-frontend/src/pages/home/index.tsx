@@ -1,7 +1,5 @@
 import {
   ArrowRightOutlined,
-  DownOutlined,
-  EnvironmentOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import { Carousel, Image, Input, Modal, message } from 'antd';
@@ -159,6 +157,19 @@ export default function HomePage() {
     return () => { homeRequestVersion.current += 1; };
   }, [loadHome]);
 
+  useEffect(() => {
+    const openCityPicker = () => {
+      setCitySearch('');
+      setCityPickerOpen(true);
+    };
+    window.addEventListener('zhenke:open-city-picker', openCityPicker);
+    if (new URLSearchParams(window.location.search).get('cityPicker') === '1') {
+      openCityPicker();
+      window.history.replaceState(window.history.state, '', '/');
+    }
+    return () => window.removeEventListener('zhenke:open-city-picker', openCityPicker);
+  }, []);
+
   const locate = useCallback(() => {
     const requestVersion = ++locationRequestVersion.current;
     if (!navigator.geolocation) {
@@ -190,6 +201,7 @@ export default function HomePage() {
             longitude: coords.longitude,
             source: 'DEVICE',
           });
+          window.dispatchEvent(new Event('zhenke:city-changed'));
           setLocationStatus('located');
           setLocationError('');
           setCityPickerOpen(false);
@@ -227,6 +239,7 @@ export default function HomePage() {
     locationRequestVersion.current += 1;
     setCurrentArea(city.name);
     saveCurrentLocation({ label: city.name, city: city.name, source: 'MANUAL' });
+    window.dispatchEvent(new Event('zhenke:city-changed'));
     setLocationStatus('located');
     setLocationError('');
     setCityPickerOpen(false);
@@ -237,37 +250,7 @@ export default function HomePage() {
 
   return (
     <main className={styles.page}>
-      <h1 className={styles.visuallyHidden}>甄客行城市生活发现与分享</h1>
-      <div className={styles.homeLocationRow}>
-        <button
-          type="button"
-          className={`${styles.cityChip} ${locationStatus === 'failed' ? styles.cityChipWarning : ''}`}
-          aria-label={`${currentArea}，点击切换城市`}
-          onClick={() => {
-            setCitySearch('');
-            setCityPickerOpen(true);
-          }}
-        >
-          <span className={styles.cityChipIcon}><EnvironmentOutlined /></span>
-          <span className={styles.cityChipCopy}>
-            <small>{locationStatus === 'locating' ? '定位中' : '当前城市'}</small>
-            <strong>{locationStatus === 'locating' ? '正在定位…' : currentArea}</strong>
-          </span>
-          <DownOutlined className={styles.cityChipArrow} />
-        </button>
-        {locationError && (
-          <button
-            type="button"
-            className={styles.locationFallbackHint}
-            onClick={() => {
-              setCitySearch('');
-              setCityPickerOpen(true);
-            }}
-          >
-            {locationError}
-          </button>
-        )}
-      </div>
+        <h1 className={styles.visuallyHidden}>甄客行城市生活发现与分享</h1>
 
       <section className={styles.homeLead} aria-label="甄客行今日精选">
         {bannerRows.length > 0 ? (
@@ -445,7 +428,6 @@ export default function HomePage() {
                   onClick={locate}
                   disabled={locationStatus === 'locating'}
                 >
-                  <span><EnvironmentOutlined /></span>
                   <strong>{locationStatus === 'locating' ? '正在定位…' : currentArea}</strong>
                   <small>{locationStatus === 'locating' ? '请稍候' : '重新定位'}</small>
                 </button>

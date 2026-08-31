@@ -181,6 +181,7 @@ export async function posts(
   pageNum = 1,
   pageSize = 12,
   placeId?: number,
+  postCity?: string,
 ) {
   const q = new URLSearchParams({
     perspective,
@@ -188,11 +189,25 @@ export async function posts(
     pageSize: String(pageSize),
   });
   if (placeId) q.set("placeId", String(placeId));
+  if (postCity?.trim()) q.set("postCity", postCity.trim());
   appendCurrentCity(q);
   const r = await requestApi<TableResponse<ZhenkePost>>(
     `/shop/zhenke/posts?${q}`,
   );
   return { rows: r.rows ?? [], total: r.total ?? 0 };
+}
+
+export async function postCities(
+  perspective: Perspective | "RECOMMEND" = "RECOMMEND",
+) {
+  const q = new URLSearchParams({ perspective });
+  appendCurrentCity(q);
+  const result = await requestApi<ApiResponse<string[]>>(
+    `/shop/zhenke/posts/cities?${q}`,
+  );
+  return Array.isArray(result.data)
+    ? result.data.filter((city): city is string => typeof city === "string" && city.trim().length > 0)
+    : [];
 }
 export async function post(id: number) {
   return (await requestApi<ApiResponse<ZhenkePost>>(`/shop/zhenke/posts/${id}`))

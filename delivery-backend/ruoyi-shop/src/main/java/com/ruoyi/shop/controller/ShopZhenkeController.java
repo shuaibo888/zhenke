@@ -55,12 +55,21 @@ public class ShopZhenkeController extends BaseController {
       @RequestParam(defaultValue = "RECOMMEND") String perspective,
       @RequestParam(required = false) Long placeId,
       @RequestParam(required = false) String city,
+      @RequestParam(required = false) String postCity,
       @RequestParam(defaultValue = "1") int pageNum,
       @RequestParam(defaultValue = "12") int pageSize) {
     PageHelper.clearPage();
     String feedCity = placeId == null ? cityScope.resolvePublicFeedCity(city) : null;
     return getDataTable(
-        publicMedia.posts(service.posts(perspective, placeId, feedCity, pageNum, pageSize)));
+        publicMedia.posts(service.posts(perspective, placeId, feedCity, postCity, pageNum, pageSize)));
+  }
+
+  @Anonymous
+  @GetMapping("/posts/cities")
+  public AjaxResult postCities(
+      @RequestParam(defaultValue = "RECOMMEND") String perspective,
+      @RequestParam(required = false) String city) {
+    return AjaxResult.success(service.postCities(perspective, cityScope.resolvePublicFeedCity(city)));
   }
 
   @Anonymous

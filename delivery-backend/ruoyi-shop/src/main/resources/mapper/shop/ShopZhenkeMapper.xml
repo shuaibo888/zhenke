@@ -94,6 +94,21 @@
     </where>
     order by p.published_at desc,p.post_id desc
   </select>
+  <select id="selectPostCities" resultType="string">
+    select p.place_city
+    from shop_zhenke_post p
+    join shop_place pl on pl.place_id=p.place_id and pl.status='0'
+    where p.del_flag='0'
+      and p.status='PUBLISHED'
+      and p.place_city is not null
+      and trim(p.place_city) != ''
+      <if test="scopeCity != null and scopeCity != ''">and p.place_city=#{scopeCity}</if>
+      <if test="perspectiveFilter == 'LOCAL'">and p.perspective='LOCAL'</if>
+      <if test="perspectiveFilter == 'TOURIST'">and p.perspective='TOURIST'</if>
+      <if test="perspectiveFilter == 'HOMETOWNER'">and p.perspective='HOMETOWNER'</if>
+    group by p.place_city
+    order by max(p.published_at) desc,max(p.post_id) desc
+  </select>
   <select id="selectPost" resultMap="post">
     <include refid="postSelect"/>
      where p.post_id=#{postId}
