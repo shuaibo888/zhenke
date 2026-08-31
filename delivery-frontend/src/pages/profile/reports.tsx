@@ -17,7 +17,7 @@ export default function MyReportsPage() {
   }
   return (
     <main className={`${styles.profileDetailPage} ${styles.profileReportsPage}`}>
-        <ZkTaskHeader eyebrow="内容创作" title="我的甄客验" description="这些内容均来自订单、试用、收货或核销资格，不是普通甄客帖。" backTo="/profile" />
+        <ZkTaskHeader eyebrow="内容创作" title="我的甄客验" description="查看和管理你发布的甄客验。" backTo="/profile" />
       <section className={styles.orderPanel}>
         <div className={styles.orderPanelHeading}>
           <div>

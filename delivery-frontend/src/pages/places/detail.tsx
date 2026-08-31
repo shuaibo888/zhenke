@@ -1,7 +1,6 @@
 import {
   ArrowLeftOutlined,
   EnvironmentOutlined,
-  InfoCircleOutlined,
   CompassOutlined,
 } from '@ant-design/icons';
 import { Button, message } from 'antd';
@@ -148,14 +147,9 @@ export default function PlaceDetailPage() {
         </div>
       </section>
 
-      <div className={styles.contextNotice}>
-        <InfoCircleOutlined />
-        地点是发布者从地图服务中主动选择的信息。平台不公开发布者实时位置或距离，也不把地点关联表述为到访认证。
-      </div>
-
       <ZkSectionTitle
         title="这个地点的甄客帖"
-        description="按公开时间展示与地点关联的全平台帖子，不按你当前所在城市过滤。"
+        description="看看大家围绕这里分享的体验。"
         action={<Button type="link" onClick={() => navigate(`/posts/publish?placeId=${detail.placeId}`)}>围绕此地发布</Button>}
       />
       {feedError ? (

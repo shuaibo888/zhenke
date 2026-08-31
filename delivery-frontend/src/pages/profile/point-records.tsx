@@ -52,7 +52,7 @@ export default function PointRecordsPage() {
 
   return (
     <main className={`${styles.profileDetailPage} ${styles.pointsPage}`}>
-        <ZkTaskHeader eyebrow="权益资产" title="积分明细" description="每一笔增加与扣减均来自真实业务记录。" backTo="/profile/points" />
+        <ZkTaskHeader eyebrow="权益资产" title="积分明细" description="查看积分获取与使用记录。" backTo="/profile/points" />
       <section className={styles.orderPanel}>
         <div className={styles.orderPanelHeading}>
           <div>

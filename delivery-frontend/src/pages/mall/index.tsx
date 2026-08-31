@@ -1,5 +1,4 @@
 import {
-  CheckCircleOutlined,
   FieldTimeOutlined,
   LeftOutlined,
   QrcodeOutlined,
@@ -550,9 +549,6 @@ export default function MallPage() {
           </>
         )}
       </section>
-      <div className={styles.contextNotice}>
-        <CheckCircleOutlined /> 商品价格、库存、优惠、订单状态和核销资格均以后端实时结果为准。
-      </div>
     </main>
   );
 }

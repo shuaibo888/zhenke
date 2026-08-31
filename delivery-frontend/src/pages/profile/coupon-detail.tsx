@@ -104,7 +104,7 @@ export default function CouponDetailPage() {
 
   return (
     <main className={`${styles.profileDetailPage} ${styles.couponDetailPage}`}>
-        <ZkTaskHeader eyebrow="权益资产" title="优惠券详情" description="核对适用商家、使用条件、有效期和真实核销状态。" backTo="/profile/coupons" />
+        <ZkTaskHeader eyebrow="权益资产" title="优惠券详情" description="核对适用商家、使用条件和有效期。" backTo="/profile/coupons" />
       <section className={styles.couponDetailHero}>
         <Tag color={meta.color}>{meta.label}</Tag>
         <strong>{formatPrice(coupon.discountAmount)}</strong>

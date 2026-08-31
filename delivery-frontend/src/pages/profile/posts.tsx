@@ -57,7 +57,7 @@ export default function MyPostsPage() {
       <ZkPageHeader
         eyebrow={<><FileTextOutlined /> CONTENT CREATION</>}
         title="我的甄客帖"
-        description="管理围绕地点自由发布的内容。甄客验属于消费后可信体验，请从统一“我的”另行进入。"
+        description="查看和管理你发布的甄客帖。"
         action={<Button type="primary" size="large" icon={<EditOutlined />} onClick={() => navigate('/posts/publish')}>发布新帖</Button>}
       />
 
