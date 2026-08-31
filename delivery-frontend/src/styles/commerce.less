@@ -995,15 +995,6 @@
   white-space: nowrap;
 }
 
-.couponWalletWatermark {
-  position: absolute;
-  right: 18px;
-  bottom: -16px;
-  color: rgba(138, 63, 50, 0.055);
-  font-size: 86px;
-  transform: rotate(-10deg);
-}
-
 .couponWalletCardInactive {
   filter: saturate(0.35);
   opacity: 0.78;
@@ -1015,22 +1006,19 @@
 
 .couponWalletEmpty {
   display: grid;
-  min-height: 300px;
+  min-height: 190px;
   place-items: center;
   align-content: center;
-  gap: 10px;
-  color: #718078;
+  gap: 8px;
+  color: #8d766f;
+  background: #fffaf7;
+  border-radius: 16px;
   text-align: center;
 }
 
-.couponWalletEmpty svg {
-  color: #b85c3f;
-  font-size: 46px;
-}
-
 .couponWalletEmpty strong {
-  color: #543a34;
-  font-size: 18px;
+  color: #3f2823;
+  font-size: 20px;
 }
 
 .couponWalletEmpty p {
@@ -3897,6 +3885,31 @@ button.checkoutFulfillmentOption:focus-visible {
   margin: 0 auto;
 }
 
+.profileListEmpty {
+  display: grid;
+  min-height: 210px;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 30px 20px;
+  color: #756a64;
+  background: #fffaf7;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.profileListEmpty strong {
+  color: #352622;
+  font-size: 20px;
+}
+
+.profileListEmpty p {
+  max-width: 520px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
 .profileDetailToolbar {
   display: flex;
   gap: 14px;
@@ -4106,20 +4119,17 @@ button.checkoutFulfillmentOption:focus-visible {
   display: grid;
   gap: 8px;
   justify-items: center;
-  min-height: 310px;
+  min-height: 190px;
   align-content: center;
   color: #96827b;
+  background: #fffaf7;
+  border-radius: 16px;
   text-align: center;
 }
 
-.pointCouponEmpty > span {
-  color: #b85c3f;
-  font-size: 34px;
-}
-
 .pointCouponEmpty strong {
-  color: #513a34;
-  font-size: 17px;
+  color: #3f2823;
+  font-size: 20px;
 }
 
 .pointCouponEmpty p {
@@ -4199,20 +4209,20 @@ button.checkoutFulfillmentOption:focus-visible {
 
 .pointRecordEmpty {
   display: grid;
-  gap: 7px;
+  min-height: 190px;
+  gap: 8px;
   justify-items: center;
-  padding: 44px 20px;
+  align-content: center;
+  padding: 34px 18px;
   color: #96827b;
+  background: #fffaf7;
+  border-radius: 16px;
   text-align: center;
 }
 
-.pointRecordEmpty > span {
-  color: #b85c3f;
-  font-size: 30px;
-}
-
 .pointRecordEmpty strong {
-  color: #513a34;
+  color: #3f2823;
+  font-size: 20px;
 }
 
 .pointRecordEmpty p {
@@ -4829,11 +4839,12 @@ button.checkoutFulfillmentOption:focus-visible {
 .ordersPage .empty,
 .trialsPage .empty,
 .profileReportsPage .empty {
-  padding: 34px 18px;
+  min-height: 190px;
+  padding: 42px 18px;
   color: #96827b;
-  background: #fff8f3;
-  border: 1px dashed #cfe0d6;
-  border-radius: 14px;
+  background: #fffaf7;
+  border: 0;
+  border-radius: 16px;
   text-align: center;
 }
 
@@ -12778,5 +12789,233 @@ button.checkoutFulfillmentOption:focus-visible {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+/* Yuanxing visual alignment: preserve commerce behavior while sharing the
+   platform's warm canvas, orange actions, white cards and compact rhythm. */
+.authShell,
+.singleColumn,
+.profileDetailPage,
+.journeyPage,
+.reportDetailPage,
+.trialDetailPage {
+  color: #1e2924;
+}
+
+.authShell {
+  background: #fff8f3;
+}
+
+.authLayout {
+  border-color: #eaded5;
+  border-radius: 22px;
+  box-shadow: 0 18px 54px rgba(91, 49, 36, 0.13);
+}
+
+.authLayout .authIntro {
+  background:
+    radial-gradient(circle at 88% 10%, rgba(255, 255, 255, 0.18), transparent 30%),
+    linear-gradient(145deg, #ff8a32 0%, #f15a19 68%, #e94a15 100%);
+}
+
+.authBrandRow .brandMark {
+  color: #ff6b1a;
+  background: #fff;
+  border-radius: 16px;
+}
+
+.authLayout .authIntroCopy .eyebrow,
+.authLayout .authRules svg,
+.checkoutHeader .eyebrow {
+  color: #ffe0cf;
+}
+
+.authLayout .authIntroCopy h1 {
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: clamp(38px, 5vw, 56px);
+}
+
+.authSubmit,
+.authOneClick,
+.authOneClickIcon {
+  background: #ff6b1a;
+  border-color: #ff6b1a;
+  box-shadow: 0 8px 20px rgba(255, 107, 26, 0.22);
+}
+
+.authOneClickPanel,
+.authSmsForm {
+  background: #fff8f3;
+  border-color: #eaded5;
+}
+
+.authOneClickPanel strong,
+.authMethodLink,
+.authPhoneEntry,
+.authRegisterPrompt button {
+  color: #8a3f32;
+}
+
+.authForm :global(.ant-input-affix-wrapper),
+.authForm :global(.ant-input),
+.authSmsCodeRow :global(.ant-input-affix-wrapper) {
+  border-color: #eaded5;
+}
+
+.authForm :global(.ant-input-affix-wrapper-focused),
+.authForm :global(.ant-input-affix-wrapper:focus-within) {
+  border-color: #ff6b1a;
+  box-shadow: 0 0 0 3px rgba(255, 107, 26, 0.11);
+}
+
+.checkoutHeader {
+  background:
+    radial-gradient(circle at 92% 18%, rgba(255, 255, 255, 0.2), transparent 30%),
+    linear-gradient(135deg, #ff8a32, #f15a19 72%, #e94a15);
+  border-radius: 18px;
+  box-shadow: 0 12px 28px rgba(255, 107, 26, 0.2);
+}
+
+.checkoutSection,
+.checkoutSummaryPanel,
+.orderPanel,
+.orderCard,
+.trialPanel,
+.couponWalletCard,
+.businessInfoCard {
+  background: #fff;
+  border-color: #eaded5;
+  box-shadow: 0 8px 22px rgba(91, 49, 36, 0.065);
+}
+
+.checkoutSectionTitle > span,
+.checkoutFulfillmentIcon,
+.orderShopAvatar,
+.gridAuthorAvatar,
+.reportDetailAvatar,
+.reportDetailAvatarSmall,
+.trialChoiceTriggerIcon,
+.profileMenuIcon {
+  background: #ff6b1a;
+  box-shadow: none;
+}
+
+.checkoutFulfillmentOption,
+.checkoutCouponTrigger,
+.orderFilterTabs,
+.productContentTabs,
+.trialHeroBody {
+  background: #fff8f3;
+  border-color: #eaded5;
+}
+
+.checkoutFulfillmentOptionActive {
+  background: #fff0e8;
+  border-color: #ff6b1a;
+  box-shadow: 0 0 0 2px rgba(255, 107, 26, 0.09);
+}
+
+.productContentTabs button::after {
+  background: #ff6b1a;
+}
+
+.productContentTabs .productContentTabActive,
+.productContentTabs .productContentTabActive small,
+.productContentTabs button:hover {
+  color: #ff6b1a;
+}
+
+.trialHeroImage,
+.productHero img,
+.purchasePage > img {
+  border-radius: 16px;
+}
+
+.couponWalletAmount,
+.couponDetailHero,
+.pointBalancePanel,
+.payAmount,
+.businessStatusHero {
+  background: linear-gradient(135deg, #ff8a32, #f15a19 72%, #e94a15);
+  box-shadow: 0 12px 28px rgba(255, 107, 26, 0.2);
+}
+
+.reportDetailBack,
+.reportDetailShare,
+.profileBackButton {
+  color: #8a3f32;
+  background: #fff;
+  border-color: #eaded5;
+}
+
+.couponsPage .orderPanel,
+.trialsPage .orderPanel,
+.profileReportsPage .orderPanel,
+.productReportsBody,
+.checkoutSuccessCard,
+.profileHeaderCard,
+.profileMenuPanel,
+.logisticsSummaryCard,
+.cartDrawer :global(.ant-drawer-body),
+.addressItem,
+.addressPickerItem {
+  background: #fff;
+  border-color: #eaded5;
+}
+
+.productCertificationPanel,
+.aiScoreComment,
+.pointTransferBalance,
+.profileEditSection,
+.logisticsSummaryCard {
+  background: #fff8f3;
+  border-color: #eaded5;
+}
+
+.mallSearchSubmit,
+.profileBackIcon,
+.productCertificationIcon,
+.checkoutSuccessIcon,
+.pointCouponAmount,
+.merchantDetailNavigate,
+.pointTransferSourceCover,
+.logisticsCarrierMark {
+  color: #fff;
+  background: #ff6b1a;
+  border-color: #ff6b1a;
+}
+
+.orderFilterTabs .orderFilterActive,
+.orderFilterTabs .orderFilterActive:hover,
+.homeCategoryNav button.homeCategoryActive,
+.homeCategoryNav button.homeCategoryActive:hover,
+.homeCategoryNav button.homeCategoryActive:active,
+.mallCategoryRail .mallCategoryActive,
+.mallCategoryRail .mallCategoryActive:hover {
+  color: #fff;
+  background: #ff6b1a;
+  border-color: #ff6b1a;
+  box-shadow: 0 5px 14px rgba(255, 107, 26, 0.2);
+}
+
+@media (max-width: 640px) {
+  .authLayout {
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .authLayout .authCard {
+    padding: 28px 20px 24px;
+  }
+
+  .checkoutHeader {
+    padding: 21px 18px;
+  }
+
+  .checkoutSection,
+  .checkoutSummaryPanel,
+  .orderPanel {
+    border-radius: 16px;
   }
 }

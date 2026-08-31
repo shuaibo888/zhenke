@@ -1,10 +1,9 @@
-import { GiftOutlined } from '@ant-design/icons';
 import { Spin, Tag } from 'antd';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
-import { ZkTaskHeader } from '@/components/ZkPage';
+import { ZkProfilePage, ZkProfilePanel, ZkTaskHeader } from '@/components/ZkPage';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import type { ShopCouponDto } from '@/services/shopContent';
 import { formatPrice } from '@/utils/shop';
@@ -40,16 +39,14 @@ export default function CouponsPage() {
   }
 
   return (
-    <main className={`${styles.profileDetailPage} ${styles.couponsPage}`}>
-        <ZkTaskHeader eyebrow="权益资产" title="我的优惠券" description="集中查看下单券、到店核销券及其有效状态。" backTo="/profile" />
-      <section className={styles.orderPanel}>
-        <div className={styles.orderPanelHeading}>
-          <div>
-            <span className={styles.eyebrow}>优惠权益</span>
-            <h3>我的优惠券</h3>
-          </div>
-          <span>共 {filtered.length} 张</span>
-        </div>
+    <ZkProfilePage className={styles.couponsPage}>
+      <ZkTaskHeader
+        eyebrow="权益资产"
+        title="我的优惠券"
+        description="集中查看下单券、到店核销券及其有效状态。"
+        backTo="/profile"
+      />
+      <ZkProfilePanel title="优惠券列表" meta={`共 ${filtered.length} 张`}>
         <div className={styles.orderFilterTabs}>
           {([
             ['all', '全部'],
@@ -114,20 +111,18 @@ export default function CouponsPage() {
                       <div><dt>券码</dt><dd>{coupon.couponCode}</dd></div>
                     </dl>
                   </div>
-                  <GiftOutlined className={styles.couponWalletWatermark} />
                 </article>
               );
             })}
           </div>
           {!couponsLoading && filtered.length === 0 && (
             <div className={styles.couponWalletEmpty}>
-              <GiftOutlined />
               <strong>暂无此类优惠券</strong>
               <p>平台下发后会自动出现在这里，无需手动领取。</p>
             </div>
           )}
         </Spin>
-      </section>
-    </main>
+      </ZkProfilePanel>
+    </ZkProfilePage>
   );
 }

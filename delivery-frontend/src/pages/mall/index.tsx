@@ -1,9 +1,6 @@
 import {
-  FieldTimeOutlined,
   LeftOutlined,
-  QrcodeOutlined,
   RightOutlined,
-  SafetyCertificateOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import { Button, message } from 'antd';
@@ -26,10 +23,10 @@ import styles from '@/styles/zhenke.less';
 
 const PAGE_SIZE = 16;
 const businessModules = [
-  { code: 'MALL', title: '商城', caption: '精选好物 · 配送与核销', mark: '购' },
-  { code: 'ZHENKE_HOTEL', title: '酒店', caption: '住宿套餐 · 到店核销', mark: '住' },
-  { code: 'ZHENKE_SCENIC', title: '景区', caption: '门票线路 · 现场核销', mark: '游' },
-  { code: 'ZHENKE_RESTAURANT', title: '饭店', caption: '餐券套餐 · 到店核销', mark: '食' },
+  { code: 'MALL', title: '商城', kicker: '城市好物', caption: '自营与商家商品，支持配送或到店核销' },
+  { code: 'ZHENKE_HOTEL', title: '酒店', kicker: '城市住宿', caption: '住宿套餐与房型服务，到店出示核销码' },
+  { code: 'ZHENKE_SCENIC', title: '景区', kicker: '城市游玩', caption: '门票与线路套餐，按使用规则现场核销' },
+  { code: 'ZHENKE_RESTAURANT', title: '饭店', kicker: '城市餐饮', caption: '餐券与套餐服务，到店使用更方便' },
 ] as const;
 type BusinessModuleCode = (typeof businessModules)[number]['code'];
 const localLifeCodes = new Set<BusinessModuleCode>([
@@ -308,26 +305,49 @@ export default function MallPage() {
       <section className={styles.mallHero}>
         <article className={styles.mallHeroMain}>
           <span className={styles.locationLabel}>甄客行商城</span>
-          <h1>把看见的城市生活，变成一次安心消费。</h1>
-          <p>精选商城好物、酒店住宿、景区门票和饭店套餐，按商品说明配送或到店使用。</p>
+          <h1>好物与城市服务，在这里安心选购。</h1>
+          <p>商城商品、酒店住宿、景区门票和饭店套餐统一浏览，下单前即可看清配送、预约、有效期和核销规则。</p>
+          <form
+            className={`${styles.mallSearch} ${styles.mallHeroSearch}`}
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submitSearch();
+            }}
+          >
+            <SearchOutlined />
+            <input
+              type="search"
+              maxLength={50}
+              value={keywordInput}
+              aria-label="搜索商城商品"
+              placeholder="搜索商品、套餐、品牌或商家"
+              onChange={(event) => setKeywordInput(event.target.value)}
+            />
+            <Button type="primary" htmlType="submit">搜索</Button>
+          </form>
         </article>
         <aside className={`${styles.surface} ${styles.mallPromise}`}>
+          <header className={styles.mallPromiseHeader}>
+            <span>消费服务</span>
+            <strong>下单前看清，购买后好履约</strong>
+          </header>
           <div className={styles.promiseItem}>
-            <span><SafetyCertificateOutlined /></span>
-            <div><strong>平台入驻商家</strong><small>公开信息清楚可查</small></div>
+            <b>01</b>
+            <div><strong>商家信息可查</strong><small>公开展示入驻主体和经营信息</small></div>
           </div>
           <div className={styles.promiseItem}>
-            <span><QrcodeOutlined /></span>
-            <div><strong>配送与到店使用</strong><small>购买前查看商品使用方式</small></div>
+            <b>02</b>
+            <div><strong>履约方式明确</strong><small>配送、预约或到店核销提前说明</small></div>
           </div>
           <div className={styles.promiseItem}>
-            <span><FieldTimeOutlined /></span>
-            <div><strong>规则购买前可见</strong><small>有效期、预约与退款说明</small></div>
+            <b>03</b>
+            <div><strong>使用规则清楚</strong><small>有效期、退款和过期规则集中查看</small></div>
           </div>
         </aside>
       </section>
 
-      <ZkSectionTitle title="四大营业模块" description="选择你今天想逛的分类。" />
+      <ZkSectionTitle title="今天想逛什么" description="四类业务共用同一套购物车、订单和售后服务。" />
       <div className={styles.businessModuleGrid}>
         {businessModules.map((module) => (
           <button
@@ -337,32 +357,15 @@ export default function MallPage() {
             aria-pressed={activeModule === module.code}
             onClick={() => selectModule(module.code)}
           >
-            <span>{module.mark}</span>
+            <small className={styles.businessModuleKicker}>{module.kicker}</small>
             <strong>{module.title}</strong>
             <p>{module.caption}</p>
+            <span className={styles.businessModuleLink}>
+              {activeModule === module.code ? '正在浏览' : '查看商品'} <RightOutlined />
+            </span>
           </button>
         ))}
       </div>
-
-      <form
-        className={styles.mallSearch}
-        role="search"
-        onSubmit={(event) => {
-          event.preventDefault();
-          submitSearch();
-        }}
-      >
-        <SearchOutlined />
-        <input
-          type="search"
-          maxLength={50}
-          value={keywordInput}
-          aria-label="搜索商城商品"
-          placeholder="搜索套餐、商品、品牌或商家"
-          onChange={(event) => setKeywordInput(event.target.value)}
-        />
-        <Button type="primary" htmlType="submit">搜索</Button>
-      </form>
 
       {activeModule === 'MALL' && (
         <div className={styles.categoryRailFrame}>

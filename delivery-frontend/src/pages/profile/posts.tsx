@@ -1,11 +1,11 @@
-import { EditOutlined, FileTextOutlined } from '@ant-design/icons';
+import { EditOutlined } from '@ant-design/icons';
 import { Button, Popconfirm, Tag, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
 import { ZhenkePostCard } from '@/components/ZhenkePostCard';
-import { ZkPageHeader, ZkState } from '@/components/ZkPage';
+import { ZkProfilePage, ZkProfilePanel, ZkTaskHeader, ZkState } from '@/components/ZkPage';
 import { mine, removePost, type ZhenkePost } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
 
@@ -49,31 +49,33 @@ export default function MyPostsPage() {
     void load(1);
   }, [authLoading, load, navigate, user]);
 
-  if (authLoading) return <main className={styles.page}><ZkState kind="loading" title="正在确认登录状态" /></main>;
+  if (authLoading) return <ZkProfilePage><ZkState kind="loading" title="正在确认登录状态" /></ZkProfilePage>;
   if (!user) return <LoginRedirect />;
 
   return (
-    <main className={styles.page}>
-      <ZkPageHeader
-        eyebrow={<><FileTextOutlined /> CONTENT CREATION</>}
+    <ZkProfilePage>
+      <ZkTaskHeader
+        eyebrow="内容创作"
         title="我的甄客帖"
         description="查看和管理你发布的甄客帖。"
-        action={<Button type="primary" size="large" icon={<EditOutlined />} onClick={() => navigate('/posts/publish')}>发布新帖</Button>}
+        backTo="/profile"
+        aside={<Button type="primary" icon={<EditOutlined />} onClick={() => navigate('/posts/publish')}>发布甄客帖</Button>}
       />
 
-      {loading ? (
-        <ZkState kind="loading" title="正在加载我的甄客帖" />
-      ) : error ? (
-        <ZkState kind="error" title="暂时无法加载" description={error} onAction={() => void load(1)} />
-      ) : rows.length === 0 ? (
-        <ZkState
-          title="你还没有发布甄客帖"
-          description="选择真实地点，上传封面图片和可选视频，分享自己的城市生活视角。"
-          actionText="发布第一篇"
-          onAction={() => navigate('/posts/publish')}
-        />
-      ) : (
-        <>
+      <ZkProfilePanel title="已发布内容" meta={`共 ${total} 篇`}>
+        {loading ? (
+          <ZkState kind="loading" title="正在加载我的甄客帖" />
+        ) : error ? (
+          <ZkState kind="error" title="暂时无法加载" description={error} onAction={() => void load(1)} />
+        ) : rows.length === 0 ? (
+          <ZkState
+            title="还没有发布甄客帖"
+            description="选择真实地点，分享自己的城市生活视角。"
+            actionText="发布第一篇"
+            onAction={() => navigate('/posts/publish')}
+          />
+        ) : (
+          <>
           <div className={styles.postGrid}>
             {rows.map((post) => (
               <div key={post.postId}>
@@ -106,8 +108,9 @@ export default function MyPostsPage() {
               </Button>
             </div>
           )}
-        </>
-      )}
-    </main>
+          </>
+        )}
+      </ZkProfilePanel>
+    </ZkProfilePage>
   );
 }

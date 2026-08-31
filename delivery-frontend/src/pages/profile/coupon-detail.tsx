@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
-import { ZkTaskHeader } from '@/components/ZkPage';
+import { ZkProfilePage, ZkTaskHeader } from '@/components/ZkPage';
 import {
   fetchMyCoupon,
   fetchPublicMerchant,
@@ -70,10 +70,10 @@ export default function CouponDetailPage() {
   }, [coupon?.availabilityStatus, coupon?.usageMode, loadCoupon]);
 
   if (!user) return <LoginRedirect />;
-  if (loading) return <main className={`${styles.profileDetailPage} ${styles.couponDetailPage}`}><Spin size="large" /></main>;
+  if (loading) return <ZkProfilePage className={styles.couponDetailPage}><Spin size="large" /></ZkProfilePage>;
   if (loadError && !coupon) {
     return (
-      <main className={`${styles.profileDetailPage} ${styles.couponDetailPage}`}>
+      <ZkProfilePage className={styles.couponDetailPage}>
         <Result
           status="error"
           title="优惠券详情暂时无法加载"
@@ -83,11 +83,11 @@ export default function CouponDetailPage() {
             <Button key="back" onClick={() => navigate('/profile/coupons')}>返回我的优惠券</Button>,
           ]}
         />
-      </main>
+      </ZkProfilePage>
     );
   }
   if (notFound || !coupon) {
-    return <main className={`${styles.profileDetailPage} ${styles.couponDetailPage}`}><Result status="404" title="优惠券不存在" extra={<Button onClick={() => navigate('/profile/coupons')}>返回我的优惠券</Button>} /></main>;
+    return <ZkProfilePage className={styles.couponDetailPage}><Result status="404" title="优惠券不存在" extra={<Button onClick={() => navigate('/profile/coupons')}>返回我的优惠券</Button>} /></ZkProfilePage>;
   }
 
   const meta = statusMeta[coupon.availabilityStatus];
@@ -103,7 +103,7 @@ export default function CouponDetailPage() {
   };
 
   return (
-    <main className={`${styles.profileDetailPage} ${styles.couponDetailPage}`}>
+    <ZkProfilePage className={styles.couponDetailPage}>
         <ZkTaskHeader eyebrow="权益资产" title="优惠券详情" description="核对适用商家、使用条件和有效期。" backTo="/profile/coupons" />
       <section className={styles.couponDetailHero}>
         <Tag color={meta.color}>{meta.label}</Tag>
@@ -153,6 +153,6 @@ export default function CouponDetailPage() {
           </div>
         </section>
       )}
-    </main>
+    </ZkProfilePage>
   );
 }

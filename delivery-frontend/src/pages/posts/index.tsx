@@ -1,4 +1,4 @@
-import { EditOutlined, EnvironmentOutlined, ReadOutlined } from '@ant-design/icons';
+import { EditOutlined, ReadOutlined } from '@ant-design/icons';
 import { Button, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'umi';
@@ -109,9 +109,6 @@ export default function PostListPage() {
           </button>
         ))}
         </div>
-        <p className={styles.identityContextHint}>
-          <EnvironmentOutlined /> 身份以发布时选择地点所在城市为参照；内容范围按平台当前城市展示规则执行。
-        </p>
       </div>
 
       {loading ? (

@@ -1,9 +1,9 @@
-import { HistoryOutlined, MinusOutlined, PlusOutlined } from '@ant-design/icons';
+import { MinusOutlined, PlusOutlined } from '@ant-design/icons';
 import { Pagination, Spin, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LoginRedirect } from '@/components/LoginRedirect';
 import { useShop } from '@/app/ShopContext';
-import { ZkTaskHeader } from '@/components/ZkPage';
+import { ZkProfilePage, ZkProfilePanel, ZkTaskHeader } from '@/components/ZkPage';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import { fetchMyPointRecords, type ShopPointRecord } from '@/services/shopAuth';
 import styles from '@/styles/commerce.less';
@@ -51,17 +51,14 @@ export default function PointRecordsPage() {
   };
 
   return (
-    <main className={`${styles.profileDetailPage} ${styles.pointsPage}`}>
-        <ZkTaskHeader eyebrow="权益资产" title="积分明细" description="查看积分获取与使用记录。" backTo="/profile/points" />
-      <section className={styles.orderPanel}>
-        <div className={styles.orderPanelHeading}>
-          <div>
-            <span className={styles.eyebrow}>积分明细</span>
-            <h3>积分变更记录</h3>
-          </div>
-          <span>共 {total} 条</span>
-        </div>
-
+    <ZkProfilePage className={styles.pointsPage}>
+      <ZkTaskHeader
+        eyebrow="权益资产"
+        title="积分明细"
+        description="查看积分获取与使用记录。"
+        backTo="/profile/points"
+      />
+      <ZkProfilePanel title="积分变更记录" meta={`共 ${total} 条`}>
         <Spin spinning={recordsLoading}>
           <div className={styles.pointRecordList}>
             {records.map((record) => {
@@ -90,7 +87,6 @@ export default function PointRecordsPage() {
 
           {!recordsLoading && records.length === 0 && (
             <div className={styles.pointRecordEmpty}>
-              <HistoryOutlined />
               <strong>暂无积分变更记录</strong>
               <p>后续产生积分增加或减少时，会在这里显示原因和变更后余额。</p>
             </div>
@@ -107,7 +103,7 @@ export default function PointRecordsPage() {
             onChange={changePage}
           />
         )}
-      </section>
-    </main>
+      </ZkProfilePanel>
+    </ZkProfilePage>
   );
 }

@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
-import { ZkTaskHeader } from '@/components/ZkPage';
+import { ZkProfilePage, ZkProfilePanel, ZkTaskHeader } from '@/components/ZkPage';
 import { LogisticsModal } from '@/components/LogisticsModal';
 import { PublishReportModal } from '@/components/PublishReportModal';
 import { TrialRedeemCodeModal } from '@/components/TrialRedeemCodeModal';
@@ -109,16 +109,14 @@ export default function TrialsPage() {
 
   return (
     <>
-      <main className={`${styles.profileDetailPage} ${styles.trialsPage}`}>
-        <ZkTaskHeader eyebrow="参与服务" title="我的试用" description="查看申请、审核、配送或到店核销以及甄客验发布进度。" backTo="/profile" />
-        <section className={styles.orderPanel}>
-          <div className={styles.orderPanelHeading}>
-            <div>
-              <span className={styles.eyebrow}>试用中心</span>
-              <h3>我的试用</h3>
-            </div>
-            <span>共 {filtered.length} 项</span>
-          </div>
+      <ZkProfilePage className={styles.trialsPage}>
+        <ZkTaskHeader
+          eyebrow="参与服务"
+          title="我的试用"
+          description="查看申请、审核、配送或到店核销以及甄客验发布进度。"
+          backTo="/profile"
+        />
+        <ZkProfilePanel title="试用记录" meta={`共 ${filtered.length} 项`}>
           <div className={styles.orderFilterTabs}>
             {([
               ['all', '全部'],
@@ -213,8 +211,8 @@ export default function TrialsPage() {
               <p className={styles.empty}>{trials.length === 0 ? '还没有试用申请。' : '该分类下暂无试用记录。'}</p>
             )}
           </Spin>
-        </section>
-      </main>
+        </ZkProfilePanel>
+      </ZkProfilePage>
 
       <LogisticsModal
         open={Boolean(logisticsTrial)}

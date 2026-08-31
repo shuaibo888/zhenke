@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
-import { ZkTaskHeader } from '@/components/ZkPage';
+import { ZkProfilePage, ZkProfilePanel, ZkTaskHeader } from '@/components/ZkPage';
 import { LogisticsModal } from '@/components/LogisticsModal';
 import { OrderRedeemCodeModal } from '@/components/OrderRedeemCodeModal';
 import { PublishReportModal } from '@/components/PublishReportModal';
@@ -171,16 +171,14 @@ export default function OrdersPage() {
 
   return (
     <>
-      <main className={`${styles.profileDetailPage} ${styles.ordersPage}`}>
-        <ZkTaskHeader eyebrow="消费履约" title="我的订单与核销" description="配送、到店核销、支付、退款和甄客验资格都在这里处理。" backTo="/profile" />
-        <section className={styles.orderPanel}>
-          <div className={styles.orderPanelHeading}>
-            <div>
-              <span className={styles.eyebrow}>订单中心</span>
-              <h3>我的订单</h3>
-            </div>
-            <span>共 {filtered.length} 笔</span>
-          </div>
+      <ZkProfilePage className={styles.ordersPage}>
+        <ZkTaskHeader
+          eyebrow="消费履约"
+          title="我的订单与核销"
+          description="配送、到店核销、支付、退款和甄客验资格都在这里处理。"
+          backTo="/profile"
+        />
+        <ZkProfilePanel title="订单记录" meta={`共 ${filtered.length} 笔`}>
           <div className={styles.orderFilterTabs}>
             {([
               ['all', '全部订单'],
@@ -311,8 +309,8 @@ export default function OrdersPage() {
             ))}
             {!ordersLoading && filtered.length === 0 && <p className={styles.empty}>该分类下暂无订单。</p>}
           </Spin>
-        </section>
-      </main>
+        </ZkProfilePanel>
+      </ZkProfilePage>
 
       <LogisticsModal
         open={logisticsOpen}

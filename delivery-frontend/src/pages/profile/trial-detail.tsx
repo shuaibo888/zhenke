@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
-import { ZkTaskHeader } from '@/components/ZkPage';
+import { ZkProfilePage, ZkTaskHeader } from '@/components/ZkPage';
 import { LogisticsModal } from '@/components/LogisticsModal';
 import { PublishReportModal } from '@/components/PublishReportModal';
 import { TrialRedeemCodeModal } from '@/components/TrialRedeemCodeModal';
@@ -141,12 +141,12 @@ export default function TrialDetailPage() {
   };
 
   if (loading) {
-    return <main className={`${styles.profileDetailPage} ${styles.businessDetailPage}`}><Spin size="large" /></main>;
+    return <ZkProfilePage className={styles.businessDetailPage}><Spin size="large" /></ZkProfilePage>;
   }
 
   if (error || !trial) {
     return (
-      <main className={`${styles.profileDetailPage} ${styles.businessDetailPage}`}>
+      <ZkProfilePage className={styles.businessDetailPage}>
         <Result
           status="warning"
           title={error || '试用申请不存在'}
@@ -159,7 +159,7 @@ export default function TrialDetailPage() {
             </Space>
           )}
         />
-      </main>
+      </ZkProfilePage>
     );
   }
 
@@ -170,7 +170,7 @@ export default function TrialDetailPage() {
 
   return (
     <>
-      <main className={`${styles.profileDetailPage} ${styles.businessDetailPage}`}>
+      <ZkProfilePage className={styles.businessDetailPage}>
         <ZkTaskHeader eyebrow="参与服务" title="试用详情" description="查看申请、审核、收货或核销进度。" backTo="/profile/trials" />
         <section className={styles.businessStatusHero}>
           <div>
@@ -237,7 +237,7 @@ export default function TrialDetailPage() {
           {publishable && <Button type="primary" onClick={() => setPublishOpen(true)}>发布甄客验</Button>}
           {trial.verificationReportId && <Button type="primary" onClick={() => navigate(`/reports/${trial.verificationReportId}`)}>查看甄客验</Button>}
         </div>
-      </main>
+      </ZkProfilePage>
 
       <LogisticsModal
         open={logisticsOpen}

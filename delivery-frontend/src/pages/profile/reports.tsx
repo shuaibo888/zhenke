@@ -3,7 +3,7 @@ import { Spin, Tag } from 'antd';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
-import { ZkTaskHeader } from '@/components/ZkPage';
+import { ZkProfilePage, ZkProfilePanel, ZkTaskHeader } from '@/components/ZkPage';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import { getReportType } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
@@ -16,16 +16,14 @@ export default function MyReportsPage() {
     return <LoginRedirect />;
   }
   return (
-    <main className={`${styles.profileDetailPage} ${styles.profileReportsPage}`}>
-        <ZkTaskHeader eyebrow="内容创作" title="我的甄客验" description="查看和管理你发布的甄客验。" backTo="/profile" />
-      <section className={styles.orderPanel}>
-        <div className={styles.orderPanelHeading}>
-          <div>
-            <span className={styles.eyebrow}>甄客验记录</span>
-            <h3>我的甄客验</h3>
-          </div>
-          <span>共 {reports.length} 篇</span>
-        </div>
+    <ZkProfilePage className={styles.profileReportsPage}>
+      <ZkTaskHeader
+        eyebrow="内容创作"
+        title="我的甄客验"
+        description="查看基于订单、试用或核销资格发布的真实体验。"
+        backTo="/profile"
+      />
+      <ZkProfilePanel title="已发布内容" meta={`共 ${reports.length} 篇`}>
         <Spin spinning={reportsLoading}>
           <div className={styles.reportList}>
             {reports.map((report) => {
@@ -53,9 +51,14 @@ export default function MyReportsPage() {
               );
             })}
           </div>
-          {!reportsLoading && reports.length === 0 && <p className={styles.empty}>还没有发布甄客验。</p>}
+          {!reportsLoading && reports.length === 0 && (
+            <div className={styles.profileListEmpty}>
+              <strong>还没有发布甄客验</strong>
+              <p>完成订单、试用或到店核销后，可从对应记录进入发布。</p>
+            </div>
+          )}
         </Spin>
-      </section>
-    </main>
+      </ZkProfilePanel>
+    </ZkProfilePage>
   );
 }

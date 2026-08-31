@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
-import { ZkTaskHeader } from '@/components/ZkPage';
+import { ZkProfilePage, ZkTaskHeader } from '@/components/ZkPage';
 import { LogisticsModal } from '@/components/LogisticsModal';
 import { OrderRedeemCodeModal } from '@/components/OrderRedeemCodeModal';
 import { PublishReportModal } from '@/components/PublishReportModal';
@@ -204,12 +204,12 @@ export default function OrderDetailPage() {
   };
 
   if (loading) {
-    return <main className={`${styles.profileDetailPage} ${styles.businessDetailPage}`}><Spin size="large" /></main>;
+    return <ZkProfilePage className={styles.businessDetailPage}><Spin size="large" /></ZkProfilePage>;
   }
 
   if (error || !order) {
     return (
-      <main className={`${styles.profileDetailPage} ${styles.businessDetailPage}`}>
+      <ZkProfilePage className={styles.businessDetailPage}>
         <Result
           status="warning"
           title={error || '订单不存在'}
@@ -222,7 +222,7 @@ export default function OrderDetailPage() {
             </Space>
           )}
         />
-      </main>
+      </ZkProfilePage>
     );
   }
 
@@ -231,7 +231,7 @@ export default function OrderDetailPage() {
 
   return (
     <>
-      <main className={`${styles.profileDetailPage} ${styles.businessDetailPage}`}>
+      <ZkProfilePage className={styles.businessDetailPage}>
         <ZkTaskHeader eyebrow="消费履约" title="订单详情" description="查看付款、配送或到店核销进度。" backTo="/profile/orders" />
         <section className={styles.businessStatusHero}>
           <div>
@@ -329,7 +329,7 @@ export default function OrderDetailPage() {
           )}
           {order.status === 'SHIPPED' && <Button type="primary" loading={mutating} onClick={receive}>确认收货</Button>}
         </div>
-      </main>
+      </ZkProfilePage>
 
       <LogisticsModal
         open={logisticsOpen}

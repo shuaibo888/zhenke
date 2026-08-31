@@ -1,7 +1,5 @@
 import {
   ArrowLeftOutlined,
-  DisconnectOutlined,
-  InboxOutlined,
   LoadingOutlined,
 } from "@ant-design/icons";
 import { Button, Spin } from "antd";
@@ -45,6 +43,36 @@ export function ZkSectionTitle(props: {
   );
 }
 
+export function ZkProfilePage(props: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <main className={`${styles.page} ${styles.profileSubPage} ${props.className ?? ""}`}>
+      {props.children}
+    </main>
+  );
+}
+
+export function ZkProfilePanel(props: {
+  children: ReactNode;
+  className?: string;
+  title?: ReactNode;
+  meta?: ReactNode;
+}) {
+  return (
+    <section className={`${styles.surface} ${styles.profileCollectionPanel} ${props.className ?? ""}`}>
+      {(props.title || props.meta) && (
+        <div className={styles.profileCollectionMeta}>
+          <strong>{props.title}</strong>
+          {props.meta && <span>{props.meta}</span>}
+        </div>
+      )}
+      {props.children}
+    </section>
+  );
+}
+
 export function ZkTaskHeader(props: {
   eyebrow: string;
   title: string;
@@ -83,23 +111,17 @@ export function ZkState(props: {
   onAction?: () => void;
 }) {
   const kind = props.kind ?? "empty";
-  const icon =
-    kind === "loading" ? (
-      <LoadingOutlined />
-    ) : kind === "error" ? (
-      <DisconnectOutlined />
-    ) : (
-      <InboxOutlined />
-    );
   return (
     <div
       className={styles.statePanel}
       role={kind === "error" ? "alert" : "status"}
     >
       <div className={styles.stateContent}>
-        <span className={styles.stateIcon}>
-          {kind === "loading" ? <Spin indicator={icon} /> : icon}
-        </span>
+        {kind === "loading" && (
+          <span className={styles.stateIcon}>
+            <Spin indicator={<LoadingOutlined />} />
+          </span>
+        )}
         <h3>
           {props.title ??
             (kind === "loading"

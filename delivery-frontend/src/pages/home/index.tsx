@@ -1,12 +1,8 @@
 import {
   ArrowRightOutlined,
-  CoffeeOutlined,
-  CompassOutlined,
   DownOutlined,
   EnvironmentOutlined,
-  HomeOutlined,
   SearchOutlined,
-  ShoppingOutlined,
 } from '@ant-design/icons';
 import { Carousel, Image, Input, Modal, message } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -54,31 +50,26 @@ const zhenEnjoyEntries: Array<{
   code: EnjoyCategory;
   title: string;
   caption: string;
-  icon: React.ReactNode;
 }> = [
   {
     code: 'MALL',
     title: '甄必购',
     caption: '发现值得带回家的好物',
-    icon: <ShoppingOutlined />,
   },
   {
     code: 'RESTAURANT',
     title: '甄必吃',
     caption: '找一顿值得专程去吃的',
-    icon: <CoffeeOutlined />,
   },
   {
     code: 'SCENIC',
     title: '甄必玩',
     caption: '挑一个说走就走的去处',
-    icon: <CompassOutlined />,
   },
   {
     code: 'HOTEL',
     title: '甄必住',
     caption: '住得舒服，旅途才更从容',
-    icon: <HomeOutlined />,
   },
 ];
 
@@ -284,6 +275,7 @@ export default function HomePage() {
             <Carousel
               autoplay={bannerRows.length > 1}
               autoplaySpeed={5000}
+              pauseOnHover={false}
               dots
               className={styles.bannerCarousel}
             >
@@ -299,9 +291,8 @@ export default function HomePage() {
                         classNames={{
                           root: styles.bannerPreview,
                           image: styles.bannerImage,
-                          cover: styles.bannerPreviewCover,
                         }}
-                        preview={{ mask: '查看大图' }}
+                        preview={false}
                       />
                     </div>
                     <div className={styles.bannerCopy}>
@@ -332,7 +323,7 @@ export default function HomePage() {
 
       <ZkSectionTitle
         title="城市里的甄客帖"
-        description="沿着本地土著、外地游客和在外家乡人的视角，发现城市日常。"
+        description="看看大家最近发现了哪些值得去的地方。"
         action={<button type="button" className={styles.textButton} onClick={() => navigate('/posts')}>查看全部 →</button>}
       />
 
@@ -356,43 +347,35 @@ export default function HomePage() {
       <section className={styles.zhenEnjoySection} aria-labelledby="zhen-enjoy-title">
         <header className={styles.zhenEnjoyHeader}>
           <div>
-            <span>甄选城市生活</span>
             <h2 id="zhen-enjoy-title">甄必享</h2>
-            <p>按购、吃、玩、住慢慢逛，每一类都是一段独立的城市灵感。</p>
+            <p>按购、吃、玩、住，发现值得专程去体验的城市生活。</p>
           </div>
         </header>
         <div className={styles.zhenEnjoyGroups}>
-          {zhenEnjoyEntries.map((entry, index) => {
+          {zhenEnjoyEntries.map((entry) => {
             const rows = enjoyFeeds[entry.code];
             const error = enjoyErrors[entry.code];
             const titleId = `zhen-enjoy-${entry.code.toLowerCase()}`;
             return (
               <section key={entry.code} className={styles.zhenEnjoyGroup} aria-labelledby={titleId}>
                 <header className={styles.zhenEnjoyGroupHeader}>
-                  <span className={styles.zhenEnjoyGroupIcon} aria-hidden="true">{entry.icon}</span>
                   <div>
-                    <small>{String(index + 1).padStart(2, '0')} · ZHEN PICKS</small>
                     <h3 id={titleId}>{entry.title}</h3>
                     <p>{entry.caption}</p>
                   </div>
-                  <div className={styles.zhenEnjoyGroupMeta}>
-                    <em>{rows.length > 0 ? `展示 ${rows.length} 条精选` : '内容筹备中'}</em>
-                    <button type="button" className={styles.textButton} onClick={() => navigate(`/enjoy?category=${entry.code}`)}>
-                      查看全部 →
-                    </button>
-                  </div>
+                  <button type="button" className={styles.textButton} onClick={() => navigate(`/enjoy?category=${entry.code}`)}>
+                    查看全部 →
+                  </button>
                 </header>
                 {loading ? (
                   <div className={styles.zhenEnjoyEmpty} aria-live="polite">
-                    <span>{entry.icon}</span>
                     <div>
                       <strong>正在加载{entry.title}</strong>
-                      <p>正在为你整理本期城市精选。</p>
+                      <p>内容马上就好。</p>
                     </div>
                   </div>
                 ) : error ? (
                   <div className={`${styles.zhenEnjoyEmpty} ${styles.zhenEnjoyEmptyError}`}>
-                    <span>{entry.icon}</span>
                     <div>
                       <strong>{entry.title}暂时没有连接成功</strong>
                       <p>{error}</p>
@@ -405,10 +388,9 @@ export default function HomePage() {
                   </div>
                 ) : (
                   <div className={styles.zhenEnjoyEmpty}>
-                    <span>{entry.icon}</span>
                     <div>
-                      <strong>{entry.title}正在准备</strong>
-                      <p>平台运营团队正在整理本期精选内容。</p>
+                      <strong>{entry.title}内容更新中</strong>
+                      <p>稍后再来看看。</p>
                     </div>
                   </div>
                 )}
@@ -429,9 +411,6 @@ export default function HomePage() {
         }}
         destroyOnHidden
       >
-        <p className={styles.manualAreaHint}>
-          当前城市用于地点展示；平台开启城市内容模式后，也会作为甄客帖与甄必享的展示范围。
-        </p>
         <Input
           size="large"
           allowClear

@@ -1,10 +1,10 @@
-import { CheckCircleFilled, GiftOutlined, HistoryOutlined, SwapOutlined, TrophyOutlined } from '@ant-design/icons';
+import { CheckCircleFilled, HistoryOutlined, SwapOutlined, TrophyOutlined } from '@ant-design/icons';
 import { Button, InputNumber, Modal, Spin, message } from 'antd';
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
-import { ZkTaskHeader } from '@/components/ZkPage';
+import { ZkProfilePage, ZkProfilePanel, ZkTaskHeader } from '@/components/ZkPage';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import {
   exchangePointCoupon,
@@ -173,7 +173,7 @@ export default function PointsPage() {
   };
 
   return (
-    <main className={`${styles.profileDetailPage} ${styles.pointsPage}`}>
+    <ZkProfilePage className={styles.pointsPage}>
         <ZkTaskHeader eyebrow="权益资产" title="积分中心" description="查看可用积分、来源划拨、兑换权益和每一笔变化记录。" backTo="/profile" />
       <section className={styles.pointBalancePanel}>
         <span className={styles.pointBalanceIcon}><TrophyOutlined /></span>
@@ -314,14 +314,7 @@ export default function PointsPage() {
         </div>
       </Modal>
 
-      <section className={styles.orderPanel}>
-        <div className={styles.orderPanelHeading}>
-          <div>
-            <span className={styles.eyebrow}>积分兑换</span>
-            <h3>全平台通用优惠券</h3>
-          </div>
-          <span>共 {coupons.length} 张</span>
-        </div>
+      <ZkProfilePanel title="可兑换优惠券" meta={`共 ${coupons.length} 张`}>
 
         <Spin spinning={couponsLoading}>
           <div className={styles.pointCouponGrid}>
@@ -366,13 +359,12 @@ export default function PointsPage() {
 
           {!couponsLoading && coupons.length === 0 && (
             <div className={styles.pointCouponEmpty}>
-              <GiftOutlined />
               <strong>暂无可兑换优惠券</strong>
               <p>管理员上架全平台积分券后，会在这里展示。</p>
             </div>
           )}
         </Spin>
-      </section>
-    </main>
+      </ZkProfilePanel>
+    </ZkProfilePage>
   );
 }
