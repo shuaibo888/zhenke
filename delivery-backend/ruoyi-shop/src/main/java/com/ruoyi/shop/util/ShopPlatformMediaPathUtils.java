@@ -92,6 +92,11 @@ public final class ShopPlatformMediaPathUtils {
    * during a request can allocate hundreds of megabytes even when the upload itself is small.
    */
   public static void requireStoredImage(String rawValue) {
+    resolveStoredImagePath(rawValue);
+  }
+
+  /** Resolves a validated platform image to its canonical path inside the profile directory. */
+  public static Path resolveStoredImagePath(String rawValue) {
     Path file = storedFile(rawValue);
     ImageReader reader = null;
     try (ImageInputStream input = ImageIO.createImageInputStream(file.toFile())) {
@@ -101,6 +106,7 @@ public final class ShopPlatformMediaPathUtils {
       reader = readers.next();
       reader.setInput(input, true, true);
       requireSafeImageDimensions(reader.getWidth(0), reader.getHeight(0));
+      return file;
     } catch (Exception exception) {
       throw invalidStoredFile();
     } finally {

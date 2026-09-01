@@ -21,6 +21,7 @@ import {
 import styles from '@/styles/zhenke.less';
 import { getWechatShareErrorMessage, isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
 import { useWechatShareGuide } from '@/hooks/useWechatShareGuide';
+import { buildEnjoyShareLink, copyText } from '@/utils/shop';
 
 export default function EnjoyDetailPage() {
   const { enjoyId: rawEnjoyId } = useParams<{ enjoyId: string }>();
@@ -45,7 +46,7 @@ export default function EnjoyDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [liking, setLiking] = useState(false);
   const commentRequestId = useRef(0);
-  const prepareWechatShare = useWechatShare(detail?.coverUrl ? {
+  const prepareWechatShare = useWechatShare(detail ? {
     title: `甄必享｜${detail.title}`,
     description: detail.subtitle || detail.serviceSummary,
     link: `/enjoy/${detail.enjoyId}`,
@@ -170,14 +171,15 @@ export default function EnjoyDetailPage() {
 
   const share = async () => {
     if (!detail) return;
+    const shareLink = buildEnjoyShareLink(detail.enjoyId);
     try {
       if (isWechatBrowser()) {
         await wechatShareGuide.show();
         return;
       }
-      if (navigator.share) await navigator.share({ title: detail.title, text: detail.subtitle, url: window.location.href });
+      if (navigator.share) await navigator.share({ title: detail.title, text: detail.subtitle, url: shareLink });
       else {
-        await navigator.clipboard.writeText(window.location.href);
+        await copyText(shareLink);
         message.success('分享链接已复制');
       }
     } catch (reason) {

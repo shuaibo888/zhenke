@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-type PrepareWechatShare = () => Promise<void>;
+type PrepareWechatShare = (forceRegistration?: boolean) => Promise<void>;
 
 /**
  * Opens the native WeChat menu guide only after both JS-SDK share cards have
@@ -19,7 +19,7 @@ export function useWechatShareGuide(prepareWechatShare: PrepareWechatShare) {
   }, []);
 
   const show = useCallback(async () => {
-    await prepareWechatShare();
+    await prepareWechatShare(true);
     if (mountedRef.current) setOpen(true);
   }, [prepareWechatShare]);
 

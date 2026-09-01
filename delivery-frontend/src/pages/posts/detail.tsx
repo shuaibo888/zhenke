@@ -28,6 +28,7 @@ import {
 import { getWechatShareErrorMessage, isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
 import { useWechatShareGuide } from '@/hooks/useWechatShareGuide';
 import { buildLoginPath } from '@/utils/safeRedirect';
+import { buildPostShareLink, copyText } from '@/utils/shop';
 import styles from '@/styles/zhenke.less';
 
 export default function PostDetailPage() {
@@ -53,7 +54,7 @@ export default function PostDetailPage() {
   const [usefulSubmitting, setUsefulSubmitting] = useState(false);
   const commentRequestId = useRef(0);
   const sharePreviewImage = detail?.resources.find((item) => item.resourceType === 'IMAGE')?.resourceUrl ?? '';
-  const prepareWechatShare = useWechatShare(detail && sharePreviewImage ? {
+  const prepareWechatShare = useWechatShare(detail ? {
     title: `甄客帖｜${detail.title}`,
     description: `${detail.nickName || detail.userName || '甄客行用户'}：${detail.content.slice(0, 60)}`,
     link: `/posts/${detail.postId}`,
@@ -179,10 +180,11 @@ export default function PostDetailPage() {
 
   const share = async () => {
     if (!detail) return;
+    const shareLink = buildPostShareLink(detail.postId);
     const shareData = {
       title: detail.title,
       text: detail.content.slice(0, 100),
-      url: window.location.href,
+      url: shareLink,
     };
     try {
       if (isWechatBrowser()) {
@@ -191,7 +193,7 @@ export default function PostDetailPage() {
       }
       if (navigator.share) await navigator.share(shareData);
       else {
-        await navigator.clipboard.writeText(window.location.href);
+        await copyText(shareLink);
         message.success('分享链接已复制');
       }
     } catch (reason) {

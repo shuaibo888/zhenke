@@ -10,6 +10,7 @@ public class ShopVerificationReport
 {
     private Long reportId;
     private Long productId;
+    private String productBrandName;
     private String productName;
     private String productSubtitle;
     private String productDetail;
@@ -51,6 +52,8 @@ public class ShopVerificationReport
     public void setReportId(Long reportId) { this.reportId = reportId; }
     public Long getProductId() { return productId; }
     public void setProductId(Long productId) { this.productId = productId; }
+    public String getProductBrandName() { return productBrandName; }
+    public void setProductBrandName(String productBrandName) { this.productBrandName = productBrandName; }
     public String getProductName() { return productName; }
     public void setProductName(String productName) { this.productName = productName; }
     @JsonIgnore public String getProductSubtitle() { return productSubtitle; }

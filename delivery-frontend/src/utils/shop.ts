@@ -12,16 +12,25 @@ export function getCartTotal(items: Array<{ price: number; quantity: number }>) 
   return items.reduce((total, item) => total + item.price * item.quantity, 0);
 }
 
+function buildPublicShareLink(path: string) {
+  if (typeof window === 'undefined') return path;
+  return new URL(path, window.location.origin).toString();
+}
+
+export function buildPostShareLink(postId: number) {
+  return buildPublicShareLink(`/posts/${postId}`);
+}
+
+export function buildEnjoyShareLink(enjoyId: number) {
+  return buildPublicShareLink(`/enjoy/${enjoyId}`);
+}
+
 export function buildReportShareLink(reportId: number) {
-  if (typeof window === 'undefined') return `/reports/${reportId}`;
-  const url = new URL(`/reports/${reportId}`, window.location.origin);
-  return url.toString();
+  return buildPublicShareLink(`/reports/${reportId}`);
 }
 
 export function buildProductShareLink(productId: number) {
-  if (typeof window === 'undefined') return `/products/${productId}`;
-  const url = new URL(`/products/${productId}`, window.location.origin);
-  return url.toString();
+  return buildPublicShareLink(`/products/${productId}`);
 }
 
 export function buildTrialShareLink(productId: number, campaignId: number) {

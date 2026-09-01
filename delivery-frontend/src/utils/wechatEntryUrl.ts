@@ -21,5 +21,9 @@ export function getWechatJsSdkSignatureUrls() {
   const entryUrl = captureWechatEntryUrl();
   const userAgent = navigator.userAgent;
   const isWechatIos = /MicroMessenger/i.test(userAgent) && /iPhone|iPad|iPod/i.test(userAgent);
-  return Array.from(new Set(isWechatIos ? [entryUrl, currentUrl] : [currentUrl, entryUrl]));
+  // WeChat iOS keeps the first document URL for the lifetime of an SPA
+  // WebView. Android signs the URL currently displayed by the document.
+  // Do not fall through to the opposite platform rule: a second config with a
+  // different URL can invalidate share data that was already registered.
+  return [isWechatIos ? entryUrl : currentUrl];
 }

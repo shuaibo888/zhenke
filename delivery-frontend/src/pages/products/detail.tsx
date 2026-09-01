@@ -29,9 +29,11 @@ import {
   applyForTrial,
   fetchHomeFeed,
   fetchPublicProduct,
+  fetchPublicTrialCampaign,
   toggleReportUseful,
   type HomeFeedItemDto,
   type PublicProductDto,
+  type PublicTrialCampaignDto,
 } from '@/services/shopContent';
 import type { ShopShippingAddress } from '@/services/shopAuth';
 import { buildLoginPath } from '@/utils/safeRedirect';
@@ -40,6 +42,29 @@ import styles from '@/styles/commerce.less';
 
 type PendingAddressAction = 'trial' | null;
 const PRODUCT_REPORT_PAGE_SIZE = 5;
+
+function trialCampaignFeedItem(campaign: PublicTrialCampaignDto): HomeFeedItemDto {
+  return {
+    contentType: 'TRIAL',
+    contentId: campaign.campaignId,
+    productId: campaign.productId,
+    merchantId: campaign.merchantId,
+    merchantName: campaign.merchantName,
+    categoryCode: campaign.categoryCode,
+    categoryName: campaign.categoryName,
+    title: campaign.campaignTitle,
+    summary: campaign.campaignSummary ?? '',
+    coverUrl: campaign.productCoverUrl,
+    publishedAt: campaign.publishedAt,
+    purchasable: true,
+    trial: {
+      trialType: campaign.trialType,
+      targetCount: campaign.targetCount,
+      approvedCount: campaign.approvedCount,
+      applicationDeadline: campaign.applicationDeadline,
+    },
+  };
+}
 
 function formatAddress(address: ShopShippingAddress) {
   return `${address.region.join(' ')} ${address.detail}`.trim();
@@ -102,6 +127,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   } = useShop();
   const productId = productIdProp ?? Number(productIdParam);
   const campaignId = Number(searchParams.get('campaign'));
+  const validCampaignId = Number.isSafeInteger(campaignId) && campaignId > 0 ? campaignId : undefined;
   const sourceReportId = Number(searchParams.get('sourceReport'));
   const validSourceReportId = Number.isSafeInteger(sourceReportId) && sourceReportId > 0 ? sourceReportId : undefined;
   const [product, setProduct] = useState<PublicProductDto | null>(null);
@@ -161,8 +187,9 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
         pageNum: 1,
         pageSize: PRODUCT_REPORT_PAGE_SIZE,
       }),
+      validCampaignId ? fetchPublicTrialCampaign(validCampaignId) : Promise.resolve(null),
     ])
-      .then(([productResult, trialResult, reportResult]) => {
+      .then(([productResult, trialResult, reportResult, routeCampaignResult]) => {
         if (!mounted) return;
         const relatedErrors: string[] = [];
         if (productResult.status === 'fulfilled') {
@@ -171,10 +198,15 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
         } else {
           setProductError(productResult.reason instanceof Error ? productResult.reason.message : '商品不存在或已下架');
         }
-        if (trialResult.status === 'fulfilled') {
-          setFeed(trialResult.value.rows);
-        } else {
-          setFeed([]);
+        const trialRows = trialResult.status === 'fulfilled' ? [...trialResult.value.rows] : [];
+        if (routeCampaignResult.status === 'fulfilled'
+          && routeCampaignResult.value
+          && routeCampaignResult.value.productId === productId
+          && !trialRows.some((item) => item.contentId === routeCampaignResult.value?.campaignId)) {
+          trialRows.unshift(trialCampaignFeedItem(routeCampaignResult.value));
+        }
+        setFeed(trialRows);
+        if (trialResult.status === 'rejected') {
           relatedErrors.push(trialResult.reason instanceof Error ? trialResult.reason.message : '试用信息暂时无法加载');
         }
         if (reportResult.status === 'fulfilled') {
@@ -196,7 +228,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
     return () => {
       mounted = false;
     };
-  }, [productId, reloadVersion]);
+  }, [productId, reloadVersion, validCampaignId]);
 
   const supportsOnlinePurchase = product?.supportsOnline === '1';
   const supportsOfflinePurchase = product?.supportsOffline === '1';
@@ -234,7 +266,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
     const nextIndex = (displayedProductImageIndex + offset + productGallery.length) % productGallery.length;
     selectProductImage(productGallery[nextIndex]);
   };
-  const routeCampaign = campaigns.find((item) => item.contentId === campaignId);
+  const routeCampaign = campaigns.find((item) => item.contentId === validCampaignId);
   const primaryCampaign = routeCampaign ?? campaigns[0];
   const productShareTitle = product ? `${product.brandName} ${product.productName}` : '';
   const shareLink = product

@@ -67,6 +67,7 @@
     <resultMap id="ShopVerificationReportResult" type="ShopVerificationReport">
         <id property="reportId" column="report_id" />
         <result property="productId" column="product_id" />
+        <result property="productBrandName" column="product_brand_name" />
         <result property="productName" column="product_name" />
         <result property="productSubtitle" column="product_subtitle" />
         <result property="productDetail" column="product_detail" />
@@ -451,7 +452,7 @@
     </select>
 
     <sql id="selectReport">
-        select r.report_id, r.product_id, p.product_name,
+        select r.report_id, r.product_id, p.brand_name as product_brand_name, p.product_name,
                p.subtitle as product_subtitle, p.detail as product_detail,
                p.cover_url as product_cover_url,
                p.merchant_id, m.shop_name as merchant_name,

@@ -117,6 +117,7 @@ export interface VerificationReportDto {
   reportId: number;
   productId: number;
   productName: string;
+  productBrandName?: string;
   productCoverUrl: string;
   title?: string;
   merchantId: number;
@@ -201,6 +202,26 @@ export interface TrialApplicationDto {
   applicationDeadline?: string;
   auditTime?: string;
   verificationReportId?: number;
+}
+
+export interface PublicTrialCampaignDto {
+  campaignId: number;
+  merchantId: number;
+  merchantName: string;
+  productId: number;
+  productName: string;
+  productCoverUrl: string;
+  categoryCode: ProductCategoryDto['categoryCode'];
+  categoryName: string;
+  trialType: 'ONLINE' | 'OFFLINE';
+  campaignTitle: string;
+  campaignSummary?: string;
+  targetCount: number;
+  applicantCount: number;
+  approvedCount: number;
+  applicationDeadline: string;
+  status: 'RECRUITING';
+  publishedAt: string;
 }
 
 export interface ShopCartItemDto {
@@ -811,4 +832,10 @@ export async function uploadShopContentFile(file: File) {
   const path = extractPlatformMediaPath(result.data);
   if (!path) throw new Error('甄客验资源上传结果无效，请重试');
   return path;
+}
+
+export async function fetchPublicTrialCampaign(campaignId: number) {
+  const result = await requestApi<ApiResponse<PublicTrialCampaignDto>>(`/shop/trials/${campaignId}`);
+  if (!result.data) throw new Error('试用活动不存在或已结束');
+  return result.data;
 }
