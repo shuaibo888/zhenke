@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'umi';
 import { ShopProvider, useShop } from '@/app/ShopContext';
 import { commerceTheme } from '@/app/theme';
 import { AppChrome } from '@/components/AppChrome';
+import { PostPublishLauncherProvider } from '@/components/PostPublishLauncher';
 import { captureWechatEntryUrl } from '@/utils/wechatEntryUrl';
 import { useWechatBrowserChrome } from '@/hooks/useWechatBrowserChrome';
 import styles from '@/styles/commerce.less';
@@ -28,9 +29,11 @@ function CommerceApplication() {
     return <main className={styles.authShell}><Spin size="large" /></main>;
   }
   return (
-    <AppChrome>
-      <Outlet />
-    </AppChrome>
+    <PostPublishLauncherProvider>
+      <AppChrome>
+        <Outlet />
+      </AppChrome>
+    </PostPublishLauncherProvider>
   );
 }
 

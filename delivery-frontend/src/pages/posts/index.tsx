@@ -1,8 +1,9 @@
 import { EditOutlined } from '@ant-design/icons';
 import { Button, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'umi';
+import { useSearchParams } from 'umi';
 import { ZhenkePostCard } from '@/components/ZhenkePostCard';
+import { usePostPublishLauncher } from '@/components/PostPublishLauncher';
 import { ZkState } from '@/components/ZkPage';
 import { postCities, posts, type ZhenkePost } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
@@ -17,7 +18,7 @@ const perspectives = [
 type PerspectiveFilter = typeof perspectives[number]['value'];
 
 export default function PostListPage() {
-  const navigate = useNavigate();
+  const { startPostPublish } = usePostPublishLauncher();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedPerspective = searchParams.get('perspective')?.toUpperCase();
   const perspective: PerspectiveFilter = perspectives.some((item) => item.value === requestedPerspective)
@@ -122,10 +123,9 @@ export default function PostListPage() {
     <main className={styles.page}>
       <header className={styles.postsPageHeading}>
         <div>
-          <h1>甄客帖</h1>
-          <p>换一种身份，看见不一样的城市。</p>
+          <h1>天南海北燃赛人</h1>
         </div>
-        <Button type="primary" size="large" icon={<EditOutlined />} onClick={() => navigate('/posts/publish')}>发布帖子</Button>
+        <Button type="primary" size="large" icon={<EditOutlined />} onClick={() => startPostPublish()}>发布帖子</Button>
       </header>
 
       <div className={styles.identityFilterBlock}>
@@ -151,21 +151,23 @@ export default function PostListPage() {
         </div>
       </div>
 
-      <div className={styles.postsBrowserLayout}>
-        <aside className={styles.postCityRail} aria-label="按已发布帖子的城市筛选">
-          {cities.map((city) => (
-            <button
-              key={city}
-              type="button"
-              className={city === selectedCity ? styles.postCityActive : ''}
-              aria-pressed={city === selectedCity}
-              title={city}
-              onClick={() => void chooseCity(city)}
-            >
-              {city.replace(/市$/, '')}
-            </button>
-          ))}
-        </aside>
+      <div className={`${styles.postsBrowserLayout} ${cities.length === 0 ? styles.postsBrowserLayoutFullWidth : ''}`}>
+        {cities.length > 0 && (
+          <aside className={styles.postCityRail} aria-label="按已发布帖子的城市筛选">
+            {cities.map((city) => (
+              <button
+                key={city}
+                type="button"
+                className={city === selectedCity ? styles.postCityActive : ''}
+                aria-pressed={city === selectedCity}
+                title={city}
+                onClick={() => void chooseCity(city)}
+              >
+                {city.replace(/市$/, '')}
+              </button>
+            ))}
+          </aside>
+        )}
         <section className={styles.postsBrowserContent} aria-live="polite">
           {loading ? (
             <ZkState kind="loading" title="正在加载甄客帖" />
@@ -178,7 +180,7 @@ export default function PostListPage() {
                 : `${selectedCity}还没有这一视角的分享`}
               description="来记录一次值得分享的到访吧。"
               actionText="去发布"
-              onAction={() => navigate('/posts/publish')}
+              onAction={() => startPostPublish()}
             />
           ) : (
             <>

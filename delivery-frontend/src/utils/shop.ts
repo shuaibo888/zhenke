@@ -13,23 +13,20 @@ export function getCartTotal(items: Array<{ price: number; quantity: number }>) 
 }
 
 export function buildReportShareLink(reportId: number) {
-  if (typeof window === 'undefined') return `/?report=${reportId}`;
-  const url = new URL('/', window.location.origin);
-  url.searchParams.set('report', String(reportId));
+  if (typeof window === 'undefined') return `/reports/${reportId}`;
+  const url = new URL(`/reports/${reportId}`, window.location.origin);
   return url.toString();
 }
 
 export function buildProductShareLink(productId: number) {
-  if (typeof window === 'undefined') return `/?product=${productId}`;
-  const url = new URL('/', window.location.origin);
-  url.searchParams.set('product', String(productId));
+  if (typeof window === 'undefined') return `/products/${productId}`;
+  const url = new URL(`/products/${productId}`, window.location.origin);
   return url.toString();
 }
 
 export function buildTrialShareLink(productId: number, campaignId: number) {
-  if (typeof window === 'undefined') return `/?product=${productId}&campaign=${campaignId}`;
-  const url = new URL('/', window.location.origin);
-  url.searchParams.set('product', String(productId));
+  if (typeof window === 'undefined') return `/products/${productId}?campaign=${campaignId}`;
+  const url = new URL(`/products/${productId}`, window.location.origin);
   url.searchParams.set('campaign', String(campaignId));
   return url.toString();
 }

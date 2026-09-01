@@ -1,9 +1,7 @@
 import {
   ArrowLeftOutlined,
-  CheckCircleFilled,
   LockOutlined,
   MobileOutlined,
-  SafetyCertificateOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { Button, Form, Input, message } from 'antd';
@@ -166,46 +164,42 @@ export default function AuthPage() {
     setPhoneLoginMethod('oneClick');
     if (mode === authMode) return;
     setAuthMode(mode);
-    form.resetFields(['password', 'code']);
+    if (!phoneMode) form.resetFields(['password', 'code']);
   };
 
   return (
     <>
-      <main className={`${styles.authShell} ${styles.authLayout}`}>
+      <main className={`${styles.authShell} ${styles.authLayout} ${styles.authSimpleLayout}`}>
         <Button type="text" icon={<ArrowLeftOutlined />} className={styles.authBackButton} aria-label="返回甄客行" onClick={() => navigate('/')}>
           返回甄客行
         </Button>
         <section className={styles.authIntro}>
           <div className={styles.authBrandRow}>
-            <div className={styles.brandMark}>甄</div>
             <div><strong>甄客行</strong><span>城市生活 · 真实分享</span></div>
           </div>
           <div className={styles.authIntroCopy}>
-            <span className={styles.eyebrow}>LOCAL LIFE, SEEN &amp; SHARED</span>
-            <h1>发现值得去的地方，<br />也分享真实体验。</h1>
-            <p>登录后发布地点内容、参与互动，并在同一个账号中管理订单、核销和权益。</p>
-          </div>
-          <div className={styles.authRules}>
-            <span><CheckCircleFilled /> 围绕真实地点安心分享</span>
-            <span><CheckCircleFilled /> 分享与消费体验清晰区分</span>
-            <span><CheckCircleFilled /> 订单、核销与权益统一管理</span>
+            <span className={styles.eyebrow}>欢迎来到甄客行</span>
+            <h1>发现好去处，<br />分享真体验。</h1>
+            <p>登录后继续发布甄客帖，管理订单、核销和权益。</p>
           </div>
         </section>
         <section className={`${styles.authCard} ${phoneMode ? styles.phoneAuthCard : ''}`}>
           <div className={styles.authHeader}>
-            <h2>{phoneMode ? phoneLoginMethod === 'oneClick' ? '本机号码登录' : '验证码登录' : authMode === 'login' ? '欢迎回来' : '创建用户账号'}</h2>
-            <p>{phoneMode ? phoneLoginMethod === 'oneClick' ? '请使用手机流量完成本机认证。' : '输入手机号并获取短信验证码。' : authMode === 'login' ? '登录后继续查看订单、优惠券与甄客验。' : '账号注册后首次登录必须完成手机号绑定。'}</p>
+            <h2>{phoneMode ? phoneLoginMethod === 'oneClick' ? '手机号登录' : '验证码登录' : authMode === 'login' ? '账号登录' : '创建用户账号'}</h2>
+            <p>{phoneMode ? phoneLoginMethod === 'oneClick' ? '登录后继续发现和分享城市生活。' : '输入手机号并获取短信验证码，新用户将自动注册。' : authMode === 'login' ? '使用已有账号和密码登录。' : '账号注册后首次登录需要绑定手机号。'}</p>
           </div>
 
           {phoneMode ? (
             <>
               {phoneLoginMethod === 'oneClick' ? (
                 <div className={styles.authOneClickPanel}>
-                  <span className={styles.authOneClickIcon}><MobileOutlined /></span>
-                  <strong>当前手机号码</strong>
-                  <p>请使用手机流量完成安全认证</p>
+                  <div className={styles.authProductPreview} aria-label="甄客行内容与服务概览">
+                    <span>城市生活 · 真实分享</span>
+                    <strong>发现好去处，分享真体验</strong>
+                    <p>在甄客行，看见一座城的真实生活。</p>
+                  </div>
                   <Button block type="primary" size="large" loading={oneClickLoading} onClick={retryOneClick} className={styles.authOneClick}>
-                    {oneClickLoading ? '正在认证' : '继续认证'}
+                    {oneClickLoading ? '正在认证' : '本机号码一键登录'}
                   </Button>
                   {capabilities?.smsEnabled !== false && (
                     <button type="button" className={styles.authMethodLink} onClick={switchToSmsLogin}>使用验证码登录</button>
@@ -234,9 +228,8 @@ export default function AuthPage() {
                   )}
                 </Form>
               )}
-              <div className={styles.authPhoneHint}><CheckCircleFilled /><span>首次登录会自动注册，可稍后完善账号资料</span></div>
               <div className={styles.authSecondaryActions}>
-                <Button block size="large" icon={<UserOutlined />} className={styles.authPhoneEntry} onClick={() => switchAccountMode('login')}>
+                <Button block size="large" className={styles.authPhoneEntry} onClick={() => switchAccountMode('login')}>
                   账号密码登录
                 </Button>
                 <p className={styles.authRegisterPrompt}>还没有账号？<button type="button" onClick={() => switchAccountMode('register')}>去注册</button></p>
@@ -296,7 +289,7 @@ export default function AuthPage() {
               {authMode === 'login' ? (
                 <div className={styles.authSecondaryActions}>
                   <div className={styles.authDivider}><span>其他登录方式</span></div>
-                  <Button block size="large" icon={<MobileOutlined />} className={styles.authPhoneEntry} onClick={openPhoneLogin}>
+                  <Button block size="large" className={styles.authPhoneEntry} onClick={openPhoneLogin}>
                     手机号登录
                   </Button>
                   <p className={styles.authRegisterPrompt}>还没有账号？<button type="button" onClick={() => switchAccountMode('register')}>去注册</button></p>
@@ -309,7 +302,7 @@ export default function AuthPage() {
 
           <div className={styles.authAlternative}>
             <div className={styles.authDivider}><span>平台商家服务</span></div>
-            <Button block size="large" icon={<SafetyCertificateOutlined />} className={styles.merchantButton} onClick={() => setMerchantOpen(true)}>
+            <Button block size="large" className={styles.merchantButton} onClick={() => setMerchantOpen(true)}>
               申请商家入驻
             </Button>
           </div>

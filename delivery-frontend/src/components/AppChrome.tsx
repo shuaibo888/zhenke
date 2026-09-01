@@ -21,6 +21,7 @@ import { loadCurrentLocation } from '@/utils/currentLocation';
 import { AddressManager } from './AddressManager';
 import { CartDrawer } from './CartDrawer';
 import { NativePayModal } from './NativePayModal';
+import { usePostPublishLauncher } from './PostPublishLauncher';
 import styles from '@/styles/zhenke.less';
 
 type MainNavItem = {
@@ -62,6 +63,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, cart, logout } = useShop();
+  const { startPostPublish } = usePostPublishLauncher();
   const [cartOpen, setCartOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
   const [headerCity, setHeaderCity] = useState(() => loadCurrentLocation()?.city || '选择城市');
@@ -93,12 +95,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   };
 
   const goPublish = () => {
-    if (!user) {
-      message.info('登录后才能发布甄客帖');
-      navigate(buildLoginPath('/posts/publish'));
-      return;
-    }
-    navigate('/posts/publish');
+    startPostPublish();
   };
 
   const brand = (
@@ -125,7 +122,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className={styles.appShell}>
+    <div className={`${styles.appShell} ${authPage ? styles.authAppShell : ''}`}>
       {!authPage && (
         <>
           <header className={styles.desktopHeader}>

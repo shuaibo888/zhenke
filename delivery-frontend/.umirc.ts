@@ -2,6 +2,9 @@ import { defineConfig } from 'umi';
 
 export default defineConfig({
   title: '甄客行',
+  // Production HTML is not cached, while static assets are. Content hashes
+  // ensure a newly deployed WeChat page cannot keep executing an old JS bundle.
+  hash: true,
   routes: [
     { path: '/', component: '@/pages/home' },
     { path: '/posts/publish', component: '@/pages/posts/publish' },
@@ -11,6 +14,8 @@ export default defineConfig({
     { path: '/enjoy', component: '@/pages/enjoy' },
     { path: '/places/:placeId', component: '@/pages/places/detail' },
     { path: '/profile/posts', component: '@/pages/profile/posts' },
+    { path: '/mall/products', component: '@/pages/mall/products' },
+    { path: '/mall/content', component: '@/pages/mall/content' },
     { path: '/mall', component: '@/pages/mall' },
     { path: '/products/:productId', component: '@/pages/products/detail' },
     { path: '/merchants/:merchantId', component: '@/pages/merchants/detail' },

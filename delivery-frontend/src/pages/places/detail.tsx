@@ -7,6 +7,7 @@ import { Button, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { ZhenkePostCard } from '@/components/ZhenkePostCard';
+import { usePostPublishLauncher } from '@/components/PostPublishLauncher';
 import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
 import { place, posts, type Place, type ZhenkePost } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
@@ -18,6 +19,7 @@ export default function PlaceDetailPage() {
   const { placeId: rawPlaceId } = useParams<{ placeId: string }>();
   const placeId = Number(rawPlaceId);
   const navigate = useNavigate();
+  const { startPostPublish } = usePostPublishLauncher();
   const [detail, setDetail] = useState<Place>();
   const [feed, setFeed] = useState<ZhenkePost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,7 +152,7 @@ export default function PlaceDetailPage() {
       <ZkSectionTitle
         title="这个地点的甄客帖"
         description="看看大家围绕这里分享的体验。"
-        action={<Button type="link" onClick={() => navigate(`/posts/publish?placeId=${detail.placeId}`)}>围绕此地发布</Button>}
+        action={<Button type="link" onClick={() => startPostPublish({ placeId: detail.placeId })}>围绕此地发布</Button>}
       />
       {feedError ? (
         <ZkState
@@ -180,7 +182,7 @@ export default function PlaceDetailPage() {
           title="这里还没有公开帖子"
           description="如果你熟悉这个地点，可以围绕它分享第一篇甄客帖。"
           actionText="围绕此地发布"
-          onAction={() => navigate(`/posts/publish?placeId=${detail.placeId}`)}
+          onAction={() => startPostPublish({ placeId: detail.placeId })}
         />
       )}
     </main>

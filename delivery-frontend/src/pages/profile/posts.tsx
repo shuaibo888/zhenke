@@ -1,17 +1,17 @@
 import { EditOutlined } from '@ant-design/icons';
 import { Button, Popconfirm, Tag, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
+import { usePostPublishLauncher } from '@/components/PostPublishLauncher';
 import { ZhenkePostCard } from '@/components/ZhenkePostCard';
 import { ZkProfilePage, ZkProfilePanel, ZkTaskHeader, ZkState } from '@/components/ZkPage';
 import { mine, removePost, type ZhenkePost } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
 
 export default function MyPostsPage() {
-  const navigate = useNavigate();
   const { user, authLoading } = useShop();
+  const { startPostPublish } = usePostPublishLauncher();
   const [rows, setRows] = useState<ZhenkePost[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -47,7 +47,7 @@ export default function MyPostsPage() {
     if (authLoading) return;
     if (!user) return;
     void load(1);
-  }, [authLoading, load, navigate, user]);
+  }, [authLoading, load, user]);
 
   if (authLoading) return <ZkProfilePage><ZkState kind="loading" title="正在确认登录状态" /></ZkProfilePage>;
   if (!user) return <LoginRedirect />;
@@ -59,7 +59,7 @@ export default function MyPostsPage() {
         title="我的甄客帖"
         description="查看和管理你发布的甄客帖。"
         backTo="/profile"
-        aside={<Button type="primary" icon={<EditOutlined />} onClick={() => navigate('/posts/publish')}>发布甄客帖</Button>}
+        aside={<Button type="primary" icon={<EditOutlined />} onClick={() => startPostPublish()}>发布甄客帖</Button>}
       />
 
       <ZkProfilePanel title="已发布内容" meta={`共 ${total} 篇`}>
@@ -72,7 +72,7 @@ export default function MyPostsPage() {
             title="还没有发布甄客帖"
             description="选择真实地点，分享自己的城市生活视角。"
             actionText="发布第一篇"
-            onAction={() => navigate('/posts/publish')}
+            onAction={() => startPostPublish()}
           />
         ) : (
           <>

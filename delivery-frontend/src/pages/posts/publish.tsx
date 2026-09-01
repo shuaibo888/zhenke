@@ -1,7 +1,6 @@
 import {
   ArrowLeftOutlined,
   CloseOutlined,
-  InboxOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
 import { Button, Form, Input, Radio, Select, Upload, message } from 'antd';
@@ -21,6 +20,7 @@ import {
 } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
 import { mediaPreviewUrl } from '@/utils/mediaUrl';
+import { takePostPublishFiles } from '@/utils/postPublishDraft';
 
 type Poi = Omit<Place, 'placeId' | 'coordinateSystem'>;
 
@@ -66,7 +66,6 @@ export default function PublishPostPage() {
   const { user, authLoading } = useShop();
   const [form] = Form.useForm<PublishValues>();
   const selectedPlaceKey = Form.useWatch('place', form);
-  const [step, setStep] = useState<'media' | 'edit'>('media');
   const [media, setMedia] = useState<PostResource[]>([]);
   const hasCoverImage = media.some((item) => item.resourceType === 'IMAGE');
   const [mediaUploading, setMediaUploading] = useState(false);
@@ -130,9 +129,6 @@ export default function PublishPostPage() {
     if (merchantSearchTimer.current) clearTimeout(merchantSearchTimer.current);
     merchantSearchVersion.current += 1;
   }, []);
-
-  if (authLoading) return <main className={styles.page}><ZkState kind="loading" title="正在确认登录状态" /></main>;
-  if (!user) return <LoginRedirect />;
 
   const searchPlaces = async (normalized: string, version: number) => {
     const controller = new AbortController();
@@ -303,6 +299,20 @@ export default function PublishPostPage() {
     }
   };
 
+  useEffect(() => {
+    const selectedFiles = takePostPublishFiles();
+    if (selectedFiles.length === 0) return;
+    void (async () => {
+      for (const file of selectedFiles) {
+        try {
+          await addMedia(file);
+        } catch (reason) {
+          message.error(reason instanceof Error ? reason.message : '媒体上传失败');
+        }
+      }
+    })();
+  }, []);
+
   const removeMedia = (index: number) => {
     const nextMedia = mediaRef.current.filter((_, currentIndex) => currentIndex !== index);
     mediaRef.current = nextMedia;
@@ -325,12 +335,16 @@ export default function PublishPostPage() {
     </div>
   ));
 
+  if (authLoading) return <main className={styles.page}><ZkState kind="loading" title="正在确认登录状态" /></main>;
+  if (!user) return <LoginRedirect />;
+
   return (
     <main className={`${styles.page} ${styles.publishPage}`}>
       <Form<PublishValues>
         form={form}
         layout="vertical"
         requiredMark={false}
+        validateTrigger="onBlur"
         className={styles.publishComposer}
         onFinish={(values) => void submit(values)}
       >
@@ -338,57 +352,20 @@ export default function PublishPostPage() {
           <button
             type="button"
             className={styles.publishBack}
-            onClick={() => step === 'edit' ? setStep('media') : navigate(-1)}
+            onClick={() => navigate(-1)}
           >
             <ArrowLeftOutlined /> 返回
           </button>
-          <strong>{step === 'media' ? '选择图片或视频' : '编辑帖子'}</strong>
-          {step === 'media' ? (
-            <Button
-              type="primary"
-              disabled={mediaUploading || !hasCoverImage}
-              onClick={() => setStep('edit')}
-            >下一步</Button>
-          ) : (
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={submitting}
-              disabled={mediaUploading || !hasCoverImage}
-            >发布</Button>
-          )}
+          <strong>编辑帖子</strong>
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={submitting}
+            disabled={mediaUploading || !hasCoverImage}
+          >发布</Button>
         </header>
 
-        {step === 'media' ? (
-          <section className={styles.publishMediaStep} aria-label="选择帖子媒体">
-            <Upload.Dragger
-              accept="image/jpeg,image/png,video/mp4"
-              multiple
-              showUploadList={false}
-              disabled={mediaUploading || media.length >= 9}
-              customRequest={async ({ file, onSuccess, onError }) => {
-                try {
-                  await addMedia(file as File);
-                  onSuccess?.({});
-                } catch (reason) {
-                  const error = reason instanceof Error ? reason : new Error('媒体上传失败');
-                  message.error(error.message);
-                  onError?.(error);
-                }
-              }}
-            >
-              <InboxOutlined className={styles.mediaDropzoneIcon} />
-              <p className={styles.mediaDropzoneTitle}>
-                {mediaUploading ? '正在上传…' : '选择图片或视频'}
-              </p>
-              <span className={styles.mediaDropzoneHint}>图片最多 9 张，也可添加 1 段视频</span>
-            </Upload.Dragger>
-            {media.length > 0 && (
-              <div className={styles.mediaGrid}>{mediaItems}</div>
-            )}
-          </section>
-        ) : (
-          <section className={styles.publishEditStep} aria-label="编辑帖子内容">
+        <section className={styles.publishEditStep} aria-label="编辑帖子内容">
             <div className={styles.publishMediaStrip}>
               {mediaItems}
               {media.length < 9 && (
@@ -432,7 +409,7 @@ export default function PublishPostPage() {
                 { max: 5000, message: '正文不能超过 5000 个字' },
               ]}
             >
-              <Input.TextArea variant="borderless" rows={9} showCount maxLength={5000} placeholder="添加正文，写下你的真实体验…" />
+              <Input.TextArea variant="borderless" rows={6} showCount maxLength={5000} placeholder="添加正文，写下你的真实体验…" />
             </Form.Item>
 
             <div className={styles.publishFieldList}>
@@ -462,7 +439,7 @@ export default function PublishPostPage() {
               </Form.Item>
 
               <Form.Item
-                label="选择身份视角"
+                label="您是"
                 name="perspective"
                 rules={[{ required: true, message: '请选择你与这座城市的关系' }]}
               >
@@ -487,12 +464,11 @@ export default function PublishPostPage() {
                 />
               </Form.Item>
 
-              <Form.Item label="给后来人的建议（选填）" name="suggestion" rules={[{ max: 1000 }]}>
-                <Input.TextArea variant="borderless" rows={3} showCount maxLength={1000} placeholder="交通、时间或其他实用建议" />
+              <Form.Item label="建议" name="suggestion" rules={[{ max: 1000 }]}>
+                <Input.TextArea variant="borderless" rows={2} showCount maxLength={1000} placeholder="可填写交通、时间或其他实用建议" />
               </Form.Item>
             </div>
-          </section>
-        )}
+        </section>
       </Form>
     </main>
   );

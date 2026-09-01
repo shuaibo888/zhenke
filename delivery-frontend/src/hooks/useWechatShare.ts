@@ -3,7 +3,13 @@ import { fetchWechatJsSdkSignature } from '@/services/wechatShare';
 import { getWechatJsSdkSignatureUrls } from '@/utils/wechatEntryUrl';
 
 const WECHAT_JS_SDK_URL = 'https://res.wx.qq.com/open/js/jweixin-1.6.0.js';
-const WECHAT_JS_APIS = ['updateAppMessageShareData', 'updateTimelineShareData', 'openLocation'];
+const WECHAT_SHARE_JS_APIS = [
+  'updateAppMessageShareData',
+  'updateTimelineShareData',
+  'onMenuShareAppMessage',
+  'onMenuShareTimeline',
+];
+const WECHAT_LOCATION_JS_APIS = ['openLocation'];
 
 interface WechatShareData {
   title: string;
@@ -34,7 +40,7 @@ interface WechatSdk {
   }) => void;
   ready: (callback: () => void) => void;
   error: (callback: (error: { errMsg?: string }) => void) => void;
-  updateAppMessageShareData: (data: {
+  updateAppMessageShareData?: (data: {
     title: string;
     desc: string;
     link: string;
@@ -42,12 +48,31 @@ interface WechatSdk {
     success: () => void;
     fail: (error: { errMsg?: string }) => void;
   }) => void;
-  updateTimelineShareData: (data: {
+  updateTimelineShareData?: (data: {
     title: string;
     link: string;
     imgUrl: string;
     success: () => void;
     fail: (error: { errMsg?: string }) => void;
+  }) => void;
+  onMenuShareAppMessage?: (data: {
+    title: string;
+    desc: string;
+    link: string;
+    imgUrl: string;
+    type: 'link';
+    dataUrl: string;
+    success?: () => void;
+    cancel?: () => void;
+    fail?: (error: { errMsg?: string }) => void;
+  }) => void;
+  onMenuShareTimeline?: (data: {
+    title: string;
+    link: string;
+    imgUrl: string;
+    success?: () => void;
+    cancel?: () => void;
+    fail?: (error: { errMsg?: string }) => void;
   }) => void;
   openLocation: (data: WechatLocationData & {
     scale: number;
@@ -111,7 +136,15 @@ function loadWechatSdk() {
 }
 
 function absoluteUrl(value: string) {
-  return new URL(value, window.location.origin).toString();
+  const url = new URL(value, window.location.origin);
+  if (
+    window.location.protocol === 'https:'
+    && url.protocol === 'http:'
+    && url.host === window.location.host
+  ) {
+    url.protocol = 'https:';
+  }
+  return url.toString();
 }
 
 function setMeta(selector: string, attribute: 'name' | 'property', key: string, content: string) {
@@ -163,6 +196,14 @@ function applyWechatLocationConfig(
     ));
     const timeout = window.setTimeout(() => fail(new Error('微信地点预览打开超时')), 6000);
 
+    wx.config({
+      debug: false,
+      appId: signature.appId,
+      timestamp: signature.timestamp,
+      nonceStr: signature.nonceStr,
+      signature: signature.signature,
+      jsApiList: WECHAT_LOCATION_JS_APIS,
+    });
     wx.ready(() => {
       if (settled) return;
       wx.openLocation({
@@ -174,14 +215,6 @@ function applyWechatLocationConfig(
       });
     });
     wx.error((error) => fail(new Error(error.errMsg || '微信地点预览配置失败')));
-    wx.config({
-      debug: false,
-      appId: signature.appId,
-      timestamp: signature.timestamp,
-      nonceStr: signature.nonceStr,
-      signature: signature.signature,
-      jsApiList: WECHAT_JS_APIS,
-    });
   });
 }
 
@@ -224,15 +257,46 @@ function applyWechatShareConfig(
     ));
     const timeout = window.setTimeout(() => fail(new Error('微信分享卡片配置超时')), 6000);
 
+    wx.config({
+      debug: false,
+      appId: signature.appId,
+      timestamp: signature.timestamp,
+      nonceStr: signature.nonceStr,
+      signature: signature.signature,
+      jsApiList: WECHAT_SHARE_JS_APIS,
+    });
     wx.ready(() => {
       if (settled) return;
       if (!isCurrent()) {
         fail(new Error('分享页面已经切换'));
         return;
       }
-      void Promise.all([
-        new Promise<void>((resolveUpdate, rejectUpdate) => {
-          wx.updateAppMessageShareData({
+      try {
+        // Keep the legacy menu handlers registered as a compatibility fallback.
+        // Their success callback only runs after a user actually shares, so the
+        // registration itself must not be awaited here.
+        wx.onMenuShareAppMessage?.({
+          title: data.title,
+          desc: data.description,
+          link: data.link,
+          imgUrl: data.imageUrl,
+          type: 'link',
+          dataUrl: '',
+        });
+        wx.onMenuShareTimeline?.({
+          title: data.title,
+          link: data.link,
+          imgUrl: data.imageUrl,
+        });
+      } catch (error) {
+        fail(error);
+        return;
+      }
+
+      const registrations: Promise<void>[] = [];
+      if (wx.updateAppMessageShareData) {
+        registrations.push(new Promise<void>((resolveUpdate, rejectUpdate) => {
+          wx.updateAppMessageShareData?.({
             title: data.title,
             desc: data.description,
             link: data.link,
@@ -240,31 +304,45 @@ function applyWechatShareConfig(
             success: resolveUpdate,
             fail: (error) => rejectUpdate(new Error(error.errMsg || '微信好友分享卡片配置失败')),
           });
-        }),
-        new Promise<void>((resolveUpdate, rejectUpdate) => {
-          wx.updateTimelineShareData({
+        }));
+      }
+      if (wx.updateTimelineShareData) {
+        registrations.push(new Promise<void>((resolveUpdate, rejectUpdate) => {
+          wx.updateTimelineShareData?.({
             title: data.title,
             link: data.link,
             imgUrl: data.imageUrl,
             success: resolveUpdate,
             fail: (error) => rejectUpdate(new Error(error.errMsg || '微信朋友圈分享卡片配置失败')),
           });
-        }),
-      ]).then(
+        }));
+      }
+
+      const friendShareAvailable = Boolean(
+        wx.updateAppMessageShareData || wx.onMenuShareAppMessage,
+      );
+      const timelineShareAvailable = Boolean(
+        wx.updateTimelineShareData || wx.onMenuShareTimeline,
+      );
+      if (!friendShareAvailable || !timelineShareAvailable) {
+        fail(new Error('当前微信版本不支持分享卡片接口，请升级微信后重试'));
+        return;
+      }
+
+      void Promise.all(registrations).then(
         () => finish(resolve),
         fail,
       );
     });
     wx.error((error) => fail(new Error(error.errMsg || '微信分享配置失败')));
-    wx.config({
-      debug: false,
-      appId: signature.appId,
-      timestamp: signature.timestamp,
-      nonceStr: signature.nonceStr,
-      signature: signature.signature,
-      jsApiList: WECHAT_JS_APIS,
-    });
   });
+}
+
+export function getWechatShareErrorMessage(error: unknown) {
+  const detail = error instanceof Error ? error.message.trim() : '';
+  return detail
+    ? `微信分享卡片准备失败：${detail}`
+    : '微信分享卡片准备失败，请刷新页面后重试';
 }
 
 async function configureWechatShare(data: PreparedWechatShareData, isCurrent: () => boolean) {

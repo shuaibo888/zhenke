@@ -19,7 +19,8 @@ import { MerchantInfoBar } from '@/components/MerchantInfoBar';
 import { VerificationProofStrip } from '@/components/VerificationProofStrip';
 import { ZkState } from '@/components/ZkPage';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
-import { isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
+import { getWechatShareErrorMessage, isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
+import { useWechatShareGuide } from '@/hooks/useWechatShareGuide';
 import {
   createReportComment,
   deleteReportComment,
@@ -101,7 +102,6 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [usefulLoading, setUsefulLoading] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [wechatShareGuideOpen, setWechatShareGuideOpen] = useState(false);
   const [activeResourceIndex, setActiveResourceIndex] = useState(0);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState('');
   useBodyScrollLock(shareOpen || Boolean(videoPreviewUrl));
@@ -117,6 +117,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
     link: buildReportShareLink(report.reportId),
     imageUrl: sharePreviewImage,
   } : null);
+  const wechatShareGuide = useWechatShareGuide(prepareWechatShare);
 
   useEffect(() => {
     setActiveResourceIndex(0);
@@ -267,9 +268,8 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
 
   const handleShareClick = () => {
     if (isWechatBrowser()) {
-      void prepareWechatShare()
-        .then(() => setWechatShareGuideOpen(true))
-        .catch(() => message.error('微信分享卡片准备失败，请刷新页面后重试'));
+      void wechatShareGuide.show()
+        .catch((error) => message.error(getWechatShareErrorMessage(error)));
       return;
     }
     setShareOpen(true);
@@ -567,7 +567,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
           <Button block size="large" className={styles.shareCancel} onClick={() => setShareOpen(false)}>取消</Button>
         </div>
       </Drawer>
-      <WechatShareGuide open={wechatShareGuideOpen} onClose={() => setWechatShareGuideOpen(false)} />
+      <WechatShareGuide open={wechatShareGuide.open} onClose={wechatShareGuide.close} />
     </>
   );
 }

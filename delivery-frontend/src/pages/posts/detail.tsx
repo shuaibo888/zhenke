@@ -11,6 +11,7 @@ import { Button, Input, Popconfirm, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { WechatShareGuide } from '@/components/WechatShareGuide';
 import { perspectiveNames } from '@/components/ZhenkePostCard';
 import { ZkState } from '@/components/ZkPage';
 import {
@@ -24,7 +25,8 @@ import {
   type PostComment,
   type ZhenkePost,
 } from '@/services/zhenke';
-import { isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
+import { getWechatShareErrorMessage, isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
+import { useWechatShareGuide } from '@/hooks/useWechatShareGuide';
 import { buildLoginPath } from '@/utils/safeRedirect';
 import styles from '@/styles/zhenke.less';
 
@@ -57,6 +59,7 @@ export default function PostDetailPage() {
     link: `/posts/${detail.postId}`,
     imageUrl: sharePreviewImage,
   } : null);
+  const wechatShareGuide = useWechatShareGuide(prepareWechatShare);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -182,9 +185,8 @@ export default function PostDetailPage() {
       url: window.location.href,
     };
     try {
-      if (isWechatBrowser() && sharePreviewImage) {
-        await prepareWechatShare();
-        message.info('分享卡片已准备，请点击微信右上角发送给朋友或分享到朋友圈');
+      if (isWechatBrowser()) {
+        await wechatShareGuide.show();
         return;
       }
       if (navigator.share) await navigator.share(shareData);
@@ -193,7 +195,10 @@ export default function PostDetailPage() {
         message.success('分享链接已复制');
       }
     } catch (reason) {
-      if ((reason as DOMException)?.name !== 'AbortError') message.warning('暂时无法分享，请复制浏览器地址');
+      if ((reason as DOMException)?.name === 'AbortError') return;
+      message.warning(isWechatBrowser()
+        ? getWechatShareErrorMessage(reason)
+        : '暂时无法分享，请复制浏览器地址');
     }
   };
 
@@ -262,7 +267,8 @@ export default function PostDetailPage() {
   );
 
   return (
-    <main className={`${styles.page} ${styles.detailPage}`}>
+    <>
+      <main className={`${styles.page} ${styles.detailPage}`}>
       <div className={styles.detailTopbar}>
         <button type="button" className={styles.backButton} aria-label="返回" onClick={() => navigate(-1)}>
           <ArrowLeftOutlined />
@@ -347,7 +353,6 @@ export default function PostDetailPage() {
         <div className={styles.placePanelCopy}>
           <strong><EnvironmentOutlined /> 发布者选择的地点：{detail.placeName}</strong>
           <p>{detail.placeAddress}</p>
-          <p>地点关联是发布者声明，不代表平台核验到访或正文与地点一致。</p>
         </div>
         <Button type="primary" onClick={() => navigate(`/places/${detail.placeId}`)}>地点详情 / 导航</Button>
       </section>
@@ -356,7 +361,6 @@ export default function PostDetailPage() {
         <section className={`${styles.surface} ${styles.merchantPanel}`}>
           <div className={styles.placePanelCopy}>
             <strong><ShopOutlined /> 用户主动关联商家：{detail.merchantName}</strong>
-            <p>关联不代表商家确认、平台核验或已消费认证。</p>
           </div>
           <Button onClick={() => navigate(`/merchants/${detail.merchantId}`)}>查看入驻商家</Button>
         </section>
@@ -441,6 +445,8 @@ export default function PostDetailPage() {
           </div>
         )}
       </section>
-    </main>
+      </main>
+      <WechatShareGuide open={wechatShareGuide.open} onClose={wechatShareGuide.close} />
+    </>
   );
 }

@@ -8,6 +8,7 @@ import { useNavigate } from 'umi';
 import pcCode from 'china-division/dist/pc-code.json';
 import { ZhenkeEnjoyCard } from '@/components/ZhenkeEnjoyCard';
 import { ZhenkePostCard } from '@/components/ZhenkePostCard';
+import { usePostPublishLauncher } from '@/components/PostPublishLauncher';
 import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
 import {
   homeContent,
@@ -50,24 +51,24 @@ const zhenEnjoyEntries: Array<{
   caption: string;
 }> = [
   {
-    code: 'MALL',
-    title: '甄必购',
-    caption: '发现值得带回家的好物',
+    code: 'SCENIC',
+    title: '甄必玩',
+    caption: '大家都在玩什么',
   },
   {
     code: 'RESTAURANT',
     title: '甄必吃',
-    caption: '找一顿值得专程去吃的',
-  },
-  {
-    code: 'SCENIC',
-    title: '甄必玩',
-    caption: '挑一个说走就走的去处',
+    caption: '大家都在吃什么',
   },
   {
     code: 'HOTEL',
     title: '甄必住',
-    caption: '住得舒服，旅途才更从容',
+    caption: '大家都在住什么',
+  },
+  {
+    code: 'MALL',
+    title: '甄必购',
+    caption: '大家都在买什么',
   },
 ];
 
@@ -88,6 +89,7 @@ const locationCityLabel = (location: ReturnType<typeof loadCurrentLocation>) => 
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const { startPostPublish } = usePostPublishLauncher();
   const [feed, setFeed] = useState<ZhenkePost[]>([]);
   const [bannerRows, setBannerRows] = useState<Banner[]>([]);
   const [enjoyFeeds, setEnjoyFeeds] = useState<Record<EnjoyCategory, ZhenkeEnjoy[]>>(emptyEnjoyFeeds);
@@ -305,8 +307,8 @@ export default function HomePage() {
       </section>
 
       <ZkSectionTitle
-        title="城市里的甄客帖"
-        description="看看大家最近发现了哪些值得去的地方。"
+        title="同城甄客帖"
+        description="如果您知道同城哪儿值得推荐，欢迎分享！"
         action={<button type="button" className={styles.textButton} onClick={() => navigate('/posts')}>查看全部 →</button>}
       />
 
@@ -315,7 +317,7 @@ export default function HomePage() {
       ) : loadError ? (
         <ZkState kind="error" title="首页暂时没有连接成功" description={loadError} onAction={() => void loadHome()} />
       ) : feed.length > 0 ? (
-        <div className={styles.homePostTrack} aria-label="城市里的甄客帖，横向滑动查看更多">
+        <div className={styles.homePostTrack} aria-label="同城甄客帖，横向滑动查看更多">
           {feed.map((post) => <ZhenkePostCard key={post.postId} post={post} />)}
         </div>
       ) : (
@@ -323,15 +325,16 @@ export default function HomePage() {
           title="还没有公开甄客帖"
           description="成为第一个认真记录这座城市的人。"
           actionText="发布第一篇"
-          onAction={() => navigate('/posts/publish')}
+          onAction={() => startPostPublish()}
         />
       )}
 
       <section className={styles.zhenEnjoySection} aria-labelledby="zhen-enjoy-title">
         <header className={styles.zhenEnjoyHeader}>
           <div>
+            <span>甄客行官方精选</span>
             <h2 id="zhen-enjoy-title">甄必享</h2>
-            <p>按购、吃、玩、住，发现值得专程去体验的城市生活。</p>
+            <p>按玩、吃、住、购，发现值得专程去体验的城市生活。</p>
           </div>
         </header>
         <div className={styles.zhenEnjoyGroups}>

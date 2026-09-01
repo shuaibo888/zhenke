@@ -3,6 +3,8 @@ import { Button, Image, Input, Popconfirm, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
+import { WechatShareGuide } from '@/components/WechatShareGuide';
+import { usePostPublishLauncher } from '@/components/PostPublishLauncher';
 import { enjoyCategoryNames } from '@/components/ZhenkeEnjoyCard';
 import { ZkState } from '@/components/ZkPage';
 import { buildLoginPath } from '@/utils/safeRedirect';
@@ -17,7 +19,8 @@ import {
   type ZhenkeEnjoy,
 } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
-import { isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
+import { getWechatShareErrorMessage, isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
+import { useWechatShareGuide } from '@/hooks/useWechatShareGuide';
 
 export default function EnjoyDetailPage() {
   const { enjoyId: rawEnjoyId } = useParams<{ enjoyId: string }>();
@@ -25,6 +28,7 @@ export default function EnjoyDetailPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useShop();
+  const { startPostPublish } = usePostPublishLauncher();
   const [detail, setDetail] = useState<ZhenkeEnjoy>();
   const [comments, setComments] = useState<EnjoyComment[]>([]);
   const [commentTotal, setCommentTotal] = useState(0);
@@ -47,6 +51,7 @@ export default function EnjoyDetailPage() {
     link: `/enjoy/${detail.enjoyId}`,
     imageUrl: detail.coverUrl,
   } : null);
+  const wechatShareGuide = useWechatShareGuide(prepareWechatShare);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -166,9 +171,8 @@ export default function EnjoyDetailPage() {
   const share = async () => {
     if (!detail) return;
     try {
-      if (isWechatBrowser() && detail.coverUrl) {
-        await prepareWechatShare();
-        message.info('分享卡片已准备，请点击微信右上角发送给朋友或分享到朋友圈');
+      if (isWechatBrowser()) {
+        await wechatShareGuide.show();
         return;
       }
       if (navigator.share) await navigator.share({ title: detail.title, text: detail.subtitle, url: window.location.href });
@@ -177,7 +181,10 @@ export default function EnjoyDetailPage() {
         message.success('分享链接已复制');
       }
     } catch (reason) {
-      if ((reason as DOMException)?.name !== 'AbortError') message.warning('暂时无法分享，请复制浏览器地址');
+      if ((reason as DOMException)?.name === 'AbortError') return;
+      message.warning(isWechatBrowser()
+        ? getWechatShareErrorMessage(reason)
+        : '暂时无法分享，请复制浏览器地址');
     }
   };
 
@@ -190,8 +197,8 @@ export default function EnjoyDetailPage() {
     if (detail.placeId) window.location.assign(`/api/shop/zhenke/places/${detail.placeId}/navigation`);
   };
   const publishForPlace = () => {
-    if (!requireLogin() || !detail.placeId) return;
-    navigate(`/posts/publish?placeId=${detail.placeId}`);
+    if (!detail.placeId) return;
+    startPostPublish({ placeId: detail.placeId });
   };
 
   const renderComment = (comment: EnjoyComment, isReply = false) => (
@@ -223,7 +230,8 @@ export default function EnjoyDetailPage() {
   );
 
   return (
-    <main className={`${styles.page} ${styles.enjoyDetailPage}`}>
+    <>
+      <main className={`${styles.page} ${styles.enjoyDetailPage}`}>
       <div className={styles.detailTopbar}>
         <button type="button" className={styles.backButton} aria-label="返回" onClick={() => navigate(-1)}><ArrowLeftOutlined /></button>
         <div className={styles.enjoyOfficialIdentity}><span>甄</span><div><strong>甄客行官方精选</strong><small>{enjoyCategoryNames[detail.category]} · 地点专题</small></div></div>
@@ -346,6 +354,8 @@ export default function EnjoyDetailPage() {
           </div>
         )}
       </section>
-    </main>
+      </main>
+      <WechatShareGuide open={wechatShareGuide.open} onClose={wechatShareGuide.close} />
+    </>
   );
 }

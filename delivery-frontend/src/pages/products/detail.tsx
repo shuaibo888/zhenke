@@ -23,7 +23,8 @@ import { MerchantInfoBar } from '@/components/MerchantInfoBar';
 import { WechatShareGuide } from '@/components/WechatShareGuide';
 import { ZkState } from '@/components/ZkPage';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
-import { isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
+import { getWechatShareErrorMessage, isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
+import { useWechatShareGuide } from '@/hooks/useWechatShareGuide';
 import {
   applyForTrial,
   fetchHomeFeed,
@@ -121,7 +122,6 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   const [pendingAddressAction, setPendingAddressAction] = useState<PendingAddressAction>(null);
   const [cartSubmitting, setCartSubmitting] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [wechatShareGuideOpen, setWechatShareGuideOpen] = useState(false);
   const [productContentTab, setProductContentTab] = useState<'DETAIL' | 'REPORT'>('DETAIL');
   const [activeProductImage, setActiveProductImage] = useState('');
   const [carouselResetKey, setCarouselResetKey] = useState(0);
@@ -252,6 +252,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
     link: shareLink,
     imageUrl: shareImageUrl,
   } : null);
+  const wechatShareGuide = useWechatShareGuide(prepareWechatShare);
   const orderedCampaigns = useMemo(() => (
     primaryCampaign
       ? [primaryCampaign, ...campaigns.filter((item) => item.contentId !== primaryCampaign.contentId)]
@@ -425,9 +426,8 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
 
   const handleShareClick = () => {
     if (isWechatBrowser()) {
-      void prepareWechatShare()
-        .then(() => setWechatShareGuideOpen(true))
-        .catch(() => message.error('微信分享卡片准备失败，请刷新页面后重试'));
+      void wechatShareGuide.show()
+        .catch((error) => message.error(getWechatShareErrorMessage(error)));
       return;
     }
     setShareOpen(true);
@@ -864,7 +864,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
           <Button block size="large" className={styles.shareCancel} onClick={() => setShareOpen(false)}>取消</Button>
         </div>
       </Drawer>
-      <WechatShareGuide open={wechatShareGuideOpen} onClose={() => setWechatShareGuideOpen(false)} />
+      <WechatShareGuide open={wechatShareGuide.open} onClose={wechatShareGuide.close} />
     </>
   );
 }
