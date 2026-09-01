@@ -21,7 +21,7 @@ import {
   type BusinessModuleCode,
 } from './modules';
 
-const PAGE_SIZE = 16;
+const PAGE_SIZE = 12;
 
 export default function MallProductsPage() {
   const navigate = useNavigate();
@@ -42,6 +42,9 @@ export default function MallProductsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
   const requestVersionRef = useRef(0);
+  const productPaneRef = useRef<HTMLDivElement | null>(null);
+  const loadMoreTriggerRef = useRef<HTMLDivElement | null>(null);
+  const loadingMoreRef = useRef(false);
 
   useEffect(() => {
     fetchProductCategories().then((rows) => {
@@ -88,12 +91,19 @@ export default function MallProductsPage() {
       setPage(1);
       setLoading(false);
       setLoadingMore(false);
+      loadingMoreRef.current = false;
       setError('');
+      if (productPaneRef.current) productPaneRef.current.scrollTop = 0;
       return;
     }
     setLoading(true);
     setLoadingMore(false);
+    loadingMoreRef.current = false;
     setError('');
+    setProducts([]);
+    setTotal(0);
+    setPage(1);
+    if (productPaneRef.current) productPaneRef.current.scrollTop = 0;
     try {
       const result = await fetchMallProducts({
         categoryId: activeCategoryId,
@@ -141,8 +151,10 @@ export default function MallProductsPage() {
     setSearchParams(next);
   };
 
-  const loadMore = async () => {
-    const requestVersion = ++requestVersionRef.current;
+  const loadMore = useCallback(async () => {
+    if (loading || loadingMoreRef.current || products.length >= total) return;
+    const requestVersion = requestVersionRef.current;
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     try {
       const nextPage = page + 1;
@@ -164,12 +176,32 @@ export default function MallProductsPage() {
       if (requestVersion !== requestVersionRef.current) return;
       message.error(reason instanceof Error ? reason.message : '更多商城商品加载失败');
     } finally {
-      if (requestVersion === requestVersionRef.current) setLoadingMore(false);
+      if (requestVersion === requestVersionRef.current) {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      }
     }
-  };
+  }, [activeCategoryId, activeModule, keyword, loading, page, products.length, total]);
+
+  useEffect(() => {
+    const root = productPaneRef.current;
+    const target = loadMoreTriggerRef.current;
+    if (!root || !target || loading || products.length >= total
+      || typeof IntersectionObserver === 'undefined') {
+      return undefined;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) void loadMore();
+      },
+      { root, rootMargin: '240px 0px', threshold: 0.01 },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [loadMore, loading, products.length, total]);
 
   return (
-    <main className={styles.page}>
+    <main className={`${styles.page} ${styles.mallProductsPage}`}>
       <div className={styles.mallListToolbar}>
         <button type="button" className={styles.mallListBack} aria-label="返回商城" onClick={() => navigate('/mall')}>
           <ArrowLeftOutlined />
@@ -224,7 +256,7 @@ export default function MallProductsPage() {
           )}
         </aside>
 
-        <div className={styles.mallProductPane}>
+        <div ref={productPaneRef} className={styles.mallProductPane} aria-live="polite">
           <header className={styles.mallProductHeading}>
             <div>
               <small>{activeModuleMeta.kicker}</small>
@@ -295,7 +327,7 @@ export default function MallProductsPage() {
                 ))}
               </div>
               {products.length < total && (
-                <div className={styles.loadMore}>
+                <div ref={loadMoreTriggerRef} className={styles.loadMore} role="status">
                   <Button size="large" loading={loadingMore} onClick={() => void loadMore()}>加载更多商品</Button>
                 </div>
               )}

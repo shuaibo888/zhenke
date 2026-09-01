@@ -17,7 +17,13 @@ import { useLocation, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { buildLoginPath } from '@/utils/safeRedirect';
 import { getCartCount } from '@/utils/shop';
-import { loadCurrentLocation } from '@/utils/currentLocation';
+import {
+  CURRENT_LOCATION_CHANGED_EVENT,
+  currentLocationCityLabel,
+  ensureCurrentLocation,
+  loadCurrentLocation,
+} from '@/utils/currentLocation';
+import { isSharedContentEntry } from '@/utils/wechatEntryUrl';
 import { AddressManager } from './AddressManager';
 import { CartDrawer } from './CartDrawer';
 import { NativePayModal } from './NativePayModal';
@@ -66,12 +72,13 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const { startPostPublish } = usePostPublishLauncher();
   const [cartOpen, setCartOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
-  const [headerCity, setHeaderCity] = useState(() => loadCurrentLocation()?.city || '选择城市');
+  const [headerCity, setHeaderCity] = useState(currentLocationCityLabel);
   const activeNav = getActiveNav(location.pathname);
   const cartCount = getCartCount(cart);
   const authPage = location.pathname.startsWith('/auth') || location.pathname.startsWith('/sso/');
   const checkoutPage = location.pathname.startsWith('/checkout');
   const publishPage = location.pathname === '/posts/publish';
+  const mallProductsPage = location.pathname.startsWith('/mall/products');
   const immersiveDetailPage = location.pathname.startsWith('/products/')
     || location.pathname.startsWith('/reports/');
   const contextualPublishPage = /^\/(?:places|enjoy)\/\d+\/?$/.test(location.pathname);
@@ -80,12 +87,38 @@ export function AppChrome({ children }: { children: ReactNode }) {
     && (activeNav === 'mall' || location.pathname.startsWith('/products'));
 
   useEffect(() => {
-    const refreshCity = () => setHeaderCity(loadCurrentLocation()?.city || '选择城市');
-    window.addEventListener('zhenke:city-changed', refreshCity);
-    return () => window.removeEventListener('zhenke:city-changed', refreshCity);
-  }, []);
+    let active = true;
+    const refreshCity = () => {
+      if (active) setHeaderCity(currentLocationCityLabel());
+    };
+    window.addEventListener(CURRENT_LOCATION_CHANGED_EVENT, refreshCity);
+    if (!authPage && !loadCurrentLocation()) {
+      setHeaderCity('定位中…');
+      void ensureCurrentLocation().catch(() => refreshCity());
+    }
+    return () => {
+      active = false;
+      window.removeEventListener(CURRENT_LOCATION_CHANGED_EVENT, refreshCity);
+    };
+  }, [authPage]);
+
+  const goHome = (search = '') => {
+    const target = `/${search}`;
+    if (location.pathname !== '/' && isSharedContentEntry()) {
+      // Public share routes start inside a metadata document that injects the
+      // SPA with document.write. A clean navigation avoids carrying that
+      // WebView document/JS-SDK state into the homepage.
+      window.location.assign(target);
+      return;
+    }
+    navigate(target);
+  };
 
   const openPath = (item: MainNavItem) => {
+    if (item.key === 'home') {
+      goHome();
+      return;
+    }
     if (item.protected && !user) {
       message.info('登录后可查看内容、订单和权益');
       navigate(buildLoginPath(item.path));
@@ -99,7 +132,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   };
 
   const brand = (
-    <button type="button" className={styles.brand} onClick={() => navigate('/')} aria-label="返回甄客行首页">
+    <button type="button" className={styles.brand} onClick={() => goHome()} aria-label="返回甄客行首页">
       <span className={styles.brandCopy}>
         <strong>甄客行</strong>
       </span>
@@ -113,7 +146,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
       aria-label={`${headerCity}，点击切换城市`}
       onClick={() => {
         if (location.pathname === '/') window.dispatchEvent(new Event('zhenke:open-city-picker'));
-        else navigate('/?cityPicker=1');
+        else goHome('?cityPicker=1');
       }}
     >
       <span>{headerCityLabel}</span>
@@ -122,7 +155,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className={`${styles.appShell} ${authPage ? styles.authAppShell : ''}`}>
+    <div className={`${styles.appShell} ${authPage ? styles.authAppShell : ''} ${mallProductsPage ? styles.mallProductsAppShell : ''}`}>
       {!authPage && (
         <>
           <header className={styles.desktopHeader}>
@@ -174,7 +207,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
                         if (key === 'profile') navigate('/profile');
                         if (key === 'logout') {
                           await logout();
-                          navigate('/');
+                          goHome();
                           message.success('已安全退出');
                         }
                       },

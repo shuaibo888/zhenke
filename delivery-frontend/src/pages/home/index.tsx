@@ -18,7 +18,14 @@ import {
   type ZhenkePost,
 } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
-import { loadCurrentLocation, saveCurrentLocation } from '@/utils/currentLocation';
+import {
+  CURRENT_LOCATION_CHANGED_EVENT,
+  currentLocationCityLabel,
+  ensureCurrentLocation,
+  loadCurrentLocation,
+  notifyCurrentLocationChanged,
+  saveCurrentLocation,
+} from '@/utils/currentLocation';
 
 type LocationStatus = 'idle' | 'locating' | 'located' | 'failed';
 type RegionNode = { code: string; name: string; children?: RegionNode[] };
@@ -81,12 +88,6 @@ const emptyEnjoyFeeds: Record<EnjoyCategory, ZhenkeEnjoy[]> = {
 
 type EnjoyLoadErrors = Partial<Record<EnjoyCategory, string>>;
 
-const locationCityLabel = (location: ReturnType<typeof loadCurrentLocation>) => {
-  if (!location) return '选择城市';
-  if (location.city) return location.city;
-  return location.label.split('·')[0]?.trim() || '选择城市';
-};
-
 export default function HomePage() {
   const navigate = useNavigate();
   const { startPostPublish } = usePostPublishLauncher();
@@ -100,7 +101,7 @@ export default function HomePage() {
   const [initialLocation] = useState(loadCurrentLocation);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>(() => initialLocation ? 'located' : 'idle');
   const [locationError, setLocationError] = useState('');
-  const [currentArea, setCurrentArea] = useState(() => locationCityLabel(initialLocation));
+  const [currentArea, setCurrentArea] = useState(() => currentLocationCityLabel(initialLocation));
   const [cityPickerOpen, setCityPickerOpen] = useState(false);
   const [citySearch, setCitySearch] = useState('');
   const homeRequestVersion = useRef(0);
@@ -172,61 +173,44 @@ export default function HomePage() {
     return () => window.removeEventListener('zhenke:open-city-picker', openCityPicker);
   }, []);
 
-  const locate = useCallback(() => {
+  const locate = useCallback((force = false) => {
     const requestVersion = ++locationRequestVersion.current;
-    if (!navigator.geolocation) {
-      setLocationStatus('failed');
-      setLocationError('当前浏览器不支持设备定位，请手动选择城市');
-      return;
-    }
     setLocationError('');
     setLocationStatus('locating');
-    navigator.geolocation.getCurrentPosition(
-      async ({ coords }) => {
+    void ensureCurrentLocation({ force })
+      .then((resolved) => {
         if (requestVersion !== locationRequestVersion.current) return;
-        try {
-          const response = await fetch(
-            `/api/shop/zhenke/map/reverse?latitude=${coords.latitude}&longitude=${coords.longitude}`,
-          );
-          const payload = await response.json();
-          if (requestVersion !== locationRequestVersion.current) return;
-          if (!response.ok || payload.code !== 200) throw new Error(payload.msg || '定位解析失败');
-          const city = payload.data?.city;
-          const district = payload.data?.district;
-          const label = city || '已定位';
-          setCurrentArea(label);
-          saveCurrentLocation({
-            label,
-            city,
-            district,
-            latitude: coords.latitude,
-            longitude: coords.longitude,
-            source: 'DEVICE',
-          });
-          window.dispatchEvent(new Event('zhenke:city-changed'));
-          setLocationStatus('located');
-          setLocationError('');
-          setCityPickerOpen(false);
-          setCitySearch('');
-          void loadHome();
-        } catch {
-          if (requestVersion !== locationRequestVersion.current) return;
-          setLocationStatus('failed');
-          setLocationError('地图服务暂时不可用，请手动选择城市');
-        }
-      },
-      () => {
+        setCurrentArea(currentLocationCityLabel(resolved));
+        setLocationStatus('located');
+        setLocationError('');
+        setCityPickerOpen(false);
+        setCitySearch('');
+      })
+      .catch((reason) => {
         if (requestVersion !== locationRequestVersion.current) return;
         setLocationStatus('failed');
-        setLocationError('未获得定位权限，请手动选择城市');
-      },
-      { timeout: 8000, maximumAge: 300000, enableHighAccuracy: false },
-    );
+        setLocationError(reason instanceof Error
+          ? reason.message
+          : '设备定位暂时不可用，请手动选择城市');
+      });
   }, []);
 
   useEffect(() => {
-    if (!initialLocation) locate();
+    if (!initialLocation) locate(false);
   }, [initialLocation, locate]);
+
+  useEffect(() => {
+    const refreshLocation = () => {
+      const resolved = loadCurrentLocation();
+      if (!resolved) return;
+      setCurrentArea(currentLocationCityLabel(resolved));
+      setLocationStatus('located');
+      setLocationError('');
+      void loadHome();
+    };
+    window.addEventListener(CURRENT_LOCATION_CHANGED_EVENT, refreshLocation);
+    return () => window.removeEventListener(CURRENT_LOCATION_CHANGED_EVENT, refreshLocation);
+  }, [loadHome]);
 
   useEffect(() => () => {
     locationRequestVersion.current += 1;
@@ -241,13 +225,12 @@ export default function HomePage() {
     locationRequestVersion.current += 1;
     setCurrentArea(city.name);
     saveCurrentLocation({ label: city.name, city: city.name, source: 'MANUAL' });
-    window.dispatchEvent(new Event('zhenke:city-changed'));
+    notifyCurrentLocationChanged();
     setLocationStatus('located');
     setLocationError('');
     setCityPickerOpen(false);
     setCitySearch('');
     message.success('当前城市已更新');
-    void loadHome();
   };
 
   return (
@@ -428,12 +411,13 @@ export default function HomePage() {
                 <button
                   type="button"
                   className={styles.cityCurrentButton}
-                  onClick={locate}
+                  onClick={() => locate(true)}
                   disabled={locationStatus === 'locating'}
                 >
                   <strong>{locationStatus === 'locating' ? '正在定位…' : currentArea}</strong>
                   <small>{locationStatus === 'locating' ? '请稍候' : '重新定位'}</small>
                 </button>
+                {locationError && <p className={styles.cityLocationError}>{locationError}</p>}
               </section>
               <section className={styles.cityPickerSection}>
                 <h3>热门城市</h3>

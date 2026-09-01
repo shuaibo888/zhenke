@@ -51,6 +51,20 @@
   background: #fffaf7;
 }
 
+.mallProductsAppShell {
+  display: flex;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mallProductsAppShell > .desktopHeader,
+.mallProductsAppShell > .mobileTopbar {
+  flex: none;
+}
+
 .desktopHeader {
   position: sticky;
   top: 0;
@@ -257,6 +271,15 @@
   width: min(1120px, calc(100% - 40px));
   margin: 0 auto;
   padding: 34px 0 96px;
+}
+
+.mallProductsPage {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  padding-bottom: 0;
+  overflow: hidden;
 }
 
 .narrowPage {
@@ -658,6 +681,13 @@
 .cityCurrentButton:disabled {
   cursor: wait;
   opacity: 0.65;
+}
+
+.cityLocationError {
+  margin: 8px 2px 0;
+  color: #9d4d31;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .hotCityGrid {
@@ -2540,6 +2570,7 @@
 
 .mallListToolbar {
   display: grid;
+  flex: none;
   max-width: 780px;
   grid-template-columns: 44px minmax(0, 1fr);
   gap: 12px;
@@ -2615,8 +2646,10 @@
 
 .mallCatalog {
   display: grid;
+  min-height: 0;
+  flex: 1;
   grid-template-columns: 148px minmax(0, 1fr);
-  min-height: 560px;
+  grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
   background: @surface;
   border: 1px solid @line;
@@ -2626,7 +2659,11 @@
 .mallCategorySidebar {
   display: flex;
   min-width: 0;
+  min-height: 0;
   flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
   background: #faf6f2;
   border-right: 1px solid @line;
 }
@@ -2689,7 +2726,11 @@
 
 .mallProductPane {
   min-width: 0;
+  min-height: 0;
   padding: 22px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
 }
 
 .mallProductHeading {
@@ -3252,7 +3293,7 @@
 
   .mallCatalog {
     grid-template-columns: 88px minmax(0, 1fr);
-    min-height: 480px;
+    min-height: 0;
   }
 
   .mallCategorySidebar button {

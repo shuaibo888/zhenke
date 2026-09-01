@@ -16,6 +16,15 @@ export function captureWechatEntryUrl() {
   return window.__DELIVERY_WECHAT_ENTRY_URL__;
 }
 
+export function isSharedContentEntry() {
+  try {
+    const entry = new URL(captureWechatEntryUrl());
+    return /^\/(?:api\/shop\/wechat\/share\/)?(?:posts|products|reports|enjoy)\/[1-9]\d*\/?$/.test(entry.pathname);
+  } catch {
+    return false;
+  }
+}
+
 export function getWechatJsSdkSignatureUrls() {
   const currentUrl = withoutHash(window.location.href);
   const entryUrl = captureWechatEntryUrl();
