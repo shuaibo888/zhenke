@@ -8,7 +8,7 @@ import {
   ShopOutlined,
 } from '@ant-design/icons';
 import { Button, Input, Popconfirm, message } from 'antd';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { WechatShareGuide } from '@/components/WechatShareGuide';
@@ -52,9 +52,13 @@ export default function PostDetailPage() {
   const [error, setError] = useState('');
   const [commentText, setCommentText] = useState('');
   const [replyTarget, setReplyTarget] = useState<PostComment>();
-  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [submittingCommentKey, setSubmittingCommentKey] = useState<number | 'root'>();
   const [usefulSubmitting, setUsefulSubmitting] = useState(false);
   const commentRequestId = useRef(0);
+  const replyRequestSequence = useRef(0);
+  const activeReplyRequestIds = useRef<Record<number, number>>({});
+  const localReplyIds = useRef<Record<number, Set<number>>>({});
   const sharePreviewImage = detail?.resources.find((item) => item.resourceType === 'IMAGE')?.resourceUrl ?? '';
   const prepareWechatShare = useWechatShare(detail ? {
     title: `甄客帖｜${detail.title}`,
@@ -79,6 +83,10 @@ export default function PostDetailPage() {
 
   const loadComments = useCallback(async (page = 1, append = false) => {
     const requestId = ++commentRequestId.current;
+    if (!append) {
+      activeReplyRequestIds.current = {};
+      setReplyLoading({});
+    }
     setCommentsLoading(true);
     setCommentsError('');
     try {
@@ -93,6 +101,9 @@ export default function PostDetailPage() {
       setCommentTotal(result.total);
       setCommentPage(page);
       if (!append) {
+        localReplyIds.current = {};
+        setReplyTarget(undefined);
+        setReplyText('');
         setReplyPages({});
         setReplyErrors({});
       }
@@ -105,25 +116,41 @@ export default function PostDetailPage() {
     }
   }, [postId]);
 
-  const loadReplies = useCallback(async (rootCommentId: number, page = 1, append = false) => {
+  const loadReplies = useCallback(async (rootCommentId: number, page = 1) => {
+    const requestId = ++replyRequestSequence.current;
+    activeReplyRequestIds.current[rootCommentId] = requestId;
     setReplyLoading((current) => ({ ...current, [rootCommentId]: true }));
     setReplyErrors((current) => ({ ...current, [rootCommentId]: '' }));
     try {
-      const result = await commentReplies(postId, rootCommentId, page, 20);
+      const result = await commentReplies(postId, rootCommentId, page, 10);
+      if (activeReplyRequestIds.current[rootCommentId] !== requestId) return;
       setCommentRows((current) => current.map((root) => {
         if (root.commentId !== rootCommentId) return root;
-        const merged = new Map((append ? (root.replies ?? []) : []).map((item) => [item.commentId, item]));
+        const locallyCreated = localReplyIds.current[rootCommentId] ?? new Set<number>();
+        const preservedReplies = page > 1
+          ? (root.replies ?? [])
+          : (root.replies ?? []).filter((item) => locallyCreated.has(item.commentId));
+        const merged = new Map(preservedReplies.map((item) => [item.commentId, item]));
         result.rows.forEach((item) => merged.set(item.commentId, item));
-        return { ...root, replies: Array.from(merged.values()), replyCount: result.total };
+        const replies = Array.from(merged.values()).sort((left, right) => {
+          const timeOrder = left.createTime.localeCompare(right.createTime);
+          return timeOrder || left.commentId - right.commentId;
+        });
+        return { ...root, replies, replyCount: result.total };
       }));
       setReplyPages((current) => ({ ...current, [rootCommentId]: page }));
     } catch (reason) {
-      setReplyErrors((current) => ({
-        ...current,
-        [rootCommentId]: reason instanceof Error ? reason.message : '回复暂时无法加载',
-      }));
+      if (activeReplyRequestIds.current[rootCommentId] === requestId) {
+        setReplyErrors((current) => ({
+          ...current,
+          [rootCommentId]: reason instanceof Error ? reason.message : '回复暂时无法加载',
+        }));
+      }
     } finally {
-      setReplyLoading((current) => ({ ...current, [rootCommentId]: false }));
+      if (activeReplyRequestIds.current[rootCommentId] === requestId) {
+        delete activeReplyRequestIds.current[rootCommentId];
+        setReplyLoading((current) => ({ ...current, [rootCommentId]: false }));
+      }
     }
   }, [postId]);
 
@@ -136,7 +163,10 @@ export default function PostDetailPage() {
       setLoading(false);
       setError('甄客帖链接无效');
     }
-    return () => { commentRequestId.current += 1; };
+    return () => {
+      commentRequestId.current += 1;
+      activeReplyRequestIds.current = {};
+    };
   }, [load, loadComments, postId]);
 
   const requireLogin = () => {
@@ -148,18 +178,26 @@ export default function PostDetailPage() {
     return false;
   };
 
-  const submitComment = async () => {
-    if (!requireLogin() || !commentText.trim() || commentSubmitting) return;
-    const replying = Boolean(replyTarget);
-    setCommentSubmitting(true);
+  const submitComment = async (target?: PostComment) => {
+    const content = target ? replyText : commentText;
+    if (!requireLogin() || !content.trim() || submittingCommentKey !== undefined) return;
+    const replying = Boolean(target);
+    setSubmittingCommentKey(target?.commentId ?? 'root');
     try {
-      const saved = await createComment(postId, commentText.trim(), replyTarget?.commentId);
-      setCommentText('');
-      setReplyTarget(undefined);
+      const saved = await createComment(postId, content.trim(), target?.commentId);
+      if (replying) {
+        setReplyText('');
+        setReplyTarget(undefined);
+      } else {
+        setCommentText('');
+      }
       setDetail((current) => current
         ? { ...current, commentCount: (current.commentCount ?? 0) + 1 }
         : current);
       if (saved.parentCommentId) {
+        const rootLocalReplyIds = localReplyIds.current[saved.parentCommentId] ?? new Set<number>();
+        rootLocalReplyIds.add(saved.commentId);
+        localReplyIds.current[saved.parentCommentId] = rootLocalReplyIds;
         setCommentRows((current) => current.map((root) => {
           if (root.commentId !== saved.parentCommentId) return root;
           const replies = root.replies ?? [];
@@ -176,9 +214,9 @@ export default function PostDetailPage() {
       }
       message.success(replying ? '回复已发布' : '评论已发布');
     } catch (reason) {
-      message.error(reason instanceof Error ? reason.message : '评论发布失败');
+      message.error(reason instanceof Error ? reason.message : (replying ? '回复发布失败' : '评论发布失败'));
     } finally {
-      setCommentSubmitting(false);
+      setSubmittingCommentKey(undefined);
     }
   };
 
@@ -230,46 +268,121 @@ export default function PostDetailPage() {
   const authorInitial = authorName.slice(0, 1);
   const firstImageIndex = detail.resources.findIndex((resource) => resource.resourceType === 'IMAGE');
 
-  const renderComment = (comment: PostComment, reply = false) => (
-    <article key={comment.commentId} className={`${styles.commentItem} ${reply ? styles.replyItem : ''}`}>
-      <span className={styles.authorAvatar}>
-        {comment.avatar ? <img src={comment.avatar} alt="" /> : (comment.nickName || comment.userName || '甄').slice(0, 1)}
-      </span>
-      <div className={styles.commentMain}>
-        <strong>
-          {comment.nickName || comment.userName}
-          {comment.postAuthor && ' · 作者'}
-        </strong>
-        <p>{comment.replyToName && `回复 ${comment.replyToName}：`}{comment.content}</p>
-        <small>{comment.createTime}</small>
-        <div className={styles.actionRow}>
-          <Button size="small" type="text" onClick={() => {
-            if (!requireLogin()) return;
-            setReplyTarget(comment);
-          }}>回复</Button>
-          {user?.id === comment.shopUserId && (
-            <Popconfirm
-              title={reply ? '确认删除这条回复？' : '确认删除评论及其全部回复？'}
-              onConfirm={async () => {
-                try {
-                  await deleteComment(postId, comment.commentId);
-                  const removedCount = reply ? 1 : 1 + (comment.replyCount ?? 0);
-                  setDetail((current) => current
-                    ? { ...current, commentCount: Math.max(0, (current.commentCount ?? 0) - removedCount) }
-                    : current);
-                  await loadComments(1, false);
-                  message.success(reply ? '回复已删除' : '评论已删除');
-                } catch (reason) {
-                  message.error(reason instanceof Error ? reason.message : '评论删除失败');
-                }
-              }}
-            >
-              <Button size="small" type="text" danger>删除</Button>
-            </Popconfirm>
-          )}
+  const closeReplyComposer = () => {
+    setReplyTarget(undefined);
+    setReplyText('');
+  };
+
+  const renderCommentComposer = (target?: PostComment) => {
+    const targetName = target ? (target.nickName || target.userName || '该用户') : '';
+    const composerKey = target?.commentId ?? 'root';
+    if (target) {
+      return (
+        <div className={styles.inlineReplyComposer}>
+          <div className={styles.inlineReplyHeader}>
+            <span>回复 <strong>{targetName}</strong></span>
+          </div>
+          <Input.TextArea
+            autoFocus
+            rows={2}
+            maxLength={500}
+            disabled={submittingCommentKey !== undefined}
+            value={replyText}
+            aria-label={`回复 ${targetName}`}
+            placeholder={`回复 ${targetName}`}
+            onChange={(event) => setReplyText(event.target.value)}
+          />
+          <div className={styles.inlineReplyFooter}>
+            <span className={styles.inlineReplyCount}>{replyText.length} / 500</span>
+            <div className={styles.inlineReplyActions}>
+              <Button disabled={submittingCommentKey !== undefined} onClick={closeReplyComposer}>取消</Button>
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                loading={submittingCommentKey === composerKey}
+                disabled={!replyText.trim() || submittingCommentKey !== undefined}
+                onClick={() => void submitComment(target)}
+              >发布回复</Button>
+            </div>
+          </div>
         </div>
+      );
+    }
+    return (
+      <div className={styles.commentComposer}>
+        <Input.TextArea
+          rows={3}
+          maxLength={500}
+          showCount
+          disabled={submittingCommentKey !== undefined}
+          value={commentText}
+          aria-label="发表评论"
+          placeholder={user ? '友善交流，补充更多地点信息' : '登录后参与评论与回复'}
+          onFocus={() => requireLogin()}
+          onChange={(event) => setCommentText(event.target.value)}
+        />
+        <Button
+          type="primary"
+          icon={<SendOutlined />}
+          loading={submittingCommentKey === composerKey}
+          disabled={!commentText.trim() || submittingCommentKey !== undefined}
+          onClick={() => void submitComment()}
+        >发表评论</Button>
       </div>
-    </article>
+    );
+  };
+
+  const renderComment = (comment: PostComment, reply = false) => (
+    <Fragment key={comment.commentId}>
+      <article className={`${styles.commentItem} ${reply ? styles.replyItem : ''}`}>
+        <span className={styles.authorAvatar}>
+          {comment.avatar ? <img src={comment.avatar} alt="" /> : (comment.nickName || comment.userName || '甄').slice(0, 1)}
+        </span>
+        <div className={styles.commentMain}>
+          <strong>
+            {comment.nickName || comment.userName}
+            {comment.postAuthor && ' · 作者'}
+          </strong>
+          <p>{comment.replyToName && `回复 ${comment.replyToName}：`}{comment.content}</p>
+          <small>{comment.createTime}</small>
+          <div className={styles.actionRow}>
+            <Button size="small" type="text" disabled={submittingCommentKey !== undefined} onClick={() => {
+              if (!requireLogin()) return;
+              if (replyTarget?.commentId === comment.commentId) {
+                closeReplyComposer();
+                return;
+              }
+              setReplyText('');
+              setReplyTarget(comment);
+            }}>回复</Button>
+            {user?.id === comment.shopUserId && (
+              <Popconfirm
+                title={reply ? '确认删除这条回复？' : '确认删除评论及其全部回复？'}
+                disabled={submittingCommentKey !== undefined}
+                onConfirm={async () => {
+                  if (submittingCommentKey !== undefined) return;
+                  try {
+                    await deleteComment(postId, comment.commentId);
+                    closeReplyComposer();
+                    const removedCount = reply ? 1 : 1 + (comment.replyCount ?? 0);
+                    setDetail((current) => current
+                      ? { ...current, commentCount: Math.max(0, (current.commentCount ?? 0) - removedCount) }
+                      : current);
+                    await loadComments(1, false);
+                    message.success(reply ? '回复已删除' : '评论已删除');
+                  } catch (reason) {
+                    message.error(reason instanceof Error ? reason.message : '评论删除失败');
+                  }
+                }}
+              >
+                <Button size="small" type="text" danger disabled={submittingCommentKey !== undefined}>删除</Button>
+              </Popconfirm>
+            )}
+          </div>
+        </div>
+      </article>
+      {replyTarget?.commentId === comment.commentId && renderCommentComposer(comment)}
+    </Fragment>
   );
 
   return (
@@ -374,32 +487,9 @@ export default function PostDetailPage() {
 
       <section id="post-comments" className={`${styles.surface} ${styles.commentsPanel}`}>
         <div className={styles.sectionTitle}>
-          <div><h2>评论与回复</h2><p>{detail.commentCount ?? 0} 条公开交流 · {commentTotal} 条一级评论</p></div>
+          <div><h2>评论与回复</h2></div>
         </div>
-        <div className={styles.commentComposer}>
-          {replyTarget && (
-            <div className={styles.contextNotice}>
-              正在回复 {replyTarget.nickName || replyTarget.userName}
-              <Button type="link" size="small" onClick={() => setReplyTarget(undefined)}>取消回复</Button>
-            </div>
-          )}
-          <Input.TextArea
-            rows={3}
-            maxLength={500}
-            showCount
-            value={commentText}
-            placeholder={user ? '友善交流，补充更多地点信息' : '登录后参与评论与回复'}
-            onFocus={() => requireLogin()}
-            onChange={(event) => setCommentText(event.target.value)}
-          />
-          <Button
-            type="primary"
-            icon={<SendOutlined />}
-            loading={commentSubmitting}
-            disabled={!commentText.trim()}
-            onClick={() => void submitComment()}
-          >{replyTarget ? '发布回复' : '发表评论'}</Button>
-        </div>
+        {renderCommentComposer()}
         {commentsLoading && commentRows.length === 0 && (
           <ZkState kind="loading" title="正在加载评论" />
         )}
@@ -419,34 +509,34 @@ export default function PostDetailPage() {
           const replyPage = replyPages[root.commentId] ?? 0;
           const remainingReplies = Math.max(0, (root.replyCount ?? 0) - shownReplies.length);
           return (
-            <div key={root.commentId}>
+            <div key={root.commentId} className={styles.commentThread}>
               {renderComment(root)}
               {shownReplies.map((reply) => renderComment(reply, true))}
               {replyErrors[root.commentId] && (
-                <div className={styles.loadMore}>
+                <div className={styles.replyPager}>
                   <Button
                     type="link"
                     danger
-                    onClick={() => void loadReplies(root.commentId, replyPage > 0 ? replyPage + 1 : 1, replyPage > 0)}
-                  >回复加载失败，点击重试</Button>
+                    onClick={() => void loadReplies(root.commentId, replyPage > 0 ? replyPage + 1 : 1)}
+                  >回复加载失败，重新加载</Button>
                 </div>
               )}
               {!replyErrors[root.commentId] && remainingReplies > 0 && (
-                <div className={styles.loadMore}>
+                <div className={styles.replyPager}>
                   <Button
                     type="link"
                     loading={replyLoading[root.commentId]}
-                    onClick={() => void loadReplies(root.commentId, replyPage > 0 ? replyPage + 1 : 1, replyPage > 0)}
-                  >{replyPage > 0 ? `继续加载回复（剩余 ${remainingReplies} 条）` : `查看其余 ${remainingReplies} 条回复`}</Button>
+                    onClick={() => void loadReplies(root.commentId, replyPage > 0 ? replyPage + 1 : 1)}
+                  >{replyPage > 0 ? `查看更多回复（还剩 ${remainingReplies} 条）` : `展开其余 ${remainingReplies} 条回复`}</Button>
                 </div>
               )}
             </div>
           );
         })}
         {commentRows.length < commentTotal && (
-          <div className={styles.loadMore}>
+          <div className={styles.commentPager}>
             <Button loading={commentsLoading} onClick={() => void loadComments(commentPage + 1, true)}>
-              加载更多评论（剩余 {commentTotal - commentRows.length} 条）
+              查看更多评论（还剩 {commentTotal - commentRows.length} 条）
             </Button>
           </div>
         )}

@@ -256,7 +256,7 @@ export async function comments(id: number, pageNum = 1, pageSize = 10) {
   );
   return { rows: result.rows ?? [], total: result.total ?? 0 };
 }
-export async function commentReplies(id: number, rootCommentId: number, pageNum = 1, pageSize = 20) {
+export async function commentReplies(id: number, rootCommentId: number, pageNum = 1, pageSize = 10) {
   const result = await requestApi<TableResponse<PostComment>>(
     `/shop/zhenke/posts/${id}/comments/${rootCommentId}/replies?pageNum=${pageNum}&pageSize=${pageSize}`,
   );
@@ -354,7 +354,7 @@ export async function enjoyComments(id: number, pageNum = 1, pageSize = 10) {
   return { rows: result.rows ?? [], total: result.total ?? 0 };
 }
 
-export async function enjoyCommentReplies(id: number, rootCommentId: number, pageNum = 1, pageSize = 20) {
+export async function enjoyCommentReplies(id: number, rootCommentId: number, pageNum = 1, pageSize = 10) {
   const result = await requestApi<TableResponse<EnjoyComment>>(
     `/shop/zhenke/enjoys/${id}/comments/${rootCommentId}/replies?pageNum=${pageNum}&pageSize=${pageSize}`,
   );

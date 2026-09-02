@@ -44,10 +44,15 @@ export default function EnjoyDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [commentText, setCommentText] = useState('');
+  const [replyText, setReplyText] = useState('');
   const [replyTarget, setReplyTarget] = useState<EnjoyComment>();
-  const [submitting, setSubmitting] = useState(false);
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [replySubmitting, setReplySubmitting] = useState(false);
   const [liking, setLiking] = useState(false);
   const commentRequestId = useRef(0);
+  const replyRequestSequence = useRef(0);
+  const replyRequestIds = useRef<Record<number, number>>({});
+  const localReplyIds = useRef<Record<number, Set<number>>>({});
   const prepareWechatShare = useWechatShare(detail ? {
     title: `甄必享｜${detail.title}`,
     description: detail.subtitle || detail.serviceSummary,
@@ -68,8 +73,19 @@ export default function EnjoyDetailPage() {
     setLoading(false);
   }, [enjoyId]);
 
+  const invalidateReplyRequests = useCallback(() => {
+    const invalidationId = ++replyRequestSequence.current;
+    Object.keys(replyRequestIds.current).forEach((rootCommentId) => {
+      replyRequestIds.current[Number(rootCommentId)] = invalidationId;
+    });
+  }, []);
+
   const loadComments = useCallback(async (page = 1, append = false) => {
     const requestId = ++commentRequestId.current;
+    if (!append) {
+      invalidateReplyRequests();
+      setReplyLoading({});
+    }
     setCommentsLoading(true);
     setCommentsError('');
     try {
@@ -84,8 +100,11 @@ export default function EnjoyDetailPage() {
       setCommentTotal(result.total);
       setCommentPage(page);
       if (!append) {
+        localReplyIds.current = {};
         setReplyPages({});
         setReplyErrors({});
+        setReplyTarget(undefined);
+        setReplyText('');
       }
     } catch (reason) {
       if (requestId === commentRequestId.current) {
@@ -94,27 +113,40 @@ export default function EnjoyDetailPage() {
     } finally {
       if (requestId === commentRequestId.current) setCommentsLoading(false);
     }
-  }, [enjoyId]);
+  }, [enjoyId, invalidateReplyRequests]);
 
   const loadReplies = useCallback(async (rootCommentId: number, page = 1, append = false) => {
+    const requestId = ++replyRequestSequence.current;
+    replyRequestIds.current[rootCommentId] = requestId;
     setReplyLoading((current) => ({ ...current, [rootCommentId]: true }));
     setReplyErrors((current) => ({ ...current, [rootCommentId]: '' }));
     try {
-      const result = await enjoyCommentReplies(enjoyId, rootCommentId, page, 20);
+      const result = await enjoyCommentReplies(enjoyId, rootCommentId, page, 10);
+      if (replyRequestIds.current[rootCommentId] !== requestId) return;
       setComments((current) => current.map((root) => {
         if (root.commentId !== rootCommentId) return root;
-        const merged = new Map((append ? (root.replies ?? []) : []).map((item) => [item.commentId, item]));
+        const locallyCreated = localReplyIds.current[rootCommentId] ?? new Set<number>();
+        const preservedReplies = append
+          ? (root.replies ?? [])
+          : (root.replies ?? []).filter((item) => locallyCreated.has(item.commentId));
+        const merged = new Map(preservedReplies.map((item) => [item.commentId, item]));
         result.rows.forEach((item) => merged.set(item.commentId, item));
-        return { ...root, replies: Array.from(merged.values()), replyCount: result.total };
+        const replies = Array.from(merged.values()).sort((left, right) => (
+          left.createTime.localeCompare(right.createTime) || left.commentId - right.commentId
+        ));
+        return { ...root, replies, replyCount: result.total };
       }));
       setReplyPages((current) => ({ ...current, [rootCommentId]: page }));
     } catch (reason) {
+      if (replyRequestIds.current[rootCommentId] !== requestId) return;
       setReplyErrors((current) => ({
         ...current,
         [rootCommentId]: reason instanceof Error ? reason.message : '回复暂时无法加载',
       }));
     } finally {
-      setReplyLoading((current) => ({ ...current, [rootCommentId]: false }));
+      if (replyRequestIds.current[rootCommentId] === requestId) {
+        setReplyLoading((current) => ({ ...current, [rootCommentId]: false }));
+      }
     }
   }, [enjoyId]);
 
@@ -127,8 +159,11 @@ export default function EnjoyDetailPage() {
       setLoading(false);
       setError('甄必享链接无效');
     }
-    return () => { commentRequestId.current += 1; };
-  }, [enjoyId, load, loadComments]);
+    return () => {
+      commentRequestId.current += 1;
+      invalidateReplyRequests();
+    };
+  }, [enjoyId, invalidateReplyRequests, load, loadComments]);
 
   const requireLogin = () => {
     if (user) return true;
@@ -140,17 +175,38 @@ export default function EnjoyDetailPage() {
   };
 
   const submitComment = async () => {
-    if (!requireLogin() || !commentText.trim() || submitting) return;
-    const replying = Boolean(replyTarget);
-    setSubmitting(true);
+    if (!requireLogin() || !commentText.trim() || commentSubmitting || replySubmitting) return;
+    setCommentSubmitting(true);
     try {
-      const saved = await createEnjoyComment(enjoyId, commentText.trim(), replyTarget?.commentId);
+      await createEnjoyComment(enjoyId, commentText.trim());
       setCommentText('');
+      setDetail((current) => current
+        ? { ...current, commentCount: (current.commentCount ?? 0) + 1 }
+        : current);
+      await loadComments(1, false);
+      message.success('评论已发布');
+    } catch (reason) {
+      message.error(reason instanceof Error ? reason.message : '评论发布失败');
+    } finally {
+      setCommentSubmitting(false);
+    }
+  };
+
+  const submitReply = async () => {
+    if (!replyTarget || !requireLogin() || !replyText.trim() || replySubmitting || commentSubmitting) return;
+    const target = replyTarget;
+    setReplySubmitting(true);
+    try {
+      const saved = await createEnjoyComment(enjoyId, replyText.trim(), target.commentId);
+      setReplyText('');
       setReplyTarget(undefined);
       setDetail((current) => current
         ? { ...current, commentCount: (current.commentCount ?? 0) + 1 }
         : current);
       if (saved.parentCommentId) {
+        const rootLocalReplyIds = localReplyIds.current[saved.parentCommentId] ?? new Set<number>();
+        rootLocalReplyIds.add(saved.commentId);
+        localReplyIds.current[saved.parentCommentId] = rootLocalReplyIds;
         setComments((current) => current.map((root) => {
           if (root.commentId !== saved.parentCommentId) return root;
           const replies = root.replies ?? [];
@@ -165,11 +221,11 @@ export default function EnjoyDetailPage() {
       } else {
         await loadComments(1, false);
       }
-      message.success(replying ? '回复已发布' : '评论已发布');
+      message.success('回复已发布');
     } catch (reason) {
-      message.error(reason instanceof Error ? reason.message : '评论发布失败');
+      message.error(reason instanceof Error ? reason.message : '回复发布失败');
     } finally {
-      setSubmitting(false);
+      setReplySubmitting(false);
     }
   };
 
@@ -207,33 +263,78 @@ export default function EnjoyDetailPage() {
     startPostPublish({ placeId: detail.placeId });
   };
 
-  const renderComment = (comment: EnjoyComment, isReply = false) => (
-    <article key={comment.commentId} className={`${styles.commentItem} ${isReply ? styles.replyItem : ''}`}>
-      <span className={styles.authorAvatar}>{comment.avatar ? <img src={comment.avatar} alt="" /> : (comment.nickName || comment.userName || '甄').slice(0, 1)}</span>
-      <div className={styles.commentMain}>
-        <strong>{comment.nickName || comment.userName}</strong>
-        <p>{comment.replyToName && `回复 ${comment.replyToName}：`}{comment.content}</p>
-        <small>{comment.createTime}</small>
-        <div className={styles.actionRow}>
-          <Button size="small" type="text" onClick={() => { if (requireLogin()) setReplyTarget(comment); }}>回复</Button>
-          {user?.id === comment.shopUserId && (
-            <Popconfirm title={isReply ? '确认删除这条回复？' : '确认删除评论及其全部回复？'} onConfirm={async () => {
-              try {
-                await deleteEnjoyComment(enjoyId, comment.commentId);
-                const removedCount = isReply ? 1 : 1 + (comment.replyCount ?? 0);
-                setDetail((current) => current
-                  ? { ...current, commentCount: Math.max(0, (current.commentCount ?? 0) - removedCount) }
-                  : current);
-                await loadComments(1, false);
-                message.success('评论已删除');
-              }
-              catch (reason) { message.error(reason instanceof Error ? reason.message : '评论删除失败'); }
-            }}><Button size="small" type="text" danger>删除</Button></Popconfirm>
-          )}
-        </div>
+  const renderComment = (comment: EnjoyComment, isReply = false) => {
+    const replyingHere = replyTarget?.commentId === comment.commentId;
+    return (
+      <div key={comment.commentId}>
+        <article className={`${styles.commentItem} ${isReply ? styles.replyItem : ''}`}>
+          <span className={styles.authorAvatar}>{comment.avatar ? <img src={comment.avatar} alt="" /> : (comment.nickName || comment.userName || '甄').slice(0, 1)}</span>
+          <div className={styles.commentMain}>
+            <strong>{comment.nickName || comment.userName}</strong>
+            <p>{comment.replyToName && `回复 ${comment.replyToName}：`}{comment.content}</p>
+            <small>{comment.createTime}</small>
+            <div className={styles.actionRow}>
+              <Button size="small" type="text" disabled={commentSubmitting || replySubmitting} onClick={() => {
+                if (!requireLogin()) return;
+                if (replyTarget?.commentId === comment.commentId) {
+                  setReplyTarget(undefined);
+                  setReplyText('');
+                  return;
+                }
+                setReplyText('');
+                setReplyTarget(comment);
+              }}>回复</Button>
+              {user?.id === comment.shopUserId && (
+                <Popconfirm disabled={commentSubmitting || replySubmitting} title={isReply ? '确认删除这条回复？' : '确认删除评论及其全部回复？'} onConfirm={async () => {
+                  if (commentSubmitting || replySubmitting) return;
+                  invalidateReplyRequests();
+                  setReplyLoading({});
+                  try {
+                    await deleteEnjoyComment(enjoyId, comment.commentId);
+                    const removedCount = isReply ? 1 : 1 + (comment.replyCount ?? 0);
+                    if (replyTarget && (replyTarget.commentId === comment.commentId || replyTarget.parentCommentId === comment.commentId)) {
+                      setReplyTarget(undefined);
+                      setReplyText('');
+                    }
+                    setDetail((current) => current
+                      ? { ...current, commentCount: Math.max(0, (current.commentCount ?? 0) - removedCount) }
+                      : current);
+                    await loadComments(1, false);
+                    message.success(isReply ? '回复已删除' : '评论已删除');
+                  }
+                  catch (reason) { message.error(reason instanceof Error ? reason.message : '评论删除失败'); }
+                }}><Button size="small" type="text" danger disabled={commentSubmitting || replySubmitting}>删除</Button></Popconfirm>
+              )}
+            </div>
+          </div>
+        </article>
+        {replyingHere && (
+          <div className={styles.inlineReplyComposer}>
+            <div className={styles.inlineReplyHeader}>
+              <span>回复 <strong>{comment.nickName || comment.userName}</strong></span>
+            </div>
+            <Input.TextArea
+              autoFocus
+              rows={2}
+              maxLength={500}
+              value={replyText}
+              disabled={commentSubmitting || replySubmitting}
+              aria-label={`回复 ${comment.nickName || comment.userName}`}
+              placeholder={`回复 ${comment.nickName || comment.userName}`}
+              onChange={(event) => setReplyText(event.target.value)}
+            />
+            <div className={styles.inlineReplyFooter}>
+              <span className={styles.inlineReplyCount}>{replyText.length} / 500</span>
+              <div className={styles.inlineReplyActions}>
+                <Button disabled={commentSubmitting || replySubmitting} onClick={() => { setReplyTarget(undefined); setReplyText(''); }}>取消</Button>
+                <Button type="primary" icon={<SendOutlined />} loading={replySubmitting} disabled={!replyText.trim() || commentSubmitting} onClick={() => void submitReply()}>发布回复</Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </article>
-  );
+    );
+  };
 
   return (
     <>
@@ -305,11 +406,10 @@ export default function EnjoyDetailPage() {
         </div>
       </article>
       <section id="enjoy-comments" className={`${styles.surface} ${styles.commentsPanel}`}>
-        <div className={styles.sectionTitle}><div><h2>评价与交流</h2><p>{detail.commentCount ?? 0} 条公开交流 · {commentTotal} 条一级评论</p></div></div>
+        <div className={styles.sectionTitle}><div><h2>评价与交流</h2></div></div>
         <div className={styles.commentComposer}>
-          {replyTarget && <div className={styles.contextNotice}>正在回复 {replyTarget.nickName || replyTarget.userName}<Button type="link" size="small" onClick={() => setReplyTarget(undefined)}>取消回复</Button></div>}
-          <Input.TextArea rows={3} maxLength={500} showCount value={commentText} placeholder={user ? '说说你对这条精选内容的看法' : '登录后参与评价和交流'} onFocus={() => requireLogin()} onChange={(event) => setCommentText(event.target.value)} />
-          <Button type="primary" icon={<SendOutlined />} loading={submitting} disabled={!commentText.trim()} onClick={() => void submitComment()}>{replyTarget ? '发布回复' : '发表评论'}</Button>
+          <Input.TextArea rows={3} maxLength={500} showCount value={commentText} disabled={commentSubmitting} placeholder={user ? '说说你对这条精选内容的看法' : '登录后参与评价和交流'} onFocus={() => requireLogin()} onChange={(event) => setCommentText(event.target.value)} />
+          <Button type="primary" icon={<SendOutlined />} loading={commentSubmitting} disabled={!commentText.trim() || replySubmitting} onClick={() => void submitComment()}>发表评论</Button>
         </div>
         {commentsLoading && comments.length === 0 && <ZkState kind="loading" title="正在加载评论" />}
         {commentsError && (
@@ -328,34 +428,34 @@ export default function EnjoyDetailPage() {
           const replyPage = replyPages[root.commentId] ?? 0;
           const remainingReplies = Math.max(0, (root.replyCount ?? 0) - shownReplies.length);
           return (
-            <div key={root.commentId}>
+            <div key={root.commentId} className={styles.commentThread}>
               {renderComment(root)}
               {shownReplies.map((item) => renderComment(item, true))}
               {replyErrors[root.commentId] && (
-                <div className={styles.loadMore}>
+                <div className={styles.replyPager}>
                   <Button
                     type="link"
                     danger
                     onClick={() => void loadReplies(root.commentId, replyPage > 0 ? replyPage + 1 : 1, replyPage > 0)}
-                  >回复加载失败，点击重试</Button>
+                  >回复加载失败，重新加载</Button>
                 </div>
               )}
               {!replyErrors[root.commentId] && remainingReplies > 0 && (
-                <div className={styles.loadMore}>
+                <div className={styles.replyPager}>
                   <Button
                     type="link"
                     loading={replyLoading[root.commentId]}
                     onClick={() => void loadReplies(root.commentId, replyPage > 0 ? replyPage + 1 : 1, replyPage > 0)}
-                  >{replyPage > 0 ? `继续加载回复（剩余 ${remainingReplies} 条）` : `查看其余 ${remainingReplies} 条回复`}</Button>
+                  >{replyPage > 0 ? `查看更多回复（还剩 ${remainingReplies} 条）` : `展开其余 ${remainingReplies} 条回复`}</Button>
                 </div>
               )}
             </div>
           );
         })}
         {comments.length < commentTotal && (
-          <div className={styles.loadMore}>
+          <div className={styles.commentPager}>
             <Button loading={commentsLoading} onClick={() => void loadComments(commentPage + 1, true)}>
-              加载更多评论（剩余 {commentTotal - comments.length} 条）
+              查看更多评论（还剩 {commentTotal - comments.length} 条）
             </Button>
           </div>
         )}

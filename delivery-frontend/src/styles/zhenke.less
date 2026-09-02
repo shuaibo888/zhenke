@@ -1402,6 +1402,107 @@
   margin-bottom: 18px;
 }
 
+.commentComposer :global(.ant-input-textarea-show-count) {
+  margin-bottom: 14px;
+}
+
+.commentComposer :global(.ant-input-data-count) {
+  bottom: -20px;
+  color: @muted;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.commentComposer > button {
+  min-width: 128px;
+  justify-self: end;
+}
+
+.commentsPanel > .statePanel {
+  min-height: 132px;
+  padding: 22px 14px;
+  background: #fbfaf8;
+  border: 0;
+}
+
+.commentThread {
+  min-width: 0;
+}
+
+.inlineReplyComposer {
+  display: grid;
+  gap: 10px;
+  margin: 8px 0 14px 48px;
+  padding: 12px;
+  background: #fbfaf8;
+  border: 1px solid @line;
+  border-radius: 8px;
+}
+
+.inlineReplyHeader {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  color: @muted;
+  font-size: 13px;
+}
+
+.inlineReplyHeader > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inlineReplyHeader strong {
+  color: @ink;
+}
+
+.inlineReplyFooter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.inlineReplyCount {
+  color: @muted;
+  font-size: 12px;
+}
+
+.inlineReplyActions {
+  display: flex;
+  gap: 8px;
+}
+
+.inlineReplyActions > button {
+  min-width: 84px;
+}
+
+.replyPager {
+  display: flex;
+  justify-content: flex-start;
+  margin: 4px 0 8px 48px;
+  padding-left: 13px;
+}
+
+.replyPager :global(.ant-btn-link) {
+  height: auto;
+  padding: 6px 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.commentPager {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.commentPager > button {
+  min-width: 210px;
+}
+
 .commentItem {
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr) auto;
@@ -1422,6 +1523,11 @@
 
 .commentMain small {
   color: @muted;
+}
+
+.commentMain > .actionRow {
+  gap: 2px;
+  margin-top: 4px;
 }
 
 .replyItem {
@@ -2296,6 +2402,54 @@
   .commentsPanel,
   .publishCard {
     padding: 20px 17px;
+  }
+
+  .commentComposer > button {
+    width: 100%;
+  }
+
+  .inlineReplyComposer {
+    margin-left: 24px;
+    padding: 11px;
+  }
+
+  .replyItem {
+    margin-left: 24px;
+    padding-left: 10px;
+  }
+
+  .inlineReplyFooter {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .inlineReplyCount {
+    text-align: right;
+  }
+
+  .inlineReplyActions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .inlineReplyActions > button {
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+  }
+
+  .replyPager {
+    margin-left: 24px;
+    padding-left: 10px;
+  }
+
+  .commentPager > button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  :global(body):has(.inlineReplyComposer) .floatingPublish {
+    display: none;
   }
 
   .placePanel,
@@ -4647,6 +4801,11 @@
   margin-top: 42px;
   padding-bottom: 10px;
   border-bottom: 1px solid @line;
+}
+
+.enjoyStorySection > .sectionTitle,
+.commentsPanel > .sectionTitle {
+  margin-top: 0;
 }
 
 .postsPageHeading {

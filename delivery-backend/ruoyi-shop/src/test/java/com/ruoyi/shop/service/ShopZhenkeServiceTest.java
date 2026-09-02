@@ -452,13 +452,9 @@ class ShopZhenkeServiceTest {
   }
 
   @Test
-  void repliesAlwaysAttachToTheRootComment() {
+  void repliesDelegateRootResolutionToTheAtomicMapperInsert() {
     authenticateShopUser(18L);
     when(mapper.selectPost(70L, false, 18L)).thenReturn(savedPost(70L));
-    ShopZhenkePostComment target = new ShopZhenkePostComment();
-    target.setCommentId(12L);
-    target.setParentCommentId(10L);
-    when(mapper.selectComment(70L, 12L)).thenReturn(target);
     when(mapper.insertComment(any()))
         .thenAnswer(
             invocation -> {
@@ -467,19 +463,40 @@ class ShopZhenkeServiceTest {
             });
     ShopZhenkePostComment saved = new ShopZhenkePostComment();
     saved.setCommentId(13L);
+    saved.setParentCommentId(10L);
+    saved.setReplyToCommentId(12L);
     when(mapper.selectComment(70L, 13L)).thenReturn(saved);
     ShopZhenkeCommentBody body = new ShopZhenkeCommentBody();
     body.setContent("回复内容");
     body.setReplyToCommentId(12L);
     ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
 
-    service.comment(70L, body);
+    ShopZhenkePostComment result = service.comment(70L, body);
 
     var captor = org.mockito.ArgumentCaptor.forClass(ShopZhenkePostComment.class);
     verify(mapper).insertComment(captor.capture());
-    assertEquals(10L, captor.getValue().getParentCommentId());
+    assertNull(captor.getValue().getParentCommentId());
     assertEquals(12L, captor.getValue().getReplyToCommentId());
     assertEquals(18L, captor.getValue().getShopUserId());
+    assertEquals(10L, result.getParentCommentId());
+    verify(mapper, never()).selectComment(70L, 12L);
+  }
+
+  @Test
+  void replyFailsWhenItsTargetIsDeletedBeforeTheAtomicInsert() {
+    authenticateShopUser(18L);
+    when(mapper.selectPost(70L, false, 18L)).thenReturn(savedPost(70L));
+    when(mapper.insertComment(any())).thenReturn(0);
+    ShopZhenkeCommentBody body = new ShopZhenkeCommentBody();
+    body.setContent("并发删除后不能继续回复");
+    body.setReplyToCommentId(12L);
+    ShopZhenkeService service = new ShopZhenkeService(mapper, mapService);
+
+    ServiceException error =
+        assertThrows(ServiceException.class, () -> service.comment(70L, body));
+
+    assertEquals("回复的评论不存在或已删除", error.getMessage());
+    verify(mapper, never()).selectComment(anyLong(), anyLong());
   }
 
   @Test

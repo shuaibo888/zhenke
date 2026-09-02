@@ -211,15 +211,11 @@ class ShopZhenkeEnjoyServiceTest {
   }
 
   @Test
-  void repliesAttachToRootAndUsersOnlyDeleteTheirOwnComments() {
+  void repliesDelegateRootResolutionToAtomicInsertAndUsersOnlyDeleteTheirOwnComments() {
     authenticateShopUser(18L);
     ShopZhenkeEnjoy published = new ShopZhenkeEnjoy();
     published.setEnjoyId(7L);
     when(mapper.selectEnjoy(7L, false, 18L)).thenReturn(published);
-    ShopZhenkeEnjoyComment replyTarget = new ShopZhenkeEnjoyComment();
-    replyTarget.setCommentId(12L);
-    replyTarget.setParentCommentId(10L);
-    when(mapper.selectComment(7L, 12L)).thenReturn(replyTarget);
     when(mapper.insertComment(any()))
         .thenAnswer(
             invocation -> {
@@ -228,20 +224,43 @@ class ShopZhenkeEnjoyServiceTest {
             });
     ShopZhenkeEnjoyComment saved = new ShopZhenkeEnjoyComment();
     saved.setCommentId(13L);
+    saved.setParentCommentId(10L);
+    saved.setReplyToCommentId(12L);
     when(mapper.selectComment(7L, 13L)).thenReturn(saved);
     ShopZhenkeCommentBody body = new ShopZhenkeCommentBody();
     body.setContent("回复内容");
     body.setReplyToCommentId(12L);
 
-    service.comment(7L, body);
+    ShopZhenkeEnjoyComment result = service.comment(7L, body);
 
     var captor = org.mockito.ArgumentCaptor.forClass(ShopZhenkeEnjoyComment.class);
     verify(mapper).insertComment(captor.capture());
-    assertEquals(10L, captor.getValue().getParentCommentId());
+    assertNull(captor.getValue().getParentCommentId());
+    assertEquals(12L, captor.getValue().getReplyToCommentId());
     assertEquals(18L, captor.getValue().getShopUserId());
+    assertEquals(10L, result.getParentCommentId());
+    verify(mapper, never()).selectComment(7L, 12L);
 
     when(mapper.deleteComment(7L, 13L, 18L)).thenReturn(0);
     assertThrows(ServiceException.class, () -> service.deleteComment(7L, 13L));
+  }
+
+  @Test
+  void replyFailsWhenItsTargetIsDeletedBeforeTheAtomicInsert() {
+    authenticateShopUser(18L);
+    ShopZhenkeEnjoy published = new ShopZhenkeEnjoy();
+    published.setEnjoyId(7L);
+    when(mapper.selectEnjoy(7L, false, 18L)).thenReturn(published);
+    when(mapper.insertComment(any())).thenReturn(0);
+    ShopZhenkeCommentBody body = new ShopZhenkeCommentBody();
+    body.setContent("并发删除后不能继续回复");
+    body.setReplyToCommentId(12L);
+
+    ServiceException error =
+        assertThrows(ServiceException.class, () -> service.comment(7L, body));
+
+    assertEquals("回复的评论不存在或已删除", error.getMessage());
+    verify(mapper, never()).selectComment(anyLong(), anyLong());
   }
 
   @Test

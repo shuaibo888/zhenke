@@ -150,7 +150,24 @@
   </select>
   <select id="selectReplies" resultMap="comment"><include refid="commentView"/> where c.enjoy_id=#{enjoyId} and c.parent_comment_id=#{rootCommentId} and c.del_flag='0' order by c.create_time,c.comment_id</select>
   <select id="selectComment" resultMap="comment"><include refid="commentView"/> where c.enjoy_id=#{enjoyId} and c.comment_id=#{commentId} and c.del_flag='0'</select>
-  <insert id="insertComment" useGeneratedKeys="true" keyProperty="commentId">insert into shop_zhenke_enjoy_comment(enjoy_id,parent_comment_id,reply_to_comment_id,shop_user_id,content,del_flag,create_time,update_time) select #{enjoyId},#{parentCommentId},#{replyToCommentId},#{shopUserId},#{content},'0',sysdate(),sysdate() from shop_zhenke_enjoy where enjoy_id=#{enjoyId} and del_flag='0' and status='0'</insert>
+  <insert id="insertComment" useGeneratedKeys="true" keyProperty="commentId">
+    <choose>
+      <when test="replyToCommentId != null">
+        insert into shop_zhenke_enjoy_comment(enjoy_id,parent_comment_id,reply_to_comment_id,shop_user_id,content,del_flag,create_time,update_time)
+        select e.enjoy_id,root.comment_id,target.comment_id,#{shopUserId},#{content},'0',sysdate(),sysdate()
+        from shop_zhenke_enjoy e
+        join shop_zhenke_enjoy_comment target on target.enjoy_id=e.enjoy_id and target.comment_id=#{replyToCommentId} and target.del_flag='0'
+        join shop_zhenke_enjoy_comment root on root.enjoy_id=e.enjoy_id and root.comment_id=coalesce(target.parent_comment_id,target.comment_id) and root.parent_comment_id is null and root.del_flag='0'
+        where e.enjoy_id=#{enjoyId} and e.del_flag='0' and e.status='0'
+      </when>
+      <otherwise>
+        insert into shop_zhenke_enjoy_comment(enjoy_id,parent_comment_id,reply_to_comment_id,shop_user_id,content,del_flag,create_time,update_time)
+        select #{enjoyId},null,null,#{shopUserId},#{content},'0',sysdate(),sysdate()
+        from shop_zhenke_enjoy
+        where enjoy_id=#{enjoyId} and del_flag='0' and status='0'
+      </otherwise>
+    </choose>
+  </insert>
   <update id="deleteComment">update shop_zhenke_enjoy_comment set del_flag='2',delete_time=sysdate(),update_time=sysdate() where enjoy_id=#{enjoyId} and comment_id=#{commentId} and shop_user_id=#{shopUserId} and del_flag='0'</update>
   <update id="deleteCommentTree">update shop_zhenke_enjoy_comment set del_flag='2',delete_time=sysdate(),update_time=sysdate() where enjoy_id=#{enjoyId} and del_flag='0' and (comment_id=#{commentId} or parent_comment_id=#{commentId}) and exists(select 1 from (select comment_id from shop_zhenke_enjoy_comment where enjoy_id=#{enjoyId} and comment_id=#{commentId} and shop_user_id=#{shopUserId} and parent_comment_id is null and del_flag='0') owned)</update>
 </mapper>

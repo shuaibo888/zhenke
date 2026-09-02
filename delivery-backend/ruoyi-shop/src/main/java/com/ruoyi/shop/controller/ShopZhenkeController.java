@@ -117,7 +117,7 @@ public class ShopZhenkeController extends BaseController {
       @PathVariable long id,
       @PathVariable long rootCommentId,
       @RequestParam(defaultValue = "1") int pageNum,
-      @RequestParam(defaultValue = "20") int pageSize) {
+      @RequestParam(defaultValue = "10") int pageSize) {
     PageHelper.clearPage();
     return getDataTable(
         publicMedia.comments(
@@ -226,7 +226,7 @@ public class ShopZhenkeController extends BaseController {
       @PathVariable long id,
       @PathVariable long rootCommentId,
       @RequestParam(defaultValue = "1") int pageNum,
-      @RequestParam(defaultValue = "20") int pageSize) {
+      @RequestParam(defaultValue = "10") int pageSize) {
     PageHelper.clearPage();
     return getDataTable(
         publicMedia.enjoyComments(

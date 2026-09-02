@@ -233,7 +233,7 @@ public class ShopZhenkeService {
     if (root == null || root.getParentCommentId() != null) {
       throw new ServiceException("一级评论不存在或已删除");
     }
-    PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(50, pageSize)));
+    PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(20, pageSize)));
     try {
       return mapper.selectReplies(id, rootCommentId);
     } finally {
@@ -249,16 +249,13 @@ public class ShopZhenkeService {
     c.setPostId(id);
     c.setShopUserId(uid);
     c.setContent(StringUtils.trim(b.getContent()));
-    if (b.getReplyToCommentId() != null) {
-      ShopZhenkePostComment target = mapper.selectComment(id, b.getReplyToCommentId());
-      if (target == null) throw new ServiceException("回复的评论不存在");
-      c.setReplyToCommentId(target.getCommentId());
-      c.setParentCommentId(
-          target.getParentCommentId() == null
-              ? target.getCommentId()
-              : target.getParentCommentId());
-    }
-    if (mapper.insertComment(c) != 1 || c.getCommentId() == null) {
+    boolean replying = b.getReplyToCommentId() != null;
+    if (replying) c.setReplyToCommentId(b.getReplyToCommentId());
+    int inserted = mapper.insertComment(c);
+    if (inserted != 1 || c.getCommentId() == null) {
+      if (replying && inserted == 0) {
+        throw new ServiceException("回复的评论不存在或已删除");
+      }
       throw new ServiceException("评论保存失败，请重试");
     }
     ShopZhenkePostComment saved = mapper.selectComment(id, c.getCommentId());
