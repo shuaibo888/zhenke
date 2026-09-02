@@ -1,7 +1,19 @@
 import { defineConfig } from 'umi';
+import { DEFAULT_WECHAT_SHARE_FALLBACK } from './src/config/wechatShareDefaults';
 
 export default defineConfig({
   title: '甄客行',
+  metas: [
+    { name: 'description', content: DEFAULT_WECHAT_SHARE_FALLBACK.description },
+    { property: 'og:description', content: DEFAULT_WECHAT_SHARE_FALLBACK.description },
+    { property: 'og:image', content: DEFAULT_WECHAT_SHARE_FALLBACK.imageUrl },
+    { property: 'og:image:secure_url', content: DEFAULT_WECHAT_SHARE_FALLBACK.imageUrl },
+    { itemprop: 'description', content: DEFAULT_WECHAT_SHARE_FALLBACK.description },
+    { itemprop: 'image', content: DEFAULT_WECHAT_SHARE_FALLBACK.imageUrl },
+  ],
+  links: [
+    { rel: 'image_src', href: DEFAULT_WECHAT_SHARE_FALLBACK.imageUrl },
+  ],
   // Production HTML is not cached, while static assets are. Content hashes
   // ensure a newly deployed WeChat page cannot keep executing an old JS bundle.
   hash: true,
@@ -14,6 +26,7 @@ export default defineConfig({
     { path: '/enjoy', component: '@/pages/enjoy' },
     { path: '/places/:placeId', component: '@/pages/places/detail' },
     { path: '/profile/messages', component: '@/pages/profile/messages' },
+    { path: '/profile/useful', component: '@/pages/profile/useful' },
     { path: '/profile/posts', component: '@/pages/profile/posts' },
     { path: '/mall/products', component: '@/pages/mall/products' },
     { path: '/mall/content', component: '@/pages/mall/content' },

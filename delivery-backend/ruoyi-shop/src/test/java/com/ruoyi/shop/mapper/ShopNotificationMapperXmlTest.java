@@ -35,6 +35,8 @@ class ShopNotificationMapperXmlTest
         assertTrue(insert.contains("on duplicate key update notification_id = notification_id"));
         assertTrue(list.contains("when 'POST' then concat('/posts/'"));
         assertTrue(list.contains("when 'REPORT' then concat('/reports/'"));
+        assertTrue(list.contains("n.actor_shop_user_id is null then '甄客行运营'"));
+        assertTrue(list.contains("n.actor_shop_user_id is null then 1 else 0 end system_generated"));
         assertTrue(!xml.contains("ENJOY"));
     }
 

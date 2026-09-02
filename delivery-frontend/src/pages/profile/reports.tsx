@@ -1,4 +1,4 @@
-import { LikeOutlined, RightOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, RightOutlined } from '@ant-design/icons';
 import { Spin, Tag } from 'antd';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -43,7 +43,7 @@ export default function MyReportsPage() {
                     <p className={styles.reportListExcerpt}>{report.productName}</p>
                     <div className={styles.reportListMeta}>
                       <Tag color={type.color}>{type.label}</Tag>
-                      <span className={styles.reportListUseful}><LikeOutlined /> {report.usefulCount}</span>
+                      <span className={styles.reportListUseful}><CheckCircleOutlined /> 有用 {report.usefulCount}</span>
                     </div>
                   </div>
                   <span className={styles.profileReportHint}><RightOutlined /></span>

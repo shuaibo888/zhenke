@@ -12,6 +12,7 @@
         <result property="targetTitle" column="target_title" />
         <result property="contentPreview" column="content_preview" />
         <result property="targetPath" column="target_path" />
+        <result property="systemGenerated" column="system_generated" />
         <result property="read" column="is_read" />
         <result property="readTime" column="read_time" />
         <result property="createTime" column="create_time" />
@@ -20,7 +21,9 @@
     <select id="selectNotifications" parameterType="Long" resultMap="ShopNotificationViewResult">
         select n.notification_id,
                n.actor_shop_user_id,
-               coalesce(nullif(trim(u.nick_name), ''), nullif(trim(u.user_name), ''), '甄客用户') actor_name,
+               case when n.actor_shop_user_id is null then '甄客行运营'
+                    else coalesce(nullif(trim(u.nick_name), ''), nullif(trim(u.user_name), ''), '甄客用户')
+               end actor_name,
                u.avatar actor_avatar,
                n.event_type,
                n.target_type,
@@ -32,6 +35,7 @@
                    when 'REPORT' then concat('/reports/', n.target_id)
                    else null
                end target_path,
+               case when n.actor_shop_user_id is null then 1 else 0 end system_generated,
                case when n.read_flag = '1' then 1 else 0 end is_read,
                n.read_time,
                n.create_time

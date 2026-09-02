@@ -358,7 +358,7 @@ export default function ZhenkeEnjoysPage() {
           { title: '分类', width: 100, render: (_, item) => <Tag color="volcano">{categoryLabel[item.category]}</Tag> },
           { title: '地图地点', dataIndex: 'placeName', width: 170, ellipsis: true, render: (value) => value || <Tag color="warning">待重新选点</Tag> },
           { title: '开放时间', dataIndex: 'openingHours', width: 130, ellipsis: true, render: (value) => value || '-' },
-          { title: '点赞', dataIndex: 'likeCount', width: 70 },
+          { title: '喜欢数', dataIndex: 'likeCount', width: 70 },
           { title: '评论', dataIndex: 'commentCount', width: 70 },
           { title: '排序', dataIndex: 'displaySort', width: 70 },
           { title: '发布', width: 90, render: (_, item) => item.delFlag === '0' ? <Switch disabled={!canChangeStatus} checked={item.status === '0'} onChange={(checked) => void toggleStatus(item, checked)} /> : <Tag>已删除</Tag> },
@@ -456,7 +456,7 @@ export default function ZhenkeEnjoysPage() {
       <Modal width={820} open={Boolean(detail)} title={detail?.title} footer={null} onCancel={() => setDetail(undefined)}>
         {detail && <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <Image.PreviewGroup><Space wrap>{(detail.mediaUrls?.length ? detail.mediaUrls : [detail.coverUrl]).map((url, index) => <Image key={`${url}-${index}`} src={mediaPreviewUrl(url)} width={index === 0 ? 360 : 150} height={index === 0 ? 230 : 100} style={{ objectFit: 'cover', borderRadius: 12 }} />)}</Space></Image.PreviewGroup>
-          <Space wrap><Tag color="volcano">{categoryLabel[detail.category]}</Tag><Tag>{detail.status === '0' ? '已发布' : '已下线'}</Tag><span>点赞 {detail.likeCount ?? 0}</span><span>评论 {detail.commentCount ?? 0}</span></Space>
+          <Space wrap><Tag color="volcano">{categoryLabel[detail.category]}</Tag><Tag>{detail.status === '0' ? '已发布' : '已下线'}</Tag><span>喜欢 {detail.likeCount ?? 0}</span><span>评论 {detail.commentCount ?? 0}</span></Space>
           {detail.subtitle && <p>{detail.subtitle}</p>}
           <Alert type="success" showIcon message={detail.placeName || '尚未选择地图地点'} description={detail.placeAddress} />
           <p><strong>服务摘要：</strong>{detail.serviceSummary}</p>

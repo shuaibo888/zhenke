@@ -8,6 +8,7 @@ import com.ruoyi.shop.domain.ShopTrialCampaign;
 import com.ruoyi.shop.domain.ShopVerificationReport;
 import com.ruoyi.shop.domain.ShopVerificationReportResource;
 import com.ruoyi.shop.domain.vo.ShopHomeFeedItem;
+import com.ruoyi.shop.domain.vo.ShopUsefulContentView;
 
 public interface ShopTrialMapper {
     List<ShopTrialCampaign> selectMerchantCampaigns(@Param("merchantId") Long merchantId,
@@ -116,6 +117,8 @@ public interface ShopTrialMapper {
     int countPublishedReportsByUser(Long shopUserId);
 
     int countUsefulReceivedByUser(Long shopUserId);
+
+    List<ShopUsefulContentView> selectUsefulContentByUser(Long shopUserId);
 
     List<ShopHomeFeedItem> selectHomeFeed(@Param("productId") Long productId,
                                           @Param("categoryCode") String categoryCode,

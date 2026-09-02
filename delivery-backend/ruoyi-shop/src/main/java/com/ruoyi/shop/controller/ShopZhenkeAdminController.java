@@ -39,6 +39,7 @@ public class ShopZhenkeAdminController extends BaseController {
       @RequestParam(required = false) String keyword,
       @RequestParam(required = false) Long merchantId,
       @RequestParam(required = false) String status,
+      @RequestParam(defaultValue = "ALL") String featured,
       @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date publishedFrom,
       @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date publishedTo,
       @RequestParam(defaultValue = "1") int pageNum,
@@ -49,6 +50,7 @@ public class ShopZhenkeAdminController extends BaseController {
                 keyword,
                 merchantId,
                 status,
+                featured,
                 publishedFrom,
                 publishedTo,
                 pageNum,
@@ -67,6 +69,20 @@ public class ShopZhenkeAdminController extends BaseController {
   public AjaxResult delete(@PathVariable long id) {
     s.adminDelete(id, getUserId());
     return AjaxResult.success();
+  }
+
+  @Log(title = "精选甄客帖", businessType = BusinessType.UPDATE)
+  @PutMapping("/posts/{id}/featured")
+  @PreAuthorize("@ss.hasRole('admin') and @ss.hasPermi('shop:zhenkePost:feature')")
+  public AjaxResult featurePost(@PathVariable long id) {
+    return AjaxResult.success("已设为精选甄客帖", publicMedia.post(s.featurePost(id, getUserId())));
+  }
+
+  @Log(title = "取消甄客帖精选", businessType = BusinessType.UPDATE)
+  @DeleteMapping("/posts/{id}/featured")
+  @PreAuthorize("@ss.hasRole('admin') and @ss.hasPermi('shop:zhenkePost:feature')")
+  public AjaxResult unfeaturePost(@PathVariable long id) {
+    return AjaxResult.success("已取消精选甄客帖", publicMedia.post(s.unfeaturePost(id)));
   }
 
   @GetMapping("/banners")

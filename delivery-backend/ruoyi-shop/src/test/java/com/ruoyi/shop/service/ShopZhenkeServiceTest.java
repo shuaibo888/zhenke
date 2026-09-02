@@ -67,7 +67,7 @@ class ShopZhenkeServiceTest {
   @Test
   void perspectiveAndCityFiltersAreForwardedAsIndependentPostMetadata() {
     when(mapper.selectPosts(
-            anyString(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(false), isNull(), isNull(), isNull(), any()))
+            anyString(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(false), isNull(), isNull(), isNull(), any(), isNull()))
         .thenReturn(List.of());
     ShopZhenkeService service = newService();
 
@@ -75,9 +75,9 @@ class ShopZhenkeServiceTest {
     service.posts("TOURIST", null, 1, 12);
     service.posts("HOMETOWNER", null, 1, 12);
 
-    verify(mapper).selectPosts("LOCAL", null, null, null, null, null, false, null, null, null, "保定市");
-    verify(mapper).selectPosts("TOURIST", null, null, null, null, null, false, null, null, null, null);
-    verify(mapper).selectPosts("HOMETOWNER", null, null, null, null, null, false, null, null, null, null);
+    verify(mapper).selectPosts("LOCAL", null, null, null, null, null, false, null, null, null, "保定市", null);
+    verify(mapper).selectPosts("TOURIST", null, null, null, null, null, false, null, null, null, null, null);
+    verify(mapper).selectPosts("HOMETOWNER", null, null, null, null, null, false, null, null, null, null, null);
     assertThrows(ServiceException.class, () -> service.posts("HANDAN", null, 1, 12));
   }
 
@@ -86,7 +86,7 @@ class ShopZhenkeServiceTest {
     when(mapper.selectPostCities("LOCAL", "保定市")).thenReturn(List.of("保定市"));
     when(mapper.selectPosts(
             eq("TOURIST"), isNull(), isNull(), isNull(), isNull(), isNull(), eq(false),
-            isNull(), isNull(), isNull(), eq("邯郸市")))
+            isNull(), isNull(), isNull(), eq("邯郸市"), isNull()))
         .thenReturn(List.of());
     ShopZhenkeService service = newService();
 
@@ -94,9 +94,9 @@ class ShopZhenkeServiceTest {
     service.posts("TOURIST", null, null, " 邯郸市 ", 1, 12);
 
     verify(mapper).selectPosts(
-        "TOURIST", null, null, null, null, null, false, null, null, null, "邯郸市");
+        "TOURIST", null, null, null, null, null, false, null, null, null, "邯郸市", null);
     verify(mapper, never()).selectPosts(
-        eq("LOCAL"), any(), any(), any(), any(), any(), anyBoolean(), any(), any(), any(), any());
+        eq("LOCAL"), any(), any(), any(), any(), any(), anyBoolean(), any(), any(), any(), any(), any());
   }
 
   @Test
@@ -111,7 +111,7 @@ class ShopZhenkeServiceTest {
     secondImage.setResourceUrl("/profile/upload/report/user-18/second.jpg");
     when(mapper.selectPosts(
             eq("RECOMMEND"), isNull(), isNull(), isNull(), isNull(), isNull(), eq(false),
-            isNull(), isNull(), isNull(), isNull()))
+            isNull(), isNull(), isNull(), isNull(), isNull()))
         .thenReturn(List.of(first, second));
     when(mapper.selectResourcesByPostIds(List.of(11L, 12L)))
         .thenReturn(List.of(firstImage, secondImage));
@@ -280,6 +280,20 @@ class ShopZhenkeServiceTest {
 
     assertEquals(LocalDate.of(2026, 8, 27), body.getStartTime());
     assertEquals(LocalDate.of(2026, 8, 27), body.getEndTime());
+  }
+
+  @Test
+  void publicPostJsonKeepsFeaturedStateButHidesOperatorAndNotificationVersion() throws Exception {
+    ShopZhenkePost post = savedPost(81L);
+    post.setFeatured(true);
+    post.setFeaturedBy(900L);
+    post.setFeaturedVersion(3L);
+
+    String json = new ObjectMapper().writeValueAsString(post);
+
+    assertTrue(json.contains("\"featured\":true"));
+    assertFalse(json.contains("featuredBy"));
+    assertFalse(json.contains("featuredVersion"));
   }
 
   @Test
@@ -590,13 +604,60 @@ class ShopZhenkeServiceTest {
   void adminFiltersForwardMerchantStatusAndPublishedWindow() {
     Date from = new Date(1_000L);
     Date to = new Date(2_000L);
-    when(mapper.selectPosts(anyString(), any(), any(), any(), any(), any(), anyBoolean(), any(), any(), any(), any()))
+    when(mapper.selectPosts(anyString(), any(), any(), any(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
         .thenReturn(List.of());
     ShopZhenkeService service = newService();
 
     service.adminPosts("关键词", 9L, "published", from, to, 1, 20);
 
-    verify(mapper).selectPosts("RECOMMEND", null, null, "关键词", 9L, "PUBLISHED", true, from, to, null, null);
+    verify(mapper).selectPosts("RECOMMEND", null, null, "关键词", 9L, "PUBLISHED", true, from, to, null, null, "ALL");
+  }
+
+  @Test
+  void adminCanFilterFeaturedPostsWithoutChangingNormalFeedOrderingContract() {
+    when(mapper.selectPosts(anyString(), any(), any(), any(), any(), any(), anyBoolean(),
+        any(), any(), any(), any(), any())).thenReturn(List.of());
+    ShopZhenkeService service = newService();
+
+    service.adminPosts(null, null, null, " featured ", null, null, 1, 20);
+
+    verify(mapper).selectPosts(
+        "RECOMMEND", null, null, "", null, "", true, null, null, null, null, "FEATURED");
+    assertThrows(ServiceException.class,
+        () -> service.adminPosts(null, null, null, "POPULAR", null, null, 1, 20));
+  }
+
+  @Test
+  void featuredFeedIsLimitedToThreeAndUsesBatchMediaHydration() {
+    ShopZhenkePost post = savedPost(91L);
+    ShopZhenkePostResource image = new ShopZhenkePostResource();
+    image.setPostId(91L);
+    when(mapper.selectFeaturedPosts(null, "保定市", false, 3)).thenReturn(List.of(post));
+    when(mapper.selectResourcesByPostIds(List.of(91L))).thenReturn(List.of(image));
+    ShopZhenkeService service = newService();
+
+    List<ShopZhenkePost> result = service.featuredPosts(" 保定市 ", 100);
+
+    assertEquals(List.of(image), result.get(0).getResources());
+    verify(mapper).selectFeaturedPosts(null, "保定市", false, 3);
+    verify(mapper).selectResourcesByPostIds(List.of(91L));
+  }
+
+  @Test
+  void featureTransitionsAreConditionalAndNotifyOncePerPersistedVersion() {
+    ShopZhenkePost post = savedPost(92L);
+    post.setFeatured(true);
+    post.setFeaturedVersion(2L);
+    when(mapper.featurePost(92L, 900L)).thenReturn(1);
+    when(mapper.selectPost(92L, true, null)).thenReturn(post);
+    when(mapper.selectResources(92L)).thenReturn(List.of());
+    ShopZhenkeService service = newService();
+
+    assertSame(post, service.featurePost(92L, 900L));
+
+    verify(notificationService).postFeatured(post);
+    when(mapper.featurePost(93L, 900L)).thenReturn(0);
+    assertThrows(ServiceException.class, () -> service.featurePost(93L, 900L));
   }
 
   @Test

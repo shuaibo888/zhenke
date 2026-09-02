@@ -1,6 +1,6 @@
 import {
+  CheckCircleOutlined,
   EnvironmentOutlined,
-  LikeOutlined,
   MessageOutlined,
   PlayCircleFilled,
 } from '@ant-design/icons';
@@ -53,7 +53,7 @@ export function ZhenkePostCard({ post, disabled = false }: { post: ZhenkePost; d
         {post.resources?.some((item) => item.resourceType === 'VIDEO') && (
           <span className={styles.videoBadge}><PlayCircleFilled /></span>
         )}
-        <span className={styles.contentBadge}>甄客帖</span>
+        <span className={styles.contentBadge}>{post.featured ? '编辑推荐' : '甄客帖'}</span>
       </div>
 
       <div className={styles.postBody}>
@@ -69,7 +69,7 @@ export function ZhenkePostCard({ post, disabled = false }: { post: ZhenkePost; d
         <footer className={styles.postMeta}>
           <span className={styles.postPlace}><EnvironmentOutlined />{post.placeName}</span>
           <span><MessageOutlined />{post.commentCount ?? 0}</span>
-          <span><LikeOutlined />{post.usefulCount ?? 0}</span>
+          <span><CheckCircleOutlined />有用 {post.usefulCount ?? 0}</span>
         </footer>
       </div>
     </article>

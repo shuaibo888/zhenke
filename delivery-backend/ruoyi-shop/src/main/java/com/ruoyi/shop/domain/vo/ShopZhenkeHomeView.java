@@ -7,8 +7,10 @@ import java.util.Map;
 /** One-round-trip homepage payload with independent content error boundaries. */
 public record ShopZhenkeHomeView(
     List<ShopZhenkePost> posts,
+    List<ShopZhenkePost> featuredPosts,
     List<ShopHomeBannerPublicView> banners,
     Map<String, List<ShopZhenkeEnjoyPublicView>> enjoys,
     String postError,
+    String featuredPostError,
     String bannerError,
     String enjoyError) {}

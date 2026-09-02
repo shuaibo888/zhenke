@@ -23,6 +23,7 @@ class ShopZhenkeHomeServiceTest {
   void homepageUsesOneCityResolutionAndOneQueryPerContentGroup() {
     when(cityScope.resolvePublicFeedCity("保定市")).thenReturn("保定市");
     when(postService.homePosts("保定市", 9)).thenReturn(List.of());
+    when(postService.featuredPosts("保定市", 3)).thenReturn(List.of());
     when(postService.activeBanners()).thenReturn(List.of());
     when(enjoyService.homeEnjoys("保定市", 2)).thenReturn(List.of());
     when(publicMedia.posts(List.of())).thenReturn(List.of());
@@ -32,12 +33,14 @@ class ShopZhenkeHomeServiceTest {
     var result = service.load("保定市");
 
     assertNull(result.postError());
+    assertNull(result.featuredPostError());
     assertNull(result.bannerError());
     assertNull(result.enjoyError());
     assertEquals(List.of("SCENIC", "RESTAURANT", "HOTEL", "MALL"),
         result.enjoys().keySet().stream().toList());
     verify(cityScope).resolvePublicFeedCity("保定市");
     verify(postService).homePosts("保定市", 9);
+    verify(postService).featuredPosts("保定市", 3);
     verify(postService).activeBanners();
     verify(enjoyService).homeEnjoys("保定市", 2);
   }
@@ -52,9 +55,27 @@ class ShopZhenkeHomeServiceTest {
     var result = service.load(null);
 
     assertEquals("请先定位或手动选择城市", result.postError());
+    assertEquals("请先定位或手动选择城市", result.featuredPostError());
     assertEquals("请先定位或手动选择城市", result.enjoyError());
     verify(postService, never()).homePosts(null, 9);
+    verify(postService, never()).featuredPosts(null, 3);
     verify(enjoyService, never()).homeEnjoys(null, 2);
     verify(postService).activeBanners();
+  }
+
+  @Test
+  void disabledCityScopeKeepsFeaturedQueryGlobalEvenWhenClientSendsACity() {
+    when(cityScope.resolvePublicFeedCity("保定市")).thenReturn(null);
+    when(postService.homePosts(null, 9)).thenReturn(List.of());
+    when(postService.featuredPosts(null, 3)).thenReturn(List.of());
+    when(postService.activeBanners()).thenReturn(List.of());
+    when(enjoyService.homeEnjoys(null, 2)).thenReturn(List.of());
+    when(publicMedia.posts(List.of())).thenReturn(List.of());
+    when(publicMedia.publicBanners(List.of())).thenReturn(List.of());
+    when(publicMedia.publicEnjoys(List.of())).thenReturn(List.of());
+
+    service.load("保定市");
+
+    verify(postService).featuredPosts(null, 3);
   }
 }

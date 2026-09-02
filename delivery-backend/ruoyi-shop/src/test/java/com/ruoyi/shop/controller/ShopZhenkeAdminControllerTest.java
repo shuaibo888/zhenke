@@ -12,10 +12,12 @@ class ShopZhenkeAdminControllerTest {
     PreAuthorize controllerGuard = ShopZhenkeAdminController.class.getAnnotation(PreAuthorize.class);
     assertEquals("@ss.hasRole('admin')", controllerGuard.value());
 
-    assertPermission("posts", "shop:zhenkePost:list", String.class, Long.class, String.class,
+    assertPermission("posts", "shop:zhenkePost:list", String.class, Long.class, String.class, String.class,
         java.util.Date.class, java.util.Date.class, int.class, int.class);
     assertPermission("post", "shop:zhenkePost:query", long.class);
     assertPermission("delete", "shop:zhenkePost:remove", long.class);
+    assertPermission("featurePost", "shop:zhenkePost:feature", long.class);
+    assertPermission("unfeaturePost", "shop:zhenkePost:feature", long.class);
     assertPermission("banners", "shop:banner:list");
     assertPermission("add", "shop:banner:add", com.ruoyi.shop.domain.dto.ShopHomeBannerBody.class);
     assertPermission("edit", "shop:banner:edit", long.class, com.ruoyi.shop.domain.dto.ShopHomeBannerBody.class);

@@ -249,6 +249,9 @@ export interface ShopUserOverview {
   reportCount: number;
   couponAvailableCount: number;
   pointsBalance: number;
+  postUsefulReceivedCount: number;
+  reportUsefulReceivedCount: number;
+  totalUsefulReceivedCount: number;
 }
 
 export async function fetchMyOverview() {
@@ -259,10 +262,42 @@ export async function fetchMyOverview() {
     || !Number.isSafeInteger(overview.trialCount) || overview.trialCount < 0
     || !Number.isSafeInteger(overview.reportCount) || overview.reportCount < 0
     || !Number.isSafeInteger(overview.couponAvailableCount) || overview.couponAvailableCount < 0
-    || !Number.isSafeInteger(overview.pointsBalance) || overview.pointsBalance < 0) {
+    || !Number.isSafeInteger(overview.pointsBalance) || overview.pointsBalance < 0
+    || !Number.isSafeInteger(overview.postUsefulReceivedCount) || overview.postUsefulReceivedCount < 0
+    || !Number.isSafeInteger(overview.reportUsefulReceivedCount) || overview.reportUsefulReceivedCount < 0
+    || !Number.isSafeInteger(overview.totalUsefulReceivedCount) || overview.totalUsefulReceivedCount < 0) {
     throw new Error('个人中心汇总数据异常');
   }
   return overview;
+}
+
+export type UsefulContentType = 'POST' | 'REPORT';
+
+export interface UsefulContentItem {
+  contentType: UsefulContentType;
+  contentId: number;
+  title: string;
+  coverUrl?: string;
+  publishedAt: string;
+  usefulCount: number;
+}
+
+export async function fetchMyUsefulContent(
+  type: UsefulContentType,
+  pageNum = 1,
+  pageSize = 12,
+) {
+  const query = new URLSearchParams({
+    type,
+    pageNum: String(pageNum),
+    pageSize: String(pageSize),
+  });
+  const result = await requestApi<TableResponse<UsefulContentItem>>(
+    `/shop/users/me/useful-content?${query.toString()}`,
+    {},
+    true,
+  );
+  return { rows: result.rows ?? [], total: result.total ?? 0 };
 }
 
 export interface ShopPointBalance {

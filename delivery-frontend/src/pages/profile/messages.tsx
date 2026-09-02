@@ -1,8 +1,9 @@
 import {
   CommentOutlined,
-  LikeOutlined,
+  CheckCircleOutlined,
   MessageOutlined,
   RightOutlined,
+  StarOutlined,
 } from '@ant-design/icons';
 import { Avatar, Button, message } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -25,6 +26,7 @@ const PAGE_SIZE = 15;
 function eventCopy(eventType: NotificationEventType, actorName: string) {
   switch (eventType) {
     case 'POST_USEFUL': return `${actorName} 觉得你的甄客帖很有用`;
+    case 'POST_FEATURED': return '你的甄客帖已入选编辑推荐';
     case 'REPORT_USEFUL': return `${actorName} 觉得你的甄客验很有用`;
     case 'POST_REPLY':
     case 'REPORT_REPLY': return `${actorName} 回复了你的评论`;
@@ -35,13 +37,15 @@ function eventCopy(eventType: NotificationEventType, actorName: string) {
 }
 
 function eventLabel(eventType: NotificationEventType) {
+  if (eventType === 'POST_FEATURED') return '编辑推荐';
   if (eventType.endsWith('USEFUL')) return '有用';
   if (eventType.endsWith('REPLY')) return '回复';
   return '评论';
 }
 
 function eventIcon(eventType: NotificationEventType) {
-  if (eventType.endsWith('USEFUL')) return <LikeOutlined />;
+  if (eventType === 'POST_FEATURED') return <StarOutlined />;
+  if (eventType.endsWith('USEFUL')) return <CheckCircleOutlined />;
   if (eventType.endsWith('REPLY')) return <CommentOutlined />;
   return <MessageOutlined />;
 }

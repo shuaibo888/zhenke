@@ -2,6 +2,7 @@ package com.ruoyi.shop.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -61,6 +62,29 @@ class ShopNotificationServiceTest
         reset(mapper);
         service.postUseful(post, 9L);
         verify(mapper, never()).insertNotification(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void featuredNotificationIsSystemGeneratedAndEachSelectionVersionIsDeliveredOnce()
+    {
+        ShopZhenkePost post = new ShopZhenkePost();
+        post.setPostId(42L);
+        post.setShopUserId(9L);
+        post.setTitle("城南面馆");
+        post.setFeaturedVersion(1L);
+
+        service.postFeatured(post);
+        post.setFeaturedVersion(2L);
+        service.postFeatured(post);
+
+        ArgumentCaptor<ShopNotification> captor = ArgumentCaptor.forClass(ShopNotification.class);
+        verify(mapper, org.mockito.Mockito.times(2)).insertNotification(captor.capture());
+        List<ShopNotification> attempts = captor.getAllValues();
+        assertNull(attempts.get(0).getActorShopUserId());
+        assertEquals(ShopNotificationService.POST_FEATURED, attempts.get(0).getEventType());
+        assertEquals("POST_FEATURED:42:1:9", attempts.get(0).getDedupeKey());
+        assertEquals("POST_FEATURED:42:2:9", attempts.get(1).getDedupeKey());
+        assertNotEquals(attempts.get(0).getDedupeKey(), attempts.get(1).getDedupeKey());
     }
 
     @Test

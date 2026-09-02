@@ -58,11 +58,13 @@ export default function HomePage() {
   const navigate = useNavigate();
   const { startPostPublish } = usePostPublishLauncher();
   const [feed, setFeed] = useState<ZhenkePost[]>([]);
+  const [featuredFeed, setFeaturedFeed] = useState<ZhenkePost[]>([]);
   const [bannerRows, setBannerRows] = useState<Banner[]>([]);
   const [enjoyFeeds, setEnjoyFeeds] = useState<Record<EnjoyCategory, ZhenkeEnjoy[]>>(emptyEnjoyFeeds);
   const [enjoyErrors, setEnjoyErrors] = useState<EnjoyLoadErrors>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [featuredError, setFeaturedError] = useState('');
   const [bannerError, setBannerError] = useState('');
   const homeRequestVersion = useRef(0);
 
@@ -70,14 +72,19 @@ export default function HomePage() {
     const requestVersion = ++homeRequestVersion.current;
     setLoading(true);
     setLoadError('');
+    setFeaturedError('');
     setBannerError('');
     setEnjoyErrors({});
     try {
       const result = await homeContent();
       if (requestVersion !== homeRequestVersion.current) return;
-      setFeed(result.posts ?? []);
+      const featuredPosts = (result.featuredPosts ?? []).slice(0, 3);
+      const featuredPostIds = new Set(featuredPosts.map((post) => post.postId));
+      setFeaturedFeed(featuredPosts);
+      setFeed((result.posts ?? []).filter((post) => !featuredPostIds.has(post.postId)));
       setBannerRows(result.banners ?? []);
       setLoadError(result.postError ?? '');
+      setFeaturedError(result.featuredPostError ?? '');
       setBannerError(result.bannerError ?? '');
       const next = { ...emptyEnjoyFeeds };
       zhenEnjoyEntries.forEach((entry) => {
@@ -92,10 +99,12 @@ export default function HomePage() {
     } catch (reason) {
       if (requestVersion !== homeRequestVersion.current) return;
       setFeed([]);
+      setFeaturedFeed([]);
       setBannerRows([]);
       setEnjoyFeeds({ ...emptyEnjoyFeeds });
       const error = reason instanceof Error ? reason.message : '首页内容加载失败';
       setLoadError(error);
+      setFeaturedError(error);
       setBannerError('今日精选暂时没有加载成功，请稍后再试。');
       setEnjoyErrors(Object.fromEntries(
         zhenEnjoyEntries.map((entry) => [entry.code, error]),
@@ -178,6 +187,31 @@ export default function HomePage() {
           </div>
         )}
       </section>
+
+      {!loading && (featuredFeed.length > 0 || featuredError) && (
+        <section className={styles.featuredPostSection} aria-labelledby="featured-posts-title">
+          <ZkSectionTitle
+            title="精选甄客帖"
+            description="由甄客行运营挑选的实用城市分享。"
+            action={featuredFeed.length > 0
+              ? <button type="button" className={styles.textButton} onClick={() => navigate('/posts')}>浏览全部甄客帖 →</button>
+              : undefined}
+          />
+          <span id="featured-posts-title" className={styles.visuallyHidden}>精选甄客帖</span>
+          {featuredFeed.length > 0 ? (
+            <div className={styles.homePostTrack} aria-label="精选甄客帖，横向滑动查看更多">
+              {featuredFeed.map((post) => <ZhenkePostCard key={post.postId} post={{ ...post, featured: true }} />)}
+            </div>
+          ) : (
+            <ZkState
+              kind="error"
+              title="精选甄客帖暂时没有加载成功"
+              description={featuredError}
+              onAction={() => void loadHome()}
+            />
+          )}
+        </section>
+      )}
 
       <ZkSectionTitle
         title="同城甄客帖"

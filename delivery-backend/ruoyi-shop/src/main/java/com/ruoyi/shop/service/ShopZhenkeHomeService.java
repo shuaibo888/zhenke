@@ -53,6 +53,17 @@ public class ShopZhenkeHomeService {
       }
     }
 
+    List<com.ruoyi.shop.domain.ShopZhenkePost> featuredPosts = List.of();
+    String featuredPostError = scopeError;
+    if (scopeError == null) {
+      try {
+        featuredPosts = publicMedia.posts(postService.featuredPosts(city, 3));
+      } catch (RuntimeException exception) {
+        log.warn("首页精选甄客帖加载失败", exception);
+        featuredPostError = publicMessage(exception, "精选甄客帖暂时没有加载成功");
+      }
+    }
+
     List<ShopHomeBannerPublicView> banners = List.of();
     String bannerError = null;
     try {
@@ -78,7 +89,14 @@ public class ShopZhenkeHomeService {
     }
 
     return new ShopZhenkeHomeView(
-        posts, banners, immutableEnjoyGroups(enjoys), postError, bannerError, enjoyError);
+        posts,
+        featuredPosts,
+        banners,
+        immutableEnjoyGroups(enjoys),
+        postError,
+        featuredPostError,
+        bannerError,
+        enjoyError);
   }
 
   private Map<String, List<ShopZhenkeEnjoyPublicView>> emptyEnjoyGroups() {

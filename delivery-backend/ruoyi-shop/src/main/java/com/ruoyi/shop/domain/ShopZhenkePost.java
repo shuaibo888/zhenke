@@ -1,11 +1,12 @@
 package com.ruoyi.shop.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 
 public class ShopZhenkePost {
-  private Long postId, shopUserId, placeId, merchantId;
+  private Long postId, shopUserId, placeId, merchantId, featuredBy, featuredVersion;
   private String userName,
       nickName,
       avatar,
@@ -21,9 +22,9 @@ public class ShopZhenkePost {
       merchantName,
       status;
   private BigDecimal placeLatitude, placeLongitude;
-  private Date publishedAt, deleteTime, createTime, updateTime;
+  private Date publishedAt, featuredAt, deleteTime, createTime, updateTime;
   private Integer commentCount, usefulCount;
-  private Boolean usefulByMe;
+  private Boolean usefulByMe, featured;
   private List<ShopZhenkePostResource> resources;
 
   public Long getPostId() {
@@ -184,6 +185,40 @@ public class ShopZhenkePost {
 
   public void setStatus(String v) {
     status = v;
+  }
+
+  public Boolean getFeatured() {
+    return featured;
+  }
+
+  public void setFeatured(Boolean v) {
+    featured = v;
+  }
+
+  public Date getFeaturedAt() {
+    return featuredAt;
+  }
+
+  public void setFeaturedAt(Date v) {
+    featuredAt = v;
+  }
+
+  @JsonIgnore
+  public Long getFeaturedBy() {
+    return featuredBy;
+  }
+
+  public void setFeaturedBy(Long v) {
+    featuredBy = v;
+  }
+
+  @JsonIgnore
+  public Long getFeaturedVersion() {
+    return featuredVersion;
+  }
+
+  public void setFeaturedVersion(Long v) {
+    featuredVersion = v;
   }
 
   public Date getPublishedAt() {

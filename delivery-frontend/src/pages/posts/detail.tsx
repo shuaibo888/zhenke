@@ -1,7 +1,8 @@
 import {
   ArrowLeftOutlined,
+  CheckCircleFilled,
+  CheckCircleOutlined,
   EnvironmentOutlined,
-  LikeOutlined,
   MessageOutlined,
   SendOutlined,
   ShareAltOutlined,
@@ -267,6 +268,7 @@ export default function PostDetailPage() {
   const authorName = detail.nickName || detail.userName || '甄客行用户';
   const authorInitial = authorName.slice(0, 1);
   const firstImageIndex = detail.resources.findIndex((resource) => resource.resourceType === 'IMAGE');
+  const ownPost = user?.id === detail.shopUserId;
 
   const closeReplyComposer = () => {
     setReplyTarget(undefined);
@@ -417,7 +419,7 @@ export default function PostDetailPage() {
       </div>
 
       <article className={`${styles.surface} ${styles.detailContent}`}>
-        <span className={styles.eyebrow}>甄客帖 · 发布者主动分享</span>
+        <span className={styles.eyebrow}>{detail.featured ? '编辑推荐 · 甄客帖' : '甄客帖 · 发布者主动分享'}</span>
         <h1>{detail.title}</h1>
         <div className={styles.prose}>{detail.content}</div>
         {detail.suggestion && (
@@ -429,22 +431,26 @@ export default function PostDetailPage() {
         <div className={styles.actionRow}>
           <Button
             type={detail.usefulByMe ? 'primary' : 'default'}
-            icon={<LikeOutlined />}
+            icon={detail.usefulByMe ? <CheckCircleFilled /> : <CheckCircleOutlined />}
             loading={usefulSubmitting}
+            disabled={ownPost}
+            title={ownPost ? '不能给自己的甄客帖标记有用' : undefined}
             onClick={async () => {
               if (!requireLogin()) return;
+              if (ownPost) return;
               if (usefulSubmitting) return;
               setUsefulSubmitting(true);
               try {
                 const result = await toggleUseful(postId);
-                setDetail((current) => current ? { ...current, usefulByMe: result.useful, usefulCount: result.usefulCount } : current);
+                setDetail((current) => current ? { ...current, usefulByMe: result.usefulByMe, usefulCount: result.usefulCount } : current);
               } catch (reason) {
                 message.error(reason instanceof Error ? reason.message : '“有用”状态更新失败');
               } finally {
                 setUsefulSubmitting(false);
               }
             }}
-          >有用 {detail.usefulCount}</Button>
+          >{ownPost ? '自己的内容' : detail.usefulByMe ? '已觉得有用' : '觉得有用'}</Button>
+          <span className={styles.usefulCountCopy}>{detail.usefulCount} 人觉得有用</span>
           <Button icon={<MessageOutlined />} onClick={() => document.getElementById('post-comments')?.scrollIntoView({ behavior: 'smooth' })}>
             评论 {detail.commentCount}
           </Button>

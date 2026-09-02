@@ -299,6 +299,21 @@
   text-align: center;
 }
 
+.serviceEntryWide {
+  grid-column: span 2;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  justify-items: start;
+  text-align: left;
+}
+
+.serviceEntryWide .serviceEntryCopy strong,
+.serviceEntryWide .serviceEntryCopy small {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
 .serviceEntry:hover,
 .serviceEntry:focus-visible {
   color: @orangeDark;
@@ -477,6 +492,11 @@
     padding: 9px 2px 8px;
   }
 
+  .serviceEntryWide {
+    grid-column: 1 / -1;
+    padding: 10px 12px;
+  }
+
   .serviceEntryIcon {
     width: 39px;
     height: 39px;
@@ -489,6 +509,11 @@
 
   .serviceEntryCopy small {
     display: none;
+  }
+
+  .serviceEntryWide .serviceEntryCopy small {
+    display: block;
+    line-height: 1.45;
   }
 }
 

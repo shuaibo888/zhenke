@@ -147,11 +147,12 @@ export default function ProfilePage() {
     description: string;
     badge?: string;
     ariaLabel?: string;
+    wide?: boolean;
     onClick: () => void;
   }) => (
     <button
       type="button"
-      className={styles.serviceEntry}
+      className={`${styles.serviceEntry} ${options.wide ? styles.serviceEntryWide : ''}`}
       onClick={options.onClick}
       aria-label={options.ariaLabel ?? `${options.title}，${options.description}`}
     >
@@ -271,13 +272,20 @@ export default function ProfilePage() {
             {profileEntry({ icon: <FileTextOutlined />, title: '我的甄客帖', description: '地点生活分享', onClick: () => navigate('/profile/posts') })}
             {profileEntry({ icon: <SafetyCertificateOutlined />, title: '我的甄客验', description: '真实履约体验', onClick: () => navigate('/profile/reports') })}
             {profileEntry({
+              icon: <CheckCircleOutlined />,
+              title: `我的内容累计获得 ${overviewValue(overview?.totalUsefulReceivedCount)} 次有用`,
+              description: `甄客帖 ${overviewValue(overview?.postUsefulReceivedCount)} 次 · 甄客验 ${overviewValue(overview?.reportUsefulReceivedCount)} 次`,
+              wide: true,
+              onClick: () => navigate('/profile/useful'),
+            })}
+            {profileEntry({
               icon: <MessageOutlined />,
               title: '消息中心',
-              description: '点赞与评论消息',
+              description: '有用与评论消息',
               badge: unreadCount != null && unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : undefined,
               ariaLabel: unreadCount != null && unreadCount > 0
-                ? `消息中心，点赞与评论消息，${unreadCount} 条未读`
-                : '消息中心，点赞与评论消息',
+                ? `消息中心，有用与评论消息，${unreadCount} 条未读`
+                : '消息中心，有用与评论消息',
               onClick: () => navigate('/profile/messages'),
             })}
             {profileEntry({ icon: <ProfileOutlined />, title: '我的试用', description: '申请与履约进度', onClick: () => navigate('/profile/trials') })}

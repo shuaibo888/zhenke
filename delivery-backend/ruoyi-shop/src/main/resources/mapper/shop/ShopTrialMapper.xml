@@ -532,6 +532,42 @@
         where report.shop_user_id = #{shopUserId} and report.status = 'PUBLISHED'
     </select>
 
+    <resultMap id="ShopUsefulContentResult" type="ShopUsefulContentView">
+        <id property="contentId" column="content_id" />
+        <result property="contentType" column="content_type" />
+        <result property="title" column="title" />
+        <result property="summary" column="summary" />
+        <result property="coverUrl" column="cover_url" />
+        <result property="usefulCount" column="useful_count" />
+        <result property="publishedAt" column="published_at" />
+        <result property="detailPath" column="detail_path" />
+    </resultMap>
+
+    <select id="selectUsefulContentByUser" parameterType="Long" resultMap="ShopUsefulContentResult">
+        select 'REPORT' content_type,
+               report.report_id content_id,
+               coalesce(nullif(trim(report.report_title), ''), product.product_name) title,
+               left(report.experience, 240) summary,
+               coalesce(
+                   (select resource.resource_url
+                      from shop_verification_report_resource resource
+                     where resource.report_id = report.report_id and resource.resource_type = 'IMAGE'
+                     order by resource.resource_sort, resource.resource_id limit 1),
+                   product.cover_url) cover_url,
+               useful.useful_count,
+               report.published_at,
+               concat('/reports/', report.report_id) detail_path
+        from shop_verification_report report
+        join (
+            select report_id, count(*) useful_count
+            from shop_verification_report_useful
+            group by report_id
+        ) useful on useful.report_id = report.report_id
+        join shop_product product on product.product_id = report.product_id
+        where report.shop_user_id = #{shopUserId} and report.status = 'PUBLISHED'
+        order by report.published_at desc, report.report_id desc
+    </select>
+
     <select id="selectHomeFeed" resultMap="ShopHomeFeedResult">
         select feed.* from (
           <if test="contentType == 'ALL' or contentType == 'TRIAL'">

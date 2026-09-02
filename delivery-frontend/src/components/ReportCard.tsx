@@ -1,4 +1,4 @@
-import { LikeFilled } from '@ant-design/icons';
+import { CheckCircleFilled, CheckCircleOutlined } from '@ant-design/icons';
 import { Button, Tag } from 'antd';
 import type { VerificationReportDto } from '@/services/shopContent';
 import { getReportType } from '@/utils/shop';
@@ -8,11 +8,13 @@ export function ReportCard({
   report,
   onOpen,
   onUseful,
+  usefulDisabled = false,
   variant = 'grid',
 }: {
   report: VerificationReportDto;
   onOpen: () => void;
   onUseful?: () => void;
+  usefulDisabled?: boolean;
   variant?: 'grid' | 'detail';
 }) {
   const type = getReportType(report);
@@ -42,14 +44,16 @@ export function ReportCard({
           <span>查看完整真实体验</span>
           <Button
             size="small"
-            icon={<LikeFilled />}
+            icon={report.usefulByMe ? <CheckCircleFilled /> : <CheckCircleOutlined />}
             type={report.usefulByMe ? 'primary' : 'default'}
+            disabled={usefulDisabled}
+            title={usefulDisabled ? '自己的甄客验仅展示有用人数' : undefined}
             onClick={(event) => {
               event.stopPropagation();
               onUseful?.();
             }}
           >
-            {report.usefulCount} 有用
+            有用 {report.usefulCount}
           </Button>
         </div>
       </article>
@@ -83,14 +87,16 @@ export function ReportCard({
           <Button
             size="small"
             type="text"
-            icon={<LikeFilled />}
+            icon={report.usefulByMe ? <CheckCircleFilled /> : <CheckCircleOutlined />}
             className={`${styles.usefulButton} ${report.usefulByMe ? styles.usefulActive : ''}`}
+            disabled={usefulDisabled}
+            title={usefulDisabled ? '自己的甄客验仅展示有用人数' : undefined}
             onClick={(event) => {
               event.stopPropagation();
               onUseful?.();
             }}
           >
-            {report.usefulCount}
+            有用 {report.usefulCount}
           </Button>
         </div>
       </div>

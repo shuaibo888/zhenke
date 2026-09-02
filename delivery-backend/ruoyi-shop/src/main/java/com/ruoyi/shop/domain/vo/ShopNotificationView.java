@@ -15,6 +15,7 @@ public class ShopNotificationView
     private String targetTitle;
     private String contentPreview;
     private String targetPath;
+    private boolean systemGenerated;
     private boolean read;
     private Date readTime;
     private Date createTime;
@@ -39,6 +40,8 @@ public class ShopNotificationView
     public void setContentPreview(String contentPreview) { this.contentPreview = contentPreview; }
     public String getTargetPath() { return targetPath; }
     public void setTargetPath(String targetPath) { this.targetPath = targetPath; }
+    public boolean isSystemGenerated() { return systemGenerated; }
+    public void setSystemGenerated(boolean value) { systemGenerated = value; }
     public boolean isRead() { return read; }
     public void setRead(boolean read) { this.read = read; }
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

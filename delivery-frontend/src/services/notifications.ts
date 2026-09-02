@@ -2,6 +2,7 @@ import { requestApi, type ApiResponse, type TableResponse } from '@/services/api
 
 export type NotificationEventType =
   | 'POST_USEFUL'
+  | 'POST_FEATURED'
   | 'POST_COMMENT'
   | 'POST_REPLY'
   | 'REPORT_USEFUL'
@@ -10,7 +11,7 @@ export type NotificationEventType =
 
 export interface ShopNotification {
   notificationId: number;
-  actorShopUserId: number;
+  actorShopUserId: number | null;
   actorName: string;
   actorAvatar?: string | null;
   eventType: NotificationEventType;
@@ -26,6 +27,7 @@ export interface ShopNotification {
 
 const eventTypes = new Set<NotificationEventType>([
   'POST_USEFUL',
+  'POST_FEATURED',
   'POST_COMMENT',
   'POST_REPLY',
   'REPORT_USEFUL',
@@ -44,14 +46,18 @@ function isOptionalString(value: unknown): value is string | null | undefined {
 function isNotification(value: unknown): value is ShopNotification {
   if (!value || typeof value !== 'object') return false;
   const item = value as Partial<ShopNotification>;
+  const validActor = item.eventType === 'POST_FEATURED'
+    ? item.actorShopUserId === null
+    : isPositiveInteger(item.actorShopUserId);
   return isPositiveInteger(item.notificationId)
-    && isPositiveInteger(item.actorShopUserId)
+    && validActor
     && typeof item.actorName === 'string'
     && item.actorName.trim().length > 0
     && isOptionalString(item.actorAvatar)
     && typeof item.eventType === 'string'
     && eventTypes.has(item.eventType as NotificationEventType)
     && (item.targetType === 'POST' || item.targetType === 'REPORT')
+    && (item.eventType !== 'POST_FEATURED' || item.targetType === 'POST')
     && isPositiveInteger(item.targetId)
     && isOptionalString(item.targetTitle)
     && isOptionalString(item.contentPreview)

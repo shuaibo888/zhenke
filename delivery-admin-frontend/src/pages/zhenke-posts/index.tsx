@@ -28,9 +28,12 @@ type Post = {
   resources: PostResource[];
   commentCount?: number;
   usefulCount?: number;
+  featured?: boolean;
+  featuredAt?: string;
 };
 
 type MerchantOption = { merchantId: number; shopName: string };
+type FeaturedFilter = 'ALL' | 'FEATURED' | 'NORMAL';
 
 const perspectiveLabel = {
   LOCAL: '本地土著',
@@ -41,11 +44,13 @@ const perspectiveLabel = {
 export default function ZhenkePostsPage() {
   const canQuery = useAdminPermission('shop:zhenkePost:query');
   const canRemove = useAdminPermission('shop:zhenkePost:remove');
+  const canFeature = useAdminPermission('shop:zhenkePost:feature');
   const [data, setData] = useState<Post[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [status, setStatus] = useState<string>();
+  const [featuredFilter, setFeaturedFilter] = useState<FeaturedFilter>('ALL');
   const [merchantId, setMerchantId] = useState<number>();
   const [merchantOptions, setMerchantOptions] = useState<MerchantOption[]>([]);
   const [merchantSearching, setMerchantSearching] = useState(false);
@@ -60,6 +65,7 @@ export default function ZhenkePostsPage() {
       const query = new URLSearchParams({ pageNum: String(page), pageSize: String(pageSize) });
       if (keyword.trim()) query.set('keyword', keyword.trim());
       if (status) query.set('status', status);
+      query.set('featured', featuredFilter);
       if (merchantId) query.set('merchantId', String(merchantId));
       if (publishedRange) {
         query.set('publishedFrom', publishedRange[0].startOf('day').format('YYYY-MM-DD HH:mm:ss'));
@@ -78,7 +84,7 @@ export default function ZhenkePostsPage() {
     } finally {
       setLoading(false);
     }
-  }, [keyword, merchantId, page, pageSize, publishedRange, status]);
+  }, [featuredFilter, keyword, merchantId, page, pageSize, publishedRange, status]);
 
   const searchMerchants = async (value: string) => {
     setMerchantSearching(true);
@@ -131,6 +137,35 @@ export default function ZhenkePostsPage() {
     });
   };
 
+  const updateFeatured = (post: Post, featured: boolean) => {
+    if (post.status !== 'PUBLISHED') {
+      message.warning('只有已发布且未删除的甄客帖可以调整精选状态');
+      return;
+    }
+    Modal.confirm({
+      title: featured ? `将“${post.title}”设为精选甄客帖？` : `取消“${post.title}”的精选？`,
+      content: featured
+        ? '精选仅表示平台编辑推荐，帖子仍属于用户发布的甄客帖，不会转为官方甄必享。'
+        : '取消后将移除用户端精选标识，并不影响帖子正常展示。',
+      okText: featured ? '设为精选' : '取消精选',
+      cancelText: '返回',
+      async onOk() {
+        try {
+          await requestApi(
+            `/shop/admin/zhenke/posts/${post.postId}/featured`,
+            { method: featured ? 'PUT' : 'DELETE' },
+            true,
+          );
+          message.success(featured ? '已设为精选甄客帖' : '已取消精选');
+          await load();
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : '精选状态更新失败');
+          throw error;
+        }
+      },
+    });
+  };
+
   const changePage = (pagination: TablePaginationConfig) => {
     setPage(pagination.current ?? 1);
     setPageSize(pagination.pageSize ?? 20);
@@ -162,6 +197,17 @@ export default function ZhenkePostsPage() {
             ]}
             onChange={(value) => { setPage(1); setStatus(value); }}
           />
+          <Select<FeaturedFilter>
+            placeholder="全部精选状态"
+            style={{ width: 140 }}
+            value={featuredFilter}
+            options={[
+              { value: 'ALL', label: '全部精选状态' },
+              { value: 'FEATURED', label: '仅看精选' },
+              { value: 'NORMAL', label: '仅看普通' },
+            ]}
+            onChange={(value) => { setPage(1); setFeaturedFilter(value); }}
+          />
           <Select
             allowClear
             showSearch
@@ -191,7 +237,7 @@ export default function ZhenkePostsPage() {
         loading={loading}
         dataSource={data}
         onChange={changePage}
-        scroll={{ x: 1080 }}
+        scroll={{ x: 1280 }}
         locale={{ emptyText: '暂无甄客帖' }}
         pagination={{ current: page, pageSize, total, showSizeChanger: true, showTotal: (value) => `共 ${value} 条` }}
         columns={[
@@ -204,12 +250,21 @@ export default function ZhenkePostsPage() {
             title: '状态', dataIndex: 'status', width: 100,
             render: (value) => <Tag color={value === 'PUBLISHED' ? 'green' : 'default'}>{value === 'PUBLISHED' ? '已发布' : '已删除'}</Tag>,
           },
+          {
+            title: '精选状态', dataIndex: 'featured', width: 110,
+            render: (value) => value ? <Tag color="gold">精选</Tag> : <Tag>普通</Tag>,
+          },
           { title: '发布时间', dataIndex: 'publishedAt', width: 170 },
           {
-            title: '操作', fixed: 'right', width: 150,
+            title: '操作', fixed: 'right', width: 250,
             render: (_, row) => (
               <Space>
                 {canQuery && <Button type="link" onClick={() => void openDetail(row.postId)}>详情</Button>}
+                {canFeature && row.status === 'PUBLISHED' && (
+                  <Button type="link" onClick={() => updateFeatured(row, !row.featured)}>
+                    {row.featured ? '取消精选' : '设为精选'}
+                  </Button>
+                )}
                 {canRemove && row.status !== 'DELETED' && <Button type="link" danger onClick={() => remove(row)}>删除</Button>}
               </Space>
             ),
@@ -227,6 +282,10 @@ export default function ZhenkePostsPage() {
               <Descriptions.Item label="关联商家">{detail.merchantName || '未关联'}</Descriptions.Item>
               <Descriptions.Item label="状态">{detail.status === 'PUBLISHED' ? '已发布' : '已删除'}</Descriptions.Item>
               <Descriptions.Item label="发布时间">{detail.publishedAt}</Descriptions.Item>
+              <Descriptions.Item label="精选状态">
+                {detail.featured ? <Tag color="gold">精选</Tag> : <Tag>普通</Tag>}
+              </Descriptions.Item>
+              <Descriptions.Item label="精选时间">{detail.featuredAt || '—'}</Descriptions.Item>
               <Descriptions.Item label="评论数">{detail.commentCount ?? 0}</Descriptions.Item>
               <Descriptions.Item label="有用数">{detail.usefulCount ?? 0}</Descriptions.Item>
             </Descriptions>

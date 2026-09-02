@@ -217,6 +217,7 @@ export default function MallContentPage() {
                   item={item}
                   onOpen={() => navigate(`/reports/${item.contentId}`)}
                   onUseful={() => void useful(item)}
+                  usefulDisabled={item.report?.shopUserId === user?.id}
                 />
               ) : (
                 <article

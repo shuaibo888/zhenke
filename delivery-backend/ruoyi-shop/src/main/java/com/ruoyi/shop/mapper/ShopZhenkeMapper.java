@@ -2,6 +2,7 @@ package com.ruoyi.shop.mapper;
 
 import com.ruoyi.shop.domain.*;
 import com.ruoyi.shop.domain.vo.ShopMerchantOption;
+import com.ruoyi.shop.domain.vo.ShopUsefulContentView;
 import java.util.Date;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;
@@ -25,7 +26,14 @@ public interface ShopZhenkeMapper {
       @Param("publishedFrom") Date publishedFrom,
       @Param("publishedTo") Date publishedTo,
       @Param("currentUserId") Long currentUserId,
-      @Param("city") String city);
+      @Param("city") String city,
+      @Param("featuredFilter") String featuredFilter);
+
+  List<ShopZhenkePost> selectFeaturedPosts(
+      @Param("currentUserId") Long currentUserId,
+      @Param("city") String city,
+      @Param("includeDeleted") boolean includeDeleted,
+      @Param("limit") int limit);
 
   List<String> selectPostCities(
       @Param("perspectiveFilter") String perspectiveFilter,
@@ -60,11 +68,19 @@ public interface ShopZhenkeMapper {
 
   int adminDeletePost(@Param("postId") Long postId, @Param("adminId") Long adminId);
 
+  int featurePost(@Param("postId") Long postId, @Param("adminId") Long adminId);
+
+  int unfeaturePost(@Param("postId") Long postId);
+
   int insertUseful(@Param("postId") Long postId, @Param("shopUserId") Long shopUserId);
 
   int deleteUseful(@Param("postId") Long postId, @Param("shopUserId") Long shopUserId);
 
   int countUseful(@Param("postId") Long postId, @Param("shopUserId") Long shopUserId);
+
+  int countUsefulReceivedByAuthor(Long shopUserId);
+
+  List<ShopUsefulContentView> selectUsefulContentByAuthor(Long shopUserId);
 
   List<ShopZhenkePostComment> selectRootComments(Long postId);
 

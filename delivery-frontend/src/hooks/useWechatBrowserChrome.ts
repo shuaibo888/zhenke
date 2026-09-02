@@ -26,6 +26,7 @@ function routeTitle(pathname: string) {
   if (pathname.startsWith('/profile/points')) return `我的积分｜${APP_TITLE}`;
   if (pathname.startsWith('/profile/reports')) return `我的甄客验｜${APP_TITLE}`;
   if (pathname.startsWith('/profile/messages')) return `消息中心｜${APP_TITLE}`;
+  if (pathname.startsWith('/profile/useful')) return `内容有用反馈｜${APP_TITLE}`;
   if (pathname.startsWith('/profile')) return `个人中心｜${APP_TITLE}`;
   if (pathname.startsWith('/auth')) return `登录｜${APP_TITLE}`;
   return APP_TITLE;

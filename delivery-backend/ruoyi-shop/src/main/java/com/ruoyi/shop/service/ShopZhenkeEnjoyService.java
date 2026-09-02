@@ -78,7 +78,7 @@ public class ShopZhenkeEnjoyService {
     }
     boolean liked = mapper.countLike(enjoyId, userId) > 0;
     if (!removing && !liked) {
-      throw new ServiceException("点赞失败，请刷新后重试");
+      throw new ServiceException("喜欢状态更新失败，请刷新后重试");
     }
     ShopZhenkeEnjoy refreshed = detail(enjoyId);
     return Map.of("liked", liked, "likeCount", refreshed.getLikeCount());

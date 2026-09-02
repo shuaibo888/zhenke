@@ -1,4 +1,4 @@
-import { LikeFilled, ZoomInOutlined } from '@ant-design/icons';
+import { CheckCircleFilled, CheckCircleOutlined, ZoomInOutlined } from '@ant-design/icons';
 import { Button, Image, Tag } from 'antd';
 import type { HomeFeedItemDto } from '@/services/shopContent';
 import styles from '@/styles/commerce.less';
@@ -7,12 +7,14 @@ export function HomeFeedReportCard({
   item,
   onOpen,
   onUseful,
+  usefulDisabled = false,
   onImageLoad,
   variant = 'grid',
 }: {
   item: HomeFeedItemDto;
   onOpen: () => void;
   onUseful?: () => void;
+  usefulDisabled?: boolean;
   onImageLoad?: (key: string, width: number, height: number) => void;
   variant?: 'grid' | 'preview';
 }) {
@@ -49,14 +51,16 @@ export function HomeFeedReportCard({
           <span>点击查看完整甄客验</span>
           <Button
             size="small"
-            icon={<LikeFilled />}
+            icon={item.report.usefulByMe ? <CheckCircleFilled /> : <CheckCircleOutlined />}
             type={item.report.usefulByMe ? 'primary' : 'default'}
+            disabled={usefulDisabled}
+            title={usefulDisabled ? '自己的甄客验仅展示有用人数' : undefined}
             onClick={(event) => {
               event.stopPropagation();
               onUseful?.();
             }}
           >
-            {item.report.usefulCount} 有用
+            有用 {item.report.usefulCount}
           </Button>
         </div>
       </article>
@@ -101,14 +105,16 @@ export function HomeFeedReportCard({
           <Button
             size="small"
             type="text"
-            icon={<LikeFilled />}
+            icon={item.report.usefulByMe ? <CheckCircleFilled /> : <CheckCircleOutlined />}
             className={`${styles.usefulButton} ${item.report.usefulByMe ? styles.usefulActive : ''}`}
+            disabled={usefulDisabled}
+            title={usefulDisabled ? '自己的甄客验仅展示有用人数' : undefined}
             onClick={(event) => {
               event.stopPropagation();
               onUseful?.();
             }}
           >
-            {item.report.usefulCount}
+            有用 {item.report.usefulCount}
           </Button>
         </div>
       </div>

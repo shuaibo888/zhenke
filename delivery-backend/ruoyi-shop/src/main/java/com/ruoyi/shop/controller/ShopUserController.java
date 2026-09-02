@@ -9,7 +9,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.shop.domain.dto.ShopPasswordBody;
 import com.ruoyi.shop.domain.dto.ShopOneClickBody;
 import com.ruoyi.shop.domain.dto.ShopPhoneBindBody;
@@ -25,7 +27,7 @@ import com.ruoyi.shop.service.ShopUserOverviewService;
 
 @RestController
 @RequestMapping("/shop/users/me")
-public class ShopUserController
+public class ShopUserController extends BaseController
 {
     private final ShopAccountService accountService;
     private final ShopUserOverviewService overviewService;
@@ -49,6 +51,15 @@ public class ShopUserController
     public AjaxResult overview()
     {
         return AjaxResult.success(overviewService.overview());
+    }
+
+    @GetMapping("/useful-content")
+    public TableDataInfo usefulContent(
+            @RequestParam(defaultValue = "POST") String type,
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "12") int pageSize)
+    {
+        return getDataTable(overviewService.usefulContent(type, pageNum, pageSize));
     }
 
     @PutMapping

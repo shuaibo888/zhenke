@@ -2,8 +2,8 @@ import {
   ArrowLeftOutlined,
   CloseOutlined,
   DeleteOutlined,
-  LikeFilled,
-  LikeOutlined,
+  CheckCircleFilled,
+  CheckCircleOutlined,
   LinkOutlined,
   MessageOutlined,
   PlayCircleFilled,
@@ -108,7 +108,9 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
   const [videoPreviewUrl, setVideoPreviewUrl] = useState('');
   useBodyScrollLock(shareOpen || Boolean(videoPreviewUrl));
   const shareAuthorName = report ? (report.nickName || report.userName) : '';
-  const sharePreviewImage = report?.resources?.find((item) => item.resourceType === 'IMAGE')?.resourceUrl
+  const sharePreviewImage = report?.resources?.find((item) => (
+    item.resourceType === 'IMAGE' && typeof item.resourceUrl === 'string' && item.resourceUrl.trim()
+  ))?.resourceUrl
     || report?.productCoverUrl
     || product?.coverUrl
     || '';
@@ -299,7 +301,12 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
 
   const type = getReportType(report);
   const authorName = report.nickName || report.userName;
-  const reportResources = report.resources ?? [];
+  const ownReport = user?.id === report.shopUserId;
+  const reportResources = (report.resources ?? []).filter((resource) => (
+    (resource.resourceType === 'IMAGE' || resource.resourceType === 'VIDEO')
+    && typeof resource.resourceUrl === 'string'
+    && resource.resourceUrl.trim().length > 0
+  ));
   const activeResource = reportResources.length
     ? reportResources[Math.min(activeResourceIndex, reportResources.length - 1)]
     : undefined;
@@ -430,7 +437,17 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
             }
           }}
         >
-          <img src={product.coverUrl} alt={product.productName} />
+          {product.coverUrl?.trim()
+            ? <img src={product.coverUrl} alt={product.productName} />
+            : (
+              <span
+                className={styles.linkedProductMediaMissing}
+                role="img"
+                aria-label={`${product.productName}暂无封面`}
+              >
+                暂无图
+              </span>
+            )}
           <div className={styles.linkedProductInfo}>
             <p className={styles.linkedProductTitle}>{product.productName}</p>
             <strong className={styles.linkedProductPrice}>{formatPrice(product.price)}</strong>
@@ -497,11 +514,13 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
           <button
             type="button"
             className={`${styles.reportDetailBottomAction} ${report.usefulByMe ? styles.reportDetailBottomActive : ''}`}
-            disabled={usefulLoading}
+            disabled={usefulLoading || ownReport}
+            title={ownReport ? '不能给自己的甄客验标记有用' : undefined}
             onClick={() => void useful()}
           >
-            {report.usefulByMe ? <LikeFilled /> : <LikeOutlined />}
-            <span>{report.usefulCount}</span>
+            {report.usefulByMe ? <CheckCircleFilled /> : <CheckCircleOutlined />}
+            <span>{ownReport ? '自己的内容' : report.usefulByMe ? '已觉得有用' : '觉得有用'}</span>
+            <small>{report.usefulCount} 人觉得有用</small>
           </button>
           <div className={styles.reportDetailBottomAction}><MessageOutlined /><span>{commentCount}</span></div>
           <Button

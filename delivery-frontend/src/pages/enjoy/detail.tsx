@@ -167,7 +167,7 @@ export default function EnjoyDetailPage() {
 
   const requireLogin = () => {
     if (user) return true;
-    message.info('登录后可以点赞、评论和回复');
+    message.info('登录后可以喜欢、评论和回复');
     navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`), {
       state: LOGIN_RETURN_TO_SOURCE_STATE,
     });
@@ -398,9 +398,9 @@ export default function EnjoyDetailPage() {
             if (!requireLogin() || liking) return;
             setLiking(true);
             try { const result = await toggleEnjoyLike(enjoyId); setDetail((current) => current ? { ...current, likedByMe: result.liked, likeCount: result.likeCount } : current); }
-            catch (reason) { message.error(reason instanceof Error ? reason.message : '点赞失败'); }
+            catch (reason) { message.error(reason instanceof Error ? reason.message : '“喜欢”状态更新失败'); }
             finally { setLiking(false); }
-          }}>点赞 {detail.likeCount ?? 0}</Button>
+          }}>{detail.likedByMe ? '已喜欢' : '喜欢'} · {detail.likeCount ?? 0} 人喜欢</Button>
           <Button icon={<MessageOutlined />} onClick={() => document.getElementById('enjoy-comments')?.scrollIntoView({ behavior: 'smooth' })}>评论 {detail.commentCount ?? 0}</Button>
           <Button icon={<ShareAltOutlined />} onClick={() => void share()}>分享</Button>
         </div>

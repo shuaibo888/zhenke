@@ -7,6 +7,9 @@ public class ShopUserOverviewVo
     private Long reportCount;
     private Long couponAvailableCount;
     private Long pointsBalance;
+    private Long postUsefulReceivedCount;
+    private Long reportUsefulReceivedCount;
+    private Long totalUsefulReceivedCount;
 
     public Long getOrderCount() { return orderCount; }
     public void setOrderCount(Long orderCount) { this.orderCount = orderCount; }
@@ -18,4 +21,10 @@ public class ShopUserOverviewVo
     public void setCouponAvailableCount(Long couponAvailableCount) { this.couponAvailableCount = couponAvailableCount; }
     public Long getPointsBalance() { return pointsBalance; }
     public void setPointsBalance(Long pointsBalance) { this.pointsBalance = pointsBalance; }
+    public Long getPostUsefulReceivedCount() { return postUsefulReceivedCount; }
+    public void setPostUsefulReceivedCount(Long value) { postUsefulReceivedCount = value; }
+    public Long getReportUsefulReceivedCount() { return reportUsefulReceivedCount; }
+    public void setReportUsefulReceivedCount(Long value) { reportUsefulReceivedCount = value; }
+    public Long getTotalUsefulReceivedCount() { return totalUsefulReceivedCount; }
+    public void setTotalUsefulReceivedCount(Long value) { totalUsefulReceivedCount = value; }
 }

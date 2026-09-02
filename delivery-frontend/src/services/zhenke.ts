@@ -75,6 +75,7 @@ export interface ZhenkePost {
   commentCount: number;
   usefulCount: number;
   usefulByMe: boolean;
+  featured?: boolean;
   resources: PostResource[];
 }
 export interface PostComment {
@@ -152,9 +153,11 @@ export interface EnjoyComment {
 
 export interface ZhenkeHomeContent {
   posts: ZhenkePost[];
+  featuredPosts?: ZhenkePost[];
   banners: Banner[];
   enjoys: Record<EnjoyCategory, ZhenkeEnjoy[]>;
   postError?: string | null;
+  featuredPostError?: string | null;
   bannerError?: string | null;
   enjoyError?: string | null;
 }
@@ -242,13 +245,20 @@ export async function removePost(id: number) {
   await requestApi(`/shop/zhenke/posts/${id}`, { method: "DELETE" }, true);
 }
 export async function toggleUseful(id: number) {
-  return (
-    await requestApi<ApiResponse<{ useful: boolean; usefulCount: number }>>(
-      `/shop/zhenke/posts/${id}/useful`,
-      { method: "POST" },
-      true,
-    )
-  ).data!;
+  const result = await requestApi<ApiResponse<{
+    useful?: boolean;
+    usefulByMe?: boolean;
+    usefulCount: number;
+  }>>(
+    `/shop/zhenke/posts/${id}/useful`,
+    { method: "POST" },
+    true,
+  );
+  if (!result.data) throw new Error("“有用”状态更新失败");
+  return {
+    usefulCount: result.data.usefulCount,
+    usefulByMe: result.data.usefulByMe ?? result.data.useful ?? false,
+  };
 }
 export async function comments(id: number, pageNum = 1, pageSize = 10) {
   const result = await requestApi<TableResponse<PostComment>>(

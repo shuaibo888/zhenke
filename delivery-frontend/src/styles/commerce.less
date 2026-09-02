@@ -2742,7 +2742,7 @@ button.checkoutFulfillmentOption:focus-visible {
 }
 
 .usefulActive {
-  color: #ff4d4f;
+  color: #8a3f32;
 }
 
 .recruitGridCard {
@@ -5969,6 +5969,19 @@ button.checkoutFulfillmentOption:focus-visible {
   flex-shrink: 0;
 }
 
+.linkedProductMediaMissing {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 10px;
+  color: #8a6d64;
+  background: #f5ece8;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .linkedProductInfo {
   display: flex;
   flex-direction: column;
@@ -6012,7 +6025,7 @@ button.checkoutFulfillmentOption:focus-visible {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  min-width: 40px;
+  min-width: 88px;
   color: #6b7a73;
   background: transparent;
   border: 0;
@@ -6039,6 +6052,13 @@ button.checkoutFulfillmentOption:focus-visible {
 .productDetailMain {
   --product-fixed-bar-height: calc(76px + env(safe-area-inset-bottom));
   padding-bottom: var(--product-fixed-bar-height);
+}
+
+.reportDetailBottomAction small {
+  color: #87928d;
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .productFixedBar {

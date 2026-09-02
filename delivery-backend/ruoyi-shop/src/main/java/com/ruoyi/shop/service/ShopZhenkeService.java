@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ShopZhenkeService {
   private static final Set<String> PERSPECTIVE_FILTERS =
       Set.of("RECOMMEND", "LOCAL", "TOURIST", "HOMETOWNER");
+  private static final Set<String> FEATURED_FILTERS = Set.of("ALL", "FEATURED", "NORMAL");
   private static final int COMMENT_PREVIEW_SIZE = 3;
   private final ShopZhenkeMapper mapper;
   private final TencentMapService mapService;
@@ -77,7 +78,8 @@ public class ShopZhenkeService {
             null,
             null,
             ShopAccountIdentity.currentShopUserIdOrNull(),
-            effectiveCity),
+            effectiveCity,
+            null),
         false);
   }
 
@@ -110,11 +112,22 @@ public class ShopZhenkeService {
               null,
               null,
               ShopAccountIdentity.currentShopUserIdOrNull(),
-              normalizeCity(city)),
+              normalizeCity(city),
+              null),
           false);
     } finally {
       PageHelper.clearPage();
     }
+  }
+
+  public List<ShopZhenkePost> featuredPosts(String city, int pageSize) {
+    return hydrate(
+        mapper.selectFeaturedPosts(
+            ShopAccountIdentity.currentShopUserIdOrNull(),
+            normalizeCity(city),
+            false,
+            Math.max(1, Math.min(3, pageSize))),
+        false);
   }
 
   public ShopZhenkePost detail(long id) {
@@ -134,7 +147,8 @@ public class ShopZhenkeService {
     long uid = ShopAccountIdentity.requireAuthenticatedShopUserId();
     PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(50, pageSize)));
     return hydrate(
-        mapper.selectPosts("RECOMMEND", uid, null, null, null, null, true, null, null, uid, null),
+        mapper.selectPosts(
+            "RECOMMEND", uid, null, null, null, null, true, null, null, uid, null, null),
         false);
   }
 
@@ -335,6 +349,19 @@ public class ShopZhenkeService {
       java.util.Date publishedTo,
       int pageNum,
       int pageSize) {
+    return adminPosts(
+        keyword, merchantId, status, "ALL", publishedFrom, publishedTo, pageNum, pageSize);
+  }
+
+  public List<ShopZhenkePost> adminPosts(
+      String keyword,
+      Long merchantId,
+      String status,
+      String featured,
+      java.util.Date publishedFrom,
+      java.util.Date publishedTo,
+      int pageNum,
+      int pageSize) {
     String normalizedKeyword = StringUtils.trim(keyword);
     if (normalizedKeyword.length() > 120) throw new ServiceException("帖子搜索关键词不能超过120个字符");
     if (merchantId != null && merchantId <= 0) throw new ServiceException("关联商家筛选无效");
@@ -344,6 +371,11 @@ public class ShopZhenkeService {
     String normalizedStatus = StringUtils.trim(status).toUpperCase(Locale.ROOT);
     if (!normalizedStatus.isEmpty() && !Set.of("PUBLISHED", "DELETED").contains(normalizedStatus)) {
       throw new ServiceException("帖子状态筛选无效");
+    }
+    String normalizedFeatured = StringUtils.trim(featured).toUpperCase(Locale.ROOT);
+    if (normalizedFeatured.isEmpty()) normalizedFeatured = "ALL";
+    if (!FEATURED_FILTERS.contains(normalizedFeatured)) {
+      throw new ServiceException("帖子精选状态筛选无效");
     }
     PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(50, pageSize)));
     return hydrate(
@@ -358,7 +390,8 @@ public class ShopZhenkeService {
             publishedFrom,
             publishedTo,
             null,
-            null),
+            null,
+            normalizedFeatured),
         true);
   }
 
@@ -377,6 +410,28 @@ public class ShopZhenkeService {
   @Transactional
   public void adminDelete(long id, long admin) {
     if (mapper.adminDeletePost(id, admin) != 1) throw new ServiceException("帖子不存在或已删除");
+  }
+
+  @Transactional
+  public ShopZhenkePost featurePost(long id, long adminId) {
+    if (mapper.featurePost(id, adminId) != 1) {
+      throw new ServiceException("帖子不存在、已删除、未发布或已经精选");
+    }
+    ShopZhenkePost post = mapper.selectPost(id, true, null);
+    if (post == null || !Boolean.TRUE.equals(post.getFeatured())) {
+      throw new ServiceException("帖子精选状态保存失败，请重试");
+    }
+    notificationService.postFeatured(post);
+    post.setResources(mapper.selectResources(id));
+    return post;
+  }
+
+  @Transactional
+  public ShopZhenkePost unfeaturePost(long id) {
+    if (mapper.unfeaturePost(id) != 1) {
+      throw new ServiceException("帖子不存在、已删除、未发布或未被精选");
+    }
+    return adminDetail(id);
   }
 
   @Transactional

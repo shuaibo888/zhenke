@@ -762,6 +762,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
                       variant="preview"
                       onOpen={() => navigate(`/reports/${report.contentId}`)}
                       onUseful={() => void useful(report)}
+                      usefulDisabled={report.report?.shopUserId === user?.id}
                     />
                   ))}
                   {reports.length < reportTotal && (

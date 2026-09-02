@@ -51,6 +51,10 @@
     <result property="merchantId" column="visible_merchant_id"/>
     <result property="merchantName" column="merchant_name"/>
     <result property="status" column="status"/>
+    <result property="featured" column="featured_flag"/>
+    <result property="featuredAt" column="featured_at"/>
+    <result property="featuredBy" column="featured_by"/>
+    <result property="featuredVersion" column="featured_version"/>
     <result property="publishedAt" column="published_at"/>
     <result property="deleteTime" column="delete_time"/>
     <result property="createTime" column="create_time"/>
@@ -91,8 +95,19 @@
       <if test="perspectiveFilter == 'LOCAL'">and p.perspective='LOCAL'</if>
       <if test="perspectiveFilter == 'TOURIST'">and p.perspective='TOURIST'</if>
       <if test="perspectiveFilter == 'HOMETOWNER'">and p.perspective='HOMETOWNER'</if>
+      <if test="featuredFilter == 'FEATURED'">and p.featured_flag='1'</if>
+      <if test="featuredFilter == 'NORMAL'">and p.featured_flag='0'</if>
     </where>
     order by p.published_at desc,p.post_id desc
+  </select>
+  <select id="selectFeaturedPosts" resultMap="post">
+    <include refid="postSelect"/>
+    where p.del_flag='0'
+      and p.status='PUBLISHED'
+      and p.featured_flag='1'
+      <if test="city != null and city != ''">and p.place_city=#{city}</if>
+    order by p.featured_at desc,p.published_at desc,p.post_id desc
+    limit #{limit}
   </select>
   <select id="selectPostCities" resultType="string">
     select p.place_city
@@ -125,11 +140,50 @@
   <insert id="insertResource" useGeneratedKeys="true" keyProperty="resourceId">insert into shop_zhenke_post_resource(post_id,resource_type,resource_url,resource_sort,create_time) values(#{postId},#{resourceType},#{resourceUrl},#{resourceSort},sysdate())</insert>
   <insert id="insertPendingUpload">insert into shop_zhenke_upload(shop_user_id,resource_url,resource_type,expire_time,create_time) values(#{shopUserId},#{resourceUrl},#{resourceType},date_add(sysdate(),interval 24 hour),sysdate())</insert>
   <update id="claimPendingUpload">update shop_zhenke_upload set claimed_post_id=#{postId},claim_time=sysdate() where shop_user_id=#{shopUserId} and resource_url=#{resourceUrl} and resource_type=#{resourceType} and claimed_post_id is null and expire_time&gt;sysdate()</update>
-  <update id="deleteOwnPost">update shop_zhenke_post set del_flag='2',status='DELETED',delete_source='AUTHOR',delete_time=sysdate(),update_time=sysdate() where post_id=#{postId} and shop_user_id=#{shopUserId} and del_flag='0' and status='PUBLISHED'</update>
-  <update id="adminDeletePost">update shop_zhenke_post set del_flag='2',status='DELETED',delete_source='ADMIN',deleted_by=#{adminId},delete_time=sysdate(),update_time=sysdate() where post_id=#{postId} and del_flag='0'</update>
+  <update id="deleteOwnPost">update shop_zhenke_post set del_flag='2',status='DELETED',featured_flag='0',featured_at=null,featured_by=null,delete_source='AUTHOR',delete_time=sysdate(),update_time=sysdate() where post_id=#{postId} and shop_user_id=#{shopUserId} and del_flag='0' and status='PUBLISHED'</update>
+  <update id="adminDeletePost">update shop_zhenke_post set del_flag='2',status='DELETED',featured_flag='0',featured_at=null,featured_by=null,delete_source='ADMIN',deleted_by=#{adminId},delete_time=sysdate(),update_time=sysdate() where post_id=#{postId} and del_flag='0'</update>
+  <update id="featurePost">update shop_zhenke_post set featured_flag='1',featured_at=sysdate(),featured_by=#{adminId},featured_version=featured_version+1,update_time=sysdate() where post_id=#{postId} and del_flag='0' and status='PUBLISHED' and featured_flag='0'</update>
+  <update id="unfeaturePost">update shop_zhenke_post set featured_flag='0',featured_at=null,featured_by=null,update_time=sysdate() where post_id=#{postId} and del_flag='0' and status='PUBLISHED' and featured_flag='1'</update>
   <insert id="insertUseful">insert ignore into shop_zhenke_post_useful(post_id,shop_user_id,create_time) select #{postId},#{shopUserId},sysdate() from shop_zhenke_post where post_id=#{postId} and del_flag='0' and status='PUBLISHED'</insert>
   <delete id="deleteUseful">delete from shop_zhenke_post_useful where post_id=#{postId} and shop_user_id=#{shopUserId}</delete>
   <select id="countUseful" resultType="int">select count(*) from shop_zhenke_post_useful where post_id=#{postId} and shop_user_id=#{shopUserId}</select>
+  <select id="countUsefulReceivedByAuthor" parameterType="Long" resultType="int">
+    select count(*)
+    from shop_zhenke_post_useful useful
+    join shop_zhenke_post post on post.post_id=useful.post_id
+    where post.shop_user_id=#{shopUserId} and post.del_flag='0' and post.status='PUBLISHED'
+  </select>
+  <resultMap id="usefulContent" type="ShopUsefulContentView">
+    <id property="contentId" column="content_id"/>
+    <result property="contentType" column="content_type"/>
+    <result property="title" column="title"/>
+    <result property="summary" column="summary"/>
+    <result property="coverUrl" column="cover_url"/>
+    <result property="usefulCount" column="useful_count"/>
+    <result property="publishedAt" column="published_at"/>
+    <result property="detailPath" column="detail_path"/>
+  </resultMap>
+  <select id="selectUsefulContentByAuthor" parameterType="Long" resultMap="usefulContent">
+    select 'POST' content_type,
+           post.post_id content_id,
+           post.title,
+           left(coalesce(nullif(trim(post.suggestion),''),post.content),240) summary,
+           (select resource.resource_url
+              from shop_zhenke_post_resource resource
+             where resource.post_id=post.post_id and resource.resource_type='IMAGE'
+             order by resource.resource_sort,resource.resource_id limit 1) cover_url,
+           useful.useful_count,
+           post.published_at,
+           concat('/posts/',post.post_id) detail_path
+    from shop_zhenke_post post
+    join (
+      select post_id,count(*) useful_count
+      from shop_zhenke_post_useful
+      group by post_id
+    ) useful on useful.post_id=post.post_id
+    where post.shop_user_id=#{shopUserId} and post.del_flag='0' and post.status='PUBLISHED'
+    order by post.published_at desc,post.post_id desc
+  </select>
   <resultMap id="comment" type="ShopZhenkePostComment">
     <id property="commentId" column="comment_id"/>
     <result property="postId" column="post_id"/>

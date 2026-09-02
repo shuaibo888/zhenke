@@ -1,0 +1,131 @@
+@ink: #332922;
+@muted: #7c716a;
+@line: #eadfd7;
+@orange: #ff6b1a;
+
+.page {
+  padding-bottom: 32px;
+}
+
+.panel {
+  overflow: hidden;
+}
+
+.tabs {
+  margin-top: -8px;
+}
+
+.tabs :global(.ant-tabs-tab) {
+  font-weight: 700;
+}
+
+.tabs :global(.ant-tabs-tab-btn) > span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.card {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 104px minmax(0, 1fr) 18px;
+  gap: 13px;
+  align-items: center;
+  padding: 10px;
+  color: @ink;
+  text-align: left;
+  background: #fff;
+  border: 1px solid @line;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.card:hover,
+.card:focus-visible {
+  background: #fffaf7;
+  border-color: #e7a27e;
+  outline: none;
+}
+
+.card > img,
+.coverFallback {
+  display: grid;
+  width: 104px;
+  height: 78px;
+  place-items: center;
+  object-fit: cover;
+  color: @orange;
+  background: #fff4ec;
+  border-radius: 6px;
+  font-size: 25px;
+}
+
+.cardCopy {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.cardCopy strong {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.cardCopy small {
+  overflow: hidden;
+  color: @muted;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardCopy em {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  color: #8a3f32;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.arrow {
+  color: #aa9e97;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+@media (max-width: 700px) {
+  .list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 390px) {
+  .card {
+    grid-template-columns: 84px minmax(0, 1fr) 14px;
+    gap: 10px;
+    padding: 8px;
+  }
+
+  .card > img,
+  .coverFallback {
+    width: 84px;
+    height: 66px;
+  }
+}

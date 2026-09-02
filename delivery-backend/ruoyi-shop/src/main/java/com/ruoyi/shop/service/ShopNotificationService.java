@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 public class ShopNotificationService
 {
     public static final String POST_USEFUL = "POST_USEFUL";
+    public static final String POST_FEATURED = "POST_FEATURED";
     public static final String POST_COMMENT = "POST_COMMENT";
     public static final String POST_REPLY = "POST_REPLY";
     public static final String REPORT_USEFUL = "REPORT_USEFUL";
@@ -60,6 +61,28 @@ public class ShopNotificationService
     {
         create(POST_USEFUL, TARGET_POST, post.getPostId(), null, post.getShopUserId(), actorId,
                 post.getTitle(), null);
+    }
+
+    public void postFeatured(ShopZhenkePost post)
+    {
+        if (post == null || post.getPostId() == null || post.getShopUserId() == null
+                || post.getFeaturedVersion() == null || post.getFeaturedVersion() <= 0)
+        {
+            return;
+        }
+        ShopNotification notification = new ShopNotification();
+        notification.setRecipientShopUserId(post.getShopUserId());
+        notification.setActorShopUserId(null);
+        notification.setEventType(POST_FEATURED);
+        notification.setTargetType(TARGET_POST);
+        notification.setTargetId(post.getPostId());
+        notification.setSourceId(post.getFeaturedVersion());
+        notification.setTargetTitle(trimToLength(post.getTitle(), 120));
+        notification.setContentPreview("你的甄客帖已入选编辑推荐");
+        notification.setDedupeKey(String.join(":", POST_FEATURED,
+                String.valueOf(post.getPostId()), String.valueOf(post.getFeaturedVersion()),
+                String.valueOf(post.getShopUserId())));
+        mapper.insertNotification(notification);
     }
 
     public void reportUseful(ShopVerificationReport report, long actorId)
