@@ -193,7 +193,9 @@ export default function PointsPage() {
           <Button
             className={styles.pointRecordsLink}
             icon={<HistoryOutlined />}
-            onClick={() => navigate('/profile/point-records')}
+            onClick={() => navigate('/profile/point-records', {
+              state: { pointRecordsSource: '/profile/points' },
+            })}
           >
             积分明细
           </Button>

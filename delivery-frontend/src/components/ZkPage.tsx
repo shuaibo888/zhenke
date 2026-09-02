@@ -78,6 +78,8 @@ export function ZkTaskHeader(props: {
   title: string;
   description: string;
   backTo?: string;
+  onBack?: () => void;
+  backAriaLabel?: string;
   aside?: ReactNode;
 }) {
   const navigate = useNavigate();
@@ -86,8 +88,8 @@ export function ZkTaskHeader(props: {
       <button
         type="button"
         className={styles.taskHeaderBack}
-        onClick={() => navigate(props.backTo ?? "/profile")}
-        aria-label="返回"
+        onClick={props.onBack ?? (() => navigate(props.backTo ?? "/profile"))}
+        aria-label={props.backAriaLabel ?? "返回"}
       >
         <ArrowLeftOutlined />
       </button>

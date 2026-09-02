@@ -281,7 +281,14 @@ export default function ProfilePage() {
               onClick: () => navigate('/profile/messages'),
             })}
             {profileEntry({ icon: <ProfileOutlined />, title: '我的试用', description: '申请与履约进度', onClick: () => navigate('/profile/trials') })}
-            {profileEntry({ icon: <HistoryOutlined />, title: '积分记录', description: '查看积分明细', onClick: () => navigate('/profile/point-records') })}
+            {profileEntry({
+              icon: <HistoryOutlined />,
+              title: '积分记录',
+              description: '查看积分明细',
+              onClick: () => navigate('/profile/point-records', {
+                state: { pointRecordsSource: '/profile' },
+              }),
+            })}
             {profileEntry({ icon: <EnvironmentOutlined />, title: '收货地址', description: '配送订单使用', onClick: () => setAddressOpen(true) })}
             {profileEntry({ icon: <SettingOutlined />, title: '资料与安全', description: '头像、账号与密码', onClick: () => openProfileEditor() })}
             {profileEntry({ icon: <LogoutOutlined />, title: '退出登录', description: '安全退出当前账号', onClick: confirmLogout })}

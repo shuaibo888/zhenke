@@ -47,6 +47,13 @@ const navItems: MainNavItem[] = [
   { key: 'profile', label: '我的', path: '/profile', icon: <UserOutlined />, protected: true },
 ];
 
+const FLOATING_PUBLISH_DISCOVERY_PATHS = new Set(['/', '/posts']);
+
+function shouldShowFloatingPublish(pathname: string) {
+  const normalizedPath = pathname.replace(/\/+$/, '') || '/';
+  return FLOATING_PUBLISH_DISCOVERY_PATHS.has(normalizedPath);
+}
+
 function getActiveNav(pathname: string): MainNavItem['key'] {
   if (pathname.startsWith('/posts') || pathname.startsWith('/places')) return 'posts';
   if (pathname.startsWith('/mall') || pathname.startsWith('/products')
@@ -82,10 +89,8 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const checkoutPage = location.pathname.startsWith('/checkout');
   const publishPage = location.pathname === '/posts/publish';
   const mallProductsPage = location.pathname.startsWith('/mall/products');
-  const immersiveDetailPage = location.pathname.startsWith('/products/')
-    || location.pathname.startsWith('/reports/');
-  const contextualPublishPage = /^\/(?:places|enjoy)\/\d+\/?$/.test(location.pathname);
   const hideMobileNav = authPage || checkoutPage || publishPage;
+  const showFloatingPublish = shouldShowFloatingPublish(location.pathname);
   const showCartFloat = !authPage && !checkoutPage
     && (activeNav === 'mall' || location.pathname.startsWith('/products'));
 
@@ -286,7 +291,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
         </nav>
       )}
 
-      {!authPage && !checkoutPage && !publishPage && !immersiveDetailPage && !contextualPublishPage && (
+      {showFloatingPublish && (
         <button type="button" className={styles.floatingPublish} onClick={goPublish}>
           <EditOutlined />
           <span className={styles.floatingPublishText}>发布甄客帖</span>

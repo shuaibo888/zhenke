@@ -1,6 +1,7 @@
 import { MinusOutlined, PlusOutlined } from '@ant-design/icons';
 import { Pagination, Spin, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'umi';
 import { LoginRedirect } from '@/components/LoginRedirect';
 import { useShop } from '@/app/ShopContext';
 import { ZkProfilePage, ZkProfilePanel, ZkTaskHeader } from '@/components/ZkPage';
@@ -10,7 +11,17 @@ import styles from '@/styles/commerce.less';
 
 const PAGE_SIZE = 20;
 
+type PointRecordsLocationState = {
+  pointRecordsSource?: unknown;
+};
+
+type BrowserHistoryState = {
+  idx?: unknown;
+};
+
 export default function PointRecordsPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useShop();
   const [records, setRecords] = useState<ShopPointRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
@@ -40,6 +51,18 @@ export default function PointRecordsPage() {
 
   useRefreshOnRoute('/profile/point-records', refreshRecords, '积分记录刷新失败');
 
+  const pointRecordsSource = (location.state as PointRecordsLocationState | null)?.pointRecordsSource;
+  const hasKnownSource = pointRecordsSource === '/profile' || pointRecordsSource === '/profile/points';
+  const backTo = pointRecordsSource === '/profile' ? '/profile' : '/profile/points';
+  const goBack = useCallback(() => {
+    const historyIndex = (window.history.state as BrowserHistoryState | null)?.idx;
+    if (hasKnownSource && typeof historyIndex === 'number' && historyIndex > 0) {
+      navigate(-1);
+      return;
+    }
+    navigate(backTo, { replace: true });
+  }, [backTo, hasKnownSource, navigate]);
+
   if (!user) {
     return <LoginRedirect />;
   }
@@ -56,7 +79,8 @@ export default function PointRecordsPage() {
         eyebrow="权益资产"
         title="积分明细"
         description="查看积分获取与使用记录。"
-        backTo="/profile/points"
+        onBack={goBack}
+        backAriaLabel={backTo === '/profile' ? '返回我的' : '返回积分中心'}
       />
       <ZkProfilePanel title="积分变更记录" meta={`共 ${total} 条`}>
         <Spin spinning={recordsLoading}>
