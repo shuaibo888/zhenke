@@ -6,6 +6,7 @@ import { ZhenkeEnjoyCard } from '@/components/ZhenkeEnjoyCard';
 import { ZkState } from '@/components/ZkPage';
 import { enjoys, type EnjoyCategory, type ZhenkeEnjoy } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
+import { CURRENT_LOCATION_CHANGED_EVENT } from '@/utils/currentLocation';
 
 const categories: Array<{ value: EnjoyCategory; label: string; caption: string; icon: React.ReactNode }> = [
   { value: 'MALL', label: '甄必购', caption: '好物与城市手信', icon: <ShoppingOutlined /> },
@@ -68,6 +69,12 @@ export default function EnjoyListPage() {
   }, [activeCategory]);
 
   useEffect(() => { void load(1); }, [load]);
+
+  useEffect(() => {
+    const refreshForCurrentCity = () => void load(1);
+    window.addEventListener(CURRENT_LOCATION_CHANGED_EVENT, refreshForCurrentCity);
+    return () => window.removeEventListener(CURRENT_LOCATION_CHANGED_EVENT, refreshForCurrentCity);
+  }, [load]);
 
   useEffect(() => () => {
     requestVersionRef.current += 1;

@@ -7,6 +7,7 @@ import { usePostPublishLauncher } from '@/components/PostPublishLauncher';
 import { ZkState } from '@/components/ZkPage';
 import { postCities, posts, type ZhenkePost } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
+import { CURRENT_LOCATION_CHANGED_EVENT } from '@/utils/currentLocation';
 
 const PAGE_SIZE = 12;
 const perspectives = [
@@ -69,6 +70,12 @@ export default function PostListPage() {
     void loadPerspective();
   }, [loadPerspective]);
 
+  useEffect(() => {
+    const refreshForCurrentCity = () => void loadPerspective();
+    window.addEventListener(CURRENT_LOCATION_CHANGED_EVENT, refreshForCurrentCity);
+    return () => window.removeEventListener(CURRENT_LOCATION_CHANGED_EVENT, refreshForCurrentCity);
+  }, [loadPerspective]);
+
   useEffect(() => () => {
     requestVersionRef.current += 1;
   }, []);
@@ -123,7 +130,7 @@ export default function PostListPage() {
     <main className={styles.page}>
       <header className={styles.postsPageHeading}>
         <div>
-          <h1>天南海北燃赛人</h1>
+          <h1>甄客帖</h1>
         </div>
         <Button type="primary" size="large" icon={<EditOutlined />} onClick={() => startPostPublish()}>发布帖子</Button>
       </header>

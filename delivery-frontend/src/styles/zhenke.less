@@ -619,6 +619,15 @@
   box-shadow: 0 0 0 3px fade(@orange, 12%);
 }
 
+.cityPickerLoading {
+  display: flex;
+  min-height: 128px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: @muted;
+}
+
 .cityPickerScroll {
   max-height: min(62vh, 620px);
   margin-top: 18px;
@@ -5048,6 +5057,15 @@
 }
 
 @media (max-width: 900px) {
+  .appShell {
+    --zk-mobile-nav-offset: calc(62px + env(safe-area-inset-bottom));
+    padding-bottom: calc(var(--zk-mobile-nav-offset) + 26px);
+  }
+
+  .appShell.authAppShell {
+    padding-bottom: 0;
+  }
+
   .mobileTopbar {
     min-height: 58px;
     padding: 8px 14px;
@@ -5070,7 +5088,7 @@
     right: 0;
     bottom: 0;
     left: 0;
-    min-height: 62px;
+    min-height: var(--zk-mobile-nav-offset);
     padding: 4px max(6px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
     background: #fff;
     border: 0;
@@ -5091,7 +5109,7 @@
 
   .floatingPublish {
     right: 16px;
-    bottom: 76px;
+    bottom: calc(var(--zk-mobile-nav-offset) + 14px);
     border-radius: 7px;
   }
 

@@ -10,12 +10,12 @@ import {
   ShoppingCartOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Badge, Dropdown, message } from 'antd';
+import { Badge, Dropdown, Modal, Spin, message } from 'antd';
 import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
-import { buildLoginPath } from '@/utils/safeRedirect';
+import { buildLoginPath, LOGIN_RETURN_TO_SOURCE_STATE } from '@/utils/safeRedirect';
 import { getCartCount } from '@/utils/shop';
 import {
   CURRENT_LOCATION_CHANGED_EVENT,
@@ -29,6 +29,8 @@ import { CartDrawer } from './CartDrawer';
 import { NativePayModal } from './NativePayModal';
 import { usePostPublishLauncher } from './PostPublishLauncher';
 import styles from '@/styles/zhenke.less';
+
+const CurrentCityPicker = lazy(() => import('./CurrentCityPicker'));
 
 type MainNavItem = {
   key: 'home' | 'posts' | 'mall' | 'profile';
@@ -72,6 +74,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const { startPostPublish } = usePostPublishLauncher();
   const [cartOpen, setCartOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
+  const [cityPickerOpen, setCityPickerOpen] = useState(false);
   const [headerCity, setHeaderCity] = useState(currentLocationCityLabel);
   const activeNav = getActiveNav(location.pathname);
   const cartCount = getCartCount(cart);
@@ -82,7 +85,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const immersiveDetailPage = location.pathname.startsWith('/products/')
     || location.pathname.startsWith('/reports/');
   const contextualPublishPage = /^\/(?:places|enjoy)\/\d+\/?$/.test(location.pathname);
-  const hideMobileNav = authPage || checkoutPage || publishPage || immersiveDetailPage;
+  const hideMobileNav = authPage || checkoutPage || publishPage;
   const showCartFloat = !authPage && !checkoutPage
     && (activeNav === 'mall' || location.pathname.startsWith('/products'));
 
@@ -130,6 +133,19 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const goPublish = () => {
     startPostPublish();
   };
+  const openCart = () => {
+    if (user) {
+      setCartOpen(true);
+      return;
+    }
+    const loginPath = buildLoginPath('/mall');
+    if (location.pathname === '/mall' && !location.search && !location.hash) {
+      navigate(loginPath, { state: LOGIN_RETURN_TO_SOURCE_STATE });
+      return;
+    }
+    navigate(loginPath);
+  };
+  const closeCityPicker = useCallback(() => setCityPickerOpen(false), []);
 
   const brand = (
     <button type="button" className={styles.brand} onClick={() => goHome()} aria-label="返回甄客行首页">
@@ -144,10 +160,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
       type="button"
       className={styles.headerCityButton}
       aria-label={`${headerCity}，点击切换城市`}
-      onClick={() => {
-        if (location.pathname === '/') window.dispatchEvent(new Event('zhenke:open-city-picker'));
-        else goHome('?cityPicker=1');
-      }}
+      onClick={() => setCityPickerOpen(true)}
     >
       <span>{headerCityLabel}</span>
       <DownOutlined />
@@ -189,7 +202,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
                     type="button"
                     className={styles.circleAction}
                     aria-label="购物车"
-                    onClick={() => user ? setCartOpen(true) : navigate(buildLoginPath('/mall'))}
+                    onClick={openCart}
                   >
                     <ShoppingCartOutlined />
                   </button>
@@ -220,7 +233,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
                     </button>
                   </Dropdown>
                 ) : (
-                  <button type="button" className={styles.loginAction} onClick={() => navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`))}>
+                  <button type="button" className={styles.loginAction} onClick={() => navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`), { state: LOGIN_RETURN_TO_SOURCE_STATE })}>
                     登录 / 注册
                   </button>
                 )}
@@ -239,13 +252,13 @@ export function AppChrome({ children }: { children: ReactNode }) {
                   type="button"
                   className={styles.circleAction}
                   aria-label="购物车"
-                  onClick={() => user ? setCartOpen(true) : navigate(buildLoginPath('/mall'))}
+                  onClick={openCart}
                 >
                   <ShoppingCartOutlined />
                 </button>
               </Badge>
               {!user && (
-                <button type="button" className={styles.loginAction} onClick={() => navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`))}>
+                <button type="button" className={styles.loginAction} onClick={() => navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`), { state: LOGIN_RETURN_TO_SOURCE_STATE })}>
                   登录
                 </button>
               )}
@@ -283,7 +296,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
       {showCartFloat && (
         <div className={styles.cartFloat}>
           <Badge count={cartCount}>
-            <button type="button" className={styles.circleAction} onClick={() => user ? setCartOpen(true) : navigate(buildLoginPath('/mall'))}>
+            <button type="button" className={styles.circleAction} onClick={openCart}>
               <ShoppingCartOutlined />
             </button>
           </Badge>
@@ -293,6 +306,18 @@ export function AppChrome({ children }: { children: ReactNode }) {
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
       <AddressManager open={addressOpen} onClose={() => setAddressOpen(false)} />
       <NativePayModal />
+      {!authPage && cityPickerOpen && (
+        <Suspense fallback={(
+          <Modal open title="选择当前城市" footer={null} onCancel={closeCityPicker}>
+            <div className={styles.cityPickerLoading} role="status">
+              <Spin />
+              <span>正在加载城市列表…</span>
+            </div>
+          </Modal>
+        )}>
+          <CurrentCityPicker open={cityPickerOpen} onClose={closeCityPicker} />
+        </Suspense>
+      )}
     </div>
   );
 }

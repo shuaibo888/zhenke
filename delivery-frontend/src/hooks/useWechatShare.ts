@@ -13,6 +13,7 @@ const WECHAT_JS_APIS = [
   'updateTimelineShareData',
   'onMenuShareAppMessage',
   'onMenuShareTimeline',
+  'getLocation',
   'openLocation',
 ];
 
@@ -37,6 +38,12 @@ export interface WechatLocationData {
   longitude: number;
   name: string;
   address: string;
+}
+
+export interface WechatCurrentCoordinates {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
 }
 
 interface WechatSdk {
@@ -88,6 +95,12 @@ interface WechatSdk {
     link: string;
     imgUrl: string;
     success?: () => void;
+    cancel?: () => void;
+    fail?: (error: { errMsg?: string }) => void;
+  }) => void;
+  getLocation?: (data: {
+    type: 'wgs84';
+    success: (result: WechatCurrentCoordinates) => void;
     cancel?: () => void;
     fail?: (error: { errMsg?: string }) => void;
   }) => void;
@@ -189,6 +202,19 @@ function signatureAttemptUrls() {
   return [signatureUrl, signatureUrl];
 }
 
+async function fetchWechatSignatureWithTimeout(signatureUrl: string) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 6000);
+  try {
+    return await fetchWechatJsSdkSignature(signatureUrl, controller.signal);
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error('微信签名加载超时');
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 function applyWechatSdkConfig(
   wx: WechatSdk,
   signature: Awaited<ReturnType<typeof fetchWechatJsSdkSignature>>,
@@ -236,7 +262,7 @@ function ensureWechatSdkConfigured(signatureUrl: string) {
   const promise = enqueueWechatConfig(async () => {
     const [wx, signature] = await Promise.all([
       loadWechatSdk(),
-      fetchWechatJsSdkSignature(signatureUrl),
+      fetchWechatSignatureWithTimeout(signatureUrl),
     ]);
     await applyWechatSdkConfig(wx, signature);
     return wx;
@@ -304,6 +330,63 @@ function invokeWechatLocation(wx: WechatSdk, location: WechatLocationData) {
       fail: (error) => finish(() => reject(new Error(error.errMsg || '微信地点预览打开失败'))),
     });
   });
+}
+
+function wechatLocationFailure(message: string) {
+  if (/cancel|deny|denied|auth\s*deny/i.test(message)) {
+    return new DOMException('未获得定位权限，请手动选择城市', 'NotAllowedError');
+  }
+  return new Error(message || '微信定位暂时不可用');
+}
+
+function invokeWechatCurrentLocation(wx: WechatSdk) {
+  return new Promise<WechatCurrentCoordinates>((resolve, reject) => {
+    if (!wx.getLocation) {
+      reject(new Error('当前微信客户端未开放定位能力'));
+      return;
+    }
+    let settled = false;
+    const finish = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      callback();
+    };
+    const timeout = window.setTimeout(
+      () => finish(() => reject(new Error('微信定位请求超时'))),
+      10000,
+    );
+    wx.getLocation({
+      type: 'wgs84',
+      success: (result) => finish(() => {
+        if (!Number.isFinite(result.latitude) || result.latitude < -90 || result.latitude > 90
+          || !Number.isFinite(result.longitude) || result.longitude < -180 || result.longitude > 180) {
+          reject(new Error('微信返回的定位坐标无效'));
+          return;
+        }
+        resolve({
+          latitude: result.latitude,
+          longitude: result.longitude,
+          accuracy: Number.isFinite(result.accuracy) ? result.accuracy : undefined,
+        });
+      }),
+      cancel: () => finish(() => reject(
+        new DOMException('未获得定位权限，请手动选择城市', 'NotAllowedError'),
+      )),
+      fail: (error) => finish(() => reject(
+        wechatLocationFailure(error.errMsg || '微信定位暂时不可用'),
+      )),
+    });
+  });
+}
+
+export async function getWechatCurrentCoordinates() {
+  if (!isWechatBrowser()) throw new Error('当前不是微信浏览器');
+  const [signatureUrl] = getWechatJsSdkSignatureUrls();
+  const wx = await ensureWechatSdkConfigured(signatureUrl);
+  // A native location request can trigger a permission prompt. Invoke it only
+  // once; configuration may be retried later from the explicit retry button.
+  return invokeWechatCurrentLocation(wx);
 }
 
 export async function openWechatLocation(location: WechatLocationData) {
@@ -513,7 +596,10 @@ export function useWechatShare(data: WechatShareData | null) {
     if (isWechatBrowser()) void prepareWechatShare().catch(() => undefined);
 
     return () => {
-      document.title = previousTitle;
+      // The layout may already have applied the destination route title while
+      // this detail component is unmounting. Do not overwrite that newer
+      // title with the source route's generic title.
+      if (document.title === title) document.title = previousTitle;
       restoreMeta.forEach((restore) => restore());
     };
   }, [description, imageUrl, link, prepareWechatShare, resolvedImageUrl, resolvedLink, title]);

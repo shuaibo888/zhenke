@@ -15,6 +15,7 @@ import { AddressManager } from '@/components/AddressManager';
 import { CheckoutJourney } from '@/components/CheckoutJourney';
 import { ProfileBackButton } from '@/components/ProfileBackButton';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { useSafeBack } from '@/hooks/useSafeBack';
 import {
   fetchAvailableCoupons,
   fetchPublicProduct,
@@ -66,6 +67,7 @@ function toMoney(value: number) {
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
+  const goBack = useSafeBack('/mall');
   const [searchParams] = useSearchParams();
   const {
     user,
@@ -472,7 +474,7 @@ export default function CheckoutPage() {
     <>
       <main className={`${styles.profileDetailPage} ${styles.checkoutPage}`}>
         <div className={styles.profileDetailToolbar}>
-          <ProfileBackButton onClick={() => navigate(-1)} />
+          <ProfileBackButton onClick={goBack} />
           <span>确认商品、地址与优惠信息后提交支付</span>
         </div>
         <header className={styles.checkoutHeader}>

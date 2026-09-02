@@ -9,6 +9,7 @@ import { useLocation, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
 import { ZkState } from '@/components/ZkPage';
+import { useSafeBack } from '@/hooks/useSafeBack';
 import {
   merchantOptions,
   place as fetchPlace,
@@ -62,6 +63,7 @@ async function videoDuration(file: File) {
 
 export default function PublishPostPage() {
   const navigate = useNavigate();
+  const goBack = useSafeBack('/posts');
   const location = useLocation();
   const { user, authLoading } = useShop();
   const [form] = Form.useForm<PublishValues>();
@@ -352,7 +354,7 @@ export default function PublishPostPage() {
           <button
             type="button"
             className={styles.publishBack}
-            onClick={() => navigate(-1)}
+            onClick={goBack}
           >
             <ArrowLeftOutlined /> 返回
           </button>

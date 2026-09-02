@@ -1,4 +1,12 @@
+import { isSharedContentEntry } from '@/utils/wechatEntryUrl';
+
 export type CurrentLocationSource = 'DEVICE' | 'MANUAL';
+
+type DeviceCoordinates = {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+};
 
 export interface CurrentLocation {
   label: string;
@@ -76,53 +84,109 @@ export function notifyCurrentLocationChanged() {
 }
 
 function geolocationErrorMessage(error: GeolocationPositionError | DOMException | unknown) {
+  if (error instanceof Error && [
+    '未获得定位权限，请手动选择城市',
+    '当前浏览器不支持设备定位，请手动选择城市',
+    '设备定位暂时不可用，请手动选择城市',
+  ].includes(error.message)) {
+    return error.message;
+  }
   if (typeof error === 'object' && error && 'code' in error && error.code === 1) {
     return '未获得定位权限，请手动选择城市';
   }
-  if (error instanceof DOMException && error.name === 'SecurityError') {
+  if (error instanceof DOMException
+    && (error.name === 'SecurityError' || error.name === 'NotAllowedError')) {
     return '未获得定位权限，请手动选择城市';
   }
   return '设备定位暂时不可用，请手动选择城市';
 }
 
-function browserCoordinates() {
-  return new Promise<GeolocationCoordinates>((resolve, reject) => {
+function browserCoordinates(): Promise<DeviceCoordinates> {
+  return new Promise((resolve, reject) => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       reject(new Error('当前浏览器不支持设备定位，请手动选择城市'));
       return;
     }
+    let settled = false;
+    const finish = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(watchdog);
+      callback();
+    };
+    // Some embedded WebViews ignore the native timeout option and never call
+    // either callback. Keep the shared request recoverable in that case.
+    const watchdog = window.setTimeout(
+      () => finish(() => reject(new Error('设备定位暂时不可用，请手动选择城市'))),
+      9000,
+    );
     try {
       navigator.geolocation.getCurrentPosition(
-        ({ coords }) => resolve(coords),
-        (error) => reject(new Error(geolocationErrorMessage(error))),
+        ({ coords }) => finish(() => resolve(coords)),
+        (error) => finish(() => reject(new Error(geolocationErrorMessage(error)))),
         { timeout: 8000, maximumAge: 300000, enableHighAccuracy: false },
       );
     } catch (error) {
       // A few embedded WebViews throw synchronously instead of invoking the
       // error callback. Turning that into a rejection prevents a React effect
       // from tearing down the whole page.
-      reject(new Error(geolocationErrorMessage(error)));
+      finish(() => reject(new Error(geolocationErrorMessage(error))));
     }
   });
 }
 
+async function deviceCoordinates() {
+  const wechatBrowser = typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent);
+  const wechatCoordinates = async () => {
+    const { getWechatCurrentCoordinates } = await import('@/hooks/useWechatShare');
+    return getWechatCurrentCoordinates();
+  };
+  if (wechatBrowser && isSharedContentEntry()) {
+    try {
+      return await wechatCoordinates();
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'NotAllowedError') throw error;
+      // A missing/temporarily unavailable JS-SDK must not make positioning
+      // worse than an ordinary browser. Fall back to the standards API.
+    }
+    return browserCoordinates();
+  }
+  try {
+    return await browserCoordinates();
+  } catch (error) {
+    if (!wechatBrowser
+      || (error instanceof Error && error.message === '未获得定位权限，请手动选择城市')) {
+      throw error;
+    }
+    // Normal in-app navigation starts with the standards API so configuring
+    // wx on the homepage does not force a later Android SPA reload. WeChat is
+    // the fallback when the embedded browser cannot provide coordinates.
+    return wechatCoordinates();
+  }
+}
+
 async function resolveDeviceLocation() {
   const startedAt = Date.now();
-  const coords = await browserCoordinates();
+  let coords: DeviceCoordinates;
+  try {
+    coords = await deviceCoordinates();
+  } catch (error) {
+    throw new Error(geolocationErrorMessage(error));
+  }
   let response: Response;
+  let payload: { code?: number; msg?: string; data?: { city?: string; district?: string } };
+  const reverseController = new AbortController();
+  const reverseTimeout = window.setTimeout(() => reverseController.abort(), 8000);
   try {
     response = await fetch(
       `/api/shop/zhenke/map/reverse?latitude=${coords.latitude}&longitude=${coords.longitude}`,
+      { signal: reverseController.signal },
     );
-  } catch {
-    throw new Error('地图服务暂时不可用，请手动选择城市');
-  }
-
-  let payload: { code?: number; msg?: string; data?: { city?: string; district?: string } };
-  try {
     payload = await response.json();
   } catch {
     throw new Error('地图服务暂时不可用，请手动选择城市');
+  } finally {
+    window.clearTimeout(reverseTimeout);
   }
   if (!response.ok || payload.code !== 200) {
     throw new Error(payload.msg || '地图服务暂时不可用，请手动选择城市');

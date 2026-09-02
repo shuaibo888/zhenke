@@ -19,6 +19,7 @@ import { MerchantInfoBar } from '@/components/MerchantInfoBar';
 import { VerificationProofStrip } from '@/components/VerificationProofStrip';
 import { ZkState } from '@/components/ZkPage';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { useSafeBack } from '@/hooks/useSafeBack';
 import { getWechatShareErrorMessage, isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
 import { useWechatShareGuide } from '@/hooks/useWechatShareGuide';
 import {
@@ -32,7 +33,7 @@ import {
   type ReportCommentDto,
   type VerificationReportDto,
 } from '@/services/shopContent';
-import { buildLoginPath } from '@/utils/safeRedirect';
+import { buildLoginPath, LOGIN_RETURN_TO_SOURCE_STATE } from '@/utils/safeRedirect';
 import { buildReportShareLink, copyText, formatPrice, getReportType } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
 
@@ -85,6 +86,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const goBack = useSafeBack('/mall/content');
   const { user, replaceReport } = useShop();
   const routeId = Number(params.reportId);
   const reportId = reportIdProp ?? routeId;
@@ -191,7 +193,9 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
 
   const submitComment = async () => {
     if (!user) {
-      navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`));
+      navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`), {
+        state: LOGIN_RETURN_TO_SOURCE_STATE,
+      });
       return;
     }
     const content = comment.trim();
@@ -235,7 +239,9 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
 
   const useful = async () => {
     if (!user) {
-      navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`));
+      navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`), {
+        state: LOGIN_RETURN_TO_SOURCE_STATE,
+      });
       return;
     }
     if (!report || report.shopUserId === user.id) {
@@ -301,7 +307,7 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
     <>
       <main className={`${styles.journeyPage} ${styles.reportDetailPage}`}>
         <header className={styles.reportDetailBar}>
-          <button type="button" className={styles.reportDetailBack} aria-label="返回" onClick={() => navigate(-1)}>
+          <button type="button" className={styles.reportDetailBack} aria-label="返回" onClick={goBack}>
             <ArrowLeftOutlined />
           </button>
           <div className={styles.reportDetailBarAuthor}>
@@ -449,7 +455,9 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
               placeholder={user ? (replyingTo ? '写下你的回复' : '说说你对这份甄客验的看法') : '登录后可以评论和回复'}
               onChange={(event) => setComment(event.target.value)}
               onClick={() => {
-                if (!user) navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`));
+                if (!user) navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`), {
+                  state: LOGIN_RETURN_TO_SOURCE_STATE,
+                });
               }}
             />
             <Button type="primary" loading={commentSubmitting} onClick={() => void submitComment()}>

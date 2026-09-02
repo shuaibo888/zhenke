@@ -13,6 +13,7 @@ import { Button, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'umi';
 import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
+import { useSafeBack } from '@/hooks/useSafeBack';
 import {
   fetchMallProducts,
   fetchPublicMerchant,
@@ -24,6 +25,7 @@ import styles from '@/styles/zhenke.less';
 
 export default function MerchantDetailPage() {
   const navigate = useNavigate();
+  const goBack = useSafeBack('/mall');
   const { merchantId: rawMerchantId } = useParams<{ merchantId: string }>();
   const merchantId = Number(rawMerchantId);
   const [merchant, setMerchant] = useState<PublicMerchantDto>();
@@ -98,7 +100,7 @@ export default function MerchantDetailPage() {
   return (
     <main className={styles.page}>
       <div className={styles.detailTopbar}>
-        <button type="button" className={styles.backButton} onClick={() => navigate(-1)} aria-label="返回">
+        <button type="button" className={styles.backButton} onClick={goBack} aria-label="返回">
           <ArrowLeftOutlined />
         </button>
         <strong>入驻商家</strong>

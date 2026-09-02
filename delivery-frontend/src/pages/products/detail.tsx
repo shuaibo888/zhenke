@@ -23,6 +23,7 @@ import { MerchantInfoBar } from '@/components/MerchantInfoBar';
 import { WechatShareGuide } from '@/components/WechatShareGuide';
 import { ZkState } from '@/components/ZkPage';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { useSafeBack } from '@/hooks/useSafeBack';
 import { getWechatShareErrorMessage, isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
 import { useWechatShareGuide } from '@/hooks/useWechatShareGuide';
 import {
@@ -36,7 +37,7 @@ import {
   type PublicTrialCampaignDto,
 } from '@/services/shopContent';
 import type { ShopShippingAddress } from '@/services/shopAuth';
-import { buildLoginPath } from '@/utils/safeRedirect';
+import { buildLoginPath, LOGIN_RETURN_TO_SOURCE_STATE } from '@/utils/safeRedirect';
 import { buildProductShareLink, buildTrialShareLink, copyText, formatPrice } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
 
@@ -118,6 +119,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const goBack = useSafeBack('/mall');
   const {
     user,
     trials: myTrials,
@@ -299,7 +301,9 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   const requireLogin = () => {
     if (user) return true;
     message.info('请先登录');
-    navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`));
+    navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`), {
+      state: LOGIN_RETURN_TO_SOURCE_STATE,
+    });
     return false;
   };
 
@@ -468,7 +472,14 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   if (loading) return <main className={styles.sessionLoading}><Spin size="large" /></main>;
   if (!product) {
     return (
-      <main className={styles.singleColumn}>
+      <main className={`${styles.singleColumn} ${styles.productDetailMain}`}>
+        <header className={styles.reportDetailBar}>
+          <button type="button" className={styles.reportDetailBack} aria-label="返回商城" onClick={goBack}>
+            <ArrowLeftOutlined />
+          </button>
+          <span className={styles.trialDetailTitle}>商品详情</span>
+          <span className={styles.reportDetailBarSpacer} aria-hidden="true" />
+        </header>
         <ZkState
           kind="error"
           title="商品暂时无法打开"
@@ -483,7 +494,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
     <>
       <main className={`${styles.journeyPage} ${styles.trialDetailPage} ${styles.productDetailMain}`}>
         <header className={styles.reportDetailBar}>
-          <button type="button" className={styles.reportDetailBack} aria-label="返回" onClick={() => navigate(-1)}>
+          <button type="button" className={styles.reportDetailBack} aria-label="返回" onClick={goBack}>
             <ArrowLeftOutlined />
           </button>
           <span className={styles.trialDetailTitle}>{routeCampaign ? '试用招募' : '商品详情'}</span>

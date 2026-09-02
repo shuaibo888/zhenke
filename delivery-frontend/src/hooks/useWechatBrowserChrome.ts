@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { isWechatBrowser } from '@/hooks/useWechatShare';
 
 const APP_TITLE = '甄客行';
 
@@ -7,7 +6,7 @@ function routeTitle(pathname: string) {
   if (pathname === '/') return APP_TITLE;
   if (pathname === '/posts/publish') return `发布甄客帖｜${APP_TITLE}`;
   if (pathname.startsWith('/posts/')) return `甄客帖详情｜${APP_TITLE}`;
-  if (pathname.startsWith('/posts')) return `天南海北燃赛人｜${APP_TITLE}`;
+  if (pathname.startsWith('/posts')) return `甄客帖｜${APP_TITLE}`;
   if (pathname.startsWith('/enjoy/')) return `甄必享详情｜${APP_TITLE}`;
   if (pathname.startsWith('/enjoy')) return `甄必享｜${APP_TITLE}`;
   if (pathname.startsWith('/places/')) return `地点详情｜${APP_TITLE}`;
@@ -31,39 +30,8 @@ function routeTitle(pathname: string) {
   return APP_TITLE;
 }
 
-type WechatBridgeWindow = Window & {
-  WeixinJSBridge?: {
-    call?: (method: string) => void;
-  };
-};
-
 export function useWechatBrowserChrome(pathname: string) {
   useEffect(() => {
     document.title = routeTitle(pathname);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!isWechatBrowser()) return undefined;
-
-    const hideToolbar = () => {
-      const bridge = (window as WechatBridgeWindow).WeixinJSBridge;
-      bridge?.call?.('hideToolbar');
-    };
-    const hideWhenVisible = () => {
-      if (document.visibilityState === 'visible') hideToolbar();
-    };
-
-    hideToolbar();
-    const timers = [0, 300, 1000].map((delay) => window.setTimeout(hideToolbar, delay));
-    document.addEventListener('WeixinJSBridgeReady', hideToolbar);
-    document.addEventListener('visibilitychange', hideWhenVisible);
-    window.addEventListener('pageshow', hideToolbar);
-
-    return () => {
-      timers.forEach((timer) => window.clearTimeout(timer));
-      document.removeEventListener('WeixinJSBridgeReady', hideToolbar);
-      document.removeEventListener('visibilitychange', hideWhenVisible);
-      window.removeEventListener('pageshow', hideToolbar);
-    };
   }, [pathname]);
 }

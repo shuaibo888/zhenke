@@ -16,3 +16,5 @@ export function safeInternalRedirect(value: string | null | undefined, fallback 
 export function buildLoginPath(returnPath: string) {
   return `/auth?redirect=${encodeURIComponent(safeInternalRedirect(returnPath))}`;
 }
+
+export const LOGIN_RETURN_TO_SOURCE_STATE = { returnToSource: true } as const;

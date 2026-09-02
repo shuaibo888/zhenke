@@ -9,6 +9,7 @@ import { useNavigate, useParams } from 'umi';
 import { ZhenkePostCard } from '@/components/ZhenkePostCard';
 import { usePostPublishLauncher } from '@/components/PostPublishLauncher';
 import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
+import { useSafeBack } from '@/hooks/useSafeBack';
 import { place, posts, type Place, type ZhenkePost } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
 import { openPlaceNavigation } from '@/utils/merchantNavigation';
@@ -19,6 +20,7 @@ export default function PlaceDetailPage() {
   const { placeId: rawPlaceId } = useParams<{ placeId: string }>();
   const placeId = Number(rawPlaceId);
   const navigate = useNavigate();
+  const goBack = useSafeBack('/posts');
   const { startPostPublish } = usePostPublishLauncher();
   const [detail, setDetail] = useState<Place>();
   const [feed, setFeed] = useState<ZhenkePost[]>([]);
@@ -118,7 +120,7 @@ export default function PlaceDetailPage() {
   return (
     <main className={styles.page}>
       <div className={styles.detailTopbar}>
-        <button type="button" className={styles.backButton} onClick={() => navigate(-1)} aria-label="返回">
+        <button type="button" className={styles.backButton} onClick={goBack} aria-label="返回">
           <ArrowLeftOutlined />
         </button>
         <strong>地点详情</strong>

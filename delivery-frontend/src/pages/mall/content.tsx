@@ -10,7 +10,7 @@ import {
   toggleReportUseful,
   type HomeFeedItemDto,
 } from '@/services/shopContent';
-import { buildLoginPath } from '@/utils/safeRedirect';
+import { buildLoginPath, LOGIN_RETURN_TO_SOURCE_STATE } from '@/utils/safeRedirect';
 import styles from '@/styles/zhenke.less';
 
 const PAGE_SIZE = 12;
@@ -120,7 +120,9 @@ export default function MallContentPage() {
     if (!item.report) return;
     if (!user) {
       message.info('登录后可以标记有用');
-      navigate(buildLoginPath(`${window.location.pathname}${window.location.search}`));
+      navigate(buildLoginPath(`${window.location.pathname}${window.location.search}`), {
+        state: LOGIN_RETURN_TO_SOURCE_STATE,
+      });
       return;
     }
     if (item.report.shopUserId === user.id) {

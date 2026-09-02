@@ -7,7 +7,7 @@ import { WechatShareGuide } from '@/components/WechatShareGuide';
 import { usePostPublishLauncher } from '@/components/PostPublishLauncher';
 import { enjoyCategoryNames } from '@/components/ZhenkeEnjoyCard';
 import { ZkState } from '@/components/ZkPage';
-import { buildLoginPath } from '@/utils/safeRedirect';
+import { buildLoginPath, LOGIN_RETURN_TO_SOURCE_STATE } from '@/utils/safeRedirect';
 import {
   createEnjoyComment,
   deleteEnjoyComment,
@@ -21,6 +21,7 @@ import {
 import styles from '@/styles/zhenke.less';
 import { getWechatShareErrorMessage, isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
 import { useWechatShareGuide } from '@/hooks/useWechatShareGuide';
+import { useSafeBack } from '@/hooks/useSafeBack';
 import { buildEnjoyShareLink, copyText } from '@/utils/shop';
 
 export default function EnjoyDetailPage() {
@@ -28,6 +29,7 @@ export default function EnjoyDetailPage() {
   const enjoyId = Number(rawEnjoyId);
   const location = useLocation();
   const navigate = useNavigate();
+  const goBack = useSafeBack('/enjoy');
   const { user } = useShop();
   const { startPostPublish } = usePostPublishLauncher();
   const [detail, setDetail] = useState<ZhenkeEnjoy>();
@@ -131,7 +133,9 @@ export default function EnjoyDetailPage() {
   const requireLogin = () => {
     if (user) return true;
     message.info('登录后可以点赞、评论和回复');
-    navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`));
+    navigate(buildLoginPath(`${location.pathname}${location.search}${location.hash}`), {
+      state: LOGIN_RETURN_TO_SOURCE_STATE,
+    });
     return false;
   };
 
@@ -235,7 +239,7 @@ export default function EnjoyDetailPage() {
     <>
       <main className={`${styles.page} ${styles.enjoyDetailPage}`}>
       <div className={styles.detailTopbar}>
-        <button type="button" className={styles.backButton} aria-label="返回" onClick={() => navigate(-1)}><ArrowLeftOutlined /></button>
+        <button type="button" className={styles.backButton} aria-label="返回" onClick={goBack}><ArrowLeftOutlined /></button>
         <div className={styles.enjoyOfficialIdentity}><span>甄</span><div><strong>甄客行官方精选</strong><small>{enjoyCategoryNames[detail.category]} · 地点专题</small></div></div>
         <Button shape="circle" icon={<ShareAltOutlined />} aria-label="分享" onClick={() => void share()} />
       </div>

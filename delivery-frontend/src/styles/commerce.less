@@ -8029,6 +8029,20 @@ button.checkoutFulfillmentOption:focus-visible {
   .reportDetailImage video {
     max-height: 300px;
   }
+
+  .productDetailMain {
+    --product-fixed-bar-height: 76px;
+  }
+
+  .productFixedBar {
+    bottom: var(--zk-mobile-nav-offset, 62px);
+    padding-bottom: 10px;
+  }
+
+  .reportDetailBottomBar:not(.productFixedBar) {
+    bottom: var(--zk-mobile-nav-offset, 62px);
+    padding-bottom: 10px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -8945,11 +8959,11 @@ button.checkoutFulfillmentOption:focus-visible {
   }
 
   .productDetailMain {
-    --product-fixed-bar-height: calc(70px + env(safe-area-inset-bottom));
+    --product-fixed-bar-height: 70px;
   }
 
   .productFixedBar {
-    padding: 8px 12px max(8px, env(safe-area-inset-bottom));
+    padding: 8px max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left));
     gap: 10px;
   }
 

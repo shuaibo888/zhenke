@@ -5,10 +5,11 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { Button, Form, Input, message } from 'antd';
-import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'umi';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { MerchantApplicationModal } from '@/components/MerchantApplicationModal';
+import { useSafeBack } from '@/hooks/useSafeBack';
 import { getAliyunOneClickSpToken } from '@/services/aliyunOneClick';
 import {
   fetchPhoneAuthCapabilities,
@@ -25,8 +26,14 @@ type PhoneValues = { phone: string; code: string };
 
 export default function AuthPage() {
   const navigate = useNavigate();
+  const authLocation = useLocation();
+  const goBack = useSafeBack('/');
   const [searchParams] = useSearchParams();
   const returnPath = safeInternalRedirect(searchParams.get('redirect'), '/profile');
+  const returnToSource = (
+    authLocation.state as { returnToSource?: unknown } | null
+  )?.returnToSource === true;
+  const redirectStartedRef = useRef(false);
   const {
     user,
     setUser,
@@ -50,9 +57,20 @@ export default function AuthPage() {
   const [countdown, setCountdown] = useState(0);
   const [capabilities, setCapabilities] = useState<PhoneAuthCapabilities | null>(null);
 
+  const completeAuthNavigation = useCallback(() => {
+    if (redirectStartedRef.current) return;
+    redirectStartedRef.current = true;
+    const historyIndex = (window.history.state as { idx?: unknown } | null)?.idx;
+    if (returnToSource && typeof historyIndex === 'number' && historyIndex > 0) {
+      navigate(-1);
+      return;
+    }
+    navigate(returnPath, { replace: true });
+  }, [navigate, returnPath, returnToSource]);
+
   useEffect(() => {
-    if (user) navigate(returnPath, { replace: true });
-  }, [navigate, returnPath, user]);
+    if (user) completeAuthNavigation();
+  }, [completeAuthNavigation, user]);
 
   useEffect(() => {
     void fetchPhoneAuthCapabilities()
@@ -90,7 +108,7 @@ export default function AuthPage() {
         return;
       }
       await login(values.username, values.password, values.code);
-      navigate(returnPath, { replace: true });
+      completeAuthNavigation();
     } catch (error) {
       message.error(error instanceof Error ? error.message : '操作失败');
       form.resetFields(['code']);
@@ -115,7 +133,7 @@ export default function AuthPage() {
       const nextUser = await loginOrRegisterByPhone(values.phone, values.code);
       setUser(nextUser);
       message.success('手机号验证成功');
-      navigate(returnPath, { replace: true });
+      completeAuthNavigation();
     } catch (error) {
       message.error(error instanceof Error ? error.message : '手机号登录失败');
     } finally {
@@ -130,7 +148,7 @@ export default function AuthPage() {
       const nextUser = await loginOrRegisterByOneClick(spToken);
       setUser(nextUser);
       message.success('本机号码认证成功');
-      navigate(returnPath, { replace: true });
+      completeAuthNavigation();
     } catch (error) {
       const reason = error instanceof Error ? error.message : '一键认证失败，请使用短信验证码';
       message.warning(reason);
@@ -170,7 +188,7 @@ export default function AuthPage() {
   return (
     <>
       <main className={`${styles.authShell} ${styles.authLayout} ${styles.authSimpleLayout}`}>
-        <Button type="text" icon={<ArrowLeftOutlined />} className={styles.authBackButton} aria-label="返回甄客行" onClick={() => navigate('/')}>
+        <Button type="text" icon={<ArrowLeftOutlined />} className={styles.authBackButton} aria-label="返回甄客行" onClick={goBack}>
           返回甄客行
         </Button>
         <section className={styles.authIntro}>

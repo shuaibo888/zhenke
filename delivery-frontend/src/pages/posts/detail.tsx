@@ -27,7 +27,8 @@ import {
 } from '@/services/zhenke';
 import { getWechatShareErrorMessage, isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
 import { useWechatShareGuide } from '@/hooks/useWechatShareGuide';
-import { buildLoginPath } from '@/utils/safeRedirect';
+import { useSafeBack } from '@/hooks/useSafeBack';
+import { buildLoginPath, LOGIN_RETURN_TO_SOURCE_STATE } from '@/utils/safeRedirect';
 import { buildPostShareLink, copyText } from '@/utils/shop';
 import styles from '@/styles/zhenke.less';
 
@@ -36,6 +37,7 @@ export default function PostDetailPage() {
   const postId = Number(rawPostId);
   const routeLocation = useLocation();
   const navigate = useNavigate();
+  const goBack = useSafeBack('/posts');
   const { user } = useShop();
   const [detail, setDetail] = useState<ZhenkePost>();
   const [commentRows, setCommentRows] = useState<PostComment[]>([]);
@@ -140,7 +142,9 @@ export default function PostDetailPage() {
   const requireLogin = () => {
     if (user) return true;
     message.info('登录后可评论、回复和标记有用');
-    navigate(buildLoginPath(`${routeLocation.pathname}${routeLocation.search}${routeLocation.hash}`));
+    navigate(buildLoginPath(`${routeLocation.pathname}${routeLocation.search}${routeLocation.hash}`), {
+      state: LOGIN_RETURN_TO_SOURCE_STATE,
+    });
     return false;
   };
 
@@ -272,7 +276,7 @@ export default function PostDetailPage() {
     <>
       <main className={`${styles.page} ${styles.detailPage}`}>
       <div className={styles.detailTopbar}>
-        <button type="button" className={styles.backButton} aria-label="返回" onClick={() => navigate(-1)}>
+        <button type="button" className={styles.backButton} aria-label="返回" onClick={goBack}>
           <ArrowLeftOutlined />
         </button>
         <div className={styles.authorRow}>

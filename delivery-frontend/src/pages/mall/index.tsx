@@ -12,7 +12,7 @@ import {
   type HomeFeedItemDto,
   type MallProductDto,
 } from '@/services/shopContent';
-import { buildLoginPath } from '@/utils/safeRedirect';
+import { buildLoginPath, LOGIN_RETURN_TO_SOURCE_STATE } from '@/utils/safeRedirect';
 import styles from '@/styles/zhenke.less';
 import { BUSINESS_MODULES, type BusinessModuleCode } from './modules';
 
@@ -108,7 +108,7 @@ export default function MallPage() {
     if (!item.report) return;
     if (!user) {
       message.info('登录后可以标记有用');
-      navigate(buildLoginPath('/mall'));
+      navigate(buildLoginPath('/mall'), { state: LOGIN_RETURN_TO_SOURCE_STATE });
       return;
     }
     if (item.report.shopUserId === user.id) {
