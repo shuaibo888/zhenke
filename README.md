@@ -14,7 +14,6 @@
 完整需求、边界和验收门槛见：
 
 - [`docs/项目交接文档.md`](docs/项目交接文档.md)
-- [`CODEX_CLOUD_GOAL.md`](CODEX_CLOUD_GOAL.md)
 - [`AGENTS.md`](AGENTS.md)
 
 ## 仓库结构
