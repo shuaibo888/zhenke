@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.shop.mapper.ShopNotificationMapper">
+    <resultMap id="ShopNotificationViewResult" type="ShopNotificationView">
+        <id property="notificationId" column="notification_id" />
+        <result property="actorShopUserId" column="actor_shop_user_id" />
+        <result property="actorName" column="actor_name" />
+        <result property="actorAvatar" column="actor_avatar" />
+        <result property="eventType" column="event_type" />
+        <result property="targetType" column="target_type" />
+        <result property="targetId" column="target_id" />
+        <result property="targetTitle" column="target_title" />
+        <result property="contentPreview" column="content_preview" />
+        <result property="targetPath" column="target_path" />
+        <result property="read" column="is_read" />
+        <result property="readTime" column="read_time" />
+        <result property="createTime" column="create_time" />
+    </resultMap>
+
+    <select id="selectNotifications" parameterType="Long" resultMap="ShopNotificationViewResult">
+        select n.notification_id,
+               n.actor_shop_user_id,
+               coalesce(nullif(trim(u.nick_name), ''), nullif(trim(u.user_name), ''), '甄客用户') actor_name,
+               u.avatar actor_avatar,
+               n.event_type,
+               n.target_type,
+               n.target_id,
+               n.target_title,
+               n.content_preview,
+               case n.target_type
+                   when 'POST' then concat('/posts/', n.target_id)
+                   when 'REPORT' then concat('/reports/', n.target_id)
+                   else null
+               end target_path,
+               case when n.read_flag = '1' then 1 else 0 end is_read,
+               n.read_time,
+               n.create_time
+        from shop_notification n
+        left join shop_user u on u.user_id = n.actor_shop_user_id
+        where n.recipient_shop_user_id = #{recipientShopUserId}
+        order by n.create_time desc, n.notification_id desc
+    </select>
+
+    <select id="countUnread" parameterType="Long" resultType="int">
+        select count(1)
+        from shop_notification
+        where recipient_shop_user_id = #{recipientShopUserId} and read_flag = '0'
+    </select>
+
+    <insert id="insertNotification" parameterType="ShopNotification" useGeneratedKeys="true" keyProperty="notificationId">
+        insert into shop_notification
+        (recipient_shop_user_id, actor_shop_user_id, event_type, target_type, target_id,
+         source_id, target_title, content_preview, dedupe_key, read_flag, create_time)
+        values
+        (#{recipientShopUserId}, #{actorShopUserId}, #{eventType}, #{targetType}, #{targetId},
+         #{sourceId}, #{targetTitle}, #{contentPreview}, #{dedupeKey}, '0', sysdate())
+        on duplicate key update notification_id = notification_id
+    </insert>
+
+    <update id="markRead">
+        update shop_notification
+        set read_flag = '1', read_time = coalesce(read_time, sysdate())
+        where notification_id = #{notificationId}
+          and recipient_shop_user_id = #{recipientShopUserId}
+          and read_flag = '0'
+    </update>
+
+    <update id="markAllRead" parameterType="Long">
+        update shop_notification
+        set read_flag = '1', read_time = coalesce(read_time, sysdate())
+        where recipient_shop_user_id = #{recipientShopUserId} and read_flag = '0'
+    </update>
+</mapper>

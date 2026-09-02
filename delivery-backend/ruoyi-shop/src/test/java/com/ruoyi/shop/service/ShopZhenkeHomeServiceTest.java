@@ -34,7 +34,7 @@ class ShopZhenkeHomeServiceTest {
     assertNull(result.postError());
     assertNull(result.bannerError());
     assertNull(result.enjoyError());
-    assertEquals(List.of("MALL", "RESTAURANT", "SCENIC", "HOTEL"),
+    assertEquals(List.of("SCENIC", "RESTAURANT", "HOTEL", "MALL"),
         result.enjoys().keySet().stream().toList());
     verify(cityScope).resolvePublicFeedCity("保定市");
     verify(postService).homePosts("保定市", 9);

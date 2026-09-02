@@ -1,6 +1,6 @@
 import { Button, Input, Modal, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'umi';
+import { useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
 import { ZkProfilePage, ZkProfilePanel, ZkTaskHeader } from '@/components/ZkPage';
@@ -21,8 +21,23 @@ import {
 import { formatPrice, getOrderStatusMeta, paymentRemainingSeconds } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
 
-type Filter = 'all' | 'PENDING_PAYMENT' | 'pending_fulfillment' | 'SHIPPED' | 'pending_report' | 'aftersale';
+type Filter = 'all' | 'PENDING_PAYMENT' | 'pending_fulfillment' | 'pending_use' | 'SHIPPED' | 'pending_report' | 'aftersale' | 'completed';
 type PurchaseItem = ShopOrderDto['items'][number];
+
+const ORDER_FILTERS: Filter[] = [
+  'all',
+  'PENDING_PAYMENT',
+  'pending_fulfillment',
+  'pending_use',
+  'SHIPPED',
+  'pending_report',
+  'aftersale',
+  'completed',
+];
+
+function parseOrderFilter(value: string | null): Filter {
+  return ORDER_FILTERS.includes(value as Filter) ? value as Filter : 'all';
+}
 
 function countdown(expiresAt?: string) {
   const remaining = paymentRemainingSeconds(expiresAt);
@@ -35,6 +50,7 @@ function countdown(expiresAt?: string) {
 
 export default function OrdersPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     user,
     orders,
@@ -45,7 +61,7 @@ export default function OrdersPage() {
     refreshOrders,
     refreshReports,
   } = useShop();
-  const [filter, setFilter] = useState<Filter>('all');
+  const filter = parseOrderFilter(searchParams.get('filter'));
   const [clock, setClock] = useState(Date.now());
   const [mutatingId, setMutatingId] = useState<number | null>(null);
   const [logistics, setLogistics] = useState<LogisticsTraceDto | null>(null);
@@ -70,12 +86,21 @@ export default function OrdersPage() {
   const filtered = useMemo(() => orders.filter((order) => {
     if (filter === 'all') return true;
     if (filter === 'aftersale') return Boolean(order.refundStatus) || ['REFUNDING', 'REFUNDED'].includes(order.status);
+    if (filter === 'completed') return order.status === 'RECEIVED';
     if (filter === 'pending_report') {
       return order.status === 'RECEIVED' && order.items.some((item) => !item.verificationReportId);
     }
+    if (filter === 'pending_use') return order.status === 'PAID' && order.fulfillmentType === 'OFFLINE';
     if (filter === 'pending_fulfillment') return order.status === 'PAID';
     return order.status === filter;
   }), [clock, filter, orders]);
+
+  const chooseFilter = (nextFilter: Filter) => {
+    const next = new URLSearchParams(searchParams);
+    if (nextFilter === 'all') next.delete('filter');
+    else next.set('filter', nextFilter);
+    setSearchParams(next, { replace: true });
+  };
 
   if (!user) {
     return <LoginRedirect />;
@@ -183,16 +208,18 @@ export default function OrdersPage() {
             {([
               ['all', '全部订单'],
               ['PENDING_PAYMENT', '待付款'],
-              ['pending_fulfillment', '待使用 / 待发货'],
+              ['pending_fulfillment', '待履约'],
+              ['pending_use', '待使用'],
               ['SHIPPED', '待收货'],
               ['pending_report', '待发布'],
               ['aftersale', '售后'],
+              ['completed', '已完成'],
             ] as Array<[Filter, string]>).map(([key, label]) => (
               <button
                 key={key}
                 type="button"
                 className={filter === key ? styles.orderFilterActive : ''}
-                onClick={() => setFilter(key)}
+                onClick={() => chooseFilter(key)}
               >
                 {label}
               </button>

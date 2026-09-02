@@ -1,13 +1,20 @@
 import {
+  CarOutlined,
+  CheckCircleOutlined,
+  CreditCardOutlined,
+  CustomerServiceOutlined,
   DownOutlined,
   EditOutlined,
   EnvironmentOutlined,
   ExclamationCircleFilled,
   FileTextOutlined,
   GiftOutlined,
+  HistoryOutlined,
   InboxOutlined,
   LogoutOutlined,
+  MessageOutlined,
   ProfileOutlined,
+  QrcodeOutlined,
   RightOutlined,
   ShoppingCartOutlined,
   SafetyCertificateOutlined,
@@ -24,6 +31,7 @@ import { AddressManager } from '@/components/AddressManager';
 import { AccountSecurityPanel } from '@/components/AccountSecurityPanel';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
+import { useUnreadNotificationCount } from '@/hooks/useUnreadNotificationCount';
 import {
   fetchMyOverview,
   updateShopProfile,
@@ -31,8 +39,8 @@ import {
   type ShopUserOverview,
 } from '@/services/shopAuth';
 import legacyStyles from '@/styles/commerce.less';
-import styles from '@/styles/zhenke.less';
 import { mediaPreviewUrl } from '@/utils/mediaUrl';
+import styles from './profile.module.less';
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 const ALLOWED_AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif']);
@@ -48,6 +56,7 @@ export default function ProfilePage() {
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState('');
   const [nameForm] = Form.useForm<{ name: string }>();
+  const { unreadCount } = useUnreadNotificationCount(user?.id);
   useBodyScrollLock(profileOpen || addressOpen);
 
   const loadOverview = useCallback(async () => {
@@ -122,44 +131,93 @@ export default function ProfilePage() {
     }
   };
 
+  const openProfileEditor = (section?: string) => {
+    nameForm.setFieldsValue({ name: user.name });
+    setExpandedSection(section ?? null);
+    setProfileOpen(true);
+  };
+
+  const overviewValue = (value: number | undefined) => (
+    overviewLoading || overviewError ? '--' : String(value ?? 0)
+  );
+
   const profileEntry = (options: {
     icon: React.ReactNode;
     title: string;
     description: string;
-    meta?: string;
+    badge?: string;
+    ariaLabel?: string;
     onClick: () => void;
   }) => (
-    <button type="button" className={styles.profileEntry} onClick={options.onClick}>
-      <span className={styles.profileEntryIcon}>{options.icon}</span>
-      <span className={styles.profileEntryCopy}>
+    <button
+      type="button"
+      className={styles.serviceEntry}
+      onClick={options.onClick}
+      aria-label={options.ariaLabel ?? `${options.title}，${options.description}`}
+    >
+      <span className={styles.serviceEntryIcon} aria-hidden="true">{options.icon}</span>
+      <span className={styles.serviceEntryCopy}>
         <strong>{options.title}</strong>
         <small>{options.description}</small>
       </span>
-      <span>{options.meta || <RightOutlined />}</span>
+      {options.badge && <span className={styles.serviceEntryBadge}>{options.badge}</span>}
+    </button>
+  );
+
+  const orderShortcut = (options: {
+    icon: React.ReactNode;
+    title: string;
+    filter: string;
+  }) => (
+    <button
+      type="button"
+      className={styles.orderShortcut}
+      onClick={() => navigate(`/profile/orders?filter=${options.filter}`)}
+      aria-label={`查看${options.title}订单`}
+    >
+      <span aria-hidden="true">{options.icon}</span>
+      <strong>{options.title}</strong>
     </button>
   );
 
   return (
     <>
-      <main className={styles.page}>
-        <section className={styles.profileHero}>
-          <span className={styles.profileHeroAvatar}>
-            {user.avatarType === 'image' && user.avatarImage
-              ? <img src={user.avatarImage} alt={user.name} />
-              : (user.name || user.username).slice(0, 1)}
-          </span>
-          <div className={styles.profileHeroCopy}>
-            <small>甄客行 · 我的</small>
-            <h1>{user.name}</h1>
-            <p>{user.usernameInitialized ? `@${user.username}` : '手机号用户'} · {user.roleName || '甄客'}</p>
-            <span>记录生活，发现值得去的地方</span>
-          </div>
-          <div className={styles.profileStats}>
-            <button type="button" className={styles.profileStat} onClick={() => navigate('/profile/orders')}>
-              <strong>{overviewLoading || overviewError ? '--' : overview?.orderCount ?? '--'}</strong><small>全部订单</small>
+      <main className={styles.profilePage}>
+        <section className={styles.profileSummary} aria-labelledby="profile-heading">
+          <div className={styles.identityRow}>
+            <button
+              type="button"
+              className={styles.profileAvatar}
+              onClick={() => openProfileEditor('avatar')}
+              aria-label="更换头像"
+            >
+              {user.avatarType === 'image' && user.avatarImage
+                ? <img src={mediaPreviewUrl(user.avatarImage)} alt="" />
+                : (user.name || user.username).slice(0, 1)}
             </button>
-            <button type="button" className={styles.profileStat} onClick={() => navigate('/profile/points')}>
-              <strong>{overviewLoading || overviewError ? '--' : overview?.pointsBalance ?? '--'}</strong><small>可用积分</small>
+            <div className={styles.identityCopy}>
+              <span>甄客行 · 我的</span>
+              <h1 id="profile-heading">{user.name}</h1>
+              <p>{user.usernameInitialized ? `@${user.username}` : '手机号用户'} · {user.roleName || '甄客'}</p>
+            </div>
+            <button type="button" className={styles.profileEditButton} onClick={() => openProfileEditor()}>
+              <EditOutlined aria-hidden="true" />
+              <span className={styles.profileEditLabel}>编辑资料</span>
+            </button>
+          </div>
+
+          <div className={styles.assetStrip} role="group" aria-label="常用权益">
+            <button type="button" onClick={() => navigate('/profile/points')}>
+              <strong>{overviewValue(overview?.pointsBalance)}</strong>
+              <span><TrophyOutlined aria-hidden="true" />积分</span>
+            </button>
+            <button type="button" onClick={() => navigate('/profile/coupons')}>
+              <strong>{overviewValue(overview?.couponAvailableCount)}</strong>
+              <span><GiftOutlined aria-hidden="true" />可用优惠券</span>
+            </button>
+            <button type="button" onClick={() => navigate('/profile/reports')}>
+              <strong>{overviewValue(overview?.reportCount)}</strong>
+              <span><SafetyCertificateOutlined aria-hidden="true" />甄客验</span>
             </button>
           </div>
         </section>
@@ -183,56 +241,52 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <div className={styles.profileGroups}>
-          <section className={`${styles.surface} ${styles.profileGroup}`}>
-            <header className={styles.profileGroupHeader}>
-              <h2>内容创作</h2>
-            </header>
-            <div className={styles.profileEntryGrid}>
-              {profileEntry({ icon: <FileTextOutlined />, title: '我的甄客帖', description: '围绕地点主动发布的生活内容', onClick: () => navigate('/profile/posts') })}
-              {profileEntry({ icon: <SafetyCertificateOutlined />, title: '我的甄客验', description: '基于订单、试用或核销资格的可信体验', meta: overviewLoading || overviewError ? '—' : `${overview?.reportCount ?? 0} 篇`, onClick: () => navigate('/profile/reports') })}
+        <section className={styles.orderPanel} aria-labelledby="profile-orders-heading">
+          <header className={styles.panelHeader}>
+            <div className={styles.panelTitle}>
+              <ShoppingCartOutlined aria-hidden="true" />
+              <h2 id="profile-orders-heading">我的订单</h2>
             </div>
-          </section>
+            <button type="button" onClick={() => navigate('/profile/orders')}>
+              <span>{overviewLoading || overviewError ? '全部订单' : `全部订单 ${overview?.orderCount ?? 0}`}</span>
+              <RightOutlined aria-hidden="true" />
+            </button>
+          </header>
+          <div className={styles.orderShortcutGrid} role="group" aria-label="按订单状态快捷查看">
+            {orderShortcut({ icon: <CreditCardOutlined />, title: '待付款', filter: 'PENDING_PAYMENT' })}
+            {orderShortcut({ icon: <QrcodeOutlined />, title: '待使用', filter: 'pending_use' })}
+            {orderShortcut({ icon: <CarOutlined />, title: '待收货', filter: 'SHIPPED' })}
+            {orderShortcut({ icon: <CustomerServiceOutlined />, title: '售后', filter: 'aftersale' })}
+            {orderShortcut({ icon: <CheckCircleOutlined />, title: '已完成', filter: 'completed' })}
+          </div>
+        </section>
 
-          <section className={`${styles.surface} ${styles.profileGroup}`}>
-            <header className={styles.profileGroupHeader}>
-              <h2>消费履约</h2>
-            </header>
-            <div className={styles.profileEntryGrid}>
-              {profileEntry({ icon: <ShoppingCartOutlined />, title: '我的订单与核销', description: '待付款、待使用、物流、退款与已完成', meta: overviewLoading || overviewError ? '—' : `${overview?.orderCount ?? 0} 笔`, onClick: () => navigate('/profile/orders') })}
-              {profileEntry({ icon: <EnvironmentOutlined />, title: '收货地址', description: '仅用于需要快递配送的订单', onClick: () => setAddressOpen(true) })}
+        <section className={styles.servicesPanel} aria-labelledby="profile-services-heading">
+          <header className={styles.panelHeader}>
+            <div className={styles.panelTitle}>
+              <h2 id="profile-services-heading">常用服务</h2>
             </div>
-          </section>
-
-          <section className={`${styles.surface} ${styles.profileGroup}`}>
-            <header className={styles.profileGroupHeader}>
-              <h2>权益资产</h2>
-            </header>
-            <div className={styles.profileEntryGrid}>
-              {profileEntry({ icon: <GiftOutlined />, title: '优惠券', description: '可用、待生效、已使用与失效', meta: overviewLoading || overviewError ? '—' : `${overview?.couponAvailableCount ?? 0} 张`, onClick: () => navigate('/profile/coupons') })}
-              {profileEntry({ icon: <TrophyOutlined />, title: '积分与记录', description: '查看余额、兑换和积分明细', meta: overviewLoading || overviewError ? '—' : `${overview?.pointsBalance ?? 0} 分`, onClick: () => navigate('/profile/points') })}
-            </div>
-          </section>
-
-          <section className={`${styles.surface} ${styles.profileGroup}`}>
-            <header className={styles.profileGroupHeader}>
-              <h2>参与服务</h2>
-            </header>
-            <div className={styles.profileEntryGrid}>
-              {profileEntry({ icon: <ProfileOutlined />, title: '我的试用', description: '申请、审核、物流、核销与报告进度', meta: overviewLoading || overviewError ? '—' : `${overview?.trialCount ?? 0} 项`, onClick: () => navigate('/profile/trials') })}
-            </div>
-          </section>
-
-          <section className={`${styles.surface} ${styles.profileGroup}`}>
-            <header className={styles.profileGroupHeader}>
-              <h2>设置与安全</h2>
-            </header>
-            <div className={styles.profileEntryGrid}>
-              {profileEntry({ icon: <EditOutlined />, title: '编辑资料与账号安全', description: '头像、昵称、账号名、密码和手机号', onClick: () => { nameForm.setFieldsValue({ name: user.name }); setProfileOpen(true); } })}
-              {profileEntry({ icon: <LogoutOutlined />, title: '退出登录', description: '安全结束当前设备上的登录状态', onClick: confirmLogout })}
-            </div>
-          </section>
-        </div>
+          </header>
+          <nav className={styles.serviceGrid} aria-label="个人服务">
+            {profileEntry({ icon: <FileTextOutlined />, title: '我的甄客帖', description: '地点生活分享', onClick: () => navigate('/profile/posts') })}
+            {profileEntry({ icon: <SafetyCertificateOutlined />, title: '我的甄客验', description: '真实履约体验', onClick: () => navigate('/profile/reports') })}
+            {profileEntry({
+              icon: <MessageOutlined />,
+              title: '消息中心',
+              description: '点赞与评论消息',
+              badge: unreadCount != null && unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : undefined,
+              ariaLabel: unreadCount != null && unreadCount > 0
+                ? `消息中心，点赞与评论消息，${unreadCount} 条未读`
+                : '消息中心，点赞与评论消息',
+              onClick: () => navigate('/profile/messages'),
+            })}
+            {profileEntry({ icon: <ProfileOutlined />, title: '我的试用', description: '申请与履约进度', onClick: () => navigate('/profile/trials') })}
+            {profileEntry({ icon: <HistoryOutlined />, title: '积分记录', description: '查看积分明细', onClick: () => navigate('/profile/point-records') })}
+            {profileEntry({ icon: <EnvironmentOutlined />, title: '收货地址', description: '配送订单使用', onClick: () => setAddressOpen(true) })}
+            {profileEntry({ icon: <SettingOutlined />, title: '资料与安全', description: '头像、账号与密码', onClick: () => openProfileEditor() })}
+            {profileEntry({ icon: <LogoutOutlined />, title: '退出登录', description: '安全退出当前账号', onClick: confirmLogout })}
+          </nav>
+        </section>
       </main>
 
       <Modal

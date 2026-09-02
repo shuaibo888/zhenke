@@ -1,0 +1,306 @@
+.page {
+  padding-top: 22px;
+}
+
+.intro {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  min-height: 116px;
+  padding: 20px 22px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e8e3df;
+  border-radius: 12px;
+}
+
+.intro::after {
+  position: absolute;
+  top: -58px;
+  right: -34px;
+  width: 176px;
+  height: 176px;
+  content: '';
+  pointer-events: none;
+  background:
+    radial-gradient(circle at center, rgba(255, 107, 26, 0.09) 0 31%, transparent 32%),
+    radial-gradient(circle at center, transparent 0 51%, rgba(138, 63, 50, 0.06) 52% 53%, transparent 54%);
+  border-radius: 50%;
+}
+
+.introMark {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 50px;
+  height: 50px;
+  flex: 0 0 50px;
+  color: #d9561d;
+  background: #fff3eb;
+  border: 1px solid #f4d8c8;
+  border-radius: 12px;
+  place-items: center;
+  font-size: 23px;
+  font-weight: 900;
+}
+
+.introCopy {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.kicker {
+  display: block;
+  margin-bottom: 4px;
+  color: #a64b2d;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.intro h1 {
+  margin: 0;
+  color: #222;
+  font-size: clamp(28px, 3.4vw, 38px);
+  line-height: 1.2;
+}
+
+.intro p {
+  margin: 6px 0 0;
+  color: #707070;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.categoryTabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 16px 0 26px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid #e8e3df;
+  border-radius: 12px;
+}
+
+.categoryTabs button {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  min-width: 0;
+  min-height: 58px;
+  padding: 8px 10px;
+  color: #5f5a57;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
+}
+
+.categoryTabs button:hover {
+  color: #8a3f32;
+  background: #fff9f5;
+}
+
+.categoryTabs button:focus-visible {
+  outline: 2px solid #ff6b1a;
+  outline-offset: 2px;
+}
+
+.categoryIcon,
+.activeIcon {
+  display: grid;
+  place-items: center;
+  color: #9a4b34;
+  background: #f8eee8;
+}
+
+.categoryIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  font-size: 16px;
+}
+
+.categoryCopy {
+  display: block;
+  min-width: 0;
+}
+
+.categoryCopy strong,
+.categoryCopy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.categoryCopy strong {
+  color: inherit;
+  font-size: 14px;
+}
+
+.categoryCopy small {
+  margin-top: 3px;
+  color: #8a8581;
+  font-size: 11px;
+}
+
+.categoryTabs .categoryTabActive {
+  color: #b84922;
+  background: #fff4ec;
+  border-color: #f3d7c7;
+}
+
+.categoryTabActive .categoryIcon {
+  color: #fff;
+  background: #e86228;
+}
+
+.categoryTabActive .categoryCopy small {
+  color: #9a6958;
+}
+
+.listSection {
+  padding-bottom: 28px;
+}
+
+.listHeader {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 0 2px 14px;
+  border-bottom: 1px solid #e8e3df;
+}
+
+.listHeader > div {
+  display: flex;
+  min-width: 0;
+  gap: 11px;
+  align-items: center;
+}
+
+.activeIcon {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 10px;
+  font-size: 18px;
+}
+
+.listHeader h2 {
+  margin: 0;
+  color: #282523;
+  font-size: 24px;
+  line-height: 1.25;
+}
+
+.listHeader p {
+  margin: 3px 0 0;
+  color: #76716e;
+  font-size: 13px;
+}
+
+.total {
+  flex: none;
+  color: #8b817c;
+  font-size: 12px;
+}
+
+.loadMore {
+  min-height: 42px;
+  margin-top: 18px;
+  border-radius: 8px;
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding-top: 14px;
+  }
+
+  .intro {
+    min-height: 100px;
+    padding: 16px;
+  }
+
+  .introMark {
+    width: 44px;
+    height: 44px;
+    flex-basis: 44px;
+    font-size: 20px;
+  }
+
+  .intro h1 {
+    font-size: 28px;
+  }
+
+  .intro p {
+    font-size: 12px;
+  }
+
+  .categoryTabs {
+    gap: 3px;
+    margin: 12px 0 22px;
+    padding: 4px;
+  }
+
+  .categoryTabs button {
+    display: flex;
+    min-height: 62px;
+    flex-direction: column;
+    gap: 5px;
+    justify-content: center;
+    padding: 6px 3px;
+    text-align: center;
+  }
+
+  .categoryIcon {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  .categoryCopy strong {
+    font-size: 12px;
+  }
+
+  .categoryCopy small {
+    display: none;
+  }
+
+  .listHeader h2 {
+    font-size: 22px;
+  }
+
+  .listHeader p {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 390px) {
+  .intro::after,
+  .introMark {
+    display: none;
+  }
+
+  .categoryTabs button {
+    min-height: 58px;
+  }
+
+  .listHeader {
+    gap: 8px;
+  }
+
+  .activeIcon {
+    display: none;
+  }
+}

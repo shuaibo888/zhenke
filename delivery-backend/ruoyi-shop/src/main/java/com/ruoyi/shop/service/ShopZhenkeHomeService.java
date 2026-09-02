@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 public class ShopZhenkeHomeService {
   private static final Logger log = LoggerFactory.getLogger(ShopZhenkeHomeService.class);
   private static final List<String> ENJOY_CATEGORIES =
-      List.of("MALL", "RESTAURANT", "SCENIC", "HOTEL");
+      List.of("SCENIC", "RESTAURANT", "HOTEL", "MALL");
   private final ShopZhenkeService postService;
   private final ShopZhenkeEnjoyService enjoyService;
   private final ShopPublicMediaService publicMedia;

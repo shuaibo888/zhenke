@@ -52,10 +52,12 @@ public class ShopTrialService
     private final ShopProductService productService;
     private final AliyunLogisticsService logisticsService;
     private final ShopReportResourceService resourceService;
+    private final ShopNotificationService notificationService;
 
     public ShopTrialService(ShopTrialMapper trialMapper, ShopUserMapper userMapper,
             ShopMerchantService merchantService, ShopProductService productService,
-            AliyunLogisticsService logisticsService, ShopReportResourceService resourceService)
+            AliyunLogisticsService logisticsService, ShopReportResourceService resourceService,
+            ShopNotificationService notificationService)
     {
         this.trialMapper = trialMapper;
         this.userMapper = userMapper;
@@ -63,6 +65,7 @@ public class ShopTrialService
         this.productService = productService;
         this.logisticsService = logisticsService;
         this.resourceService = resourceService;
+        this.notificationService = notificationService;
     }
 
     public List<ShopTrialCampaign> merchantCampaigns(long merchantId, ShopTrialCampaign query)
@@ -603,11 +606,16 @@ public class ShopTrialService
             throw new ServiceException("不能给自己的甄客验点有用");
         }
 
-        if (trialMapper.deleteReportUseful(reportId, shopUserId) == 0)
+        boolean activating = trialMapper.deleteReportUseful(reportId, shopUserId) == 0;
+        if (activating)
         {
             trialMapper.insertReportUseful(reportId, shopUserId);
         }
         boolean usefulByMe = trialMapper.countReportUsefulByUser(reportId, shopUserId) > 0;
+        if (activating && usefulByMe)
+        {
+            notificationService.reportUseful(report, shopUserId);
+        }
         return new ShopReportUsefulResult(reportId, trialMapper.countReportUseful(reportId), usefulByMe);
     }
 

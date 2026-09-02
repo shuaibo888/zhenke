@@ -4,7 +4,7 @@ import java.util.Date;
 import java.util.List;
 
 public class ShopZhenkePostComment {
-  private Long commentId, postId, parentCommentId, replyToCommentId, shopUserId;
+  private Long commentId, postId, parentCommentId, replyToCommentId, replyToShopUserId, shopUserId;
   private String userName, nickName, avatar, replyToName, content;
   private Boolean postAuthor;
   private Date createTime;
@@ -41,6 +41,14 @@ public class ShopZhenkePostComment {
 
   public void setReplyToCommentId(Long v) {
     replyToCommentId = v;
+  }
+
+  public Long getReplyToShopUserId() {
+    return replyToShopUserId;
+  }
+
+  public void setReplyToShopUserId(Long v) {
+    replyToShopUserId = v;
   }
 
   public Long getShopUserId() {

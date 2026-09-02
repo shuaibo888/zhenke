@@ -7,12 +7,13 @@ import { ZkState } from '@/components/ZkPage';
 import { enjoys, type EnjoyCategory, type ZhenkeEnjoy } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
 import { CURRENT_LOCATION_CHANGED_EVENT } from '@/utils/currentLocation';
+import pageStyles from './index.module.less';
 
 const categories: Array<{ value: EnjoyCategory; label: string; caption: string; icon: React.ReactNode }> = [
-  { value: 'MALL', label: '甄必购', caption: '好物与城市手信', icon: <ShoppingOutlined /> },
-  { value: 'RESTAURANT', label: '甄必吃', caption: '值得专程去吃的味道', icon: <CoffeeOutlined /> },
   { value: 'SCENIC', label: '甄必玩', caption: '城市里值得去的地方', icon: <CompassOutlined /> },
+  { value: 'RESTAURANT', label: '甄必吃', caption: '值得专程去吃的味道', icon: <CoffeeOutlined /> },
   { value: 'HOTEL', label: '甄必住', caption: '安心舒适的住宿体验', icon: <HomeOutlined /> },
+  { value: 'MALL', label: '甄必购', caption: '好物与城市手信', icon: <ShoppingOutlined /> },
 ];
 
 export default function EnjoyListPage() {
@@ -20,7 +21,7 @@ export default function EnjoyListPage() {
   const navigate = useNavigate();
   const activeCategory = useMemo<EnjoyCategory>(() => {
     const value = new URLSearchParams(location.search).get('category') as EnjoyCategory | null;
-    return categories.some((item) => item.value === value) ? value! : 'MALL';
+    return categories.some((item) => item.value === value) ? value! : 'SCENIC';
   }, [location.search]);
   const [rows, setRows] = useState<ZhenkeEnjoy[]>([]);
   const [page, setPage] = useState(1);
@@ -83,29 +84,43 @@ export default function EnjoyListPage() {
   const activeMeta = categories.find((item) => item.value === activeCategory)!;
 
   return (
-    <main className={`${styles.page} ${styles.enjoyPage}`}>
-      <header className={styles.enjoyPageHero}>
-        <span>ZHEN PICKS</span>
-        <h1>甄必享</h1>
-        <p>由甄客行运营团队整理和发布的城市生活精选。</p>
+    <main className={`${styles.page} ${pageStyles.page}`}>
+      <header className={pageStyles.intro}>
+        <span className={pageStyles.introMark} aria-hidden="true">甄</span>
+        <div className={pageStyles.introCopy}>
+          <span className={pageStyles.kicker}>甄客行官方精选</span>
+          <h1>甄必享</h1>
+          <p>首页展示每类最新精选，这里按玩、吃、住、购浏览全部内容。</p>
+        </div>
       </header>
-      <nav className={styles.enjoyCategoryTabs} aria-label="甄必享分类">
+      <nav className={pageStyles.categoryTabs} aria-label="甄必享分类">
         {categories.map((item) => (
           <button
             key={item.value}
             type="button"
             aria-current={activeCategory === item.value ? 'page' : undefined}
-            className={activeCategory === item.value ? styles.enjoyCategoryTabActive : ''}
+            className={activeCategory === item.value ? pageStyles.categoryTabActive : undefined}
             onClick={() => navigate(`/enjoy?category=${item.value}`)}
           >
-            <span>{item.icon}</span><strong>{item.label}</strong><small>{item.caption}</small>
+            <span className={pageStyles.categoryIcon}>{item.icon}</span>
+            <span className={pageStyles.categoryCopy}>
+              <strong>{item.label}</strong>
+              <small>{item.caption}</small>
+            </span>
           </button>
         ))}
       </nav>
-      <section className={styles.enjoyListSection}>
-        <div className={styles.sectionTitle}>
-          <div><h2>{activeMeta.label}</h2><p>{activeMeta.caption}</p></div>
-        </div>
+      <section className={pageStyles.listSection} aria-labelledby="active-enjoy-category">
+        <header className={pageStyles.listHeader}>
+          <div>
+            <span className={pageStyles.activeIcon} aria-hidden="true">{activeMeta.icon}</span>
+            <div>
+              <h2 id="active-enjoy-category">{activeMeta.label}</h2>
+              <p>{activeMeta.caption}</p>
+            </div>
+          </div>
+          {!loading && !error && <span className={pageStyles.total}>{total} 篇精选</span>}
+        </header>
         {loading ? (
           <ZkState kind="loading" title="正在加载本期精选" />
         ) : error ? (
@@ -116,6 +131,7 @@ export default function EnjoyListPage() {
             {rows.length < total && (
               <Button
                 block
+                className={pageStyles.loadMore}
                 danger={Boolean(loadMoreError)}
                 loading={loadingMore}
                 title={loadMoreError || undefined}

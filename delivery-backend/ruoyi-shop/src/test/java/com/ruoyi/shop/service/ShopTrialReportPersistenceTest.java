@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -31,13 +32,15 @@ class ShopTrialReportPersistenceTest
 {
     private final ShopTrialMapper trialMapper = mock(ShopTrialMapper.class);
     private final ShopReportResourceService resourceService = mock(ShopReportResourceService.class);
+    private final ShopNotificationService notificationService = mock(ShopNotificationService.class);
     private final ShopTrialService service = new ShopTrialService(
             trialMapper,
             mock(ShopUserMapper.class),
             mock(ShopMerchantService.class),
             mock(ShopProductService.class),
             mock(AliyunLogisticsService.class),
-            resourceService);
+            resourceService,
+            notificationService);
 
     @AfterEach
     void clearSecurityContext()
@@ -94,6 +97,25 @@ class ShopTrialReportPersistenceTest
 
         verify(trialMapper).selectHomeFeed(
                 null, "ZHENKE_HOTEL", "ALL", "ALL", false, null, null);
+    }
+
+    @Test
+    void activatingReportUsefulCreatesOneNotificationWhileRemovingItDoesNot()
+    {
+        authenticateShopUser(18L);
+        ShopVerificationReport report = new ShopVerificationReport();
+        report.setReportId(66L);
+        report.setShopUserId(27L);
+        report.setStatus("PUBLISHED");
+        when(trialMapper.selectReportById(66L)).thenReturn(report);
+        when(trialMapper.selectReportResources(66L)).thenReturn(List.of());
+        when(trialMapper.deleteReportUseful(66L, 18L)).thenReturn(0, 1);
+        when(trialMapper.countReportUsefulByUser(66L, 18L)).thenReturn(0, 1, 1, 0);
+
+        service.toggleUseful(66L);
+        service.toggleUseful(66L);
+
+        verify(notificationService, times(1)).reportUseful(report, 18L);
     }
 
     private ShopVerificationReportBody reportBody()

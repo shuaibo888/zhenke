@@ -20,12 +20,14 @@ public class ShopVerificationReportCommentService
 {
     private final ShopVerificationReportCommentMapper commentMapper;
     private final ShopTrialMapper trialMapper;
+    private final ShopNotificationService notificationService;
 
     public ShopVerificationReportCommentService(ShopVerificationReportCommentMapper commentMapper,
-            ShopTrialMapper trialMapper)
+            ShopTrialMapper trialMapper, ShopNotificationService notificationService)
     {
         this.commentMapper = commentMapper;
         this.trialMapper = trialMapper;
+        this.notificationService = notificationService;
     }
 
     public List<ShopVerificationReportComment> comments(long reportId)
@@ -59,7 +61,7 @@ public class ShopVerificationReportCommentService
     @Transactional
     public ShopVerificationReportComment create(long reportId, ShopReportCommentBody body)
     {
-        requirePublishedReport(reportId);
+        ShopVerificationReport report = requirePublishedReport(reportId);
         long shopUserId = ShopAccountIdentity.requireShopUserId();
         Long parentCommentId = null;
         Long replyToCommentId = body.getReplyToCommentId();
@@ -87,7 +89,9 @@ public class ShopVerificationReportCommentService
         comment.setShopUserId(shopUserId);
         comment.setContent(StringUtils.trim(body.getContent()));
         commentMapper.insertComment(comment);
-        return requireActiveComment(reportId, comment.getCommentId());
+        ShopVerificationReportComment saved = requireActiveComment(reportId, comment.getCommentId());
+        notificationService.reportComment(report, saved);
+        return saved;
     }
 
     @Transactional

@@ -24,10 +24,15 @@ public class ShopZhenkeService {
   private static final int COMMENT_PREVIEW_SIZE = 3;
   private final ShopZhenkeMapper mapper;
   private final TencentMapService mapService;
+  private final ShopNotificationService notificationService;
 
-  public ShopZhenkeService(ShopZhenkeMapper mapper, TencentMapService mapService) {
+  public ShopZhenkeService(
+      ShopZhenkeMapper mapper,
+      TencentMapService mapService,
+      ShopNotificationService notificationService) {
     this.mapper = mapper;
     this.mapService = mapService;
+    this.notificationService = notificationService;
   }
 
   public List<ShopZhenkePost> posts(
@@ -203,12 +208,16 @@ public class ShopZhenkeService {
     if (Objects.equals(post.getShopUserId(), uid)) {
       throw new ServiceException("不能将自己的甄客帖标记为有用");
     }
-    if (mapper.countUseful(id, uid) > 0) {
+    boolean activating = mapper.countUseful(id, uid) == 0;
+    if (!activating) {
       mapper.deleteUseful(id, uid);
     } else {
       mapper.insertUseful(id, uid);
     }
     boolean active = mapper.countUseful(id, uid) > 0;
+    if (activating && active) {
+      notificationService.postUseful(post, uid);
+    }
     ShopZhenkePost p = detail(id);
     return Map.of("useful", active, "usefulCount", p.getUsefulCount());
   }
@@ -244,7 +253,7 @@ public class ShopZhenkeService {
   @Transactional
   public ShopZhenkePostComment comment(long id, ShopZhenkeCommentBody b) {
     long uid = ShopAccountIdentity.requireShopUserId();
-    detail(id);
+    ShopZhenkePost post = detail(id);
     ShopZhenkePostComment c = new ShopZhenkePostComment();
     c.setPostId(id);
     c.setShopUserId(uid);
@@ -260,6 +269,7 @@ public class ShopZhenkeService {
     }
     ShopZhenkePostComment saved = mapper.selectComment(id, c.getCommentId());
     if (saved == null) throw new ServiceException("评论保存结果异常，请刷新后查看");
+    notificationService.postComment(post, saved);
     return saved;
   }
 

@@ -1,0 +1,517 @@
+@orange: #f37032;
+@orangeDark: #a74625;
+@ink: #24201e;
+@muted: #716b67;
+@line: #ebe5df;
+@softOrange: #fff3ec;
+
+.profilePage {
+  display: grid;
+  width: min(920px, calc(100% - 40px));
+  gap: 14px;
+  margin: 0 auto;
+  padding: 24px 0 96px;
+  color: @ink;
+}
+
+.profileSummary,
+.orderPanel,
+.servicesPanel {
+  background: #fff;
+  border: 1px solid @line;
+  border-radius: 12px;
+  box-shadow: 0 3px 12px rgba(71, 48, 37, 0.045);
+}
+
+.profileSummary {
+  overflow: hidden;
+}
+
+.identityRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 20px 22px 18px;
+  background: linear-gradient(120deg, #fff 0%, #fff 67%, #fff7f1 100%);
+}
+
+.profileAvatar {
+  display: grid;
+  width: 68px;
+  height: 68px;
+  padding: 0;
+  place-items: center;
+  overflow: hidden;
+  color: #fff;
+  background: @orange;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #f0ded3;
+  cursor: pointer;
+  font-size: 25px;
+  font-weight: 800;
+}
+
+.profileAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.identityCopy {
+  min-width: 0;
+}
+
+.identityCopy > span {
+  color: @orangeDark;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.identityCopy h1 {
+  overflow: hidden;
+  margin: 3px 0 2px;
+  font-size: 23px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.identityCopy p {
+  overflow: hidden;
+  margin: 0;
+  color: @muted;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileEditButton {
+  display: inline-flex;
+  min-height: 38px;
+  gap: 6px;
+  align-items: center;
+  padding: 0 13px;
+  color: @orangeDark;
+  background: #fff;
+  border: 1px solid #f0c9b5;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.profileEditButton:hover,
+.profileEditButton:focus-visible {
+  background: @softOrange;
+  border-color: #e7a27e;
+  outline: none;
+}
+
+.assetStrip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid @line;
+}
+
+.assetStrip button {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  justify-items: center;
+  padding: 13px 8px 14px;
+  color: @ink;
+  background: #fff;
+  border: 0;
+  cursor: pointer;
+}
+
+.assetStrip button + button {
+  border-left: 1px solid @line;
+}
+
+.assetStrip button:hover,
+.assetStrip button:focus-visible {
+  background: #fffaf7;
+  outline: none;
+}
+
+.assetStrip strong {
+  max-width: 100%;
+  overflow: hidden;
+  color: @ink;
+  font-size: 19px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+}
+
+.assetStrip span {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  color: @muted;
+  font-size: 12px;
+}
+
+.assetStrip span :global(.anticon) {
+  color: @orange;
+}
+
+.setupNotice {
+  display: flex;
+  min-height: 44px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  color: #74452f;
+  background: #fff8f3;
+  border: 1px solid #f0d7ca;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.setupNotice > :global(.anticon) {
+  flex: none;
+  color: @orange;
+}
+
+.setupNotice strong {
+  min-width: 0;
+  flex: 1;
+  font-weight: 600;
+}
+
+.panelHeader {
+  display: flex;
+  min-height: 30px;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.panelTitle {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.panelTitle > :global(.anticon) {
+  color: @orange;
+  font-size: 17px;
+}
+
+.panelHeader h2 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.panelHeader > button {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 5px 0 5px 10px;
+  color: @muted;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.panelHeader > button:hover,
+.panelHeader > button:focus-visible {
+  color: @orangeDark;
+  outline: none;
+}
+
+.orderPanel,
+.servicesPanel {
+  padding: 16px 18px 17px;
+}
+
+.orderShortcutGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.orderShortcut {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  justify-items: center;
+  padding: 8px 4px 6px;
+  color: @ink;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.orderShortcut > span {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  color: @orangeDark;
+  background: @softOrange;
+  border-radius: 10px;
+  font-size: 19px;
+}
+
+.orderShortcut strong {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orderShortcut:hover,
+.orderShortcut:focus-visible {
+  color: @orangeDark;
+  background: #fffaf7;
+  outline: none;
+}
+
+.serviceGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.serviceEntry {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  justify-items: center;
+  padding: 10px 6px;
+  color: @ink;
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.serviceEntry:hover,
+.serviceEntry:focus-visible {
+  color: @orangeDark;
+  background: #fffaf7;
+  outline: none;
+}
+
+.serviceEntryIcon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  color: @orangeDark;
+  background: @softOrange;
+  border-radius: 11px;
+  font-size: 19px;
+}
+
+.serviceEntry:nth-child(3n + 2) .serviceEntryIcon {
+  color: #8b5a26;
+  background: #fff6df;
+}
+
+.serviceEntry:nth-child(3n) .serviceEntryIcon {
+  color: #874d48;
+  background: #f9eeee;
+}
+
+.serviceEntryCopy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.serviceEntryCopy strong,
+.serviceEntryCopy small {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.serviceEntryCopy strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.serviceEntryCopy small {
+  color: @muted;
+  font-size: 10px;
+}
+
+.serviceEntryBadge {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  min-width: 18px;
+  padding: 1px 5px;
+  color: #fff;
+  background: #d44f31;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 14px;
+}
+
+@media (max-width: 640px) {
+  .profilePage {
+    width: calc(100% - 24px);
+    gap: 11px;
+    padding-top: 12px;
+  }
+
+  .profileSummary,
+  .orderPanel,
+  .servicesPanel {
+    border-radius: 10px;
+    box-shadow: none;
+  }
+
+  .identityRow {
+    gap: 11px;
+    padding: 15px 14px 13px;
+    background: #fff;
+  }
+
+  .profileAvatar {
+    width: 58px;
+    height: 58px;
+    font-size: 21px;
+  }
+
+  .identityCopy h1 {
+    font-size: 20px;
+  }
+
+  .profileEditButton {
+    width: 38px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 15px;
+  }
+
+  .profileEditLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .assetStrip button {
+    padding: 11px 4px 12px;
+  }
+
+  .assetStrip strong {
+    font-size: 17px;
+  }
+
+  .assetStrip span {
+    gap: 3px;
+    font-size: 11px;
+  }
+
+  .setupNotice {
+    align-items: flex-start;
+  }
+
+  .setupNotice > :global(.ant-btn) {
+    min-height: 30px;
+    flex: none;
+    padding-inline: 9px;
+    font-size: 11px;
+  }
+
+  .orderPanel,
+  .servicesPanel {
+    padding: 14px 11px 13px;
+  }
+
+  .panelHeader {
+    margin: 0 3px 9px;
+  }
+
+  .panelHeader h2 {
+    font-size: 16px;
+  }
+
+  .orderShortcutGrid {
+    gap: 0;
+  }
+
+  .orderShortcut {
+    gap: 6px;
+    padding: 7px 1px 5px;
+  }
+
+  .orderShortcut > span {
+    width: 35px;
+    height: 35px;
+    font-size: 17px;
+  }
+
+  .orderShortcut strong {
+    font-size: 11px;
+  }
+
+  .serviceGrid {
+    gap: 1px;
+  }
+
+  .serviceEntry {
+    gap: 6px;
+    padding: 9px 2px 8px;
+  }
+
+  .serviceEntryIcon {
+    width: 39px;
+    height: 39px;
+    font-size: 18px;
+  }
+
+  .serviceEntryCopy strong {
+    font-size: 11px;
+  }
+
+  .serviceEntryCopy small {
+    display: none;
+  }
+}
+
+@media (max-width: 350px) {
+  .profilePage {
+    width: calc(100% - 16px);
+  }
+
+  .identityRow {
+    padding-inline: 10px;
+  }
+
+  .profileAvatar {
+    width: 52px;
+    height: 52px;
+  }
+
+  .assetStrip span :global(.anticon) {
+    display: none;
+  }
+
+  .serviceEntryCopy strong,
+  .orderShortcut strong {
+    font-size: 10px;
+  }
+}

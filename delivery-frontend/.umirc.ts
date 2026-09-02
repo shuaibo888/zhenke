@@ -13,6 +13,7 @@ export default defineConfig({
     { path: '/enjoy/:enjoyId', component: '@/pages/enjoy/detail' },
     { path: '/enjoy', component: '@/pages/enjoy' },
     { path: '/places/:placeId', component: '@/pages/places/detail' },
+    { path: '/profile/messages', component: '@/pages/profile/messages' },
     { path: '/profile/posts', component: '@/pages/profile/posts' },
     { path: '/mall/products', component: '@/pages/mall/products' },
     { path: '/mall/content', component: '@/pages/mall/content' },

@@ -10,6 +10,7 @@ public class ShopVerificationReportComment
     private Long reportId;
     private Long parentCommentId;
     private Long replyToCommentId;
+    private Long replyToShopUserId;
     private Long shopUserId;
     private String userName;
     private String nickName;
@@ -31,6 +32,8 @@ public class ShopVerificationReportComment
     public void setParentCommentId(Long parentCommentId) { this.parentCommentId = parentCommentId; }
     public Long getReplyToCommentId() { return replyToCommentId; }
     public void setReplyToCommentId(Long replyToCommentId) { this.replyToCommentId = replyToCommentId; }
+    public Long getReplyToShopUserId() { return replyToShopUserId; }
+    public void setReplyToShopUserId(Long replyToShopUserId) { this.replyToShopUserId = replyToShopUserId; }
     public Long getShopUserId() { return shopUserId; }
     public void setShopUserId(Long shopUserId) { this.shopUserId = shopUserId; }
     public String getUserName() { return userName; }
