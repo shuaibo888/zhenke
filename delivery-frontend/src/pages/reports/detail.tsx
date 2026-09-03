@@ -16,7 +16,6 @@ import { useLocation, useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { WechatShareGuide } from '@/components/WechatShareGuide';
 import { MerchantInfoBar } from '@/components/MerchantInfoBar';
-import { VerificationProofStrip } from '@/components/VerificationProofStrip';
 import { ZkState } from '@/components/ZkPage';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { useSafeBack } from '@/hooks/useSafeBack';
@@ -325,7 +324,6 @@ export default function ReportDetailPage({ reportId: reportIdProp }: { reportId?
             <ShareAltOutlined />
           </button>
         </header>
-        <VerificationProofStrip report={report} />
 
         <section className={styles.reportDetail}>
           <div className={styles.reportDetailGallery}>

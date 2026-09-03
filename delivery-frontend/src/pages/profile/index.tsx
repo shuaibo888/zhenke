@@ -147,12 +147,11 @@ export default function ProfilePage() {
     description: string;
     badge?: string;
     ariaLabel?: string;
-    wide?: boolean;
     onClick: () => void;
   }) => (
     <button
       type="button"
-      className={`${styles.serviceEntry} ${options.wide ? styles.serviceEntryWide : ''}`}
+      className={styles.serviceEntry}
       onClick={options.onClick}
       aria-label={options.ariaLabel ?? `${options.title}，${options.description}`}
     >
@@ -268,16 +267,23 @@ export default function ProfilePage() {
               <h2 id="profile-services-heading">常用服务</h2>
             </div>
           </header>
+          <button
+            type="button"
+            className={styles.impactSummary}
+            onClick={() => navigate('/profile/useful')}
+            aria-label={`查看创作影响力，我的内容累计获得 ${overviewValue(overview?.totalUsefulReceivedCount)} 次有用`}
+          >
+            <span className={styles.impactSummaryIcon} aria-hidden="true"><CheckCircleOutlined /></span>
+            <span className={styles.impactSummaryCopy}>
+              <small>创作影响力</small>
+              <strong>我的内容累计获得 <em>{overviewValue(overview?.totalUsefulReceivedCount)}</em> 次有用</strong>
+              <span>甄客帖 {overviewValue(overview?.postUsefulReceivedCount)} 次 · 甄客验 {overviewValue(overview?.reportUsefulReceivedCount)} 次</span>
+            </span>
+            <RightOutlined className={styles.impactSummaryArrow} aria-hidden="true" />
+          </button>
           <nav className={styles.serviceGrid} aria-label="个人服务">
             {profileEntry({ icon: <FileTextOutlined />, title: '我的甄客帖', description: '地点生活分享', onClick: () => navigate('/profile/posts') })}
             {profileEntry({ icon: <SafetyCertificateOutlined />, title: '我的甄客验', description: '真实履约体验', onClick: () => navigate('/profile/reports') })}
-            {profileEntry({
-              icon: <CheckCircleOutlined />,
-              title: `我的内容累计获得 ${overviewValue(overview?.totalUsefulReceivedCount)} 次有用`,
-              description: `甄客帖 ${overviewValue(overview?.postUsefulReceivedCount)} 次 · 甄客验 ${overviewValue(overview?.reportUsefulReceivedCount)} 次`,
-              wide: true,
-              onClick: () => navigate('/profile/useful'),
-            })}
             {profileEntry({
               icon: <MessageOutlined />,
               title: '消息中心',

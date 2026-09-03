@@ -1365,37 +1365,203 @@
   margin-top: 22px;
 }
 
-.usefulCountCopy {
-  color: @muted;
+.detailActionBar {
+  display: grid;
+  grid-template-columns: minmax(132px, 1.45fr) repeat(2, minmax(70px, 0.72fr));
+  margin: 24px -28px -28px;
+  overflow: hidden;
+  border-top: 1px solid @line;
+}
+
+.detailActionBarOwner {
+  grid-template-columns: minmax(126px, 1.5fr) repeat(3, minmax(58px, 0.62fr));
+}
+
+.detailAction {
+  display: flex;
+  min-width: 0;
+  min-height: 62px;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 10px;
+  color: @ink;
+  background: #fff;
+  border: 0;
+  border-left: 1px solid @line;
+  cursor: pointer;
+  font: inherit;
   font-size: 13px;
+  transition: color 140ms ease, background 140ms ease;
+}
+
+.detailAction:first-child {
+  border-left: 0;
+}
+
+.detailAction:not(.detailUsefulAction) {
+  flex-direction: column;
+  gap: 3px;
+}
+
+.detailAction > span {
   white-space: nowrap;
+}
+
+.detailAction > :global(.anticon) {
+  color: @primary;
+  font-size: 17px;
+}
+
+.detailAction:hover,
+.detailAction:focus-visible {
+  color: @orange;
+  background: #fff8f3;
+  outline: none;
+}
+
+.detailAction:disabled {
+  color: #948d89;
+  background: #fbfaf9;
+  cursor: default;
+}
+
+.detailAction:disabled:hover {
+  color: #948d89;
+  background: #fbfaf9;
+}
+
+.detailUsefulAction {
+  gap: 9px;
+  justify-content: flex-start;
+  padding-inline: 16px;
+  text-align: left;
+}
+
+.detailActionIcon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  place-items: center;
+  color: @primary;
+  background: #fff3ec;
+  border-radius: 50%;
+  font-size: 16px;
+}
+
+.detailActionCopy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.detailActionCopy strong,
+.detailActionCopy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detailActionCopy strong {
+  font-size: 13px;
+}
+
+.detailActionCopy small {
+  color: @muted;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.detailActionActive,
+.detailActionActive > :global(.anticon) {
+  color: @orange;
+}
+
+.detailActionActive .detailActionIcon {
+  color: #fff;
+  background: @orange;
+}
+
+.detailDangerAction,
+.detailDangerAction > :global(.anticon) {
+  color: #b84a3a;
 }
 
 .placePanel,
 .merchantPanel {
-  display: flex;
-  gap: 18px;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
   align-items: center;
-  justify-content: space-between;
   margin-top: 14px;
-  padding: 20px;
+  padding: 15px 17px;
+  color: @ink;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.placePanel:hover,
+.placePanel:focus-visible,
+.merchantPanel:hover,
+.merchantPanel:focus-visible {
+  background: #fffaf7;
+  border-color: #efcbb8;
+  outline: none;
+}
+
+.placePanelIcon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  color: @orange;
+  background: #fff1e8;
+  border-radius: 10px;
+  font-size: 18px;
 }
 
 .placePanelCopy {
+  display: grid;
   min-width: 0;
+  gap: 2px;
 }
 
 .placePanelCopy strong {
-  display: flex;
-  gap: 7px;
-  align-items: center;
+  overflow: hidden;
   color: @primaryDark;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.placePanelCopy small {
+  color: @muted;
+  font-size: 11px;
 }
 
 .placePanelCopy p {
-  margin: 6px 0 0;
+  overflow: hidden;
+  margin: 1px 0 0;
   color: @muted;
+  font-size: 12px;
   line-height: 1.6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.placePanelLink {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: @orange;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .commentsPanel {
@@ -2411,6 +2577,41 @@
     padding: 20px 17px;
   }
 
+  .detailActionBar {
+    grid-template-columns: minmax(116px, 1.45fr) repeat(2, minmax(62px, 0.7fr));
+    margin: 20px -17px -20px;
+  }
+
+  .detailActionBarOwner {
+    grid-template-columns: minmax(112px, 1.5fr) repeat(3, minmax(52px, 0.6fr));
+  }
+
+  .detailAction {
+    min-height: 58px;
+    gap: 4px;
+    padding: 8px 5px;
+    font-size: 12px;
+  }
+
+  .detailUsefulAction {
+    gap: 7px;
+    padding-inline: 10px;
+  }
+
+  .detailActionIcon {
+    width: 26px;
+    height: 26px;
+    font-size: 15px;
+  }
+
+  .detailActionCopy strong {
+    font-size: 12px;
+  }
+
+  .detailActionCopy small {
+    font-size: 10px;
+  }
+
   .commentComposer > button {
     width: 100%;
   }
@@ -2461,8 +2662,17 @@
 
   .placePanel,
   .merchantPanel {
-    align-items: flex-start;
-    flex-direction: column;
+    gap: 10px;
+    padding: 13px 14px;
+  }
+
+  .placePanelIcon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .placePanelCopy strong {
+    font-size: 14px;
   }
 
   .mediaGrid {
@@ -3905,76 +4115,6 @@
 
   .checkoutJourneyTrust {
     grid-column: auto;
-  }
-}
-
-.verificationProof {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 13px;
-  align-items: center;
-  margin: 12px 0;
-  padding: 16px 18px;
-  color: #5e2d26;
-  background: linear-gradient(135deg, #fff8ea, #fffdf8);
-  border: 1px solid #e8cf9c;
-  border-radius: 18px;
-  box-shadow: 0 10px 28px rgba(123, 82, 27, 0.08);
-}
-
-.verificationProofIcon {
-  display: grid;
-  width: 46px;
-  height: 46px;
-  color: #fff;
-  background: linear-gradient(145deg, #b7791f, #d29a42);
-  border-radius: 15px;
-  place-items: center;
-  font-size: 21px;
-}
-
-.verificationProof small,
-.verificationProof strong,
-.verificationProof p {
-  display: block;
-}
-
-.verificationProof small {
-  color: #a46b1b;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
-.verificationProof strong {
-  margin-top: 2px;
-  font-size: 16px;
-}
-
-.verificationProof p {
-  margin: 3px 0 0;
-  color: #887466;
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-.verificationProof em {
-  color: #9b6a20;
-  font-size: 12px;
-  font-style: normal;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-@media (max-width: 650px) {
-  .verificationProof {
-    grid-template-columns: auto minmax(0, 1fr);
-    padding: 14px;
-  }
-
-  .verificationProof em {
-    grid-column: 2;
-    white-space: normal;
   }
 }
 

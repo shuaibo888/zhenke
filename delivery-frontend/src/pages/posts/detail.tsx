@@ -2,8 +2,11 @@ import {
   ArrowLeftOutlined,
   CheckCircleFilled,
   CheckCircleOutlined,
+  DeleteOutlined,
   EnvironmentOutlined,
+  LoadingOutlined,
   MessageOutlined,
+  RightOutlined,
   SendOutlined,
   ShareAltOutlined,
   ShopOutlined,
@@ -428,12 +431,16 @@ export default function PostDetailPage() {
             <div className={styles.prose}>{detail.suggestion}</div>
           </div>
         )}
-        <div className={styles.actionRow}>
-          <Button
-            type={detail.usefulByMe ? 'primary' : 'default'}
-            icon={detail.usefulByMe ? <CheckCircleFilled /> : <CheckCircleOutlined />}
-            loading={usefulSubmitting}
-            disabled={ownPost}
+        <div
+          className={`${styles.detailActionBar} ${ownPost ? styles.detailActionBarOwner : ''}`}
+          role="group"
+          aria-label="帖子互动与管理"
+        >
+          <button
+            type="button"
+            className={`${styles.detailAction} ${styles.detailUsefulAction} ${detail.usefulByMe ? styles.detailActionActive : ''}`}
+            disabled={ownPost || usefulSubmitting}
+            aria-pressed={ownPost ? undefined : detail.usefulByMe}
             title={ownPost ? '不能给自己的甄客帖标记有用' : undefined}
             onClick={async () => {
               if (!requireLogin()) return;
@@ -449,12 +456,27 @@ export default function PostDetailPage() {
                 setUsefulSubmitting(false);
               }
             }}
-          >{ownPost ? '自己的内容' : detail.usefulByMe ? '已觉得有用' : '觉得有用'}</Button>
-          <span className={styles.usefulCountCopy}>{detail.usefulCount} 人觉得有用</span>
-          <Button icon={<MessageOutlined />} onClick={() => document.getElementById('post-comments')?.scrollIntoView({ behavior: 'smooth' })}>
-            评论 {detail.commentCount}
-          </Button>
-          <Button icon={<ShareAltOutlined />} onClick={() => void share()}>分享</Button>
+          >
+            <span className={styles.detailActionIcon} aria-hidden="true">
+              {usefulSubmitting ? <LoadingOutlined spin /> : detail.usefulByMe ? <CheckCircleFilled /> : <CheckCircleOutlined />}
+            </span>
+            <span className={styles.detailActionCopy}>
+              <strong>{ownPost ? '自己的帖子' : detail.usefulByMe ? '已觉得有用' : '觉得有用'}</strong>
+              <small>{detail.usefulCount} 人觉得有用</small>
+            </span>
+          </button>
+          <button
+            type="button"
+            className={styles.detailAction}
+            onClick={() => document.getElementById('post-comments')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            <MessageOutlined aria-hidden="true" />
+            <span>评论 {detail.commentCount}</span>
+          </button>
+          <button type="button" className={styles.detailAction} onClick={() => void share()}>
+            <ShareAltOutlined aria-hidden="true" />
+            <span>分享</span>
+          </button>
           {user?.id === detail.shopUserId && (
             <Popconfirm
               title="删除后正文、媒体和历史分享链接均不可见，确认删除？"
@@ -468,27 +490,44 @@ export default function PostDetailPage() {
                 }
               }}
             >
-              <Button danger>删除帖子</Button>
+              <button type="button" className={`${styles.detailAction} ${styles.detailDangerAction}`}>
+                <DeleteOutlined aria-hidden="true" />
+                <span>删除</span>
+              </button>
             </Popconfirm>
           )}
         </div>
       </article>
 
-      <section className={`${styles.surface} ${styles.placePanel}`}>
+      <button
+        type="button"
+        className={`${styles.surface} ${styles.placePanel}`}
+        onClick={() => navigate(`/places/${detail.placeId}`)}
+        aria-label={`查看地点 ${detail.placeName} 的详情与导航`}
+      >
+        <span className={styles.placePanelIcon} aria-hidden="true"><EnvironmentOutlined /></span>
         <div className={styles.placePanelCopy}>
-          <strong><EnvironmentOutlined /> 发布者选择的地点：{detail.placeName}</strong>
+          <small>发布者选择的地点</small>
+          <strong>{detail.placeName}</strong>
           <p>{detail.placeAddress}</p>
         </div>
-        <Button type="primary" onClick={() => navigate(`/places/${detail.placeId}`)}>地点详情 / 导航</Button>
-      </section>
+        <span className={styles.placePanelLink}>详情 <RightOutlined aria-hidden="true" /></span>
+      </button>
 
       {detail.merchantId && (
-        <section className={`${styles.surface} ${styles.merchantPanel}`}>
+        <button
+          type="button"
+          className={`${styles.surface} ${styles.merchantPanel}`}
+          onClick={() => navigate(`/merchants/${detail.merchantId}`)}
+          aria-label={`查看帖子关联商家 ${detail.merchantName}`}
+        >
+          <span className={styles.placePanelIcon} aria-hidden="true"><ShopOutlined /></span>
           <div className={styles.placePanelCopy}>
-            <strong><ShopOutlined /> 用户主动关联商家：{detail.merchantName}</strong>
+            <small>用户主动关联的入驻商家</small>
+            <strong>{detail.merchantName}</strong>
           </div>
-          <Button onClick={() => navigate(`/merchants/${detail.merchantId}`)}>查看入驻商家</Button>
-        </section>
+          <span className={styles.placePanelLink}>查看 <RightOutlined aria-hidden="true" /></span>
+        </button>
       )}
 
       <section id="post-comments" className={`${styles.surface} ${styles.commentsPanel}`}>
