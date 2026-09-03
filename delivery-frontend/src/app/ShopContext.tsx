@@ -16,6 +16,7 @@ import {
   updateShopCartItem,
   type ShopCartItemDto,
   type ShopCouponDto,
+  type ShopCouponAssignment,
   type ShopOrderDto,
   type TrialApplicationDto,
   type VerificationReportDto,
@@ -86,8 +87,8 @@ interface ShopContextValue {
   addToCart: (productId: number, quantity?: number, sourceReportId?: number) => Promise<void>;
   changeCartQuantity: (cartItemId: number, quantity: number) => Promise<void>;
   removeCartItem: (cartItemId: number) => Promise<void>;
-  checkoutCart: (addressId: number | null, userCouponIds?: number[]) => Promise<ShopOrderDto[]>;
-  buyNow: (addressId: number | null, productId: number, quantity?: number, sourceReportId?: number, userCouponIds?: number[], fulfillmentType?: 'ONLINE' | 'OFFLINE') => Promise<ShopOrderDto[]>;
+  checkoutCart: (addressId: number | null, userCouponIds?: number[], couponAssignments?: ShopCouponAssignment[]) => Promise<ShopOrderDto[]>;
+  buyNow: (addressId: number | null, productId: number, quantity?: number, sourceReportId?: number, userCouponIds?: number[], fulfillmentType?: 'ONLINE' | 'OFFLINE', couponAssignments?: ShopCouponAssignment[]) => Promise<ShopOrderDto[]>;
   payOrder: (orderId: number, authorization?: { code?: string; state?: string }) => Promise<void>;
   clearNativePayment: () => void;
   saveAddress: (body: ShopShippingAddressBody, addressId?: number) => Promise<void>;
@@ -460,8 +461,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setCart((items) => items.filter((item) => item.cartItemId !== cartItemId));
   }, []);
 
-  const checkoutCart = useCallback(async (addressId: number | null, userCouponIds?: number[]) => {
-    const created = await checkoutShopCart(addressId, userCouponIds);
+  const checkoutCart = useCallback(async (addressId: number | null, userCouponIds?: number[], couponAssignments?: ShopCouponAssignment[]) => {
+    const created = await checkoutShopCart(addressId, userCouponIds, couponAssignments);
     setCart([]);
     setOrders((items) => [...created, ...items]);
     if (userCouponIds?.length) void fetchMyCoupons().then(setCoupons).catch(() => undefined);
@@ -475,11 +476,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     sourceReportId?: number,
     userCouponIds?: number[],
     fulfillmentType?: 'ONLINE' | 'OFFLINE',
+    couponAssignments?: ShopCouponAssignment[],
   ) => {
     const created = await createShopOrders({
       addressId,
       items: [{ productId, quantity, sourceReportId, fulfillmentType }],
       userCouponIds,
+      couponAssignments,
     });
     setOrders((items) => [...created, ...items]);
     if (userCouponIds?.length) void fetchMyCoupons().then(setCoupons).catch(() => undefined);

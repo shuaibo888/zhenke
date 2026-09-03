@@ -644,6 +644,7 @@ export async function createShopOrders(body: {
   addressId?: number | null;
   items: Array<{ productId: number; quantity: number; sourceReportId?: number; fulfillmentType?: 'ONLINE' | 'OFFLINE' }>;
   userCouponIds?: number[];
+  couponAssignments?: ShopCouponAssignment[];
 }) {
   const result = await requestApi<ApiResponse<ShopOrderDto[]>>(
     '/shop/orders',
@@ -653,10 +654,21 @@ export async function createShopOrders(body: {
   return Array.isArray(result.data) ? result.data : [];
 }
 
-export async function checkoutShopCart(addressId: number | null, userCouponIds?: number[]) {
+export type ShopCouponAssignment = {
+  userCouponId: number;
+  merchantId: number;
+  fulfillmentType: 'ONLINE' | 'OFFLINE';
+  localLifeProductId?: number;
+};
+
+export async function checkoutShopCart(
+  addressId: number | null,
+  userCouponIds?: number[],
+  couponAssignments?: ShopCouponAssignment[],
+) {
   const result = await requestApi<ApiResponse<ShopOrderDto[]>>(
     '/shop/orders/from-cart',
-    { method: 'POST', body: JSON.stringify({ addressId, userCouponIds }) },
+    { method: 'POST', body: JSON.stringify({ addressId, userCouponIds, couponAssignments }) },
     true,
   );
   return Array.isArray(result.data) ? result.data : [];

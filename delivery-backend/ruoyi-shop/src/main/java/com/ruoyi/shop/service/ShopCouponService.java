@@ -475,9 +475,28 @@ public class ShopCouponService
     List<ShopUserCoupon> lockUsableCoupons(long userId, List<Long> userCouponIds,
             long merchantId, BigDecimal subtotal)
     {
+        Map<Integer, List<ShopUserCoupon>> allocated = lockAndAllocateCoupons(userId, userCouponIds,
+                List.of(new OrderCouponCandidate(0, merchantId, subtotal)), Map.of());
+        return allocated.getOrDefault(0, List.of());
+    }
+
+    Map<Integer, List<ShopUserCoupon>> lockAndAllocateCoupons(long userId,
+            List<Long> userCouponIds, List<OrderCouponCandidate> candidates)
+    {
+        return lockAndAllocateCoupons(userId, userCouponIds, candidates, Map.of());
+    }
+
+    Map<Integer, List<ShopUserCoupon>> lockAndAllocateCoupons(long userId,
+            List<Long> userCouponIds, List<OrderCouponCandidate> candidates,
+            Map<Long, Integer> requestedTargets)
+    {
         if (userCouponIds == null || userCouponIds.isEmpty())
         {
-            return List.of();
+            return Map.of();
+        }
+        if (candidates == null || candidates.isEmpty())
+        {
+            throw new ServiceException("当前没有可使用优惠券的订单");
         }
         if (userCouponIds.size() > 50)
         {
@@ -499,14 +518,45 @@ public class ShopCouponService
         Map<Long, ShopUserCoupon> lockedById = new java.util.HashMap<>();
         for (Long userCouponId : lockOrder)
         {
-            lockedById.put(userCouponId,
-                    lockUsableCoupon(userId, userCouponId, merchantId, subtotal));
+            lockedById.put(userCouponId, lockUsableCoupon(userId, userCouponId));
         }
-        return uniqueIds.stream().map(lockedById::get).toList();
+        Map<Integer, List<ShopUserCoupon>> allocated = new java.util.LinkedHashMap<>();
+        for (Long userCouponId : uniqueIds)
+        {
+            ShopUserCoupon coupon = lockedById.get(userCouponId);
+            List<OrderCouponCandidate> merchantCandidates = candidates.stream()
+                    .filter(candidate -> PLATFORM_WIDE.equals(coupon.getScopeType())
+                            || couponMapper.countCouponMerchant(
+                                    coupon.getCouponId(), candidate.merchantId()) > 0)
+                    .toList();
+            if (merchantCandidates.isEmpty())
+            {
+                throw new ServiceException("优惠券不适用于本次结算中的任何商家");
+            }
+            List<OrderCouponCandidate> eligibleCandidates = merchantCandidates.stream()
+                    .filter(candidate -> candidate.subtotal().compareTo(coupon.getMinimumSpend()) >= 0)
+                    .toList();
+            if (eligibleCandidates.isEmpty())
+            {
+                throw new ServiceException("没有子订单达到优惠券使用门槛");
+            }
+            Integer requestedGroupIndex = requestedTargets == null
+                    ? null : requestedTargets.get(userCouponId);
+            OrderCouponCandidate target = requestedGroupIndex == null
+                    ? eligibleCandidates.stream()
+                    .max(java.util.Comparator.comparing(OrderCouponCandidate::subtotal)
+                            .thenComparing(candidate -> -candidate.groupIndex()))
+                    .orElseThrow()
+                    : eligibleCandidates.stream()
+                            .filter(candidate -> candidate.groupIndex() == requestedGroupIndex)
+                            .findFirst()
+                            .orElseThrow(() -> new ServiceException("优惠券不能用于指定的目标订单"));
+            allocated.computeIfAbsent(target.groupIndex(), ignored -> new ArrayList<>()).add(coupon);
+        }
+        return allocated;
     }
 
-    private ShopUserCoupon lockUsableCoupon(long userId, long userCouponId,
-            long merchantId, BigDecimal subtotal)
+    private ShopUserCoupon lockUsableCoupon(long userId, long userCouponId)
     {
         ShopUserCoupon coupon = couponMapper.selectUserCouponForUpdate(userId, userCouponId);
         if (coupon == null)
@@ -534,17 +584,10 @@ public class ShopCouponService
         {
             throw new ServiceException("优惠券已过期");
         }
-        if (!PLATFORM_WIDE.equals(coupon.getScopeType())
-                && couponMapper.countCouponMerchant(coupon.getCouponId(), merchantId) == 0)
-        {
-            throw new ServiceException("优惠券不适用于当前商家");
-        }
-        if (subtotal.compareTo(coupon.getMinimumSpend()) < 0)
-        {
-            throw new ServiceException("订单金额未达到优惠券使用门槛");
-        }
         return coupon;
     }
+
+    record OrderCouponCandidate(int groupIndex, long merchantId, BigDecimal subtotal) { }
 
     void markUsed(long userId, long userCouponId, long orderId)
     {

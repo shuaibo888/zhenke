@@ -29,6 +29,7 @@ import com.ruoyi.shop.domain.ShopUserAddress;
 import com.ruoyi.shop.domain.ShopUserCoupon;
 import com.ruoyi.shop.domain.dto.ShopOrderCreateBody;
 import com.ruoyi.shop.domain.dto.ShopOrderItemBody;
+import com.ruoyi.shop.domain.dto.ShopCouponAssignmentBody;
 import com.ruoyi.shop.domain.dto.ShopOrderRefundBody;
 import com.ruoyi.shop.domain.vo.ShopLogisticsTrace;
 import com.ruoyi.shop.logistics.AliyunLogisticsService;
@@ -88,11 +89,13 @@ public class ShopOrderService
     {
         long userId = ShopAccountIdentity.requireShopUserId();
         lockUser(userId);
-        return createForUser(userId, body.getAddressId(), body.getItems(), body.getUserCouponIds());
+        return createForUser(userId, body.getAddressId(), body.getItems(), body.getUserCouponIds(),
+                body.getCouponAssignments());
     }
 
     @Transactional
-    public List<ShopOrder> createFromCart(Long addressId, List<Long> userCouponIds)
+    public List<ShopOrder> createFromCart(Long addressId, List<Long> userCouponIds,
+            List<ShopCouponAssignmentBody> couponAssignments)
     {
         long userId = ShopAccountIdentity.requireShopUserId();
         lockUser(userId);
@@ -109,7 +112,7 @@ public class ShopOrderService
             body.setFulfillmentType(ShopProductService.FULFILLMENT_ONLINE);
             return body;
         }).toList();
-        List<ShopOrder> orders = createForUser(userId, addressId, items, userCouponIds);
+        List<ShopOrder> orders = createForUser(userId, addressId, items, userCouponIds, couponAssignments);
         List<Long> productIds = items.stream().map(ShopOrderItemBody::getProductId).distinct().toList();
         cartMapper.deleteUserProducts(userId, productIds);
         return orders;
@@ -339,7 +342,8 @@ public class ShopOrderService
     }
 
     private List<ShopOrder> createForUser(long userId, Long addressId,
-            List<ShopOrderItemBody> requestedItems, List<Long> userCouponIds)
+            List<ShopOrderItemBody> requestedItems, List<Long> userCouponIds,
+            List<ShopCouponAssignmentBody> couponAssignments)
     {
         Map<Long, RequestedLine> normalized = normalizeItems(requestedItems);
         Map<GroupKey, List<OrderLine>> linesByGroup = new LinkedHashMap<>();
@@ -386,23 +390,33 @@ public class ShopOrderService
             }
         }
 
-        boolean usesCoupons = userCouponIds != null && !userCouponIds.isEmpty();
-        if (usesCoupons && linesByGroup.size() != 1)
+        List<Map.Entry<GroupKey, List<OrderLine>>> groupEntries = new ArrayList<>(linesByGroup.entrySet());
+        List<BigDecimal> groupAmounts = groupEntries.stream()
+                .map(entry -> entry.getValue().stream()
+                        .map(line -> line.product().getPrice().multiply(BigDecimal.valueOf(line.quantity())))
+                        .reduce(BigDecimal.ZERO, BigDecimal::add))
+                .toList();
+        List<ShopCouponService.OrderCouponCandidate> couponCandidates = new ArrayList<>();
+        for (int index = 0; index < groupEntries.size(); index++)
         {
-            throw new ServiceException("订单包含多个商家或多种履约方式，优惠券仅支持单一履约方式结算");
+            couponCandidates.add(new ShopCouponService.OrderCouponCandidate(index,
+                    groupEntries.get(index).getKey().merchantId(), groupAmounts.get(index)));
         }
+        Map<Long, Integer> requestedCouponTargets = resolveCouponTargets(couponAssignments, groupEntries);
+        List<Long> selectedCouponIds = couponAssignments == null || couponAssignments.isEmpty()
+                ? userCouponIds : couponAssignments.stream().map(ShopCouponAssignmentBody::getUserCouponId).toList();
+        Map<Integer, List<ShopUserCoupon>> couponsByGroup = couponService.lockAndAllocateCoupons(
+                userId, selectedCouponIds, couponCandidates, requestedCouponTargets);
 
         List<ShopOrder> created = new ArrayList<>();
-        for (Map.Entry<GroupKey, List<OrderLine>> groupEntry : linesByGroup.entrySet())
+        for (int groupIndex = 0; groupIndex < groupEntries.size(); groupIndex++)
         {
+            Map.Entry<GroupKey, List<OrderLine>> groupEntry = groupEntries.get(groupIndex);
             GroupKey group = groupEntry.getKey();
-            BigDecimal originalAmount = groupEntry.getValue().stream()
-                    .map(line -> line.product().getPrice().multiply(BigDecimal.valueOf(line.quantity())))
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal originalAmount = groupAmounts.get(groupIndex);
             BigDecimal discountAmount = BigDecimal.ZERO;
             BigDecimal payableAmount = originalAmount;
-            List<ShopUserCoupon> selectedCoupons = couponService.lockUsableCoupons(
-                    userId, userCouponIds, group.merchantId(), originalAmount);
+            List<ShopUserCoupon> selectedCoupons = couponsByGroup.getOrDefault(groupIndex, List.of());
             List<ShopOrderCoupon> appliedCoupons = new ArrayList<>();
             for (ShopUserCoupon coupon : selectedCoupons)
             {
@@ -541,6 +555,36 @@ public class ShopOrderService
         // 避免同一商家的酒店、门票和餐饮套餐被一次核销整体完成。
         return ShopProductService.LOCAL_LIFE_CATEGORY_CODES.contains(product.getCategoryCode())
                 ? product.getProductId() : null;
+    }
+
+    private Map<Long, Integer> resolveCouponTargets(List<ShopCouponAssignmentBody> assignments,
+            List<Map.Entry<GroupKey, List<OrderLine>>> groups)
+    {
+        if (assignments == null || assignments.isEmpty()) return Map.of();
+        Map<Long, Integer> targets = new LinkedHashMap<>();
+        for (ShopCouponAssignmentBody assignment : assignments)
+        {
+            GroupKey requested = new GroupKey(assignment.getMerchantId(), assignment.getFulfillmentType(),
+                    assignment.getLocalLifeProductId());
+            int groupIndex = -1;
+            for (int index = 0; index < groups.size(); index++)
+            {
+                if (groups.get(index).getKey().equals(requested))
+                {
+                    groupIndex = index;
+                    break;
+                }
+            }
+            if (groupIndex < 0)
+            {
+                throw new ServiceException("优惠券指定的目标订单不存在，请刷新后重试");
+            }
+            if (targets.putIfAbsent(assignment.getUserCouponId(), groupIndex) != null)
+            {
+                throw new ServiceException("不能重复分配同一张优惠券");
+            }
+        }
+        return targets;
     }
 
     private Map<Long, RequestedLine> normalizeItems(List<ShopOrderItemBody> items)

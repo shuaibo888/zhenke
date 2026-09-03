@@ -6,7 +6,7 @@ import {
   ShopOutlined,
   TruckOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Checkbox, Drawer, Modal, Space, Spin, Tag, message } from 'antd';
+import { Alert, Button, Checkbox, Drawer, Modal, Select, Space, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -17,7 +17,6 @@ import { ProfileBackButton } from '@/components/ProfileBackButton';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { useSafeBack } from '@/hooks/useSafeBack';
 import {
-  fetchAvailableCoupons,
   fetchPublicProduct,
   fetchShopOrder,
   type PublicProductDto,
@@ -112,10 +111,9 @@ export default function CheckoutPage() {
   const [orderLoadError, setOrderLoadError] = useState('');
   const [productLoading, setProductLoading] = useState(!orderMode && source === 'buy');
   const [checkoutRefreshError, setCheckoutRefreshError] = useState('');
-  const [availableCoupons, setAvailableCoupons] = useState<ShopCouponDto[]>([]);
-  const [couponsLoading, setCouponsLoading] = useState(false);
   const [selectedCouponIds, setSelectedCouponIds] = useState<number[]>([]);
   const [draftCouponIds, setDraftCouponIds] = useState<number[]>([]);
+  const [couponTargetOverrides, setCouponTargetOverrides] = useState<Record<number, string>>({});
   const [couponOpen, setCouponOpen] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<number | undefined>();
   const [addressOpen, setAddressOpen] = useState(false);
@@ -274,8 +272,10 @@ export default function CheckoutPage() {
         source === 'cart' ? cartLineFulfillment(groupLines[0]) : selectedFulfillmentType,
       ),
       merchantName: groupLines[0].merchantName || '甄客行',
+      merchantId: groupLines[0].merchantId,
       fulfillment: source === 'cart' ? cartLineFulfillment(groupLines[0]) : selectedFulfillmentType,
       localLife: isLocalLifeLine(groupLines[0]),
+      localLifeProductId: isLocalLifeLine(groupLines[0]) ? groupLines[0].productId : undefined,
       lines: groupLines,
       amount: groupLines.reduce((sum, line) => sum + line.price * line.quantity, 0),
     }));
@@ -296,17 +296,77 @@ export default function CheckoutPage() {
     && product?.stockUnlimited !== '1'
     && (product?.stock ?? 0) < quantity;
   const singleCheckoutGroup = checkoutGroups.length === 1;
+  const couponEligibleGroupsById = useMemo(() => {
+    const now = Date.now();
+    const eligibleById = new Map<number, (typeof checkoutGroups)>();
+    coupons.forEach((coupon) => {
+      if (coupon.status !== 'UNUSED'
+        || coupon.couponStatus !== 'ENABLED'
+        || coupon.usageMode === 'OFFLINE'
+        || new Date(coupon.startTime).getTime() > now
+        || new Date(coupon.endTime).getTime() <= now) return;
+      const eligibleGroups = checkoutGroups.filter((group) => {
+        const merchantMatches = coupon.scopeType === 'PLATFORM_WIDE'
+          || coupon.merchants.some((merchant) => merchant.merchantId === group.lines[0].merchantId);
+        return merchantMatches && group.amount >= coupon.minimumSpend;
+      });
+      if (eligibleGroups.length > 0) eligibleById.set(coupon.userCouponId, eligibleGroups);
+    });
+    return eligibleById;
+  }, [checkoutGroups, coupons]);
+  const couponTargetById = useMemo(() => {
+    const targets = new Map<number, (typeof checkoutGroups)[number]>();
+    couponEligibleGroupsById.forEach((eligibleGroups, userCouponId) => {
+      const overridden = eligibleGroups.find((group) => group.key === couponTargetOverrides[userCouponId]);
+      const recommended = eligibleGroups.reduce<(typeof checkoutGroups)[number] | undefined>(
+        (highest, group) => !highest || group.amount > highest.amount ? group : highest,
+        undefined,
+      );
+      const target = overridden ?? recommended;
+      if (target) targets.set(userCouponId, target);
+    });
+    return targets;
+  }, [checkoutGroups, couponEligibleGroupsById, couponTargetOverrides]);
+  const availableCoupons = useMemo(
+    () => coupons.filter((coupon) => couponTargetById.has(coupon.userCouponId)),
+    [couponTargetById, coupons],
+  );
+  const couponIneligibleReason = (coupon: ShopCouponDto) => {
+    if (coupon.status !== 'UNUSED') return '已使用';
+    if (coupon.usageMode === 'OFFLINE') return '仅支持到店出示核销码';
+    if (coupon.couponStatus !== 'ENABLED') return '优惠券已下架';
+    const now = Date.now();
+    if (new Date(coupon.startTime).getTime() > now) return '优惠券尚未生效';
+    if (new Date(coupon.endTime).getTime() <= now) return '优惠券已过期';
+    const merchantGroups = checkoutGroups.filter((group) => (
+      coupon.scopeType === 'PLATFORM_WIDE'
+      || coupon.merchants.some((merchant) => merchant.merchantId === group.lines[0].merchantId)
+    ));
+    if (merchantGroups.length === 0) return '不适用于本次结算中的商家';
+    if (merchantGroups.every((group) => group.amount < coupon.minimumSpend)) {
+      return `没有适用子订单达到 ${formatPrice(coupon.minimumSpend)}`;
+    }
+    return undefined;
+  };
   const selectedCoupons = selectedCouponIds
     .map((couponId) => availableCoupons.find((coupon) => coupon.userCouponId === couponId))
     .filter((coupon): coupon is ShopCouponDto => Boolean(coupon));
-  const selectedCouponFaceAmount = selectedCoupons.reduce((sum, coupon) => sum + coupon.discountAmount, 0);
-  const maximumCouponDiscount = subtotal > minimumWechatPayment
-    ? toMoney(subtotal - minimumWechatPayment)
-    : 0;
+  const calculateCouponDiscount = (selected: ShopCouponDto[]) => {
+    const remainingByGroup = new Map(checkoutGroups.map((group) => [group.key, group.amount]));
+    return selected.reduce((sum, coupon) => {
+      const target = couponTargetById.get(coupon.userCouponId);
+      if (!target) return sum;
+      const remaining = remainingByGroup.get(target.key) ?? 0;
+      const capacity = Math.max(0, toMoney(remaining - minimumWechatPayment));
+      const applied = Math.min(coupon.discountAmount, capacity);
+      remainingByGroup.set(target.key, toMoney(remaining - applied));
+      return toMoney(sum + applied);
+    }, 0);
+  };
   const discount = paymentOrder?.discountAmount
-    ?? (singleCheckoutGroup ? Math.min(maximumCouponDiscount, toMoney(selectedCouponFaceAmount)) : 0);
+    ?? calculateCouponDiscount(selectedCoupons);
   const payable = paymentOrder?.totalAmount
-    ?? (subtotal > 0 ? Math.max(minimumWechatPayment, toMoney(subtotal - discount)) : 0);
+    ?? (subtotal > 0 ? toMoney(subtotal - discount) : 0);
   const selectedAddress = addresses.find((address) => address.id === selectedAddressId);
   const checkoutFulfillment = orderMode
     ? paymentOrder?.fulfillmentType ?? 'ONLINE'
@@ -321,16 +381,16 @@ export default function CheckoutPage() {
       ? cartHasOnline
       : selectedFulfillmentType === 'ONLINE';
   const couponUnavailableReason = useMemo(() => {
-    if (checkoutGroups.length > 1) return '本次将生成多笔独立订单，暂不能使用优惠券';
-    if (!singleCheckoutGroup || subtotal <= 0) return '暂无可结算商品';
+    if (checkoutGroups.length === 0 || subtotal <= 0) return '暂无可结算商品';
     if (coupons.length === 0) return '暂无优惠券';
     const unused = coupons.filter((coupon) => coupon.status === 'UNUSED');
     if (unused.length === 0) return '暂无未使用的优惠券';
-    const merchantId = merchants[0][0];
-    const applicable = unused.filter((coupon) => (
+    const orderUsable = unused.filter((coupon) => coupon.usageMode !== 'OFFLINE');
+    if (orderUsable.length === 0) return '现有优惠券仅支持到店出示核销码';
+    const applicable = orderUsable.filter((coupon) => checkoutGroups.some((group) => (
       coupon.scopeType === 'PLATFORM_WIDE'
-      || coupon.merchants.some((merchant) => merchant.merchantId === merchantId)
-    ));
+      || coupon.merchants.some((merchant) => merchant.merchantId === group.lines[0].merchantId)
+    )));
     if (applicable.length === 0) return '现有优惠券不适用于当前商家';
     const now = Date.now();
     const enabled = applicable.filter((coupon) => coupon.couponStatus === 'ENABLED');
@@ -339,46 +399,25 @@ export default function CheckoutPage() {
     if (started.length === 0) return '适用优惠券尚未生效';
     const unexpired = started.filter((coupon) => new Date(coupon.endTime).getTime() > now);
     if (unexpired.length === 0) return '适用优惠券已过期';
-    if (unexpired.every((coupon) => coupon.minimumSpend > subtotal)) {
-      return '当前商品金额未达到优惠券使用条件';
+    if (unexpired.every((coupon) => !checkoutGroups.some((group) => (
+      (coupon.scopeType === 'PLATFORM_WIDE'
+        || coupon.merchants.some((merchant) => merchant.merchantId === group.lines[0].merchantId))
+      && group.amount >= coupon.minimumSpend
+    )))) {
+      return '没有子订单达到优惠券使用门槛';
     }
     return '当前订单暂无可用优惠券';
-  }, [checkoutGroups.length, coupons, merchants, singleCheckoutGroup, subtotal]);
+  }, [checkoutGroups, coupons, subtotal]);
 
   useEffect(() => {
-    if (orderMode || !user || !singleCheckoutGroup || subtotal <= 0) {
-      setAvailableCoupons([]);
+    if (orderMode || !user || subtotal <= 0) {
       setSelectedCouponIds([]);
       setDraftCouponIds([]);
-      setCouponsLoading(false);
       return;
     }
-    let mounted = true;
-    setCouponsLoading(true);
-    setAvailableCoupons([]);
-    setSelectedCouponIds([]);
-    setDraftCouponIds([]);
-    fetchAvailableCoupons(merchants[0][0], subtotal)
-      .then((coupons) => {
-        if (!mounted) return;
-        setAvailableCoupons(coupons);
-        setSelectedCouponIds((current) => current.filter((couponId) => (
-          coupons.some((coupon) => coupon.userCouponId === couponId)
-        )));
-      })
-      .catch((error) => {
-        if (mounted) {
-          const reason = error instanceof Error ? error.message : '可用优惠券加载失败';
-          message.error(reason);
-        }
-      })
-      .finally(() => {
-        if (mounted) setCouponsLoading(false);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [merchants, orderMode, singleCheckoutGroup, subtotal, user]);
+    setSelectedCouponIds((current) => current.filter((couponId) => couponTargetById.has(couponId)));
+    setDraftCouponIds((current) => current.filter((couponId) => couponTargetById.has(couponId)));
+  }, [couponTargetById, orderMode, subtotal, user]);
 
   if (!user) {
     return <LoginRedirect />;
@@ -392,8 +431,7 @@ export default function CheckoutPage() {
   const draftCoupons = draftCouponIds
     .map((couponId) => availableCoupons.find((coupon) => coupon.userCouponId === couponId))
     .filter((coupon): coupon is ShopCouponDto => Boolean(coupon));
-  const draftFaceAmount = toMoney(draftCoupons.reduce((sum, coupon) => sum + coupon.discountAmount, 0));
-  const draftDiscount = Math.min(maximumCouponDiscount, draftFaceAmount);
+  const draftDiscount = calculateCouponDiscount(draftCoupons);
   const draftPayable = subtotal > 0
     ? Math.max(minimumWechatPayment, toMoney(subtotal - draftDiscount))
     : 0;
@@ -403,23 +441,22 @@ export default function CheckoutPage() {
       setDraftCouponIds((current) => current.filter((couponId) => couponId !== coupon.userCouponId));
       return;
     }
-    const currentFaceAmount = toMoney(draftCoupons.reduce((sum, item) => sum + item.discountAmount, 0));
-    const currentDiscount = Math.min(maximumCouponDiscount, currentFaceAmount);
-    const currentPayable = Math.max(minimumWechatPayment, toMoney(subtotal - currentDiscount));
-    const remainingDiscountCapacity = Math.max(0, toMoney(currentPayable - minimumWechatPayment));
-    if (remainingDiscountCapacity <= 0) {
-      message.warning('本单优惠已达上限，最低仍需微信支付 0.01 元');
+    const currentDiscount = calculateCouponDiscount(draftCoupons);
+    const nextCouponIds = [...draftCouponIds, coupon.userCouponId];
+    const nextCoupons = [...draftCoupons, coupon];
+    const nextDiscount = calculateCouponDiscount(nextCoupons);
+    const appliedAmount = toMoney(nextDiscount - currentDiscount);
+    if (appliedAmount <= 0) {
+      message.warning('目标子订单优惠已达上限，最低仍需微信支付 0.01 元');
       return;
     }
-    const appliedAmount = Math.min(coupon.discountAmount, remainingDiscountCapacity);
-    const nextCouponIds = [...draftCouponIds, coupon.userCouponId];
-    if (toMoney(currentPayable - appliedAmount) <= minimumWechatPayment) {
+    if (appliedAmount < coupon.discountAmount) {
       Modal.confirm({
-        title: '最低仍需支付 0.01 元',
+        title: '这张券将部分抵扣',
         content: (
           <div>
-            <p>这张券面额为 {formatPrice(coupon.discountAmount)}，本单将实际抵扣 {formatPrice(appliedAmount)}。</p>
-            <p>优惠后仍需微信支付 0.01 元；提交订单后该优惠券会正常核销。</p>
+            <p>券面额为 {formatPrice(coupon.discountAmount)}，目标子订单将实际抵扣 {formatPrice(appliedAmount)}。</p>
+            <p>该子订单最低仍需微信支付0.01元；确认后优惠券会正常核销。</p>
           </div>
         ),
         okText: '确认使用',
@@ -468,11 +505,29 @@ export default function CheckoutPage() {
       return;
     }
     const addressId = needsAddress ? (selectedAddress?.id ?? null) : null;
+    const selectedCouponTargets = selectedCouponIds.map((userCouponId) => ({
+      userCouponId,
+      target: couponTargetById.get(userCouponId),
+    }));
+    if (selectedCouponTargets.some(({ target }) => !target)) {
+      message.warning('优惠券目标订单已变化，请重新选择');
+      return;
+    }
+    const couponAssignments = selectedCouponTargets.map(({ userCouponId, target }) => {
+      const resolvedTarget = target!;
+      return {
+        userCouponId,
+        merchantId: resolvedTarget.merchantId,
+        fulfillmentType: resolvedTarget.fulfillment,
+        localLifeProductId: resolvedTarget.localLifeProductId,
+      };
+    });
     setSubmitting(true);
     try {
       const created = source === 'cart'
-        ? await checkoutCart(addressId, singleCheckoutGroup ? selectedCouponIds : undefined)
-        : await buyNow(addressId, productId, quantity, sourceReportId, selectedCouponIds, selectedFulfillmentType);
+        ? await checkoutCart(addressId, selectedCouponIds, couponAssignments)
+        : await buyNow(addressId, productId, quantity, sourceReportId, selectedCouponIds,
+          selectedFulfillmentType, couponAssignments);
       if (created.length === 1) {
         const createdOrder = created[0];
         navigate(`/checkout?orderId=${createdOrder.orderId}`);
@@ -743,19 +798,19 @@ export default function CheckoutPage() {
                       <small>订单提交后不能更换或补用优惠券</small>
                     </span>
                   </div>
-                ) : !singleCheckoutGroup && lines.length > 0 && (
+                ) : checkoutGroups.length > 1 && selectedCoupons.length > 0 ? (
                   <Alert
                     className={styles.checkoutCouponAlert}
-                    type="warning"
+                    type="success"
                     showIcon
-                    message="多笔独立订单暂不能使用优惠券"
-                    description="本次仍可按原价结算；系统会按上方明细生成独立订单。"
+                    message={`已将 ${selectedCoupons.length} 张优惠券分配到符合条件的子订单`}
+                    description="每张券只绑定一笔订单，并优先用于其适用范围内原始金额最高的子订单。"
                   />
-                )}
+                ) : null}
                 {!orderMode && <button
                   type="button"
                   className={styles.checkoutCouponTrigger}
-                  disabled={couponsLoading || availableCoupons.length === 0 || !singleCheckoutGroup}
+                  disabled={myCouponsLoading || coupons.length === 0}
                   onClick={() => {
                     setDraftCouponIds(selectedCouponIds);
                     setCouponOpen(true);
@@ -771,16 +826,16 @@ export default function CheckoutPage() {
                     ) : availableCoupons.length > 0 ? (
                       <>
                         <strong>有 {availableCoupons.length} 张可用优惠券</strong>
-                        <small>可多选叠加，最低仍需微信支付 0.01 元</small>
+                        <small>可多选；每张券自动绑定金额最高的合规子订单</small>
                       </>
                     ) : (
                       <>
-                        <strong>{couponsLoading ? '正在查询可用优惠券' : couponUnavailableReason}</strong>
-                        <small>平台通用券无门槛，商家券按各自使用条件生效</small>
+                        <strong>{myCouponsLoading ? '正在查询可用优惠券' : couponUnavailableReason}</strong>
+                        <small>{coupons.length > 0 ? '点击查看每张券不可用的具体原因' : '平台通用券无门槛，商家券按各自使用条件生效'}</small>
                       </>
                     )}
                   </span>
-                  {availableCoupons.length > 0 && singleCheckoutGroup && <RightOutlined />}
+                  {coupons.length > 0 && <RightOutlined />}
                 </button>}
               </section>
             </div>
@@ -856,10 +911,14 @@ export default function CheckoutPage() {
           )}
         </div>
         <div className={styles.checkoutCouponList}>
-          {availableCoupons.map((coupon) => (
+          {coupons.map((coupon) => {
+            const target = couponTargetById.get(coupon.userCouponId);
+            const ineligibleReason = couponIneligibleReason(coupon);
+            return (
             <Checkbox
               className={styles.checkoutCouponOption}
               checked={draftCouponIds.includes(coupon.userCouponId)}
+              disabled={!target}
               onChange={(event) => toggleDraftCoupon(coupon, event.target.checked)}
               key={coupon.userCouponId}
             >
@@ -870,10 +929,35 @@ export default function CheckoutPage() {
                   {coupon.minimumSpend > 0 ? `满 ${formatPrice(coupon.minimumSpend)} 可用` : '无门槛'}
                   {' · '}{couponValidity(coupon)}
                 </small>
+                {target && (
+                  <span
+                    className={styles.checkoutCouponTargetSelect}
+                    onClick={(event) => event.stopPropagation()}
+                    onMouseDown={(event) => event.stopPropagation()}
+                  >
+                    <small>使用订单</small>
+                    <Select
+                      size="small"
+                      value={target.key}
+                      options={(couponEligibleGroupsById.get(coupon.userCouponId) ?? []).map((group) => ({
+                        value: group.key,
+                        label: `${group.merchantName} · ${group.localLife
+                          ? `${group.lines[0].productName} ${formatPrice(group.amount)}`
+                          : `${group.fulfillment === 'ONLINE' ? '快递配送' : '到店核销'} ${formatPrice(group.amount)}`}`,
+                      }))}
+                      onChange={(groupKey) => setCouponTargetOverrides((current) => ({
+                        ...current,
+                        [coupon.userCouponId]: groupKey,
+                      }))}
+                    />
+                  </span>
+                )}
+                {!target && <small>{ineligibleReason || '当前结算不可用'}</small>}
               </span>
-              <Tag color="green">可用</Tag>
+              <Tag color={target ? 'green' : 'default'}>{target ? '可用' : '不可用'}</Tag>
             </Checkbox>
-          ))}
+            );
+          })}
         </div>
       </Drawer>
     </>
