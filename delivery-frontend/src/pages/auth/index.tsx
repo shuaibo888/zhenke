@@ -4,7 +4,7 @@ import {
   MobileOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Button, Form, Input, message } from 'antd';
+import { Button, Checkbox, Form, Input, Modal, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -23,6 +23,60 @@ import { safeInternalRedirect } from '@/utils/safeRedirect';
 
 type AuthValues = { username: string; password: string; code?: string };
 type PhoneValues = { phone: string; code: string };
+type AgreementType = 'user' | 'privacy';
+
+const agreementContent: Record<AgreementType, { title: string; sections: Array<{ heading: string; content: string }> }> = {
+  user: {
+    title: '甄客行用户协议',
+    sections: [
+      {
+        heading: '一、服务说明',
+        content: '甄客行为用户提供本地生活信息浏览、甄客帖发布与互动、地点发现，以及商城、酒店、景区、饭店相关商品和服务的交易入口。具体服务内容以页面实际展示为准。',
+      },
+      {
+        heading: '二、账号使用',
+        content: '您应使用真实、合法的信息注册和使用账号，妥善保管登录凭证，不得转让账号或利用平台实施违法违规、欺诈、侵权、扰乱平台秩序等行为。通过您的账号完成的操作，在法律允许范围内视为您本人操作。',
+      },
+      {
+        heading: '三、内容发布与互动',
+        content: '您发布的甄客帖、评论、回复、图片和视频应真实、合法，不得侵犯他人隐私、知识产权或其他合法权益。地点关联是用户主动选择，不等同于平台对实际到访、消费或内容真实性的背书。平台可依法依规处理违法违规内容。',
+      },
+      {
+        heading: '四、交易与履约',
+        content: '商品价格、库存、使用条件、有效期、预约要求、配送或核销方式、退款规则等，以订单提交时的页面信息和商家规则为准。请在付款前认真核对订单；支付、退款、物流和线下核销由相应服务能力共同完成。',
+      },
+      {
+        heading: '五、责任与协议更新',
+        content: '因不可抗力、网络故障或第三方服务异常造成的短暂不可用，平台将在合理范围内协助处理。协议发生重要变化时，平台会以合理方式提示；如您不同意更新后的内容，可停止使用相关服务。',
+      },
+    ],
+  },
+  privacy: {
+    title: '甄客行隐私政策',
+    sections: [
+      {
+        heading: '一、我们收集的信息',
+        content: '为完成注册登录、账号安全和服务履约，我们可能处理账号名、手机号及必要的验证信息；当您发布内容、下单或申请商家服务时，我们会处理您主动提交的文字、媒体、联系人、地址、订单和履约信息。',
+      },
+      {
+        heading: '二、位置信息',
+        content: '在您授权后，我们会使用设备位置展示当前城市、辅助选择地点和发起地图导航。定位失败或您拒绝授权时，可手动选择城市。我们不因本服务持续记录与业务无关的位置轨迹。',
+      },
+      {
+        heading: '三、信息使用目的',
+        content: '相关信息用于身份验证、内容展示与互动、订单支付和履约、售后处理、消息通知、安全风控及改善服务。我们不会将信息用于与上述目的无关的用途，法律法规另有规定或取得您单独同意的除外。',
+      },
+      {
+        heading: '四、共享与保护',
+        content: '仅在完成支付、短信验证、地图定位、配送或核销等必要场景下，向对应服务方提供完成该项服务所需的最少信息。我们采取合理的访问控制和安全措施保护个人信息，不公开出售您的个人信息。',
+      },
+      {
+        heading: '五、您的权利',
+        content: '您可以在个人中心查看和维护账号资料、地址及相关记录，并可通过平台提供的渠道反馈个人信息问题。法律法规要求保留的交易、安全或审计记录，将在规定期限内保存。',
+      },
+    ],
+  },
+};
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -56,6 +110,14 @@ export default function AuthPage() {
   const [oneClickLoading, setOneClickLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [capabilities, setCapabilities] = useState<PhoneAuthCapabilities | null>(null);
+  const [agreementAccepted, setAgreementAccepted] = useState(false);
+  const [agreementOpen, setAgreementOpen] = useState<AgreementType | null>(null);
+
+  const ensureAgreementAccepted = () => {
+    if (agreementAccepted) return true;
+    message.warning('请先阅读并勾选同意《用户协议》和《隐私政策》');
+    return false;
+  };
 
   const completeAuthNavigation = useCallback(() => {
     if (redirectStartedRef.current) return;
@@ -95,6 +157,7 @@ export default function AuthPage() {
   }, [captcha.uuid, form, phoneMode]);
 
   const submit = async (values: AuthValues) => {
+    if (!ensureAgreementAccepted()) return;
     try {
       if (captcha.enabled && (!captcha.uuid || !captcha.image)) {
         message.warning('验证码尚未准备好，请重新获取');
@@ -128,6 +191,7 @@ export default function AuthPage() {
   };
 
   const submitPhone = async (values: PhoneValues) => {
+    if (!ensureAgreementAccepted()) return;
     setPhoneSubmitting(true);
     try {
       const nextUser = await loginOrRegisterByPhone(values.phone, values.code);
@@ -142,6 +206,7 @@ export default function AuthPage() {
   };
 
   const submitOneClick = async () => {
+    if (!ensureAgreementAccepted()) return;
     setOneClickLoading(true);
     try {
       const spToken = await getAliyunOneClickSpToken();
@@ -224,7 +289,7 @@ export default function AuthPage() {
                   )}
                 </div>
               ) : (
-                <Form form={phoneForm} layout="vertical" requiredMark={false} className={`${styles.authForm} ${styles.authSmsForm}`} onFinish={submitPhone}>
+                <Form form={phoneForm} layout="vertical" requiredMark={false} className={`${styles.authForm} ${styles.authSmsForm}`} onFinish={submitPhone} onFinishFailed={ensureAgreementAccepted}>
                   <Form.Item name="phone" label="手机号" rules={[{ required: true, message: '请输入手机号' }, { pattern: /^1\d{10}$/, message: '请输入11位中国大陆手机号' }]}>
                     <Input size="large" prefix={<MobileOutlined />} inputMode="numeric" maxLength={11} autoComplete="tel" placeholder="请输入11位手机号" />
                   </Form.Item>
@@ -255,7 +320,7 @@ export default function AuthPage() {
             </>
           ) : (
             <>
-              <Form form={form} layout="vertical" requiredMark={false} className={styles.authForm} onFinish={submit}>
+              <Form form={form} layout="vertical" requiredMark={false} className={styles.authForm} onFinish={submit} onFinishFailed={ensureAgreementAccepted}>
                 <Form.Item
                   name="username"
                   label="登录账号名"
@@ -318,6 +383,18 @@ export default function AuthPage() {
             </>
           )}
 
+          <div className={styles.authAgreement}>
+            <Checkbox
+              checked={agreementAccepted}
+              onChange={(event) => setAgreementAccepted(event.target.checked)}
+            >
+              <span>我已阅读并同意</span>
+            </Checkbox>
+            <button type="button" onClick={() => setAgreementOpen('user')}>《用户协议》</button>
+            <span>和</span>
+            <button type="button" onClick={() => setAgreementOpen('privacy')}>《隐私政策》</button>
+          </div>
+
           <div className={styles.authAlternative}>
             <div className={styles.authDivider}><span>平台商家服务</span></div>
             <Button block size="large" className={styles.merchantButton} onClick={() => setMerchantOpen(true)}>
@@ -327,6 +404,28 @@ export default function AuthPage() {
         </section>
       </main>
       <MerchantApplicationModal open={merchantOpen} onClose={() => setMerchantOpen(false)} />
+      <Modal
+        open={agreementOpen !== null}
+        title={agreementOpen ? agreementContent[agreementOpen].title : ''}
+        footer={null}
+        width={640}
+        rootClassName={styles.authAgreementModal}
+        onCancel={() => setAgreementOpen(null)}
+      >
+        {agreementOpen && (
+          <article className={styles.authAgreementDocument}>
+            <p className={styles.authAgreementUpdated}>更新日期：2026年9月1日</p>
+            <p>欢迎使用甄客行。请您在使用服务前认真阅读并理解以下内容。</p>
+            {agreementContent[agreementOpen].sections.map((section) => (
+              <section key={section.heading}>
+                <h3>{section.heading}</h3>
+                <p>{section.content}</p>
+              </section>
+            ))}
+            <p>如您对本协议或政策有疑问，可通过平台公布的客服渠道联系我们。</p>
+          </article>
+        )}
+      </Modal>
     </>
   );
 }

@@ -10193,6 +10193,104 @@ button.checkoutFulfillmentOption:focus-visible {
   color: #8a3f32;
 }
 
+.authAgreement {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin-top: 18px;
+  color: #7a756f;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.authAgreement :global(.ant-checkbox-wrapper) {
+  margin-inline-end: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+.authAgreement :global(.ant-checkbox-checked .ant-checkbox-inner) {
+  background: #e87932;
+  border-color: #e87932;
+}
+
+.authAgreement :global(.ant-checkbox-wrapper:hover .ant-checkbox-inner),
+.authAgreement :global(.ant-checkbox:hover .ant-checkbox-inner) {
+  border-color: #e87932;
+}
+
+.authAgreement button {
+  padding: 2px 1px;
+  color: #8a3f32;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.authAgreement button:hover {
+  color: #c85f27;
+  text-decoration: underline;
+}
+
+.authAgreement button:focus-visible {
+  outline: 2px solid rgba(232, 121, 50, 0.5);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.authAgreementModal :global(.ant-modal-content),
+.authAgreementModal :global(.ant-modal-container) {
+  max-height: min(78vh, 720px);
+  overflow: hidden;
+  border-radius: 18px;
+}
+
+.authAgreementModal :global(.ant-modal-header) {
+  margin-bottom: 14px;
+}
+
+.authAgreementModal :global(.ant-modal-title) {
+  color: #362c27;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.authAgreementDocument {
+  max-height: calc(min(78vh, 720px) - 86px);
+  overflow-y: auto;
+  padding-right: 8px;
+  color: #625a54;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.authAgreementDocument > p {
+  margin: 0 0 16px;
+}
+
+.authAgreementDocument section {
+  margin-top: 20px;
+}
+
+.authAgreementDocument h3 {
+  margin: 0 0 6px;
+  color: #362c27;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.authAgreementDocument section p {
+  margin: 0;
+}
+
+.authAgreementUpdated {
+  color: #8d837c;
+  font-size: 12px;
+}
+
 .profileSetupNotice {
   position: relative;
   z-index: 0;
