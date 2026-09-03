@@ -76,6 +76,25 @@ class ShopOrderServiceTest {
   }
 
   @Test
+  void eachLocalLifeProductUsesAnIndependentRedeemableOrderGroup() {
+    ShopProduct hotel = product("ZHENKE_HOTEL", "0", "1");
+    hotel.setProductId(101L);
+    ShopProduct scenic = product("ZHENKE_SCENIC", "0", "1");
+    scenic.setProductId(102L);
+
+    assertEquals(101L, service.orderGroupingProductId(hotel));
+    assertEquals(102L, service.orderGroupingProductId(scenic));
+  }
+
+  @Test
+  void ordinaryProductsStillShareMerchantAndFulfillmentOrderGroups() {
+    ShopProduct ordinary = product("GENERAL_GOODS", "1", "0");
+    ordinary.setProductId(201L);
+
+    assertNull(service.orderGroupingProductId(ordinary));
+  }
+
+  @Test
   void orderItemSnapshotsWhetherStockWasActuallyDeducted() {
     ShopProduct finite = new ShopProduct();
     finite.setStockUnlimited("0");

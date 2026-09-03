@@ -2745,6 +2745,60 @@ button.checkoutFulfillmentOption:focus-visible {
   color: #8a3f32;
 }
 
+.checkoutOrderPlan {
+  display: grid;
+  gap: 10px;
+}
+
+.checkoutOrderPlanItem {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border: 1px solid #eadfd9;
+  border-radius: 14px;
+  background: #fffaf6;
+}
+
+.checkoutOrderPlanIndex {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #8a3f32;
+  font-weight: 700;
+}
+
+.checkoutOrderPlanCopy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+
+  strong,
+  small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    color: #7d6a64;
+  }
+}
+
+.checkoutOrderPlanAmount {
+  color: #3f302c;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.checkoutSplitNotice {
+  margin-top: 12px;
+}
+
 .recruitGridCard {
   position: relative;
   display: flex;

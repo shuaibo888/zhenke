@@ -53,6 +53,14 @@ function cartLineFulfillment(line: CheckoutLine): 'ONLINE' | 'OFFLINE' {
   return line.supportsOnline === '0' && line.supportsOffline === '1' ? 'OFFLINE' : 'ONLINE';
 }
 
+function isLocalLifeLine(line: CheckoutLine) {
+  return Boolean(line.categoryCode && localLifeCategoryCodes.has(line.categoryCode));
+}
+
+function checkoutGroupKey(line: CheckoutLine, fulfillment = cartLineFulfillment(line)) {
+  return `${line.merchantId}:${fulfillment}:${isLocalLifeLine(line) ? line.productId : 'shared'}`;
+}
+
 function addressText(address: ShopShippingAddress) {
   return `${address.region.join(' ')} ${address.detail}`.trim();
 }
@@ -253,9 +261,27 @@ export default function CheckoutPage() {
     () => Array.from(new Map(lines.map((line) => [line.merchantId, line.merchantName])).entries()),
     [lines],
   );
+  const checkoutGroups = useMemo(() => {
+    const grouped = new Map<string, CheckoutLine[]>();
+    lines.forEach((line) => {
+      const fulfillment = source === 'cart' ? cartLineFulfillment(line) : selectedFulfillmentType;
+      const key = checkoutGroupKey(line, fulfillment);
+      grouped.set(key, [...(grouped.get(key) ?? []), line]);
+    });
+    return Array.from(grouped.values()).map((groupLines) => ({
+      key: checkoutGroupKey(
+        groupLines[0],
+        source === 'cart' ? cartLineFulfillment(groupLines[0]) : selectedFulfillmentType,
+      ),
+      merchantName: groupLines[0].merchantName || '甄客行',
+      fulfillment: source === 'cart' ? cartLineFulfillment(groupLines[0]) : selectedFulfillmentType,
+      localLife: isLocalLifeLine(groupLines[0]),
+      lines: groupLines,
+      amount: groupLines.reduce((sum, line) => sum + line.price * line.quantity, 0),
+    }));
+  }, [lines, selectedFulfillmentType, source]);
   const subtotal = paymentOrder?.originalAmount
     ?? lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
-  const singleMerchant = merchants.length === 1;
   const cartHasOffline = source === 'cart'
     && lines.some((line) => cartLineFulfillment(line) === 'OFFLINE');
   const cartHasOnline = source === 'cart'
@@ -269,7 +295,7 @@ export default function CheckoutPage() {
     && Boolean(product)
     && product?.stockUnlimited !== '1'
     && (product?.stock ?? 0) < quantity;
-  const singleCheckoutGroup = singleMerchant && !mixedCartFulfillment;
+  const singleCheckoutGroup = checkoutGroups.length === 1;
   const selectedCoupons = selectedCouponIds
     .map((couponId) => availableCoupons.find((coupon) => coupon.userCouponId === couponId))
     .filter((coupon): coupon is ShopCouponDto => Boolean(coupon));
@@ -295,8 +321,7 @@ export default function CheckoutPage() {
       ? cartHasOnline
       : selectedFulfillmentType === 'ONLINE';
   const couponUnavailableReason = useMemo(() => {
-    if (merchants.length > 1) return '购物车包含多个商家，优惠券仅支持单商家结算使用';
-    if (mixedCartFulfillment) return '购物车将拆分为配送与核销订单，暂不能使用优惠券';
+    if (checkoutGroups.length > 1) return '本次将生成多笔独立订单，暂不能使用优惠券';
     if (!singleCheckoutGroup || subtotal <= 0) return '暂无可结算商品';
     if (coupons.length === 0) return '暂无优惠券';
     const unused = coupons.filter((coupon) => coupon.status === 'UNUSED');
@@ -318,7 +343,7 @@ export default function CheckoutPage() {
       return '当前商品金额未达到优惠券使用条件';
     }
     return '当前订单暂无可用优惠券';
-  }, [coupons, merchants, mixedCartFulfillment, singleCheckoutGroup, subtotal]);
+  }, [checkoutGroups.length, coupons, merchants, singleCheckoutGroup, subtotal]);
 
   useEffect(() => {
     if (orderMode || !user || !singleCheckoutGroup || subtotal <= 0) {
@@ -461,7 +486,7 @@ export default function CheckoutPage() {
         await payOrder(createdOrder.orderId);
         return;
       }
-      message.success(`已按商家生成 ${created.length} 笔订单，请分别完成支付`);
+      message.success(`已生成 ${created.length} 笔独立订单，请在订单列表分别支付`);
       navigate('/profile/orders');
     } catch (error) {
       message.error(error instanceof Error ? error.message : '订单提交失败');
@@ -543,7 +568,7 @@ export default function CheckoutPage() {
                   <span>{source === 'cart' ? <TruckOutlined /> : selectedFulfillmentType === 'ONLINE' ? <TruckOutlined /> : <ShopOutlined />}</span>
                   <div>
                     <strong>履约方式</strong>
-                    <small>{source === 'cart' ? '不同使用方式将分别生成订单' : '请确认本次购买的收货方式'}</small>
+                    <small>{source === 'cart' ? `本次预计生成 ${checkoutGroups.length} 笔独立订单` : '请确认本次购买的收货方式'}</small>
                   </div>
                 </div>
                 {source === 'cart' ? (
@@ -552,9 +577,9 @@ export default function CheckoutPage() {
                     <span className={styles.checkoutFulfillmentCopy}>
                       <strong>{cartHasOffline && cartHasOnline ? '配送 + 到店核销' : cartHasOffline ? '到店核销' : '快递物流'}</strong>
                       <small>{cartHasOffline && cartHasOnline
-                        ? '系统将按商家和履约方式拆单；配送订单使用地址，到店订单生成核销码'
+                        ? '配送与到店服务分别成单；每种本地生活服务拥有独立核销码'
                         : cartHasOffline
-                          ? '无需收货地址，支付后分别生成到店核销订单'
+                          ? '每种酒店、景区或饭店服务独立成单并生成核销码'
                           : '商品将配送至你选择的收货地址'}</small>
                     </span>
                     <Tag color="green">已固定</Tag>
@@ -592,6 +617,45 @@ export default function CheckoutPage() {
                   </div>
                 )}
               </section>
+              )}
+
+              {!orderMode && checkoutGroups.length > 0 && (
+                <section className={styles.checkoutSection}>
+                  <div className={styles.checkoutSectionTitle}>
+                    <span><SafetyCertificateOutlined /></span>
+                    <div>
+                      <strong>订单拆分确认</strong>
+                      <small>提交后生成 {checkoutGroups.length} 笔订单，分别支付、退款和履约</small>
+                    </div>
+                  </div>
+                  <div className={styles.checkoutOrderPlan}>
+                    {checkoutGroups.map((group, index) => (
+                      <div className={styles.checkoutOrderPlanItem} key={group.key}>
+                        <span className={styles.checkoutOrderPlanIndex}>{index + 1}</span>
+                        <span className={styles.checkoutOrderPlanCopy}>
+                          <strong>{group.merchantName}</strong>
+                          <small>
+                            {group.localLife
+                              ? `${group.lines[0].productName} · 独立核销码`
+                              : group.fulfillment === 'ONLINE'
+                                ? `快递配送 · ${group.lines.length} 种商品`
+                                : `到店核销 · ${group.lines.length} 种商品`}
+                          </small>
+                        </span>
+                        <span className={styles.checkoutOrderPlanAmount}>{formatPrice(group.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {checkoutGroups.length > 1 && (
+                    <Alert
+                      className={styles.checkoutSplitNotice}
+                      type="info"
+                      showIcon
+                      message="多笔订单需分别完成支付"
+                      description="部分订单支付成功不会影响其他订单；未支付订单可稍后继续支付或等待自动关闭。"
+                    />
+                  )}
+                </section>
               )}
               {needsAddress ? (
               <section className={styles.checkoutSection}>
@@ -684,8 +748,8 @@ export default function CheckoutPage() {
                     className={styles.checkoutCouponAlert}
                     type="warning"
                     showIcon
-                    message={merchants.length > 1 ? '多商家订单无法使用优惠券' : '配送与核销混合订单无法使用优惠券'}
-                    description="本次仍可按原价正常结算，系统会按商家和履约方式拆分为多笔订单。"
+                    message="多笔独立订单暂不能使用优惠券"
+                    description="本次仍可按原价结算；系统会按上方明细生成独立订单。"
                   />
                 )}
                 {!orderMode && <button
@@ -750,7 +814,7 @@ export default function CheckoutPage() {
               >
                 {orderMode
                   ? paymentOrder?.status === 'PENDING_PAYMENT' ? '立即支付' : '无需支付'
-                  : !singleCheckoutGroup ? '提交多笔订单' : '提交订单并支付'}
+                  : !singleCheckoutGroup ? `确认生成 ${checkoutGroups.length} 笔订单` : '提交订单并支付'}
               </Button>
               <p>{orderMode ? '微信授权返回后会继续停留在本支付页面。' : '提交即表示确认商品、地址和优惠信息。'}</p>
             </aside>

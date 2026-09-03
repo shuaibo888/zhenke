@@ -364,7 +364,8 @@ public class ShopOrderService
             {
                 throw new ServiceException(product.getProductName() + "库存不足");
             }
-            GroupKey key = new GroupKey(product.getMerchantId(), fulfillmentType);
+            GroupKey key = new GroupKey(product.getMerchantId(), fulfillmentType,
+                    orderGroupingProductId(product));
             linesByGroup.computeIfAbsent(key, ignored -> new ArrayList<>())
                     .add(new OrderLine(product, quantity, sourceReportId));
         }
@@ -532,6 +533,14 @@ public class ShopOrderService
     boolean shouldSnapshotAddress(String fulfillmentType)
     {
         return ShopProductService.FULFILLMENT_ONLINE.equals(fulfillmentType);
+    }
+
+    Long orderGroupingProductId(ShopProduct product)
+    {
+        // 本地生活订单当前使用订单级核销码。不同服务商品必须生成独立订单，
+        // 避免同一商家的酒店、门票和餐饮套餐被一次核销整体完成。
+        return ShopProductService.LOCAL_LIFE_CATEGORY_CODES.contains(product.getCategoryCode())
+                ? product.getProductId() : null;
     }
 
     private Map<Long, RequestedLine> normalizeItems(List<ShopOrderItemBody> items)
@@ -723,5 +732,5 @@ public class ShopOrderService
 
     private record RequestedLine(int quantity, Long sourceReportId, String fulfillmentType) { }
     private record OrderLine(ShopProduct product, int quantity, Long sourceReportId) { }
-    private record GroupKey(Long merchantId, String fulfillmentType) { }
+    private record GroupKey(Long merchantId, String fulfillmentType, Long localLifeProductId) { }
 }
