@@ -29,7 +29,7 @@
 
 .identityRow {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) minmax(150px, 190px) auto;
   gap: 14px;
   align-items: center;
   padding: 20px 22px 18px;
@@ -108,6 +108,92 @@
   background: @softOrange;
   border-color: #e7a27e;
   outline: none;
+}
+
+.identityImpact {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+  padding: 5px 8px 5px 18px;
+  color: @ink;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+
+.identityImpact::before {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 0;
+  width: 2px;
+  background: linear-gradient(180deg, #f6c5aa, @orange);
+  border-radius: 999px;
+  content: '';
+}
+
+.identityImpact:hover,
+.identityImpact:focus-visible {
+  color: @orangeDark;
+  outline: none;
+}
+
+.identityImpact:focus-visible::after {
+  position: absolute;
+  inset: 0 0 0 8px;
+  border: 1px solid #e7ad8e;
+  border-radius: 8px;
+  content: '';
+}
+
+.identityImpactTitle {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: #8a7164;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.identityImpactTitle :global(.anticon) {
+  color: #b79b8b;
+  font-size: 8px;
+}
+
+.identityImpact strong {
+  display: flex;
+  overflow: hidden;
+  gap: 4px;
+  align-items: baseline;
+  font-size: 11px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.identityImpact strong em {
+  color: @orange;
+  font-size: 22px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.identityImpact strong span {
+  color: #514843;
+  font-weight: 700;
+}
+
+.identityImpact small {
+  overflow: hidden;
+  color: #978b84;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .assetStrip {
@@ -284,84 +370,6 @@
   gap: 6px;
 }
 
-.impactSummary {
-  display: grid;
-  width: 100%;
-  min-width: 0;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-  margin: 0 0 10px;
-  padding: 12px 14px;
-  color: @ink;
-  text-align: left;
-  background: linear-gradient(110deg, #fff7f1 0%, #fffaf6 64%, #fff 100%);
-  border: 1px solid #f1d8ca;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
-}
-
-.impactSummary:hover,
-.impactSummary:focus-visible {
-  background: #fff4ec;
-  border-color: #e7ad8e;
-  outline: none;
-  transform: translateY(-1px);
-}
-
-.impactSummaryIcon {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  color: #fff;
-  background: linear-gradient(145deg, #f47b3f, @orange);
-  border-radius: 12px;
-  box-shadow: 0 5px 12px rgba(243, 112, 50, 0.18);
-  font-size: 20px;
-}
-
-.impactSummaryCopy {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-
-.impactSummaryCopy small {
-  color: @orangeDark;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
-.impactSummaryCopy strong {
-  overflow: hidden;
-  font-size: 14px;
-  line-height: 1.45;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.impactSummaryCopy strong em {
-  color: @orange;
-  font-size: 18px;
-  font-style: normal;
-}
-
-.impactSummaryCopy > span {
-  overflow: hidden;
-  color: @muted;
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.impactSummaryArrow {
-  color: #b69d90;
-  font-size: 13px;
-}
-
 .serviceEntry {
   position: relative;
   display: grid;
@@ -458,7 +466,8 @@
   }
 
   .identityRow {
-    gap: 11px;
+    grid-template-columns: 58px minmax(72px, 1fr) minmax(104px, 126px) 38px;
+    gap: 8px;
     padding: 15px 14px 13px;
     background: #fff;
   }
@@ -471,6 +480,41 @@
 
   .identityCopy h1 {
     font-size: 20px;
+  }
+
+  .identityCopy > span {
+    font-size: 9px;
+  }
+
+  .identityCopy p {
+    font-size: 10px;
+  }
+
+  .identityImpact {
+    padding: 3px 2px 3px 11px;
+  }
+
+  .identityImpact::before {
+    top: 3px;
+    bottom: 3px;
+  }
+
+  .identityImpactTitle {
+    gap: 3px;
+    font-size: 9px;
+  }
+
+  .identityImpact strong {
+    gap: 3px;
+    font-size: 10px;
+  }
+
+  .identityImpact strong em {
+    font-size: 20px;
+  }
+
+  .identityImpact small {
+    font-size: 9px;
   }
 
   .profileEditButton {
@@ -550,31 +594,6 @@
     gap: 1px;
   }
 
-  .impactSummary {
-    gap: 10px;
-    margin-bottom: 7px;
-    padding: 10px 11px;
-  }
-
-  .impactSummaryIcon {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    font-size: 18px;
-  }
-
-  .impactSummaryCopy strong {
-    font-size: 12px;
-  }
-
-  .impactSummaryCopy strong em {
-    font-size: 16px;
-  }
-
-  .impactSummaryCopy > span {
-    font-size: 10px;
-  }
-
   .serviceEntry {
     gap: 6px;
     padding: 9px 2px 8px;
@@ -602,12 +621,23 @@
   }
 
   .identityRow {
+    grid-template-columns: 52px minmax(62px, 1fr) minmax(92px, 108px) 36px;
+    gap: 6px;
     padding-inline: 10px;
   }
 
   .profileAvatar {
     width: 52px;
     height: 52px;
+  }
+
+  .identityImpact {
+    padding-left: 9px;
+  }
+
+  .identityImpactTitle :global(.anticon),
+  .identityImpact small {
+    display: none;
   }
 
   .assetStrip span :global(.anticon) {

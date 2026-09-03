@@ -200,6 +200,21 @@ export default function ProfilePage() {
               <h1 id="profile-heading">{user.name}</h1>
               <p>{user.usernameInitialized ? `@${user.username}` : '手机号用户'} · {user.roleName || '甄客'}</p>
             </div>
+            <button
+              type="button"
+              className={styles.identityImpact}
+              onClick={() => navigate('/profile/useful')}
+              aria-label={`查看创作影响力，我的内容累计获得 ${overviewValue(overview?.totalUsefulReceivedCount)} 次有用`}
+            >
+              <span className={styles.identityImpactTitle}>
+                创作影响力
+                <RightOutlined aria-hidden="true" />
+              </span>
+              <strong><em>{overviewValue(overview?.totalUsefulReceivedCount)}</em><span>次有用</span></strong>
+              <small>
+                帖子 {overviewValue(overview?.postUsefulReceivedCount)} · 体验 {overviewValue(overview?.reportUsefulReceivedCount)}
+              </small>
+            </button>
             <button type="button" className={styles.profileEditButton} onClick={() => openProfileEditor()}>
               <EditOutlined aria-hidden="true" />
               <span className={styles.profileEditLabel}>编辑资料</span>
@@ -267,20 +282,6 @@ export default function ProfilePage() {
               <h2 id="profile-services-heading">常用服务</h2>
             </div>
           </header>
-          <button
-            type="button"
-            className={styles.impactSummary}
-            onClick={() => navigate('/profile/useful')}
-            aria-label={`查看创作影响力，我的内容累计获得 ${overviewValue(overview?.totalUsefulReceivedCount)} 次有用`}
-          >
-            <span className={styles.impactSummaryIcon} aria-hidden="true"><CheckCircleOutlined /></span>
-            <span className={styles.impactSummaryCopy}>
-              <small>创作影响力</small>
-              <strong>我的内容累计获得 <em>{overviewValue(overview?.totalUsefulReceivedCount)}</em> 次有用</strong>
-              <span>甄客帖 {overviewValue(overview?.postUsefulReceivedCount)} 次 · 甄客验 {overviewValue(overview?.reportUsefulReceivedCount)} 次</span>
-            </span>
-            <RightOutlined className={styles.impactSummaryArrow} aria-hidden="true" />
-          </button>
           <nav className={styles.serviceGrid} aria-label="个人服务">
             {profileEntry({ icon: <FileTextOutlined />, title: '我的甄客帖', description: '地点生活分享', onClick: () => navigate('/profile/posts') })}
             {profileEntry({ icon: <SafetyCertificateOutlined />, title: '我的甄客验', description: '真实履约体验', onClick: () => navigate('/profile/reports') })}
