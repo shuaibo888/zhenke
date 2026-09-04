@@ -447,7 +447,7 @@ public class ShopZhenkeService {
     String imagePath = validateBanner(b);
     ShopHomeBanner x = new ShopHomeBanner();
     x.setBannerId(id);
-    x.setTitle(StringUtils.trim(b.getTitle()));
+    x.setTitle(StringUtils.defaultString(StringUtils.trim(b.getTitle())));
     x.setSubtitle(StringUtils.trim(b.getSubtitle()));
     x.setImageUrl(imagePath);
     x.setJumpType(b.getJumpType());

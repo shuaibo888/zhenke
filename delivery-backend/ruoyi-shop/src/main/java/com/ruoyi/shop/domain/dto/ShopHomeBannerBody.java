@@ -5,7 +5,6 @@ import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 
 public class ShopHomeBannerBody {
-  @NotBlank
   @Size(max = 120)
   private String title;
 

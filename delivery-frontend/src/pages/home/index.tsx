@@ -1,6 +1,3 @@
-import {
-  ArrowRightOutlined,
-} from '@ant-design/icons';
 import { Carousel, Image } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'umi';
@@ -58,13 +55,11 @@ export default function HomePage() {
   const navigate = useNavigate();
   const { startPostPublish } = usePostPublishLauncher();
   const [feed, setFeed] = useState<ZhenkePost[]>([]);
-  const [featuredFeed, setFeaturedFeed] = useState<ZhenkePost[]>([]);
   const [bannerRows, setBannerRows] = useState<Banner[]>([]);
   const [enjoyFeeds, setEnjoyFeeds] = useState<Record<EnjoyCategory, ZhenkeEnjoy[]>>(emptyEnjoyFeeds);
   const [enjoyErrors, setEnjoyErrors] = useState<EnjoyLoadErrors>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [featuredError, setFeaturedError] = useState('');
   const [bannerError, setBannerError] = useState('');
   const homeRequestVersion = useRef(0);
 
@@ -72,7 +67,6 @@ export default function HomePage() {
     const requestVersion = ++homeRequestVersion.current;
     setLoading(true);
     setLoadError('');
-    setFeaturedError('');
     setBannerError('');
     setEnjoyErrors({});
     try {
@@ -80,11 +74,12 @@ export default function HomePage() {
       if (requestVersion !== homeRequestVersion.current) return;
       const featuredPosts = (result.featuredPosts ?? []).slice(0, 3);
       const featuredPostIds = new Set(featuredPosts.map((post) => post.postId));
-      setFeaturedFeed(featuredPosts);
-      setFeed((result.posts ?? []).filter((post) => !featuredPostIds.has(post.postId)));
+      setFeed([
+        ...featuredPosts.map((post) => ({ ...post, featured: true })),
+        ...(result.posts ?? []).filter((post) => !featuredPostIds.has(post.postId)),
+      ]);
       setBannerRows(result.banners ?? []);
       setLoadError(result.postError ?? '');
-      setFeaturedError(result.featuredPostError ?? '');
       setBannerError(result.bannerError ?? '');
       const next = { ...emptyEnjoyFeeds };
       zhenEnjoyEntries.forEach((entry) => {
@@ -99,12 +94,10 @@ export default function HomePage() {
     } catch (reason) {
       if (requestVersion !== homeRequestVersion.current) return;
       setFeed([]);
-      setFeaturedFeed([]);
       setBannerRows([]);
       setEnjoyFeeds({ ...emptyEnjoyFeeds });
       const error = reason instanceof Error ? reason.message : '首页内容加载失败';
       setLoadError(error);
-      setFeaturedError(error);
       setBannerError('今日精选暂时没有加载成功，请稍后再试。');
       setEnjoyErrors(Object.fromEntries(
         zhenEnjoyEntries.map((entry) => [entry.code, error]),
@@ -148,11 +141,23 @@ export default function HomePage() {
             >
               {bannerRows.map((banner, index) => (
                 <div key={banner.bannerId}>
-                  <article className={styles.bannerSlide}>
+                  <article
+                    className={styles.bannerSlide}
+                    role="link"
+                    tabIndex={0}
+                    aria-label={banner.title?.trim() || banner.subtitle?.trim() || '查看轮播内容'}
+                    onClick={() => openBanner(banner)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openBanner(banner);
+                      }
+                    }}
+                  >
                     <div className={styles.bannerMedia}>
                       <Image
                         src={banner.imageUrl}
-                        alt={`${banner.title}轮播图`}
+                        alt={banner.title?.trim() ? `${banner.title}轮播图` : '首页轮播图'}
                         loading={index === 0 ? 'eager' : 'lazy'}
                         decoding="async"
                         classNames={{
@@ -162,16 +167,12 @@ export default function HomePage() {
                         preview={false}
                       />
                     </div>
-                    <div className={styles.bannerCopy}>
-                      <div className={styles.bannerText}>
-                        <span className={styles.eyebrow}>甄客行精选</span>
-                        <h2>{banner.title}</h2>
-                        {banner.subtitle && <p>{banner.subtitle}</p>}
+                    {(banner.title?.trim() || banner.subtitle?.trim()) && (
+                      <div className={styles.bannerCopy}>
+                        {banner.title?.trim() && <h2>{banner.title}</h2>}
+                        {banner.subtitle?.trim() && <p>{banner.subtitle}</p>}
                       </div>
-                      <button type="button" className={styles.bannerAction} onClick={() => openBanner(banner)}>
-                        进入专题 <ArrowRightOutlined />
-                      </button>
-                    </div>
+                    )}
                   </article>
                 </div>
               ))}
@@ -187,31 +188,6 @@ export default function HomePage() {
           </div>
         )}
       </section>
-
-      {!loading && (featuredFeed.length > 0 || featuredError) && (
-        <section className={styles.featuredPostSection} aria-labelledby="featured-posts-title">
-          <ZkSectionTitle
-            title="精选甄客帖"
-            description="由甄客行运营挑选的实用城市分享。"
-            action={featuredFeed.length > 0
-              ? <button type="button" className={styles.textButton} onClick={() => navigate('/posts')}>浏览全部甄客帖 →</button>
-              : undefined}
-          />
-          <span id="featured-posts-title" className={styles.visuallyHidden}>精选甄客帖</span>
-          {featuredFeed.length > 0 ? (
-            <div className={styles.homePostTrack} aria-label="精选甄客帖，横向滑动查看更多">
-              {featuredFeed.map((post) => <ZhenkePostCard key={post.postId} post={{ ...post, featured: true }} />)}
-            </div>
-          ) : (
-            <ZkState
-              kind="error"
-              title="精选甄客帖暂时没有加载成功"
-              description={featuredError}
-              onAction={() => void loadHome()}
-            />
-          )}
-        </section>
-      )}
 
       <ZkSectionTitle
         title="同城甄客帖"
@@ -241,7 +217,6 @@ export default function HomePage() {
           <div>
             <span>甄客行官方精选</span>
             <h2 id="zhen-enjoy-title">甄必享</h2>
-            <p>按玩、吃、住、购，发现值得专程去体验的城市生活。</p>
           </div>
         </header>
         <div className={styles.zhenEnjoyGroups}>

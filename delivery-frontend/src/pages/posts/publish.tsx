@@ -398,10 +398,11 @@ export default function PublishPostPage() {
               name="title"
               rules={[
                 { required: true, whitespace: true, message: '请输入标题' },
-                { max: 120, message: '标题不能超过 120 个字' },
+                { max: 20, message: '标题不能超过 20 个字' },
               ]}
+              validateTrigger="onSubmit"
             >
-              <Input variant="borderless" size="large" showCount maxLength={120} placeholder="添加标题" />
+              <Input variant="borderless" size="large" showCount maxLength={20} placeholder="添加标题" />
             </Form.Item>
 
             <Form.Item
@@ -410,8 +411,9 @@ export default function PublishPostPage() {
                 { required: true, whitespace: true, message: '请输入正文' },
                 { max: 5000, message: '正文不能超过 5000 个字' },
               ]}
+              validateTrigger="onSubmit"
             >
-              <Input.TextArea variant="borderless" rows={6} showCount maxLength={5000} placeholder="添加正文，写下你的真实体验…" />
+              <Input.TextArea variant="borderless" rows={6} maxLength={5000} placeholder="添加正文，写下你的真实体验…" />
             </Form.Item>
 
             <div className={styles.publishFieldList}>
@@ -466,8 +468,8 @@ export default function PublishPostPage() {
                 />
               </Form.Item>
 
-              <Form.Item label="建议" name="suggestion" rules={[{ max: 1000 }]}>
-                <Input.TextArea variant="borderless" rows={2} showCount maxLength={1000} placeholder="可填写交通、时间或其他实用建议" />
+              <Form.Item label="建议" name="suggestion" rules={[{ max: 1000, message: '建议不能超过 1000 个字' }]} validateTrigger="onSubmit">
+                <Input.TextArea variant="borderless" rows={2} maxLength={1000} placeholder="可填写交通、时间或其他实用建议" />
               </Form.Item>
             </div>
         </section>

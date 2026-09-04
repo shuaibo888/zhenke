@@ -53,7 +53,7 @@ export function ZhenkePostCard({ post, disabled = false }: { post: ZhenkePost; d
         {post.resources?.some((item) => item.resourceType === 'VIDEO') && (
           <span className={styles.videoBadge}><PlayCircleFilled /></span>
         )}
-        <span className={styles.contentBadge}>{post.featured ? '编辑推荐' : '甄客帖'}</span>
+        {post.featured && <span className={styles.contentBadge}>精选</span>}
       </div>
 
       <div className={styles.postBody}>

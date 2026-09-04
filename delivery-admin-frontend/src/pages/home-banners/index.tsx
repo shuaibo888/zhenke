@@ -172,7 +172,7 @@ export default function HomeBannersPage() {
         destroyOnHidden
       >
         <Form form={form} layout="vertical" requiredMark={false} onFinish={(values) => void save(values)}>
-          <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入标题' }]}><Input maxLength={120} showCount /></Form.Item>
+          <Form.Item name="title" label="标题（选填）"><Input maxLength={120} showCount /></Form.Item>
           <Form.Item name="subtitle" label="副标题"><Input maxLength={240} showCount /></Form.Item>
           <Form.Item name="imageUrl" hidden rules={[{ required: true, message: '请上传轮播图片' }]}><Input /></Form.Item>
           <Form.Item label="轮播图片" required extra="支持点击选择或拖拽 JPG / PNG 图片；重新上传会替换当前图片。">

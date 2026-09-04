@@ -4871,27 +4871,28 @@
 }
 
 .bannerSlide {
-  display: grid;
+  position: relative;
+  display: block;
   min-height: 340px;
-  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.45fr);
-  align-items: stretch;
-  background: #fff;
+  overflow: hidden;
+  background: #f8f5f2;
+  cursor: pointer;
 }
 
 .bannerMedia {
-  position: relative;
-  inset: auto;
+  position: absolute;
+  inset: 0;
   min-width: 0;
   min-height: 340px;
-  border-right: 1px solid @line;
 }
 
 .bannerMedia::after {
-  display: none;
+  display: block;
+  background: linear-gradient(180deg, transparent 38%, rgba(22, 16, 13, 0.68) 100%);
 }
 
 .bannerImage {
-  object-fit: contain;
+  object-fit: cover;
   background: #f8f5f2;
   filter: none;
 }
@@ -4901,41 +4902,36 @@
 }
 
 .bannerCopy {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  display: block;
   min-height: 0;
-  align-self: stretch;
-  align-content: center;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 18px;
-  margin: 0;
-  padding: 30px;
-  color: @ink;
-  background: #fff;
-  border-radius: 0;
+  padding: 52px 28px 28px;
+  color: #fff;
+  background: transparent;
 }
 
 .bannerCopy h2 {
-  margin-top: 4px;
+  margin: 0;
+  color: #fff;
   font-size: clamp(25px, 3vw, 36px);
 }
 
 .bannerCopy p {
-  color: @muted;
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .bannerFallback p {
   color: @muted;
 }
 
-.bannerAction {
-  min-height: 40px;
-  justify-self: start;
-  background: @orange;
-  border-radius: 6px;
-  box-shadow: none;
-}
-
-.bannerAction:hover {
-  transform: none;
+.bannerSlide:focus-visible {
+  outline: 3px solid fade(@orange, 55%);
+  outline-offset: -3px;
 }
 
 .bannerCarousel :global(.slick-dots li button) {
@@ -5437,21 +5433,15 @@
   }
 
   .bannerSlide {
-    min-height: 0;
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(220px, 52vw) auto;
+    min-height: clamp(260px, 52vw, 380px);
   }
 
   .bannerMedia {
-    min-height: 0;
-    border-right: 0;
-    border-bottom: 1px solid @line;
+    min-height: 100%;
   }
 
   .bannerCopy {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 16px;
-    padding: 18px 20px 22px;
+    padding: 48px 20px 22px;
   }
 
   .bannerFallback {
@@ -5527,8 +5517,7 @@
 
   .bannerSlide {
     min-height: 0;
-    grid-template-rows: minmax(180px, 52vw) auto;
-    aspect-ratio: auto;
+    aspect-ratio: 3 / 2;
   }
 
   .bannerFallback {
@@ -5538,10 +5527,7 @@
   }
 
   .bannerCopy {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 12px;
-    margin: 0;
-    padding: 14px 14px 20px;
+    padding: 44px 16px 18px;
   }
 
   .bannerCopy p {
@@ -5551,12 +5537,6 @@
     line-height: 1.5;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
-  }
-
-  .bannerAction {
-    min-height: 36px;
-    width: auto;
-    padding-inline: 12px;
   }
 
   .zhenEnjoySection {

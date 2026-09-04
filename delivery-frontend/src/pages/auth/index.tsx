@@ -295,8 +295,16 @@ export default function AuthPage() {
                   </Form.Item>
                   <Form.Item label="验证码" required>
                     <div className={styles.authSmsCodeRow}>
-                      <Form.Item name="code" noStyle rules={[{ required: true, message: '请输入短信验证码' }]}>
-                        <Input size="large" prefix={<LockOutlined />} inputMode="numeric" maxLength={8} autoComplete="one-time-code" placeholder="短信验证码" />
+                      <Form.Item
+                        name="code"
+                        noStyle
+                        getValueFromEvent={(event) => String(event?.target?.value ?? '').replace(/\D/g, '').slice(0, 6)}
+                        rules={[
+                          { required: true, message: '请输入短信验证码' },
+                          { len: 6, message: '请输入 6 位短信验证码' },
+                        ]}
+                      >
+                        <Input size="large" prefix={<LockOutlined />} inputMode="numeric" maxLength={6} autoComplete="one-time-code" placeholder="6 位短信验证码" />
                       </Form.Item>
                       <Button size="large" disabled={countdown > 0 || capabilities?.smsEnabled === false} onClick={() => void sendPhoneCode()}>
                         {countdown > 0 ? `${countdown}s` : '获取验证码'}
