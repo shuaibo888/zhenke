@@ -1,0 +1,296 @@
+/* 登录页延续首页的简洁信息层级：浅色画布、白色表单、橙色仅用于主操作。 */
+.authLayout.authSimpleLayout {
+  width: min(100% - 32px, 980px);
+  max-width: 980px;
+  min-height: min(620px, calc(100dvh - 80px));
+  grid-template-columns: minmax(300px, 0.82fr) minmax(390px, 1fr);
+  margin: clamp(24px, 5vh, 48px) auto;
+  overflow: hidden;
+  border: 1px solid #eaded5;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(91, 49, 36, 0.08);
+}
+
+.authSimpleLayout .authIntro {
+  position: relative;
+  justify-content: flex-start;
+  padding: 66px 44px 44px;
+  color: #1f2522;
+  background: #fff8f3;
+  border-right: 1px solid #eaded5;
+}
+
+.authSimpleLayout .authIntro::after {
+  display: none;
+}
+
+.authSimpleLayout .authBrandRow {
+  display: block;
+}
+
+.authSimpleLayout .authBrandRow strong {
+  color: #1f2522;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+
+.authSimpleLayout .authBrandRow span {
+  margin-top: 5px;
+  color: #826e65;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.authSimpleLayout .authIntroCopy {
+  margin: auto 0;
+  padding: 44px 0;
+}
+
+.authSimpleLayout .authIntroCopy .eyebrow {
+  color: #ff6b1a;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.authSimpleLayout .authIntroCopy h1 {
+  margin: 16px 0 14px;
+  color: #1f2522;
+  font-family: inherit;
+  font-size: clamp(36px, 4vw, 48px);
+  font-weight: 900;
+  line-height: 1.16;
+  letter-spacing: -1.5px;
+}
+
+.authSimpleLayout .authIntroCopy p {
+  max-width: 320px;
+  color: #75665f;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.authSimpleLayout .authCard,
+.authSimpleLayout .phoneAuthCard {
+  justify-content: center;
+  padding: 46px 48px;
+  background: #fff;
+}
+
+.authSimpleLayout .authHeader {
+  margin-bottom: 24px;
+}
+
+.authSimpleLayout .authHeader h2 {
+  margin-bottom: 6px;
+  color: #1f2522;
+  font-size: 28px;
+}
+
+.authSimpleLayout .authHeader p {
+  color: #786b65;
+  font-size: 13px;
+}
+
+.authSimpleLayout .authOneClickPanel,
+.authSimpleLayout .authSmsForm {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.authSimpleLayout .authOneClickPanel {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+  padding: 18px;
+  text-align: left;
+  background: #fffdfa;
+  border: 1px solid #eaded5;
+  border-top: 4px solid #ff7a32;
+  border-radius: 16px;
+}
+
+.authSimpleLayout .authSmsForm {
+  display: block;
+  padding: 0;
+}
+
+.authProductPreview {
+  padding: 22px 18px;
+  text-align: center;
+  background: #fff8f3;
+  border: 1px solid #f0e2da;
+  border-radius: 10px;
+}
+
+.authProductPreview > span {
+  display: block;
+  margin-bottom: 9px;
+  color: #c0613d;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.authSimpleLayout .authProductPreview > strong {
+  display: block;
+  color: #2d2927;
+  font-size: 20px;
+  line-height: 1.4;
+}
+
+.authSimpleLayout .authProductPreview > p {
+  margin: 7px 0 0;
+  color: #857771;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.authSimpleLayout .authOneClick {
+  min-height: 48px;
+  margin-top: 0;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.authSimpleLayout .authForm :global(.ant-input-affix-wrapper),
+.authSimpleLayout .authForm :global(.ant-input),
+.authSimpleLayout .authSmsCodeRow :global(.ant-input-affix-wrapper),
+.authSimpleLayout .authSmsCodeRow :global(.ant-btn),
+.authSimpleLayout .authSubmit,
+.authSimpleLayout .authPhoneEntry,
+.authSimpleLayout .merchantButton,
+.authSimpleLayout .captchaButton {
+  border-radius: 8px !important;
+}
+
+.authSimpleLayout .authSubmit {
+  box-shadow: none;
+}
+
+.authSimpleLayout .authSecondaryActions {
+  margin-top: 18px;
+}
+
+.authSimpleLayout .authPhoneEntry,
+.authSimpleLayout .merchantButton {
+  color: #74463a;
+  background: #fff;
+  border-color: #dfd3cd;
+}
+
+.authSimpleLayout .authPhoneEntry:hover,
+.authSimpleLayout .merchantButton:hover {
+  color: #ff6b1a !important;
+  background: #fff8f3 !important;
+  border-color: #ffb38b !important;
+}
+
+.authSimpleLayout .authAlternative {
+  margin-top: 18px;
+}
+
+.authSimpleLayout .authDivider {
+  color: #968983;
+}
+
+.authSimpleLayout .authDivider::before,
+.authSimpleLayout .authDivider::after {
+  background: #eaded5;
+}
+
+.authSimpleLayout .authBackButton {
+  top: 18px;
+  left: 20px;
+  color: #6f5c54;
+}
+
+.authSimpleLayout .authBackButton:hover {
+  color: #ff6b1a;
+  background: #fff0e8;
+}
+
+@media (max-width: 820px) {
+  .authLayout.authSimpleLayout {
+    width: 100%;
+    min-height: 100dvh;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .authSimpleLayout .authIntro {
+    padding: max(14px, env(safe-area-inset-top)) 18px 14px;
+    background: #fff;
+    border-right: 0;
+    border-bottom: 1px solid #eaded5;
+  }
+
+  .authSimpleLayout .authBrandRow {
+    min-height: 40px;
+    padding-left: 42px;
+  }
+
+  .authSimpleLayout .authBrandRow strong {
+    font-size: 22px;
+  }
+
+  .authSimpleLayout .authBrandRow span {
+    margin-top: 1px;
+    font-size: 10px;
+  }
+
+  .authSimpleLayout .authIntroCopy {
+    display: none;
+  }
+
+  .authSimpleLayout .authCard,
+  .authSimpleLayout .phoneAuthCard {
+    justify-content: flex-start;
+    padding: 32px 20px max(24px, env(safe-area-inset-bottom));
+  }
+
+  .authSimpleLayout .authCard > * {
+    max-width: 480px;
+  }
+
+  .authSimpleLayout .authHeader {
+    margin-bottom: 18px;
+  }
+
+  .authSimpleLayout .authHeader h2 {
+    font-size: 25px;
+  }
+
+  .authSimpleLayout .authBackButton {
+    top: max(15px, env(safe-area-inset-top));
+    left: 10px;
+    color: #6f5c54;
+  }
+
+  .authSimpleLayout .authSecondaryActions,
+  .authSimpleLayout .authAlternative {
+    margin-top: 16px;
+  }
+
+  .authSimpleLayout .authOneClickPanel {
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .authProductPreview {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 360px) {
+  .authSimpleLayout .authCard,
+  .authSimpleLayout .phoneAuthCard {
+    padding-inline: 16px;
+  }
+}

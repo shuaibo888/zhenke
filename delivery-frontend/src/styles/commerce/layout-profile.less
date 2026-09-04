@@ -1,0 +1,60 @@
+.appShell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 24px 28px 48px;
+  background: #ffffff;
+}
+
+/* 个人中心：整屏固定高度，内容在一页内撑满，禁止上下滚动 */
+.appShell.profilePage {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* 商城：应用级布局——整页固定高度（flex 列），只有商品列表内部滚动；
+   .mallPage 用 flex:1 吃掉导航栏以下的剩余空间，底部贴齐底部导航栏 */
+.appShell.mallApp {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.appShell.mallApp .navBar {
+  flex: none;
+  flex-shrink: 0;
+}
+
+.appShell.mallApp .mallPage {
+  position: static;
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+
+.authPage {
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+  place-items: center;
+  padding: clamp(18px, 3vw, 42px);
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.headerActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.profileHero p,
+.productDetail,
+.empty,
+.hint {
+  margin: 0;
+  color: #64716b;
+  line-height: 1.7;
+}

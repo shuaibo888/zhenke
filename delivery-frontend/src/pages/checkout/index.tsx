@@ -12,7 +12,6 @@ import { useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
 import { AddressManager } from '@/components/AddressManager';
-import { CheckoutJourney } from '@/components/CheckoutJourney';
 import { ProfileBackButton } from '@/components/ProfileBackButton';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { useSafeBack } from '@/hooks/useSafeBack';
@@ -282,6 +281,7 @@ export default function CheckoutPage() {
   }, [lines, selectedFulfillmentType, source]);
   const subtotal = paymentOrder?.originalAmount
     ?? lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
+  const totalQuantity = lines.reduce((sum, line) => sum + line.quantity, 0);
   const cartHasOffline = source === 'cart'
     && lines.some((line) => cartLineFulfillment(line) === 'OFFLINE');
   const cartHasOnline = source === 'cart'
@@ -560,15 +560,10 @@ export default function CheckoutPage() {
         <header className={styles.checkoutHeader}>
           <div>
             <span className={styles.eyebrow}>安全结算</span>
-            <h1>{orderMode ? '订单支付' : '确认支付'}</h1>
-            <p>{orderMode ? '微信授权或页面刷新后，仍会回到当前订单继续支付。' : '确认商品、地址与优惠信息后提交订单并完成支付。'}</p>
+            <h1>{orderMode ? '订单支付' : '确认订单'}</h1>
+            <p>{orderMode ? '核对金额后继续支付，页面刷新不会丢失当前订单。' : '依次确认履约、地址、商品和优惠，提交后进入支付。'}</p>
           </div>
-          <SafetyCertificateOutlined />
         </header>
-        <CheckoutJourney
-          fulfillmentType={checkoutFulfillment}
-          paymentOnly={orderMode}
-        />
 
         <Spin spinning={pageLoading}>
           {!orderMode && source === 'cart' && !pageLoading && lines.length === 0 && !checkoutRefreshError && (
@@ -623,7 +618,9 @@ export default function CheckoutPage() {
                   <span>{source === 'cart' ? <TruckOutlined /> : selectedFulfillmentType === 'ONLINE' ? <TruckOutlined /> : <ShopOutlined />}</span>
                   <div>
                     <strong>履约方式</strong>
-                    <small>{source === 'cart' ? `本次预计生成 ${checkoutGroups.length} 笔独立订单` : '请确认本次购买的收货方式'}</small>
+                    <small>{source === 'cart' && checkoutGroups.length > 1
+                      ? `本次预计生成 ${checkoutGroups.length} 笔独立订单`
+                      : '请确认本次购买的收货方式'}</small>
                   </div>
                 </div>
                 {source === 'cart' ? (
@@ -841,10 +838,13 @@ export default function CheckoutPage() {
             </div>
 
             <aside className={styles.checkoutSummaryPanel}>
-              <h2>订单金额</h2>
+              <div className={styles.checkoutSummaryHeading}>
+                <h2>金额明细</h2>
+                <span>共 {totalQuantity} 件商品</span>
+              </div>
               <dl>
-                <div><dt>商品合计</dt><dd>{formatPrice(subtotal)}</dd></div>
-                <div><dt>优惠券</dt><dd className={discount > 0 ? styles.checkoutDiscount : ''}>
+                <div><dt>商品金额</dt><dd>{formatPrice(subtotal)}</dd></div>
+                <div><dt>优惠券抵扣</dt><dd className={discount > 0 ? styles.checkoutDiscount : ''}>
                   {discount > 0 ? `-${formatPrice(discount)}` : formatPrice(0)}
                 </dd></div>
                 <div>
@@ -853,7 +853,7 @@ export default function CheckoutPage() {
                 </div>
               </dl>
               <div className={styles.checkoutPayable}>
-                <span>应付金额</span>
+                <span>实付款</span>
                 <strong>{formatPrice(payable)}</strong>
               </div>
               <Button

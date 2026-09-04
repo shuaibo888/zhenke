@@ -1,0 +1,933 @@
+/* delivery-frontend1 page-level additions. Existing visual tokens remain unchanged. */
+.sessionLoading {
+  display: grid;
+  min-height: 240px;
+  place-items: center;
+}
+
+.reportDetailPage,
+.trialDetailPage,
+.profilePage {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.authBackButton {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  z-index: 10;
+}
+
+.shareSheet {
+  display: grid;
+  gap: 16px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+
+  p {
+    margin: 0;
+    color: #5d6b65;
+  }
+
+  code {
+    overflow-wrap: anywhere;
+    padding: 12px;
+    color: #8a3f32;
+    background: #f5f2ec;
+    border-radius: 8px;
+  }
+}
+
+.merchantFormGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+}
+
+.merchantStatus {
+  display: grid;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.merchantAdminAccess {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.merchantAdminAccess p {
+  margin: 0;
+}
+
+.merchantAdminAccess > a {
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+
+.merchantAdminActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.merchantAdminActions :global(.ant-btn) {
+  min-width: 116px;
+}
+
+.merchantRejected {
+  margin-bottom: 18px;
+}
+
+.merchantRecovery {
+  margin: -4px 0 18px;
+  padding: 10px 14px 14px;
+  border: 1px solid rgba(138, 63, 50, 0.12);
+  border-radius: 8px;
+  background: #fffaf6;
+}
+
+.merchantRecovery > :global(.ant-btn) {
+  padding-inline: 0;
+}
+
+.merchantCredentials {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+
+.merchantCredentials small {
+  grid-column: 1 / -1;
+  color: #7a8882;
+}
+
+.merchantLicenseField {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.merchantLicenseField > label {
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+}
+
+.merchantLicenseField > :global(.ant-upload-wrapper),
+.merchantLicenseField > :global(.ant-upload-wrapper) :global(.ant-upload-select) {
+  display: block;
+  width: 100%;
+}
+
+.merchantDropzone :global(.ant-upload-drag) {
+  min-height: 128px;
+  padding: 16px;
+  background: #fffaf6;
+  border-color: #d9b9a7;
+  border-radius: 12px;
+}
+
+.merchantDropzone :global(.ant-upload-drag-container) {
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+}
+
+.merchantDropzone :global(.anticon) {
+  color: #8a3f32;
+  font-size: 28px;
+}
+
+.merchantDropzone strong {
+  color: #3f302c;
+  font-size: 14px;
+}
+
+.merchantDropzone small {
+  color: #7a8882;
+  font-size: 12px;
+}
+
+.merchantLicenseField small {
+  color: #7a8882;
+}
+
+.merchantLicensePreview {
+  width: min(100%, 360px);
+  max-height: 240px;
+  object-fit: contain;
+  border: 1px solid rgba(138, 63, 50, 0.15);
+  border-radius: 8px;
+  background: #fffaf6;
+}
+
+.merchantProofField {
+  display: grid;
+  gap: 14px;
+}
+
+.merchantProofField > :global(.ant-upload-wrapper),
+.merchantProofField > :global(.ant-upload-wrapper) :global(.ant-upload-select) {
+  display: block;
+  width: 100%;
+}
+
+.merchantProofHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.merchantProofHeading > div {
+  display: grid;
+  gap: 4px;
+}
+
+.merchantProofHeading strong {
+  color: #8a3f32;
+  font-size: 13px;
+}
+
+.merchantProofHeading small {
+  color: #7a8882;
+  line-height: 1.5;
+}
+
+.merchantProofHeading > span {
+  flex: 0 0 auto;
+  color: #8a3f32;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.merchantProofGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.merchantProofItem {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  border: 1px solid rgba(138, 63, 50, 0.15);
+  border-radius: 10px;
+  background: #f7eee7;
+}
+
+.merchantProofItem img,
+.merchantProofItem video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.merchantProofItem > :global(.ant-btn) {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.merchantProofItem > :global(.ant-btn):hover {
+  color: #fff !important;
+  background: rgba(183, 47, 47, 0.88) !important;
+}
+
+.logisticsTimelineItem {
+  position: relative;
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 12px;
+  padding: 0 0 20px;
+
+  > i {
+    width: 10px;
+    height: 10px;
+    margin-top: 6px;
+    background: #8a3f32;
+    border-radius: 50%;
+  }
+
+  > div {
+    display: grid;
+    gap: 4px;
+  }
+
+  span,
+  time {
+    color: #7a8882;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 640px) {
+  .reportDetailPage,
+  .trialDetailPage,
+  .profilePage {
+    width: 100%;
+  }
+
+  .reportDetailBar {
+    padding-inline: max(14px, env(safe-area-inset-left)) max(14px, env(safe-area-inset-right));
+  }
+
+  .merchantFormGrid,
+  .reviewStars {
+    grid-template-columns: 1fr;
+  }
+
+  .authBackButton {
+    top: 12px;
+    left: 12px;
+  }
+
+  .profileEditSection {
+    padding: 14px;
+  }
+
+  .trialChoiceTrigger {
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 9px 11px;
+    padding: 13px;
+  }
+
+  .trialChoiceTriggerIcon {
+    grid-row: 1 / span 2;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    font-size: 17px;
+  }
+
+  .trialChoiceTriggerAction {
+    grid-column: 2;
+    justify-self: start;
+    padding: 4px 9px;
+    background: rgba(138, 63, 50, 0.08);
+    border-radius: 999px;
+    font-size: 11px;
+  }
+
+  .trialChoiceOption {
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 9px 10px;
+    padding: 12px;
+  }
+
+  .trialChoiceOptionIcon {
+    grid-row: 1 / span 2;
+    width: 38px;
+    height: 38px;
+  }
+
+  .trialChoiceOptionState {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .trialFlow {
+    align-items: flex-start;
+  }
+
+  .trialFlowNote {
+    min-height: 0;
+    padding-inline: 3px;
+  }
+}
+
+/* Authentication page: isolated full-screen layout with no shared commerce chrome. */
+.authLayout {
+  position: relative;
+  width: min(100%, 1040px);
+  max-width: 1040px;
+  min-height: min(680px, calc(100dvh - 48px));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(390px, 430px);
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid rgba(22, 75, 61, 0.12);
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 30px 90px rgba(22, 63, 51, 0.18);
+}
+
+.authLayout .authIntro,
+.authLayout .authCard {
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.authLayout .authIntro {
+  position: relative;
+  justify-content: space-between;
+  padding: 50px;
+  overflow: hidden;
+  color: #ffffff;
+  background:
+    radial-gradient(circle at 88% 10%, rgba(255, 255, 255, 0.16), transparent 28%),
+    radial-gradient(circle at 8% 92%, rgba(221, 190, 117, 0.18), transparent 32%),
+    linear-gradient(145deg, #8a3f32 0%, #8a3f32 58%, #8a3f32 100%);
+}
+
+.authLayout .authIntro::after {
+  position: absolute;
+  right: -80px;
+  bottom: -110px;
+  width: 310px;
+  height: 310px;
+  content: '';
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 38px rgba(255, 255, 255, 0.035),
+    0 0 0 82px rgba(255, 255, 255, 0.025);
+}
+
+.authBrandRow,
+.authIntroCopy,
+.authLayout .authRules {
+  position: relative;
+  z-index: 1;
+}
+
+.authBrandRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.authBrandRow .brandMark {
+  width: 54px;
+  height: 54px;
+  color: #6f332a;
+  background: #f5f1e4;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  box-shadow: 0 10px 28px rgba(4, 27, 21, 0.22);
+  font-size: 25px;
+}
+
+.authBrandRow strong,
+.authBrandRow span {
+  display: block;
+}
+
+.authBrandRow strong {
+  font-size: 22px;
+  letter-spacing: 1px;
+}
+
+.authBrandRow span {
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.authIntroCopy {
+  margin: auto 0;
+  padding: 44px 0;
+}
+
+.authLayout .authIntroCopy .eyebrow {
+  color: #d7c18d;
+  font-size: 11px;
+  letter-spacing: 1.8px;
+}
+
+.authLayout .authIntroCopy h1 {
+  margin: 20px 0 18px;
+  color: #ffffff;
+  font-size: clamp(44px, 5vw, 62px);
+  line-height: 1.02;
+  letter-spacing: -2px;
+}
+
+.authLayout .authIntroCopy p {
+  max-width: 420px;
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.authLayout .authRules {
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
+  gap: 16px;
+  margin: 0;
+}
+
+.authLayout .authRules span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.72);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.authLayout .authRules svg {
+  color: #d7c18d;
+}
+
+.authLayout .authCard {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 42px;
+  background: #ffffff;
+}
+
+.authLayout .authHeader {
+  margin-bottom: 22px;
+}
+
+.authLayout .authHeader h2 {
+  margin-bottom: 7px;
+  color: #3f302c;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.authLayout .authHeader p {
+  color: #78847e;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.authForm :global(.ant-form-item) {
+  margin-bottom: 17px;
+}
+
+.authForm :global(.ant-form-item-label) {
+  padding-bottom: 6px;
+}
+
+.authForm :global(.ant-form-item-label > label) {
+  color: #5e4640;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.authForm :global(.ant-input-affix-wrapper),
+.authForm :global(.ant-input) {
+  min-height: 48px;
+  box-sizing: border-box;
+  border-color: #d9e2dd;
+  border-radius: 12px;
+  font-size: 16px;
+}
+
+.authForm :global(.ant-input-affix-wrapper > input.ant-input) {
+  height: auto;
+  min-height: 0;
+  padding-block: 0;
+  line-height: 1.5;
+}
+
+.authForm :global(.ant-input-prefix),
+.authForm :global(.ant-input-suffix) {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+}
+
+.authForm :global(.ant-input::placeholder) {
+  color: #a4aea9;
+  opacity: 1;
+}
+
+.authForm :global(.ant-form-item-explain-error) {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.authForm :global(.ant-input-affix-wrapper-focused),
+.authForm :global(.ant-input-affix-wrapper:focus-within) {
+  border-color: #8a3f32;
+  box-shadow: 0 0 0 3px rgba(138, 63, 50, 0.1);
+}
+
+.authForm :global(.ant-input-prefix) {
+  margin-right: 10px;
+  color: #6c7c75;
+}
+
+.authLayout .captchaRow {
+  grid-template-columns: minmax(0, 1fr) 118px;
+}
+
+.authLayout .captchaButton {
+  width: 118px;
+  height: 48px;
+  border-color: #d9e2dd;
+  border-radius: 12px;
+}
+
+.authCaptchaState {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  margin-bottom: 14px;
+  padding: 6px 7px 6px 12px;
+  color: #6f7d76;
+  background: #f7f9f8;
+  border: 1px solid #e2e9e5;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.authCaptchaState :global(.ant-btn) {
+  min-height: 32px;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  font-weight: 700;
+}
+
+.authSubmit {
+  min-height: 48px;
+  margin-top: 2px;
+  border-radius: 12px;
+  background: #8a3f32;
+  box-shadow: 0 8px 22px rgba(138, 63, 50, 0.2);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.authOneClick {
+  min-height: 46px;
+  margin-top: 8px;
+  border-radius: 12px;
+  font-weight: 800;
+  box-shadow: 0 8px 22px rgba(138, 63, 50, 0.18);
+}
+
+.authOneClickPanel {
+  display: grid;
+  justify-items: center;
+  padding: 24px 22px 18px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 0, rgba(138, 63, 50, 0.12), transparent 48%),
+    linear-gradient(180deg, #f8fcfa, #f3f8f5);
+  border: 1px solid #dce9e2;
+  border-radius: 18px;
+}
+
+.authOneClickPanel strong {
+  color: #8a3f32;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.authOneClickPanel p {
+  margin: 5px 0 8px;
+  color: #738078;
+  font-size: 12px;
+}
+
+.authMethodLink {
+  min-height: 34px;
+  margin-top: 8px;
+  padding: 7px 8px;
+  color: #8a3f32;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.authMethodLink:hover {
+  color: #8a3f32;
+}
+
+.authForm > .authMethodLink {
+  display: block;
+  margin: 8px auto 0;
+}
+
+.authSmsForm {
+  padding: 18px;
+  background: linear-gradient(180deg, #f9fcfa, #f5f9f7);
+  border: 1px solid #dce8e2;
+  border-radius: 18px;
+}
+
+.authSmsForm :global(.ant-input::placeholder),
+.authSmsForm :global(input::placeholder) {
+  color: #a4aea9;
+}
+
+.authSmsCodeRow {
+  --auth-sms-control-height: 48px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 116px;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.authSmsCodeRow :global(.ant-input-affix-wrapper) {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: var(--auth-sms-control-height) !important;
+  min-height: var(--auth-sms-control-height) !important;
+  box-sizing: border-box;
+  padding-block: 0;
+  padding-inline: 16px;
+  border-radius: 12px !important;
+}
+
+.authSmsCodeRow :global(.ant-input-affix-wrapper > input.ant-input) {
+  height: auto;
+  min-height: 0;
+  padding-block: 0;
+  line-height: 1.5;
+}
+
+.authSmsCodeRow :global(.ant-input-prefix) {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+}
+
+.authSmsCodeRow :global(.ant-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 116px;
+  height: var(--auth-sms-control-height) !important;
+  min-height: var(--auth-sms-control-height) !important;
+  box-sizing: border-box;
+  padding-inline: 10px;
+  color: #8a3f32;
+  background: #f5ede7;
+  border-color: #c9ddd3;
+  border-radius: 12px !important;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: none;
+}
+
+.authSmsCodeRow :global(.ant-btn:hover:not(:disabled)) {
+  color: #6f332a;
+  background: #eee0d8;
+  border-color: #a9cbbb;
+}
+
+.authSecondaryActions {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.authPhoneEntry {
+  min-height: 44px;
+  color: #8a3f32;
+  background: #f5f8f6;
+  border-color: #e8d9d1;
+  border-radius: 12px;
+  font-weight: 800;
+  box-shadow: none;
+}
+
+.authPhoneEntry:hover {
+  color: #6f332a !important;
+  background: #f5ede7 !important;
+  border-color: #b8d1c5 !important;
+}
+
+.authRegisterPrompt {
+  margin: 2px 0 0;
+  color: #7a8781;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.authRegisterPrompt button {
+  margin-left: 4px;
+  min-height: 32px;
+  padding: 5px 3px;
+  color: #8a3f32;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.authRegisterPrompt button:hover {
+  color: #8a3f32;
+}
+
+.authAgreement {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin-top: 18px;
+  color: #7a756f;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.authAgreement :global(.ant-checkbox-wrapper) {
+  margin-inline-end: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+.authAgreement :global(.ant-checkbox-checked .ant-checkbox-inner) {
+  background: #e87932;
+  border-color: #e87932;
+}
+
+.authAgreement :global(.ant-checkbox-wrapper:hover .ant-checkbox-inner),
+.authAgreement :global(.ant-checkbox:hover .ant-checkbox-inner) {
+  border-color: #e87932;
+}
+
+.authAgreement button {
+  padding: 2px 1px;
+  color: #8a3f32;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.authAgreement button:hover {
+  color: #c85f27;
+  text-decoration: underline;
+}
+
+.authAgreement button:focus-visible {
+  outline: 2px solid rgba(232, 121, 50, 0.5);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.authAgreementModal :global(.ant-modal-content),
+.authAgreementModal :global(.ant-modal-container) {
+  max-height: min(78vh, 720px);
+  overflow: hidden;
+  border-radius: 18px;
+}
+
+.authAgreementModal :global(.ant-modal-header) {
+  margin-bottom: 14px;
+}
+
+.authAgreementModal :global(.ant-modal-title) {
+  color: #362c27;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.authAgreementDocument {
+  max-height: calc(min(78vh, 720px) - 86px);
+  overflow-y: auto;
+  padding-right: 8px;
+  color: #625a54;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.authAgreementDocument > p {
+  margin: 0 0 16px;
+}
+
+.authAgreementDocument section {
+  margin-top: 20px;
+}
+
+.authAgreementDocument h3 {
+  margin: 0 0 6px;
+  color: #362c27;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.authAgreementDocument section p {
+  margin: 0;
+}
+
+.authAgreementUpdated {
+  color: #8d837c;
+  font-size: 12px;
+}
+
+.authAlternative {
+  margin-top: 14px;
+}
+
+.authLayout .authSwitch {
+  margin-top: 0;
+  padding: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.authDivider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  color: #9aa49f;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.authDivider::before,
+.authDivider::after {
+  height: 1px;
+  flex: 1;
+  content: '';
+  background: #e8eeeb;
+}
+
+.authLayout .merchantButton {
+  min-height: 44px;
+  margin-top: 0;
+  color: #8a3f32;
+  background: #f2f7f4;
+  border-color: #e7d6cd;
+  border-radius: 12px;
+  font-weight: 800;
+  box-shadow: none;
+}
+
+.authLayout .merchantButton:hover {
+  color: #6f332a;
+  background: #f4e9e2;
+  border-color: #b9d4c8;
+}
+
+.authLayout .authBackButton {
+  top: 18px;
+  left: 18px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.authLayout .authBackButton:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}

@@ -1,0 +1,1985 @@
+
+
+.profileHeaderCard .profileAvatar {
+  width: 78px;
+  height: 78px;
+  min-width: 78px;
+  border-width: 4px;
+  box-shadow: 0 12px 28px rgba(94, 45, 38, 0.2);
+  font-size: 28px;
+}
+
+.profileAvatar img,
+.accountAvatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ordersPage,
+.trialsPage {
+  max-width: 960px;
+  gap: 14px;
+  min-width: 0;
+}
+
+.ordersPage .orderPanel,
+.trialsPage .orderPanel {
+  min-width: 0;
+  padding: 24px;
+  background:
+    linear-gradient(180deg, rgba(237, 247, 241, 0.72), rgba(255, 255, 255, 0) 180px),
+    #ffffff;
+}
+
+.orderFilterTabs {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  margin-bottom: 18px;
+  padding: 5px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: #fbf4ed;
+  border: 1px solid #ead8ca;
+  border-radius: 12px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  -webkit-scroll-snap-type: x mandatory;
+  scroll-snap-type: x mandatory;
+}
+
+.orderFilterTabs::-webkit-scrollbar {
+  display: none;
+}
+
+.orderFilterTabs button {
+  flex-shrink: 0;
+  min-height: 38px;
+  padding: 7px 16px;
+  color: #74605a;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.orderFilterTabs button:hover {
+  color: #8a3f32;
+  background: #ffffff;
+}
+
+.orderFilterTabs .orderFilterActive {
+  color: #fff;
+  background: #8a3f32;
+  border-color: #8a3f32;
+  box-shadow: 0 5px 14px rgba(138, 63, 50, 0.18);
+}
+
+.orderCard {
+  padding: 14px;
+  background: #fff;
+  border: 1px solid #e6eae7;
+  border-radius: 14px;
+  margin-bottom: 12px;
+}
+
+.orderCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f2f0;
+}
+
+.orderShop {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.orderShopAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: #fff;
+  background: linear-gradient(135deg, #b85f43, #8a3f32);
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.orderShop strong {
+  color: #57403a;
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orderStatusText {
+  color: #8a3f32;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.orderCardBody {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.orderThumb {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 10px;
+  background: #f5f5f5;
+  flex-shrink: 0;
+}
+
+.orderThumbInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.orderThumbTitle {
+  margin: 0;
+  color: #3f302c;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.orderThumbNo {
+  margin: 0;
+  color: #9aa6a0;
+  font-size: 12px;
+}
+
+.orderPriceCol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.orderPriceCol strong {
+  color: #3f302c;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.orderPriceCol span {
+  color: #9aa6a0;
+  font-size: 12px;
+}
+
+.orderCard .orderLogisticsSummary,
+.orderCard .paymentCountdown {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  background: #f6f8f6;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #806963;
+}
+
+.orderCard .paymentCountdown {
+  color: #ef5f3c;
+}
+
+.orderCard .orderReviewLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px dashed #eaded7;
+  font-size: 13px;
+  color: #74605a;
+}
+
+.orderCardFooter {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f2f0;
+}
+
+.orderCardFooter :global(.ant-btn) {
+  border-radius: 16px;
+}
+
+.ordersPage .orderCard {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-bottom: 14px;
+  padding: 16px;
+  overflow: hidden;
+  border-color: #eaded7;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(26, 66, 50, 0.06);
+}
+
+.ordersPage .orderCardBody {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px 0;
+}
+
+.ordersPage .orderThumb {
+  width: 84px;
+  height: 84px;
+  border: 1px solid #eaded7;
+  border-radius: 12px;
+  background: #f3f6f4;
+  flex-shrink: 0;
+}
+
+.ordersPage .orderThumbInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.ordersPage .orderThumbNo,
+.ordersPage .orderCard .orderLogisticsSummary {
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.ordersPage .orderCard .orderLogisticsSummary,
+.ordersPage .orderCard .paymentCountdown {
+  padding: 10px 12px;
+  background: #f3f8f5;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.ordersPage .orderCard .orderReviewLine {
+  padding: 10px 0;
+}
+
+.ordersPage .orderCard .orderReviewLine > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ordersPage .orderCardFooter :global(.ant-btn) {
+  min-height: 34px;
+  padding-inline: 15px;
+  border-radius: 17px;
+}
+
+.trialList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 14px;
+}
+
+.trialCard {
+  display: flex;
+  min-width: 0;
+  min-height: 220px;
+  flex-direction: column;
+  margin: 0;
+  padding: 16px;
+  border-color: #eaded7;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(26, 66, 50, 0.06);
+}
+
+.trialCard .orderCardHead {
+  min-height: 38px;
+}
+
+.trialCardBody {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 13px;
+  padding: 16px 0;
+}
+
+.trialProductMark {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  color: #8a3f32;
+  background: linear-gradient(145deg, #fff7ee, #f4e1d7);
+  border: 1px solid #e7cfc1;
+  border-radius: 14px;
+  font-size: 21px;
+  font-weight: 900;
+}
+
+.trialTypeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.trialAuditRemark {
+  margin: 3px 0 0;
+  padding: 8px 10px;
+  color: #64716b;
+  background: #fffaf6;
+  border-left: 3px solid #a9cdbb;
+  border-radius: 0 8px 8px 0;
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.trialCard .orderCardFooter {
+  margin-top: auto;
+}
+
+.trialCard .orderCardFooter :global(.ant-btn) {
+  min-height: 34px;
+  padding-inline: 15px;
+  border-radius: 17px;
+}
+
+.profileReportsPage {
+  max-width: 1040px;
+  gap: 14px;
+}
+
+.profileReportsPage .orderPanel {
+  padding: 24px;
+  background:
+    linear-gradient(180deg, rgba(237, 247, 241, 0.72), rgba(255, 255, 255, 0) 180px),
+    #ffffff;
+}
+
+.reportList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.reportListCard {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+  min-height: 126px;
+  padding: 14px;
+  color: inherit;
+  background: #fff;
+  border: 1px solid #eaded7;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(26, 66, 50, 0.06);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.reportListCard:hover,
+.reportListCard:focus-visible {
+  border-color: rgba(138, 63, 50, 0.36);
+  box-shadow: 0 12px 28px rgba(26, 66, 50, 0.11);
+  outline: none;
+  transform: translateY(-2px);
+}
+
+.reportListThumb {
+  width: 104px;
+  height: 96px;
+  object-fit: cover;
+  border: 1px solid #eaded7;
+  border-radius: 12px;
+  background: #f3f6f4;
+  flex-shrink: 0;
+}
+
+.reportListBody {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+}
+
+.reportListTitle {
+  margin: 0;
+  color: #3f302c;
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.reportListExcerpt {
+  margin: 0;
+  color: #6b7a73;
+  font-size: 12px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.reportListMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.reportListUseful {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #8a3f32;
+  font-size: 12px;
+}
+
+.reportListCard .profileReportHint {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: #8a3f32;
+  background: #fff3e8;
+  border-radius: 50%;
+}
+
+.profileAvatar {
+  display: grid;
+  width: 86px;
+  height: 86px;
+  min-width: 86px;
+  place-items: center;
+  overflow: hidden;
+  color: #f8f4e8;
+  background:
+    linear-gradient(135deg, rgba(215, 167, 55, 0.34), transparent 48%),
+    #5e2d26;
+  border: 3px solid rgba(255, 255, 255, 0.88);
+  border-radius: 50%;
+  box-shadow: 0 16px 34px rgba(94, 45, 38, 0.22);
+  font-size: 34px;
+  font-weight: 900;
+  object-fit: cover;
+}
+
+.profileDetailPage {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+.profileListEmpty {
+  display: grid;
+  min-height: 210px;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 30px 20px;
+  color: #756a64;
+  background: #fffaf7;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.profileListEmpty strong {
+  color: #352622;
+  font-size: 20px;
+}
+
+.profileListEmpty p {
+  max-width: 520px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.profileDetailToolbar {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+}
+
+.profileDetailToolbar > span {
+  color: #64716b;
+  font-size: 13px;
+  text-align: right;
+}
+
+.pointsPage {
+  max-width: 860px;
+}
+
+.pointBalancePanel {
+  position: relative;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 24px;
+  color: #f8f4e8;
+  background: linear-gradient(135deg, #5e2d26, #8a3f32);
+  border-radius: 20px;
+  box-shadow: 0 14px 32px rgba(94, 45, 38, 0.18);
+}
+
+.pointBalanceIcon {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 17px;
+  font-size: 25px;
+}
+
+.pointCurrentBalance {
+  display: grid;
+  gap: 2px;
+}
+
+.pointBalancePanel span,
+.pointBalancePanel small {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 12px;
+}
+
+.pointCurrentBalance > strong {
+  font-size: 31px;
+  line-height: 1.2;
+}
+
+.pointSummaryStats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(100px, 1fr));
+  gap: 12px;
+  margin-left: auto;
+}
+
+.pointSummaryStats > div {
+  display: grid;
+  gap: 4px;
+  min-width: 118px;
+  padding: 11px 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+}
+
+.pointSummaryStats strong {
+  color: #fff;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.pointPanelActions {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  display: flex;
+  gap: 10px;
+  z-index: 1;
+}
+
+.pointTransferLink,
+.pointRecordsLink {
+  height: 36px;
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  border-radius: 18px;
+  box-shadow: none;
+}
+
+.pointTransferLink:hover,
+.pointTransferLink:focus,
+.pointRecordsLink:hover,
+.pointRecordsLink:focus {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.pointSummaryStats {
+  padding-top: 48px;
+}
+
+.pointCouponGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.pointCouponCard {
+  display: grid;
+  grid-template-columns: 126px minmax(0, 1fr);
+  min-height: 190px;
+  overflow: hidden;
+  background: #fffaf6;
+  border: 1px solid #eaded7;
+  border-radius: 18px;
+  box-shadow: 0 10px 26px rgba(25, 66, 52, 0.08);
+}
+
+.pointCouponAmount {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  padding: 18px 12px;
+  color: #fff;
+  background: linear-gradient(145deg, #8d3f33, #c76b47);
+  text-align: center;
+}
+
+.pointCouponAmount span {
+  color: #fff;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.pointCouponAmount small {
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+}
+
+.pointCouponBody {
+  display: grid;
+  gap: 8px;
+  align-content: center;
+  min-width: 0;
+  padding: 17px;
+}
+
+.pointCouponBody > div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pointCouponBody strong {
+  overflow: hidden;
+  color: #3f302c;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pointCouponBody > div span {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  color: #a94e3a;
+  background: #f8e8df;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.pointCouponBody p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: #806d66;
+  font-size: 13px;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.pointCouponBody > small {
+  color: #9b8881;
+  font-size: 11px;
+}
+
+.pointCouponBody button {
+  margin-top: 3px;
+  border-radius: 10px;
+}
+
+.pointCouponEmpty {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  min-height: 190px;
+  align-content: center;
+  color: #96827b;
+  background: #fffaf7;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.pointCouponEmpty strong {
+  color: #3f2823;
+  font-size: 20px;
+}
+
+.pointCouponEmpty p {
+  margin: 0;
+}
+
+.pointRecordList {
+  display: grid;
+  gap: 10px;
+}
+
+.pointRecordItem {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: center;
+  padding: 16px;
+  background: #fffaf6;
+  border: 1px solid #eadfd8;
+  border-radius: 14px;
+}
+
+.pointRecordIcon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 13px;
+}
+
+.pointRecordIncrease {
+  color: #8a3f32;
+  background: #f8e8df;
+}
+
+.pointRecordDecrease {
+  color: #a55347;
+  background: #fff0ed;
+}
+
+.pointRecordCopy,
+.pointRecordAmount {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.pointRecordCopy strong {
+  overflow: hidden;
+  color: #3f302c;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pointRecordCopy small,
+.pointRecordAmount small {
+  color: #96827b;
+  font-size: 12px;
+}
+
+.pointRecordAmount {
+  justify-items: end;
+  text-align: right;
+}
+
+.pointRecordAmount strong {
+  font-size: 18px;
+}
+
+.pointAmountIncrease {
+  color: #8a3f32;
+}
+
+.pointAmountDecrease {
+  color: #a55347;
+}
+
+.pointRecordEmpty {
+  display: grid;
+  min-height: 190px;
+  gap: 8px;
+  justify-items: center;
+  align-content: center;
+  padding: 34px 18px;
+  color: #96827b;
+  background: #fffaf7;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.pointRecordEmpty strong {
+  color: #3f2823;
+  font-size: 20px;
+}
+
+.pointRecordEmpty p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.pointRecordPagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.pointTransferForm {
+  display: grid;
+  gap: 18px;
+}
+
+.merchantInfoBar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 12px 0;
+  padding: 10px;
+  border: 1px solid rgba(138, 63, 50, 0.16);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #ffffff 0%, #fff5ee 100%);
+  box-shadow: 0 8px 24px rgba(94, 45, 38, 0.08);
+}
+
+.merchantInfoMain {
+  display: flex;
+  width: 100%;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 11px;
+  padding: 2px;
+  border: 0;
+  color: #56352f;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.merchantInfoIcon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  place-items: center;
+  border-radius: 13px;
+  color: #ffffff;
+  background: #a94e3a;
+  font-size: 20px;
+}
+
+.merchantInfoCopy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.merchantInfoCopy small {
+  color: #9b8881;
+  font-size: 12px;
+}
+
+.merchantInfoCopy strong {
+  overflow: hidden;
+  color: #56352f;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.merchantInfoCopy em {
+  overflow: hidden;
+  color: #8a746c;
+  font-size: 12px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.merchantNavigation {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 5px;
+  align-items: center;
+  padding: 9px 12px;
+  color: #8a3f32;
+  background: #fff7f1;
+  border: 1px solid #e7c9b9;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.merchantInfoArrow {
+  color: #9bacA4;
+  font-size: 12px;
+}
+
+@media (max-width: 560px) {
+  .merchantInfoBar {
+    margin: 10px 0;
+  }
+
+  .merchantNavigation {
+    padding: 8px 10px;
+  }
+}
+
+.pointTransferIntro {
+  display: grid;
+  gap: 3px;
+}
+
+.pointTransferIntro strong {
+  color: #56352f;
+  font-size: 15px;
+}
+
+.pointTransferIntro span {
+  color: #9d8982;
+  font-size: 12px;
+}
+
+.pointTransferSourceGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  min-height: 96px;
+}
+
+.pointTransferSourceGridMultiple {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pointTransferSourceCard {
+  display: grid;
+  grid-template-columns: clamp(104px, 26vw, 124px) minmax(0, 1fr);
+  align-items: stretch;
+  min-width: 0;
+  min-height: clamp(104px, 26vw, 124px);
+  padding: 0;
+  overflow: hidden;
+  color: inherit;
+  text-align: left;
+  background: #fff;
+  border: 1px solid #eaded7;
+  border-radius: 14px;
+  box-shadow: 0 8px 22px rgba(34, 84, 66, 0.07);
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.pointTransferSourceGridMultiple .pointTransferSourceCard {
+  grid-template-columns: 88px minmax(0, 1fr);
+  min-height: 96px;
+}
+
+.pointTransferSourceCard:hover:not(:disabled) {
+  border-color: rgba(138, 63, 50, 0.48);
+  box-shadow: 0 10px 26px rgba(34, 84, 66, 0.12);
+  transform: translateY(-1px);
+}
+
+.pointTransferSourceCard:focus-visible {
+  outline: 3px solid rgba(138, 63, 50, 0.18);
+  outline-offset: 2px;
+}
+
+.pointTransferSourceCard:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.pointTransferSourceCardSelected {
+  border-color: #8a3f32;
+  box-shadow: 0 0 0 2px rgba(138, 63, 50, 0.12), 0 10px 26px rgba(34, 84, 66, 0.12);
+}
+
+.pointTransferSourceCover {
+  position: relative;
+  display: grid;
+  height: 100%;
+  min-height: clamp(104px, 26vw, 124px);
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.92);
+  background: linear-gradient(135deg, #7d392f 0%, #b85c3f 100%);
+  border-right: 1px solid #eee2da;
+  place-items: center;
+}
+
+.pointTransferSourceGridMultiple .pointTransferSourceCover {
+  min-height: 96px;
+}
+
+.pointTransferSourceCover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 9px;
+  background: #fff;
+  object-fit: contain;
+  object-position: center;
+  z-index: 1;
+}
+
+.pointTransferSourceFallback {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 4px;
+}
+
+.pointTransferSourceInfo {
+  display: grid;
+  gap: 3px;
+  align-content: center;
+  min-width: 0;
+  padding: 16px 18px;
+}
+
+.pointTransferSourceGridMultiple .pointTransferSourceInfo {
+  padding: 12px;
+}
+
+.pointTransferSourceTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #56352f;
+}
+
+.pointTransferSourceTitle > span,
+.pointTransferSourceTitle :global(.anticon) {
+  color: #8a3f32;
+}
+
+.pointTransferSourceInfo small {
+  overflow: hidden;
+  color: #9d8982;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pointTransferSourceEmpty {
+  display: grid;
+  grid-column: 1 / -1;
+  min-height: 96px;
+  color: #a18f88;
+  background: #fff8f3;
+  border: 1px dashed #e6d5cc;
+  border-radius: 14px;
+  place-items: center;
+}
+
+.pointTransferField {
+  display: grid;
+  gap: 6px;
+}
+
+.pointTransferField > span {
+  color: #816d66;
+  font-size: 13px;
+}
+
+.pointTransferBalance {
+  display: grid;
+  gap: 4px;
+  padding: 15px 17px;
+  color: #816d66;
+  background: linear-gradient(135deg, #fff4ec 0%, #f8e7dc 100%);
+  border: 1px solid rgba(138, 63, 50, 0.12);
+  border-radius: 14px;
+  font-size: 13px;
+}
+
+.pointTransferBalance strong {
+  color: #9f4638;
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.pointTransferInputRow {
+  display: flex;
+  gap: 8px;
+}
+
+.pointTransferInputRow :global(.ant-input-number) {
+  min-width: 0;
+  border-radius: 9px;
+}
+
+.pointTransferInputRow :global(.ant-btn) {
+  flex-shrink: 0;
+  border-radius: 9px;
+}
+
+.pointTransferPreview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -8px;
+  padding: 0 2px;
+  color: #79877f;
+  font-size: 12px;
+}
+
+.pointTransferPreview strong {
+  color: #8a3f32;
+  font-size: 15px;
+}
+
+.pointTransferHint {
+  margin: 0;
+  color: #a18f88;
+  font-size: 12px;
+}
+
+.pointTransferActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.pointTransferActions :global(.ant-btn) {
+  min-width: 96px;
+  border-radius: 9px;
+}
+
+@media (max-width: 560px) {
+  .pointTransferSourceGridMultiple {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pointTransferSourceCard,
+  .pointTransferSourceGridMultiple .pointTransferSourceCard {
+    grid-template-columns: 104px minmax(0, 1fr);
+    min-height: 104px;
+  }
+
+  .pointTransferSourceCover,
+  .pointTransferSourceGridMultiple .pointTransferSourceCover {
+    min-height: 104px;
+  }
+
+  .pointTransferSourceInfo,
+  .pointTransferSourceGridMultiple .pointTransferSourceInfo {
+    padding: 13px 14px;
+  }
+
+  .pointTransferActions :global(.ant-btn) {
+    flex: 1;
+  }
+}
+
+.profileBackButton {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 9px;
+  align-items: center;
+  min-height: 44px;
+  padding: 5px 16px 5px 5px;
+  color: #8a3f32;
+  background: linear-gradient(135deg, #ffffff 0%, #fff3eb 100%);
+  border: 1px solid rgba(138, 63, 50, 0.18);
+  border-radius: 999px;
+  box-shadow: 0 7px 20px rgba(34, 92, 72, 0.1);
+  cursor: pointer;
+  font: inherit;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.profileBackIcon {
+  display: grid;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(145deg, #8a3f32 0%, #8a3f32 100%);
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(138, 63, 50, 0.22);
+  font-size: 14px;
+  transition: transform 0.2s ease;
+}
+
+.profileBackText {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.profileBackButton:hover,
+.profileBackButton:focus-visible {
+  color: #8a3f32;
+  background: #f7fcf9;
+  border-color: rgba(138, 63, 50, 0.32);
+  box-shadow: 0 9px 24px rgba(34, 92, 72, 0.15);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.profileBackButton:hover .profileBackIcon,
+.profileBackButton:focus-visible .profileBackIcon {
+  transform: translateX(-2px);
+}
+
+.profileBackButton:active {
+  box-shadow: 0 4px 12px rgba(34, 92, 72, 0.1);
+  transform: translateY(0);
+}
+
+.ordersPage .empty,
+.trialsPage .empty,
+.profileReportsPage .empty {
+  min-height: 190px;
+  padding: 42px 18px;
+  color: #96827b;
+  background: #fffaf7;
+  border: 0;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.profileEditModal :global(.ant-modal-content) {
+  overflow: hidden;
+  border: 1px solid rgba(138, 63, 50, 0.14);
+  border-radius: 20px;
+  box-shadow: 0 24px 70px rgba(94, 45, 38, 0.2);
+}
+
+.profileEditModal :global(.ant-modal-header) {
+  margin: -20px -24px 20px;
+  padding: 20px 24px 17px;
+  background: linear-gradient(135deg, #fff4eb, #ffffff);
+  border-bottom: 1px solid #e3ebe7;
+}
+
+.profileEditModal :global(.ant-modal-title) {
+  color: #5e2d26;
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.profileEditSections {
+  display: grid;
+  gap: 16px;
+  max-height: min(72vh, 720px);
+  padding-right: 4px;
+  overflow-y: auto;
+}
+
+.profileEditSection {
+  padding: 18px;
+  background: linear-gradient(145deg, #fffaf6, #fff8f3);
+  border: 1px solid #dde9e2;
+  border-radius: 15px;
+}
+
+.profileEditHeading {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.profileEditHeadingBtn {
+  width: 100%;
+  padding: 6px 4px;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  border-radius: 12px;
+  transition: background 0.2s ease;
+}
+
+.profileEditHeadingBtn:hover {
+  background: rgba(138, 63, 50, 0.06);
+}
+
+.profileEditArrow {
+  margin-left: auto;
+  color: #96827b;
+  font-size: 12px;
+  transition: transform 0.25s ease;
+  flex-shrink: 0;
+}
+
+.profileEditArrowOpen {
+  transform: rotate(180deg);
+}
+
+.profileEditBody {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding-top 0.3s ease;
+}
+
+.profileEditBodyOpen {
+  max-height: 620px;
+  padding-top: 14px;
+}
+
+.profileEditHint {
+  margin: 0 0 16px;
+  color: #64716b;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.profileEditHeading > span {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, #5e2d26, #8a3f32);
+  border-radius: 12px;
+  font-size: 17px;
+}
+
+.profileEditHeading > div {
+  display: grid;
+  gap: 2px;
+}
+
+.profileEditHeading strong {
+  color: #3f302c;
+  font-size: 15px;
+}
+
+.profileEditHeading small {
+  color: #96827b;
+  font-size: 12px;
+}
+
+.profileEditAvatarRow {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.profileEditAvatar {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  margin: 0;
+  font-size: 24px;
+}
+
+.profileEditAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarPicker {
+  display: grid;
+  gap: 14px;
+}
+
+.profileEditAvatarRow .avatarPicker {
+  flex: 1;
+  gap: 8px;
+}
+
+.avatarPicker input[type="file"] {
+  display: none;
+}
+
+.avatarDropzone :global(.ant-upload-drag) {
+  min-height: 112px;
+  padding: 14px;
+  background: #fffaf6;
+  border-color: #d9b9a7;
+  border-radius: 12px;
+}
+
+.avatarDropzone :global(.ant-upload-drag-container) {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  color: #8a3f32;
+}
+
+.avatarDropzone :global(.anticon) {
+  font-size: 24px;
+}
+
+.avatarDropzone strong {
+  color: #3f302c;
+  font-size: 13px;
+}
+
+.avatarDropzone small {
+  color: #96827b;
+  font-size: 11px;
+}
+
+.avatarPicker p {
+  margin: 0;
+  color: #64716b;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.profileEditAvatarRow .avatarPicker p {
+  text-align: left;
+}
+
+.profileEditSection :global(.ant-input),
+.profileEditSection :global(.ant-input-affix-wrapper) {
+  border-color: #eadbd3;
+  border-radius: 10px;
+}
+
+.profileEditSection :global(.ant-btn-primary) {
+  min-width: 128px;
+  min-height: 38px;
+  border-radius: 19px;
+  font-weight: 700;
+}
+
+.orderPanel > h3 {
+  margin: 0 0 14px;
+  font-size: 20px;
+}
+
+.orderItem .orderLogisticsSummary {
+  color: #8a3f32;
+  font-weight: 600;
+}
+
+.paymentCountdown {
+  color: #d46b08;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.orderReviewLine {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f4f8f5;
+  font-size: 13px;
+}
+
+.profileReportHint {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  color: #8a3f32;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.logisticsOverview {
+  display: grid;
+  gap: 18px;
+}
+
+.logisticsSummaryCard {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid rgba(138, 63, 50, 0.17);
+  border-radius: 12px;
+  background: linear-gradient(145deg, #f2f9f5 0%, #ffffff 72%);
+  box-shadow: 0 8px 24px rgba(25, 70, 57, 0.06);
+}
+
+.logisticsSummaryHeader {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.logisticsCarrierMark {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #8a3f32 0%, #8a3f32 100%);
+  box-shadow: 0 7px 16px rgba(138, 63, 50, 0.2);
+  font-size: 22px;
+}
+
+.logisticsStatusCopy,
+.logisticsOrderBrief,
+.logisticsMeta > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.logisticsStatusCopy span,
+.logisticsOrderBrief span,
+.logisticsMeta span,
+.logisticsSectionHeading span,
+.logisticsEvent span {
+  color: #96827b;
+  font-size: 12px;
+}
+
+.logisticsStatusCopy strong {
+  color: #8a3f32;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.logisticsSummaryHeader :global(.ant-tag) {
+  margin-inline-end: 0;
+  padding-inline: 10px;
+  border-radius: 999px;
+}
+
+.logisticsOrderBrief {
+  padding-top: 14px;
+  border-top: 1px solid rgba(138, 63, 50, 0.1);
+}
+
+.logisticsOrderBrief strong,
+.logisticsMeta strong {
+  color: #8a3f32;
+  overflow-wrap: anywhere;
+}
+
+.logisticsOrderBrief strong {
+  font-size: 15px;
+}
+
+.logisticsMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.logisticsMeta > div {
+  padding: 12px;
+  border: 1px solid #e1e9e5;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.logisticsNotice {
+  margin: 0;
+  padding: 11px 13px;
+  border: 1px solid #f3e6b5;
+  border-radius: 9px;
+  color: #735c1d;
+  background: #fff8df;
+  font-size: 13px;
+}
+
+.logisticsTimeline {
+  display: grid;
+  gap: 0;
+  padding: 2px 2px 0;
+}
+
+.journeyPage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.journeyPage > button {
+  width: fit-content;
+}
+
+.productHero h1,
+.purchasePage h1,
+.reportDetail h1 {
+  margin: 0;
+  color: #3f302c;
+  font-size: clamp(28px, 4vw, 44px);
+}
+
+.recruitmentHero,
+.productReportFlow,
+.evidencePanel,
+.reportDetail {
+  padding: 24px;
+  border: 1px solid rgba(138, 63, 50, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 48px rgba(94, 45, 38, 0.08);
+}
+
+.reportImageButton {
+  width: 100%;
+  margin-bottom: 14px;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.reportImageButton img {
+  width: 100%;
+  max-height: 360px;
+  object-fit: cover;
+}
+
+.reportPreviewImage,
+.reportDetailPreviewImage {
+  display: block !important;
+  width: 100%;
+}
+
+.imagePreviewMask {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.imagePreviewHidden {
+  display: none;
+}
+
+.reportDetail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.reportDetailGallery {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reportDetailImage {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f5f5f5;
+}
+
+.reportDetailImage img,
+.reportDetailImage video {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 400px;
+  object-fit: cover;
+}
+
+.reportDetailImage video {
+  aspect-ratio: 16 / 9;
+  background: #111;
+  object-fit: contain;
+}
+
+.reportDetailVideoStage {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  padding: 0;
+  background: #080b0a;
+  border: 0;
+  cursor: pointer;
+}
+
+.reportDetailVideoStage video {
+  pointer-events: none;
+}
+
+.reportDetailVideoPlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  gap: 9px;
+  color: #fff;
+  background: linear-gradient(180deg, rgba(4, 10, 8, 0.12), rgba(4, 10, 8, 0.5));
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.65);
+}
+
+.reportDetailVideoPlay :global(.anticon) {
+  font-size: 52px;
+  filter: drop-shadow(0 5px 16px rgba(0, 0, 0, 0.38));
+}
+
+.reportDetailVideoPlay strong {
+  font-size: 14px;
+}
+
+.reportDetailVideoStage:hover .reportDetailVideoPlay,
+.reportDetailVideoStage:focus-visible .reportDetailVideoPlay {
+  background: linear-gradient(180deg, rgba(4, 10, 8, 0.04), rgba(13, 70, 52, 0.58));
+}
+
+.reportDetailVideoStage:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -4px;
+}
+
+.videoPreviewModal :global(.ant-modal-mask) {
+  background: rgba(0, 0, 0, 0.88);
+}
+
+.videoPreviewModal :global(.ant-modal-content) {
+  overflow: hidden;
+  padding: 0;
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 16px;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.62);
+}
+
+.videoPreviewPlayer {
+  position: relative;
+  display: grid;
+  width: 100%;
+  max-height: 82vh;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #000;
+  place-items: center;
+}
+
+.videoPreviewPlayer video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 82vh;
+  background: #000;
+  object-fit: contain;
+}
+
+.videoPreviewClose {
+  position: absolute;
+  top: max(18px, env(safe-area-inset-top));
+  right: max(18px, env(safe-area-inset-right));
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  color: #fff;
+  background: rgba(28, 31, 30, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  backdrop-filter: blur(8px);
+}
+
+.videoPreviewClose:hover,
+.videoPreviewClose:focus-visible {
+  background: rgba(39, 121, 94, 0.9);
+}
+
+.videoPreviewClose:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .videoPreviewModal :global(.ant-modal-wrap) {
+    overflow: hidden;
+  }
+
+  .videoPreviewModal :global(.ant-modal) {
+    top: 0;
+    width: 100vw !important;
+    max-width: none;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+  }
+
+  .videoPreviewModal :global(.ant-modal-content),
+  .videoPreviewModal :global(.ant-modal-body) {
+    width: 100%;
+    height: 100%;
+  }
+
+  .videoPreviewModal :global(.ant-modal-content) {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .videoPreviewPlayer {
+    height: 100%;
+    max-height: none;
+    aspect-ratio: auto;
+  }
+
+  .videoPreviewPlayer video {
+    max-height: none;
+  }
+}
+
+.reportDetailPreviewImage :global(.ant-image-img) {
+  width: 100%;
+}
+
+.reportDetailMediaMissing {
+  display: grid;
+  min-height: 220px;
+  place-items: center;
+  color: #87968f;
+  background: #f4f8f6;
+  font-size: 14px;
+}
+
+.reportDetailPhotoBadge {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  padding: 3px 10px;
+  color: #fff;
+  background: rgba(138, 63, 50, 0.86);
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.reportDetailThumbs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.reportDetailThumbs button {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  cursor: pointer;
+  background: #eef3f0;
+}
+
+.reportDetailVideoThumbLabel {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.reportDetailThumbs img,
+.reportDetailThumbs video {
+  display: block;
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+}
+
+.reportDetailThumbActive {
+  border-color: #8a3f32 !important;
+}
+
+.reportDetailContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reportDetailContent h1 {
+  margin: 0;
+  color: #3f302c;
+  font-size: 24px;
+  line-height: 1.4;
+}
+
+.reportDetailContent p {
+  margin: 0;
+  line-height: 1.6;
+  color: #74605a;
+}
+
+.reportDetailContent .shortcoming {
+  margin: 0;
+}
+
+.reportDetailContent .reportDetailActions {
+  margin-top: 8px;
+}
+
+.reportDetailContent .ant-btn-primary {
+  margin-top: 8px;
+}

@@ -586,6 +586,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
             )}
           </div>
           <div className={styles.trialHeroBody}>
+            <span className={styles.productDetailKicker}>甄客行好物 · {product.merchantName}</span>
             <div className={styles.productIdentityTitle}>
               <span className={styles.productBrandBadge}>{product.brandName}</span>
               <h1>{product.productName}</h1>
@@ -619,8 +620,11 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
               )}
             </div>
             <div className={styles.productIdentityPriceRow}>
-              <strong className={styles.linkedProductPrice}>{formatPrice(product.price)}</strong>
-              <small>{product.categoryName}</small>
+              <span className={styles.productPriceBlock}>
+                <small>售价</small>
+                <strong className={styles.linkedProductPrice}>{formatPrice(product.price)}</strong>
+              </span>
+              <span className={styles.productCategoryLabel}>{product.categoryName}</span>
             </div>
           </div>
         </section>

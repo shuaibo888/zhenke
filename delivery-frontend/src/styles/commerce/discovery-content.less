@@ -1,0 +1,1151 @@
+/* 空状态：统一居中、留白，柔和配色，避免一整行干巴巴的灰字 */
+.empty {
+  display: block;
+  margin: 26px auto;
+  max-width: 560px;
+  padding: 4px 16px;
+  color: #7a8a83;
+  font-size: 14px;
+  text-align: center;
+}
+
+.eyebrow {
+  color: #8a3f32;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.contentGrid,
+.profileGrid,
+.singleColumn,
+.authShell {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.authShell {
+  width: 100%;
+  max-width: 1120px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(380px, 0.7fr);
+  gap: 22px;
+  align-items: stretch;
+}
+
+.authIntro,
+.authCard {
+  border: 1px solid rgba(138, 63, 50, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 20px 60px rgba(94, 45, 38, 0.1);
+}
+
+.loginModal .authCard {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.sharePreview {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 18px;
+  background: #f6f9f5;
+  border-radius: 12px;
+}
+
+.sharePreview img {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 10px;
+  flex: 0 0 auto;
+}
+
+.sharePreviewText strong {
+  display: block;
+  color: #3f302c;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.sharePreviewText p {
+  margin: 4px 0 0;
+  color: #7a867f;
+  font-size: 12px;
+}
+
+.shareLinkBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  background: #fffaf6;
+  border: 1px solid #e6eae7;
+  border-radius: 10px;
+  color: #806963;
+  font-size: 13px;
+}
+
+.shareLinkText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shareCopyButton {
+  height: 46px;
+  border-radius: 23px;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.shareCancel {
+  border-radius: 23px;
+  height: 44px;
+}
+
+.wechatShareGuide {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(0, 0, 0, 0.76);
+  backdrop-filter: blur(1px);
+  color: #fff;
+  cursor: pointer;
+  animation: wechatShareGuideFadeIn 160ms ease-out;
+}
+
+.wechatShareGuidePointer {
+  position: absolute;
+  top: max(4px, env(safe-area-inset-top));
+  right: 8px;
+  width: 132px;
+  height: 116px;
+  pointer-events: none;
+  animation: wechatShareGuidePointerIn 280ms ease-out;
+}
+
+.wechatShareGuidePointer svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.wechatShareGuidePointer path {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+}
+
+.wechatShareGuideCopy {
+  position: absolute;
+  top: max(124px, calc(env(safe-area-inset-top) + 124px));
+  left: 28px;
+  right: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  cursor: default;
+}
+
+.wechatShareGuideCopy strong {
+  font-size: 22px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+
+.wechatShareGuideCopy span {
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.wechatShareGuideCopy button {
+  margin-top: 16px;
+  min-width: 112px;
+  height: 40px;
+  padding: 0 22px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+@keyframes wechatShareGuideFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes wechatShareGuidePointerIn {
+  from { opacity: 0; transform: translate(-10px, 12px); }
+  to { opacity: 1; transform: translate(0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wechatShareGuide,
+  .wechatShareGuidePointer {
+    animation: none;
+  }
+}
+
+.authIntro {
+  min-height: 430px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 48px;
+}
+
+.authIntro h1 {
+  margin: 18px 0 12px;
+  color: #342723;
+  font-size: 48px;
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.authIntro p {
+  max-width: 620px;
+  margin: 0;
+  color: #64716b;
+  font-size: 17px;
+  line-height: 1.8;
+}
+
+.authRules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.authRules span {
+  padding: 8px 12px;
+  color: #745148;
+  background: #f9eee7;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.authCard {
+  padding: 32px;
+}
+
+.authHeader {
+  margin-bottom: 22px;
+}
+
+.authHeader h2 {
+  margin: 0 0 8px;
+  font-size: 30px;
+  letter-spacing: 0;
+}
+
+.authHeader p,
+.demoAccount {
+  margin: 0;
+  color: #6b7872;
+}
+
+.captchaRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  gap: 10px;
+}
+
+.captchaButton {
+  width: 132px;
+  height: 40px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.captchaButton img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.merchantButton {
+  margin-top: 12px;
+  color: #ffffff;
+  background: #8a3f32;
+  border-color: #8a3f32;
+}
+
+.merchantButton:hover {
+  color: #ffffff;
+  background: #5e2d26;
+  border-color: #5e2d26;
+}
+
+.merchantIntro {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #fffaf6;
+  border-radius: 8px;
+  border: 1px solid rgba(138, 63, 50, 0.12);
+}
+
+.merchantIntro p {
+  margin: 8px 0;
+  color: #745148;
+  line-height: 1.7;
+}
+
+.merchantWarning {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: #d7a737 !important;
+  font-weight: 600;
+  background: #fffef5;
+  padding: 12px;
+  border-radius: 6px;
+  margin-top: 12px !important;
+}
+
+.couponsPage {
+  max-width: 960px;
+}
+
+.couponsPage .orderPanel {
+  padding: 24px;
+  background:
+    linear-gradient(180deg, rgba(237, 247, 241, 0.72), rgba(255, 255, 255, 0) 180px),
+    #ffffff;
+}
+
+.couponWalletList {
+  display: grid;
+  gap: 14px;
+}
+
+.couponWalletCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  min-height: 176px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(138, 63, 50, 0.16);
+  border-radius: 16px;
+  box-shadow: 0 8px 22px rgba(94, 45, 38, 0.06);
+  cursor: pointer;
+}
+
+.couponWalletCard:focus-visible {
+  outline: 3px solid rgba(138, 63, 50, 0.28);
+  outline-offset: 2px;
+}
+
+.couponWalletAmount {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 22px;
+  color: #fff;
+  text-align: center;
+  background: linear-gradient(145deg, #5e2d26, #8a3f32);
+}
+
+.couponWalletAmount::before,
+.couponWalletAmount::after {
+  position: absolute;
+  right: -9px;
+  width: 18px;
+  height: 18px;
+  background: #f7faf8;
+  border-radius: 50%;
+  content: "";
+}
+
+.couponWalletAmount::before {
+  top: -9px;
+}
+
+.couponWalletAmount::after {
+  bottom: -9px;
+}
+
+.couponWalletAmount span {
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.couponWalletAmount small {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.couponWalletBody {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  padding: 20px 22px;
+}
+
+.couponWalletTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.couponWalletTitle strong {
+  overflow: hidden;
+  color: #3f302c;
+  font-size: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.couponWalletBody > p {
+  margin: 7px 0 13px;
+  color: #64716b;
+  font-size: 13px;
+}
+
+.couponWalletBody dl {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+}
+
+.couponWalletBody dl div {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr);
+  gap: 8px;
+  color: #68756f;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.couponWalletBody dt,
+.couponWalletBody dd {
+  margin: 0;
+}
+
+.couponWalletBody dt {
+  font-weight: 800;
+}
+
+.couponWalletBody dd {
+  overflow-wrap: anywhere;
+}
+
+.couponWalletValidity {
+  display: grid;
+  gap: 1px;
+}
+
+.couponWalletValidity span {
+  white-space: nowrap;
+}
+
+.couponWalletCardInactive {
+  filter: saturate(0.35);
+  opacity: 0.78;
+}
+
+.couponWalletCardInactive .couponWalletAmount {
+  background: linear-gradient(145deg, #806e68, #aa9690);
+}
+
+.couponWalletEmpty {
+  display: grid;
+  min-height: 190px;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  color: #8d766f;
+  background: #fffaf7;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.couponWalletEmpty strong {
+  color: #3f2823;
+  font-size: 20px;
+}
+
+.couponWalletEmpty p {
+  margin: 0;
+}
+
+.couponDetailPage {
+  display: grid;
+  max-width: 760px;
+  gap: 14px;
+}
+
+.couponDetailHero,
+.couponCodePanel,
+.couponDetailPanel {
+  border: 1px solid rgba(138, 63, 50, 0.13);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(94, 45, 38, 0.08);
+}
+
+.couponDetailHero {
+  display: grid;
+  justify-items: center;
+  padding: 30px 20px;
+  color: #fff;
+  text-align: center;
+  background: linear-gradient(145deg, #5e2d26, #8a3f32);
+}
+
+.couponDetailHero strong {
+  margin-top: 14px;
+  font-size: 42px;
+  line-height: 1;
+}
+
+.couponDetailHero h1 {
+  margin: 12px 0 4px;
+  color: #fff;
+  font-size: 23px;
+}
+
+.couponDetailHero p,
+.couponCodePanel p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.couponCodePanel {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 24px 18px;
+  text-align: center;
+}
+
+.couponCodePanel h2,
+.couponDetailPanel h2 {
+  margin: 0;
+  color: #56352f;
+  font-size: 18px;
+}
+
+.couponCodePanel p {
+  color: #718078;
+  font-size: 13px;
+}
+
+.couponCodePanel code {
+  max-width: 100%;
+  padding: 8px 10px;
+  overflow-wrap: anywhere;
+  border-radius: 8px;
+  color: #914236;
+  background: #fff3e8;
+}
+
+.couponDetailPanel {
+  padding: 20px;
+}
+
+.couponDetailPanel dl {
+  margin: 10px 0 0;
+}
+
+.couponDetailPanel dl > div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 14px;
+  padding: 13px 0;
+  border-bottom: 1px solid #eee2da;
+}
+
+.couponDetailPanel dl > div:last-child {
+  border-bottom: 0;
+}
+
+.couponDetailPanel dt,
+.couponDetailPanel dd {
+  margin: 0;
+}
+
+.couponDetailPanel dt {
+  color: #96827b;
+}
+
+.couponDetailPanel dd {
+  color: #5b4039;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.couponMerchantList {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.couponMerchantList article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px;
+  border-radius: 14px;
+  background: #f5faf7;
+}
+
+.couponMerchantList article > button {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  color: #a94e3a;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.couponMerchantList article > button > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.couponMerchantList small {
+  overflow: hidden;
+  color: #7c8d85;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.couponMerchantList article > div {
+  display: flex;
+  gap: 7px;
+}
+
+@media (max-width: 640px) {
+  .couponDetailHero {
+    padding: 24px 16px;
+  }
+
+  .couponMerchantList article {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .couponMerchantList article > div :global(.ant-btn) {
+    flex: 1;
+  }
+}
+
+.responsiveModal :global(.ant-modal-content) {
+  display: flex;
+  max-height: calc(100dvh - 32px);
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.responsiveModal :global(.ant-modal-body) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.responsiveModal :global(.ant-modal-wrap) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.merchantModal {
+  max-height: none;
+  overflow: visible;
+}
+
+.scrollableFormModal {
+  max-height: 85vh;
+  overflow: hidden;
+}
+
+.merchantModal :global(.ant-modal-content),
+.scrollableFormModal :global(.ant-modal-content) {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.merchantModal :global(.ant-modal-body),
+.scrollableFormModal :global(.ant-modal-body) {
+  flex: 1 1 auto;
+  max-height: calc(85vh - 72px);
+  max-height: calc(85dvh - 72px);
+  overflow-y: auto;
+  min-height: 0;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.catalog,
+.trustPanel,
+.singleColumn,
+.profileHero,
+.orderPanel {
+  border: 1px solid rgba(138, 63, 50, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 20px 60px rgba(94, 45, 38, 0.1);
+}
+
+.catalog,
+.singleColumn,
+.profileHero,
+.orderPanel {
+  padding: 22px;
+}
+
+.productGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.productCard {
+  overflow: hidden;
+  padding: 0;
+  text-align: left;
+  border: 1px solid rgba(138, 63, 50, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+
+.productCard:hover,
+.activeProduct {
+  transform: translateY(-2px);
+  border-color: rgba(138, 63, 50, 0.44);
+  box-shadow: 0 18px 40px rgba(94, 45, 38, 0.14);
+}
+
+.cardTopline,
+.reportMeta,
+.reportFooter,
+.statRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.hint {
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+.reportList,
+.noticeList {
+  display: grid;
+  gap: 12px;
+}
+
+.homeReportBadge {
+  display: inline-flex;
+  padding: 2px 6px;
+  color: #8a3f32;
+  background: #fff4eb;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* 首页瀑布流（小红书式）：卡片按内容高度自然错落，不强制左右对齐 */
+.masonryFeed {
+  position: relative;
+}
+
+.masonryColumns {
+  display: grid;
+  align-items: start;
+}
+
+.masonryColumn {
+  display: flex;
+  flex-direction: column;
+}
+
+.homeFeedPage .reportGridCard,
+.homeFeedPage .recruitGridCard {
+  height: auto;
+}
+
+.homeFeedPage .reportGridImage {
+  aspect-ratio: auto;
+}
+
+.homeFeedPage .reportGridImage img {
+  position: static;
+  width: 100%;
+  height: auto;
+  display: block;
+  aspect-ratio: 1 / 1; /* 加载前按 1:1 占位防塌陷；加载后由内联 style 覆盖 */
+  object-fit: cover;
+}
+
+.reportGridCard {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #ebeeec;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.reportGridCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(138, 63, 50, 0.28);
+  box-shadow: 0 6px 16px rgba(94, 45, 38, 0.12);
+}
+
+.reportGridCard:focus-visible {
+  outline: 3px solid rgba(138, 63, 50, 0.28);
+  outline-offset: 3px;
+}
+
+.reportGridImage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: #f5f5f5;
+}
+
+.reportGridImage img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.reportGridContent {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+}
+
+.reportGridTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #5e2d26;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.reportGridFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+}
+
+/* 卡片左下角作者/商家（小红书式） */
+.gridAuthor {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.gridAuthorAvatar,
+.gridMerchantAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.gridAuthorAvatar {
+  background: linear-gradient(135deg, #b85f43, #8a3f32);
+}
+
+.gridAuthorName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #6b7a73;
+  font-size: 12px;
+}
+
+.reportDetailProductName {
+  margin: 0;
+  color: #7a867f;
+  font-size: 13px;
+}
+
+.usefulButton {
+  flex-shrink: 0;
+  color: #9ba8a1;
+  font-size: 12px;
+  padding: 4px 8px;
+  height: auto;
+}
+
+.usefulActive {
+  color: #8a3f32;
+}
+
+.checkoutOrderPlan {
+  display: grid;
+  gap: 10px;
+}
+
+.checkoutOrderPlanItem {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border: 1px solid #eadfd9;
+  border-radius: 14px;
+  background: #fffaf6;
+}
+
+.checkoutOrderPlanIndex {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #8a3f32;
+  font-weight: 700;
+}
+
+.checkoutOrderPlanCopy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+
+  strong,
+  small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    color: #7d6a64;
+  }
+}
+
+.checkoutOrderPlanAmount {
+  color: #3f302c;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.checkoutSplitNotice {
+  margin-top: 12px;
+}
+
+.checkoutCouponTargetSelect {
+  display: grid;
+  gap: 5px;
+  margin-top: 5px;
+
+  :global(.ant-select) {
+    width: min(100%, 360px);
+  }
+}
+
+.recruitGridCard .reportGridContent {
+  gap: 6px;
+}
+
+.reportCard {
+  padding: 16px;
+  border: 1px solid rgba(138, 63, 50, 0.13);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.reportMeta em {
+  margin-left: auto;
+  color: #8a968f;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.reportCard h3 {
+  margin: 12px 0 8px;
+  font-size: 18px;
+}
+
+.reportProductLink {
+  padding: 0;
+  color: #5e2d26;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+}
+
+.reportProductLink:hover,
+.reportProductLink:focus-visible {
+  color: #8a3f32;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  outline: none;
+}
+
+.reportCard p {
+  margin: 10px 0;
+  color: #5d4640;
+  line-height: 1.7;
+}
+
+.shortcoming {
+  padding: 10px 12px;
+  color: #654813;
+  background: #fff6da;
+  border: 1px solid #f0d98f;
+  border-radius: 8px;
+  line-height: 1.6;
+}
+
+.purchaseReportRatings {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 14px 0;
+  border-top: 1px solid #eaded7;
+  border-bottom: 1px solid #eaded7;
+}
+
+/* 智能评分功能暂时隐藏，恢复时取消注释。
+.aiScoreRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 12px;
+
+  :global(.ant-btn-link) {
+    height: auto;
+    padding: 0;
+  }
+}
+
+.aiScoreComment {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 1px solid fade(#d8ad55, 32%);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fffaf0, #fff);
+  color: #5e4a22;
+
+  strong {
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  p {
+    margin: 0;
+    line-height: 1.75;
+  }
+}
+*/
+
+.purchaseReportRatings span {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: #6b7a73;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.purchaseReportRatings span + span {
+  border-left: 1px solid #eaded7;
+}
+
+.purchaseReportRatings span b {
+  color: #8a3f32;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.reportFooter {
+  justify-content: space-between;
+  margin-top: 12px;
+  color: #66736d;
+}
+
+.gold {
+  color: #76530c;
+  background: #fff1c4;
+}
