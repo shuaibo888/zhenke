@@ -24,6 +24,7 @@ export default defineConfig({
   ],
   npmClient: "npm",
   utoopack: {},
+  hash: true,
   base: "/admin/",
   publicPath: "/admin/",
   proxy: {

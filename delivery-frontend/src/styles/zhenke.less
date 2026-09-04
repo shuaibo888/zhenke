@@ -4892,7 +4892,7 @@
 }
 
 .bannerImage {
-  object-fit: cover;
+  object-fit: contain;
   background: #f8f5f2;
   filter: none;
 }
@@ -5433,7 +5433,8 @@
   }
 
   .bannerSlide {
-    min-height: clamp(260px, 52vw, 380px);
+    min-height: 0;
+    aspect-ratio: 16 / 9;
   }
 
   .bannerMedia {
@@ -5517,7 +5518,7 @@
 
   .bannerSlide {
     min-height: 0;
-    aspect-ratio: 3 / 2;
+    aspect-ratio: 16 / 9;
   }
 
   .bannerFallback {
