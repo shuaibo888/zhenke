@@ -4887,8 +4887,12 @@
 }
 
 .bannerMedia::after {
-  display: block;
+  display: none;
   background: linear-gradient(180deg, transparent 38%, rgba(22, 16, 13, 0.68) 100%);
+}
+
+.bannerSlideWithCopy .bannerMedia::after {
+  display: block;
 }
 
 .bannerImage {

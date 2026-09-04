@@ -142,7 +142,7 @@ export default function HomePage() {
               {bannerRows.map((banner, index) => (
                 <div key={banner.bannerId}>
                   <article
-                    className={styles.bannerSlide}
+                    className={`${styles.bannerSlide} ${banner.title?.trim() || banner.subtitle?.trim() ? styles.bannerSlideWithCopy : ''}`}
                     role="link"
                     tabIndex={0}
                     aria-label={banner.title?.trim() || banner.subtitle?.trim() || '查看轮播内容'}
