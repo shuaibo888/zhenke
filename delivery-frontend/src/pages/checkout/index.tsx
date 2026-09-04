@@ -674,7 +674,7 @@ export default function CheckoutPage() {
               </section>
               )}
 
-              {!orderMode && checkoutGroups.length > 0 && (
+              {!orderMode && checkoutGroups.length > 1 && (
                 <section className={styles.checkoutSection}>
                   <div className={styles.checkoutSectionTitle}>
                     <span><SafetyCertificateOutlined /></span>
