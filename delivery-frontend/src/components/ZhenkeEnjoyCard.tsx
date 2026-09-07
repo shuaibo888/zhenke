@@ -1,3 +1,4 @@
+import { PlaceDistance } from '@/components/PlaceDistance';
 import { EnvironmentOutlined, HeartFilled, HeartOutlined, MessageOutlined, PictureOutlined } from '@ant-design/icons';
 import { useNavigate } from 'umi';
 import type { ZhenkeEnjoy } from '@/services/zhenke';
@@ -33,10 +34,10 @@ export function ZhenkeEnjoyCard({ item }: { item: ZhenkeEnjoy }) {
         <footer>
           <span>
             {item.likedByMe ? <HeartFilled /> : <HeartOutlined />}
-            {' '}{item.likedByMe ? '已喜欢' : '喜欢'} · {item.likeCount ?? 0} 人喜欢
+            {' '}{item.likedByMe ? '已喜欢' : '喜欢'} {item.likeCount ?? 0}
           </span>
           <span><MessageOutlined /> {item.commentCount ?? 0}</span>
-          <button type="button" onClick={() => navigate(`/enjoy/${item.enjoyId}`)}>查看详情 →</button>
+          <div className={styles.cardDistance}><PlaceDistance latitude={item.placeLatitude} longitude={item.placeLongitude} /></div>
         </footer>
       </div>
     </article>

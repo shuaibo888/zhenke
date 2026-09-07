@@ -1125,6 +1125,7 @@
 }
 
 .prose {
+  overflow-wrap: anywhere;
   color: #34413b;
   font-size: 16px;
   line-height: 1.95;
@@ -3688,6 +3689,8 @@
 }
 
 .enjoyInfoRow strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: #4e342c;
   line-height: 1.5;
   text-align: right;
@@ -3701,7 +3704,7 @@
 
 .enjoyFeatureActions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 12px;
   margin-top: 24px;
 }
@@ -4469,10 +4472,38 @@
 
 .enjoyRelatedPosts {
   margin-top: 18px;
+  padding: clamp(16px, 3vw, 28px);
+  min-width: 0;
+}
+
+// Keep the three primary interactions together, including anonymous visitors.
+.enjoyInteractionBar {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.8fr);
+  gap: 8px;
+  margin-top: 22px;
+  max-width: 420px;
+}
+
+.enjoyInteractionBar > :global(.ant-btn) {
+  min-width: 0;
+  height: 40px;
+  gap: 5px;
+  padding-inline: 6px;
+  font-size: 13px;
+}
+
+.enjoyInteractionBar > :global(.ant-btn) > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .enjoyRelatedPosts > .sectionTitle {
-  margin-top: 0;
+  margin: 0 0 18px;
+  padding: 0;
+  border: 0;
 }
 
 .enjoyRelatedPosts > .sectionTitle p {
@@ -5766,4 +5797,39 @@
     right: 14px;
     border-radius: 15px;
   }
+}
+
+// Shared distance placement on content cards.
+.cardDistance { margin-left: auto; min-width: 0; }
+.enjoyEditorialCopy footer { flex-wrap: wrap; gap: 6px 10px; }
+.postMeta { grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 8px; }
+.postMeta .cardDistance span { display: inline-flex; }
+.enjoyFeatureHeader .enjoyHighlights { margin: 14px 0 0; }
+.enjoyDetailPage .sectionTitle h2 {
+  font-size: clamp(20px, 2vw, 24px);
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+.sectionTitle { flex-wrap: wrap; }
+.sectionTitle h2,
+.sectionTitle p,
+.placeHero h1,
+.placeHero > p { overflow-wrap: anywhere; }
+.enjoyRelatedPosts .statePanel {
+  min-height: 160px;
+  padding: 24px 16px;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.enjoyRelatedPosts .statePanel h2 { font-size: 18px; }
+@media (max-width: 600px) {
+  .postMeta { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .postMeta > span:nth-child(2) { display: none; }
+}
+@media (max-width: 380px) {
+  .postMeta { grid-template-columns: minmax(0, 1fr) auto; }
+  .postMeta .cardDistance { grid-column: 1; grid-row: 2; margin-left: 0; }
+  .postMeta > span:last-child { grid-column: 2; grid-row: 1; }
 }

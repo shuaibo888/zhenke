@@ -228,6 +228,9 @@
   flex: 1 1 0;
   width: 0;
   min-width: 0;
+  // Only the outer control is rounded. Rounding this zero-padding input clips
+  // the caret at its left edge (13px radius on a 24px-high editable region).
+  border-radius: 0 !important;
   caret-color: #e4511e;
 }
 
@@ -256,11 +259,6 @@
 .authSimpleLayout .authForm :global(input.ant-input::placeholder) {
   color: #69756f;
   opacity: 1;
-  transition: opacity 120ms ease;
-}
-
-.authSimpleLayout .authForm :global(input.ant-input:focus::placeholder) {
-  opacity: 0;
 }
 
 .authSimpleLayout .authForm :global(.ant-input-affix-wrapper:hover),

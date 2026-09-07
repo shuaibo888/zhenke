@@ -1,4 +1,5 @@
-import { AimOutlined, ArrowLeftOutlined, ClockCircleOutlined, EditOutlined, EnvironmentOutlined, HeartFilled, HeartOutlined, MessageOutlined, PhoneOutlined, PictureOutlined, SendOutlined, ShareAltOutlined } from '@ant-design/icons';
+import { PlaceDistance } from '@/components/PlaceDistance';
+import { ArrowLeftOutlined, ClockCircleOutlined, EditOutlined, EnvironmentOutlined, HeartFilled, HeartOutlined, MessageOutlined, PhoneOutlined, PictureOutlined, SendOutlined, ShareAltOutlined } from '@ant-design/icons';
 import { Button, Image, Input, Popconfirm, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'umi';
@@ -298,9 +299,6 @@ export default function EnjoyDetailPage() {
 
   const gallery = detail.mediaUrls?.length ? detail.mediaUrls : [detail.coverUrl];
   const highlights = detail.highlights?.split(/[、,，\n]/).map((item) => item.trim()).filter(Boolean) ?? [];
-  const openNavigation = () => {
-    if (detail.placeId) window.location.assign(`/api/shop/zhenke/places/${detail.placeId}/navigation`);
-  };
   const publishForPlace = () => {
     if (!detail.placeId) return;
     startPostPublish({ placeId: detail.placeId });
@@ -395,7 +393,9 @@ export default function EnjoyDetailPage() {
           <EnvironmentOutlined />
           <span>{detail.placeName}{detail.placeAddress && ` · ${detail.placeAddress}`}</span>
         </button>
+        <PlaceDistance latitude={detail.placeLatitude} longitude={detail.placeLongitude} />
         {detail.subtitle && <p className={styles.enjoyDetailLead}>{detail.subtitle}</p>}
+        {highlights.length > 0 && <div className={styles.enjoyHighlights}>{highlights.map((item) => <span key={item}>{item}</span>)}</div>}
       </header>
 
       <Image.PreviewGroup>
@@ -410,7 +410,6 @@ export default function EnjoyDetailPage() {
 
       <article className={`${styles.surface} ${styles.enjoyServiceCard}`}>
         <p className={styles.enjoyServiceSummary}>{detail.serviceSummary}</p>
-        {highlights.length > 0 && <div className={styles.enjoyHighlights}>{highlights.map((item) => <span key={item}>{item}</span>)}</div>}
 
         <div className={styles.enjoyInfoList}>
           <button type="button" className={styles.enjoyInfoRow} disabled={!detail.placeId} onClick={() => detail.placeId && navigate(`/places/${detail.placeId}`)}>
@@ -427,23 +426,22 @@ export default function EnjoyDetailPage() {
         </div>
 
         <div className={styles.enjoyFeatureActions}>
-          <Button size="large" icon={<AimOutlined />} disabled={!detail.placeId} onClick={openNavigation}>地图导航</Button>
           <Button size="large" type="primary" icon={<EditOutlined />} disabled={!detail.placeId} onClick={publishForPlace}>发布甄客帖</Button>
         </div>
         <p className={styles.enjoyActionHint}>去过这里？发布真实体验，帮助更多人做决定。</p>
       </article>
 
       <article className={`${styles.surface} ${styles.enjoyStorySection}`}>
-        <div className={styles.sectionTitle}><div><span className={styles.eyebrow}>ZHENKE EDITORIAL</span><h2>官方详细攻略</h2></div></div>
+        <div className={styles.sectionTitle}><div><h2>详细攻略</h2></div></div>
         <div className={styles.prose}>{detail.content}</div>
-        <div className={styles.actionRow}>
-          <Button type={detail.likedByMe ? 'primary' : 'default'} icon={detail.likedByMe ? <HeartFilled /> : <HeartOutlined />} loading={liking} onClick={async () => {
+        <div className={styles.enjoyInteractionBar} role="group" aria-label="甄必享互动">
+          <Button title={`${detail.likeCount ?? 0} 人喜欢`} type={detail.likedByMe ? 'primary' : 'default'} icon={detail.likedByMe ? <HeartFilled /> : <HeartOutlined />} loading={liking} onClick={async () => {
             if (!requireLogin() || liking) return;
             setLiking(true);
             try { const result = await toggleEnjoyLike(enjoyId); setDetail((current) => current ? { ...current, likedByMe: result.liked, likeCount: result.likeCount } : current); }
             catch (reason) { message.error(reason instanceof Error ? reason.message : '“喜欢”状态更新失败'); }
             finally { setLiking(false); }
-          }}>{detail.likedByMe ? '已喜欢' : '喜欢'} · {detail.likeCount ?? 0} 人喜欢</Button>
+          }}>{detail.likedByMe ? '已喜欢' : '喜欢'} {detail.likeCount ?? 0}</Button>
           <Button icon={<MessageOutlined />} onClick={() => document.getElementById('enjoy-comments')?.scrollIntoView({ behavior: 'smooth' })}>评论 {detail.commentCount ?? 0}</Button>
           <Button icon={<ShareAltOutlined />} onClick={() => void share()}>分享</Button>
         </div>
@@ -451,9 +449,7 @@ export default function EnjoyDetailPage() {
       <section className={`${styles.surface} ${styles.enjoyRelatedPosts}`} aria-labelledby="enjoy-related-posts-title">
         <div className={styles.sectionTitle}>
           <div>
-            <span className={styles.eyebrow}>LOCAL EXPERIENCES</span>
-            <h2 id="enjoy-related-posts-title">大家关于这里的甄客帖</h2>
-            <p>{detail.placeName ? `查看用户在${detail.placeName}发布的真实体验。` : '查看用户在这个地点发布的真实体验。'}</p>
+            <h2 id="enjoy-related-posts-title">这里的甄客帖</h2>
           </div>
         </div>
         {relatedPostsLoading && relatedPosts.length === 0 ? (

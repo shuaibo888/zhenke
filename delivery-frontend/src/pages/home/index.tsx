@@ -1,8 +1,9 @@
+import homeStyles from './index.module.less';
 import { Carousel, Image } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'umi';
 import { ZhenkeEnjoyCard } from '@/components/ZhenkeEnjoyCard';
-import { ServiceDiscoveryMap } from '@/components/ServiceDiscoveryMap';
+// import { ServiceDiscoveryMap } from '@/components/ServiceDiscoveryMap';
 import {
   homeContent,
   type Banner,
@@ -167,9 +168,10 @@ export default function HomePage() {
         )}
       </section>
 
-      <ServiceDiscoveryMap />
+      {/* 服务地图暂缓上线：恢复时取消本行 JSX 和顶部 ServiceDiscoveryMap import 的注释。 */}
+      {/* <ServiceDiscoveryMap /> */}
 
-      <section className={styles.zhenEnjoySection} aria-labelledby="zhen-enjoy-title">
+      <section className={`${styles.zhenEnjoySection} ${homeStyles.enjoySection}`} aria-labelledby="zhen-enjoy-title">
         <header className={styles.zhenEnjoyHeader}>
           <div>
             <h2 id="zhen-enjoy-title">甄必享</h2>
@@ -181,7 +183,7 @@ export default function HomePage() {
             const error = enjoyErrors[entry.code];
             const titleId = `zhen-enjoy-${entry.code.toLowerCase()}`;
             return (
-              <section key={entry.code} className={styles.zhenEnjoyGroup} aria-labelledby={titleId}>
+              <section key={entry.code} className={`${styles.zhenEnjoyGroup} ${homeStyles.categoryGroup}`} aria-labelledby={titleId}>
                 <header className={styles.zhenEnjoyGroupHeader}>
                   <div>
                     <h3 id={titleId}>{entry.title}</h3>

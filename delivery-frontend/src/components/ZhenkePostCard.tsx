@@ -1,3 +1,4 @@
+import { PlaceDistance } from '@/components/PlaceDistance';
 import {
   CheckCircleOutlined,
   EnvironmentOutlined,
@@ -69,6 +70,7 @@ export function ZhenkePostCard({ post, disabled = false }: { post: ZhenkePost; d
         <footer className={styles.postMeta}>
           <span className={styles.postPlace}><EnvironmentOutlined />{post.placeName}</span>
           <span><MessageOutlined />{post.commentCount ?? 0}</span>
+          <div className={styles.cardDistance}><PlaceDistance latitude={post.placeLatitude} longitude={post.placeLongitude} /></div>
           <span><CheckCircleOutlined />有用 {post.usefulCount ?? 0}</span>
         </footer>
       </div>

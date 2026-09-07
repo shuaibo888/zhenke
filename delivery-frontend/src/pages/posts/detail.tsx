@@ -1,3 +1,4 @@
+import { PlaceDistance } from '@/components/PlaceDistance';
 import {
   ArrowLeftOutlined,
   CheckCircleFilled,
@@ -510,6 +511,7 @@ export default function PostDetailPage() {
           <small>发布者选择的地点</small>
           <strong>{detail.placeName}</strong>
           <p>{detail.placeAddress}</p>
+          <PlaceDistance latitude={detail.placeLatitude} longitude={detail.placeLongitude} />
         </div>
         <span className={styles.placePanelLink}>详情 <RightOutlined aria-hidden="true" /></span>
       </button>
