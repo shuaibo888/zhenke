@@ -548,7 +548,7 @@ export default function PostDetailPage() {
           />
         )}
         {!commentsLoading && !commentsError && commentRows.length === 0 ? (
-          <ZkState title="还没有评论" description="说说你对这篇分享或这个地点的看法。" />
+          <ZkState title="还没有评论" />
         ) : commentRows.map((root) => {
           const shownReplies = root.replies ?? [];
           const replyPage = replyPages[root.commentId] ?? 0;

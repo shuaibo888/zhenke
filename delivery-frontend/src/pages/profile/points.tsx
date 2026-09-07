@@ -174,7 +174,7 @@ export default function PointsPage() {
 
   return (
     <ZkProfilePage className={styles.pointsPage}>
-        <ZkTaskHeader eyebrow="权益资产" title="积分中心" description="查看可用积分、来源划拨、兑换权益和每一笔变化记录。" backTo="/profile" />
+        <ZkTaskHeader title="积分中心" backTo="/profile" />
       <section className={styles.pointBalancePanel}>
         <span className={styles.pointBalanceIcon}><TrophyOutlined /></span>
         <div className={styles.pointCurrentBalance}>

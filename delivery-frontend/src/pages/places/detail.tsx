@@ -153,7 +153,6 @@ export default function PlaceDetailPage() {
 
       <ZkSectionTitle
         title="这个地点的甄客帖"
-        description="看看大家围绕这里分享的体验。"
         action={<Button type="link" onClick={() => startPostPublish({ placeId: detail.placeId })}>围绕此地发布</Button>}
       />
       {feedError ? (
@@ -182,7 +181,6 @@ export default function PlaceDetailPage() {
       ) : (
         <ZkState
           title="这里还没有公开帖子"
-          description="如果你熟悉这个地点，可以围绕它分享第一篇甄客帖。"
           actionText="围绕此地发布"
           onAction={() => startPostPublish({ placeId: detail.placeId })}
         />

@@ -6,6 +6,7 @@ import { useShop } from '@/app/ShopContext';
 import { WechatShareGuide } from '@/components/WechatShareGuide';
 import { usePostPublishLauncher } from '@/components/PostPublishLauncher';
 import { enjoyCategoryNames } from '@/components/ZhenkeEnjoyCard';
+import { ZhenkePostCard } from '@/components/ZhenkePostCard';
 import { ZkState } from '@/components/ZkPage';
 import { buildLoginPath, LOGIN_RETURN_TO_SOURCE_STATE } from '@/utils/safeRedirect';
 import {
@@ -14,9 +15,11 @@ import {
   enjoyCommentReplies,
   enjoyComments,
   enjoyDetail,
+  placePosts,
   toggleEnjoyLike,
   type EnjoyComment,
   type ZhenkeEnjoy,
+  type ZhenkePost,
 } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
 import { getWechatShareErrorMessage, isWechatBrowser, useWechatShare } from '@/hooks/useWechatShare';
@@ -33,6 +36,11 @@ export default function EnjoyDetailPage() {
   const { user } = useShop();
   const { startPostPublish } = usePostPublishLauncher();
   const [detail, setDetail] = useState<ZhenkeEnjoy>();
+  const [relatedPosts, setRelatedPosts] = useState<ZhenkePost[]>([]);
+  const [relatedPostTotal, setRelatedPostTotal] = useState(0);
+  const [relatedPostPage, setRelatedPostPage] = useState(0);
+  const [relatedPostsLoading, setRelatedPostsLoading] = useState(false);
+  const [relatedPostsError, setRelatedPostsError] = useState('');
   const [comments, setComments] = useState<EnjoyComment[]>([]);
   const [commentTotal, setCommentTotal] = useState(0);
   const [commentPage, setCommentPage] = useState(0);
@@ -50,6 +58,7 @@ export default function EnjoyDetailPage() {
   const [replySubmitting, setReplySubmitting] = useState(false);
   const [liking, setLiking] = useState(false);
   const commentRequestId = useRef(0);
+  const relatedPostsRequestId = useRef(0);
   const replyRequestSequence = useRef(0);
   const replyRequestIds = useRef<Record<number, number>>({});
   const localReplyIds = useRef<Record<number, Set<number>>>({});
@@ -72,6 +81,30 @@ export default function EnjoyDetailPage() {
     }
     setLoading(false);
   }, [enjoyId]);
+
+  const loadRelatedPosts = useCallback(async (placeId: number, page = 1, append = false) => {
+    const requestId = ++relatedPostsRequestId.current;
+    setRelatedPostsLoading(true);
+    setRelatedPostsError('');
+    try {
+      const result = await placePosts(placeId, page, 6);
+      if (requestId !== relatedPostsRequestId.current) return;
+      setRelatedPosts((current) => {
+        if (!append) return result.rows;
+        const merged = new Map(current.map((item) => [item.postId, item]));
+        result.rows.forEach((item) => merged.set(item.postId, item));
+        return Array.from(merged.values());
+      });
+      setRelatedPostTotal(result.total);
+      setRelatedPostPage(page);
+    } catch (reason) {
+      if (requestId === relatedPostsRequestId.current) {
+        setRelatedPostsError(reason instanceof Error ? reason.message : '这个地点的甄客帖暂时无法加载');
+      }
+    } finally {
+      if (requestId === relatedPostsRequestId.current) setRelatedPostsLoading(false);
+    }
+  }, []);
 
   const invalidateReplyRequests = useCallback(() => {
     const invalidationId = ++replyRequestSequence.current;
@@ -164,6 +197,16 @@ export default function EnjoyDetailPage() {
       invalidateReplyRequests();
     };
   }, [enjoyId, invalidateReplyRequests, load, loadComments]);
+
+  useEffect(() => {
+    relatedPostsRequestId.current += 1;
+    setRelatedPosts([]);
+    setRelatedPostTotal(0);
+    setRelatedPostPage(0);
+    setRelatedPostsError('');
+    if (detail?.placeId) void loadRelatedPosts(detail.placeId);
+    return () => { relatedPostsRequestId.current += 1; };
+  }, [detail?.placeId, loadRelatedPosts]);
 
   const requireLogin = () => {
     if (user) return true;
@@ -405,6 +448,45 @@ export default function EnjoyDetailPage() {
           <Button icon={<ShareAltOutlined />} onClick={() => void share()}>分享</Button>
         </div>
       </article>
+      <section className={`${styles.surface} ${styles.enjoyRelatedPosts}`} aria-labelledby="enjoy-related-posts-title">
+        <div className={styles.sectionTitle}>
+          <div>
+            <span className={styles.eyebrow}>LOCAL EXPERIENCES</span>
+            <h2 id="enjoy-related-posts-title">大家关于这里的甄客帖</h2>
+            <p>{detail.placeName ? `查看用户在${detail.placeName}发布的真实体验。` : '查看用户在这个地点发布的真实体验。'}</p>
+          </div>
+        </div>
+        {relatedPostsLoading && relatedPosts.length === 0 ? (
+          <ZkState kind="loading" title="正在加载这个地点的甄客帖" />
+        ) : relatedPostsError ? (
+          <ZkState
+            kind="error"
+            title="这个地点的甄客帖暂时无法加载"
+            description={relatedPostsError}
+            actionText="重试"
+            onAction={() => detail.placeId && void loadRelatedPosts(detail.placeId)}
+          />
+        ) : relatedPosts.length > 0 ? (
+          <>
+            <div className={styles.postGrid}>
+              {relatedPosts.map((post) => <ZhenkePostCard key={post.postId} post={post} />)}
+            </div>
+            {relatedPosts.length < relatedPostTotal && (
+              <div className={styles.commentPager}>
+                <Button loading={relatedPostsLoading} onClick={() => detail.placeId && void loadRelatedPosts(detail.placeId, relatedPostPage + 1, true)}>
+                  查看更多甄客帖（还剩 {relatedPostTotal - relatedPosts.length} 篇）
+                </Button>
+              </div>
+            )}
+          </>
+        ) : (
+          <ZkState
+            title="还没有人发布这个地点的甄客帖"
+            actionText="发布甄客帖"
+            onAction={publishForPlace}
+          />
+        )}
+      </section>
       <section id="enjoy-comments" className={`${styles.surface} ${styles.commentsPanel}`}>
         <div className={styles.sectionTitle}><div><h2>评价与交流</h2></div></div>
         <div className={styles.commentComposer}>
@@ -422,7 +504,7 @@ export default function EnjoyDetailPage() {
           />
         )}
         {!commentsLoading && !commentsError && comments.length === 0 ? (
-          <ZkState title="还没有评价" description="成为第一个参与交流的人。" />
+          <ZkState title="还没有评价" />
         ) : comments.map((root) => {
           const shownReplies = root.replies ?? [];
           const replyPage = replyPages[root.commentId] ?? 0;

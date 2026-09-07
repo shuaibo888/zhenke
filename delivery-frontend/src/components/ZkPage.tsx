@@ -74,9 +74,9 @@ export function ZkProfilePanel(props: {
 }
 
 export function ZkTaskHeader(props: {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
-  description: string;
+  description?: string;
   backTo?: string;
   onBack?: () => void;
   backAriaLabel?: string;
@@ -94,9 +94,9 @@ export function ZkTaskHeader(props: {
         <ArrowLeftOutlined />
       </button>
       <div className={styles.taskHeaderCopy}>
-        <span>{props.eyebrow}</span>
+        {props.eyebrow && <span>{props.eyebrow}</span>}
         <h1>{props.title}</h1>
-        <p>{props.description}</p>
+        {props.description && <p>{props.description}</p>}
       </div>
       {props.aside && (
         <div className={styles.taskHeaderAside}>{props.aside}</div>

@@ -3,6 +3,36 @@ import { loadCurrentLocation } from "@/utils/currentLocation";
 import { extractPlatformMediaPath } from "@/utils/mediaUrl";
 export type Perspective = "LOCAL" | "TOURIST" | "HOMETOWNER";
 export type EnjoyCategory = "MALL" | "RESTAURANT" | "SCENIC" | "HOTEL";
+export type ServiceMapPointType = "POST" | "ENJOY" | "MERCHANT";
+export interface ServiceMapPoint {
+  pointKey: string;
+  sourceType: ServiceMapPointType;
+  category?: EnjoyCategory;
+  targetId: number;
+  placeId?: number;
+  title: string;
+  summary?: string;
+  coverUrl?: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  contentCount: number;
+  relatedCount: number;
+  distanceKm?: number;
+}
+export interface BrowserMapConfig {
+  provider: "TENCENT";
+  version: string;
+  key: string;
+}
+export interface MapCenter {
+  latitude: number;
+  longitude: number;
+}
+export interface MapRegion {
+  city?: string;
+  district?: string;
+}
 export interface Place {
   placeId: number;
   provider: string;
@@ -200,6 +230,25 @@ export async function posts(
   return { rows: r.rows ?? [], total: r.total ?? 0 };
 }
 
+export async function placePosts(placeId: number, pageNum = 1, pageSize = 6) {
+  if (!Number.isSafeInteger(placeId) || placeId <= 0) {
+    throw new Error("地点参数无效");
+  }
+  const query = new URLSearchParams({
+    perspective: "RECOMMEND",
+    placeId: String(placeId),
+    pageNum: String(Math.max(1, pageNum)),
+    pageSize: String(Math.max(1, Math.min(20, pageSize))),
+  });
+  const result = await requestApi<TableResponse<ZhenkePost>>(
+    `/shop/zhenke/posts?${query}`,
+  );
+  return {
+    rows: Array.isArray(result.rows) ? result.rows : [],
+    total: typeof result.total === "number" ? result.total : 0,
+  };
+}
+
 export async function postCities(
   perspective: Perspective | "RECOMMEND" = "RECOMMEND",
 ) {
@@ -317,6 +366,52 @@ export async function banners() {
   return (
     (await requestApi<ApiResponse<Banner[]>>("/shop/zhenke/banners")).data ?? []
   );
+}
+
+export async function browserMapConfig() {
+  const result = await requestApi<ApiResponse<BrowserMapConfig>>(
+    "/shop/zhenke/map/browser-config",
+  );
+  if (!result.data?.key) throw new Error("腾讯地图浏览器服务尚未配置");
+  return result.data;
+}
+
+export async function mapRegionCenter(region: string) {
+  const result = await requestApi<ApiResponse<MapCenter>>(
+    `/shop/zhenke/map/region-center?region=${encodeURIComponent(region)}`,
+  );
+  if (!result.data
+    || !Number.isFinite(result.data.latitude)
+    || !Number.isFinite(result.data.longitude)) {
+    throw new Error("手选城市中心点解析失败");
+  }
+  return result.data;
+}
+
+export async function mapReverse(center: MapCenter) {
+  const query = new URLSearchParams({
+    latitude: String(center.latitude),
+    longitude: String(center.longitude),
+  });
+  const result = await requestApi<ApiResponse<MapRegion>>(
+    `/shop/zhenke/map/reverse?${query}`,
+  );
+  return result.data ?? {};
+}
+
+export async function serviceMapPoints(
+  city: string,
+  center: MapCenter,
+) {
+  const query = new URLSearchParams({
+    city,
+    latitude: String(center.latitude),
+    longitude: String(center.longitude),
+  });
+  const result = await requestApi<ApiResponse<ServiceMapPoint[]>>(
+    `/shop/zhenke/map/points?${query}`,
+  );
+  return Array.isArray(result.data) ? result.data : [];
 }
 
 export async function merchantOptions(keyword = "") {

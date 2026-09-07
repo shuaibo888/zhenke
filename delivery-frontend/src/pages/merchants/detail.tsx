@@ -12,37 +12,49 @@ import {
 import { Button, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'umi';
+import { useShop } from '@/app/ShopContext';
+import { ReportCard } from '@/components/ReportCard';
 import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
 import { useSafeBack } from '@/hooks/useSafeBack';
 import {
   fetchMallProducts,
   fetchPublicMerchant,
+  fetchPublicMerchantReports,
+  toggleReportUseful,
   type MallProductDto,
   type PublicMerchantDto,
+  type VerificationReportDto,
 } from '@/services/shopContent';
 import { openMerchantNavigation } from '@/utils/merchantNavigation';
+import { buildLoginPath, LOGIN_RETURN_TO_SOURCE_STATE } from '@/utils/safeRedirect';
 import styles from '@/styles/zhenke.less';
 
 export default function MerchantDetailPage() {
   const navigate = useNavigate();
+  const { user } = useShop();
   const goBack = useSafeBack('/mall');
   const { merchantId: rawMerchantId } = useParams<{ merchantId: string }>();
   const merchantId = Number(rawMerchantId);
   const [merchant, setMerchant] = useState<PublicMerchantDto>();
   const [products, setProducts] = useState<MallProductDto[]>([]);
+  const [reports, setReports] = useState<VerificationReportDto[]>([]);
+  const [reportTotal, setReportTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [productsError, setProductsError] = useState('');
+  const [reportsError, setReportsError] = useState('');
   const [openingNavigation, setOpeningNavigation] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     setProductsError('');
+    setReportsError('');
     try {
-      const [merchantResult, productResult] = await Promise.allSettled([
+      const [merchantResult, productResult, reportResult] = await Promise.allSettled([
         fetchPublicMerchant(merchantId),
         fetchMallProducts({ merchantId, pageNum: 1, pageSize: 12 }),
+        fetchPublicMerchantReports(merchantId, 1, 6),
       ]);
       if (merchantResult.status === 'fulfilled') {
         setMerchant(merchantResult.value);
@@ -55,6 +67,14 @@ export default function MerchantDetailPage() {
       } else {
         setProducts([]);
         setProductsError(productResult.reason instanceof Error ? productResult.reason.message : '商家商品暂时无法加载');
+      }
+      if (reportResult.status === 'fulfilled') {
+        setReports(reportResult.value.rows);
+        setReportTotal(reportResult.value.total);
+      } else {
+        setReports([]);
+        setReportTotal(0);
+        setReportsError(reportResult.reason instanceof Error ? reportResult.reason.message : '商家甄客验暂时无法加载');
       }
     } finally {
       setLoading(false);
@@ -97,6 +117,24 @@ export default function MerchantDetailPage() {
     }
   };
 
+  const toggleUseful = async (report: VerificationReportDto) => {
+    if (!user) {
+      navigate(buildLoginPath(`/merchants/${merchantId}`), { state: LOGIN_RETURN_TO_SOURCE_STATE });
+      return;
+    }
+    if (report.shopUserId === user.id) return;
+    try {
+      const next = await toggleReportUseful(report.reportId);
+      setReports((current) => current.map((item) => (
+        item.reportId === report.reportId
+          ? { ...item, usefulByMe: next.usefulByMe, usefulCount: next.usefulCount }
+          : item
+      )));
+    } catch (reason) {
+      message.error(reason instanceof Error ? reason.message : '“有用”状态更新失败');
+    }
+  };
+
   return (
     <main className={styles.page}>
       <div className={styles.detailTopbar}>
@@ -134,7 +172,7 @@ export default function MerchantDetailPage() {
         </div>
       </section>
 
-      <ZkSectionTitle title="商家在售商品" description="看看这家商户有哪些商品和套餐。" />
+      <ZkSectionTitle title="商家在售商品" />
       {productsError ? (
         <ZkState
           kind="error"
@@ -143,7 +181,7 @@ export default function MerchantDetailPage() {
           onAction={() => void load()}
         />
       ) : products.length === 0 ? (
-        <ZkState title="这家商户暂时没有在售商品" description="仍可查看公开资料和使用地图导航。" />
+        <ZkState title="暂无在售商品" />
       ) : (
         <div className={styles.productGrid}>
           {products.map((product) => (
@@ -151,6 +189,33 @@ export default function MerchantDetailPage() {
               <span className={styles.productCover}><img src={product.coverUrl} alt={product.productName} /><em>{product.categoryName}</em></span>
               <span className={styles.productCardBody}><small>{product.brandName}</small><h3>{product.productName}</h3><p>{product.subtitle}</p><span className={styles.productCardFooter}><strong className={styles.productPrice}>¥{Number(product.price).toFixed(2)}</strong><span className={styles.productSales}>已售 {product.salesCount}</span></span></span>
             </Link>
+          ))}
+        </div>
+      )}
+
+      <ZkSectionTitle
+        title="商家甄客验"
+        description={reportTotal > 0 ? `消费者已发布 ${reportTotal} 篇真实履约体验。` : '基于真实订单、试用或核销资格发布的体验内容。'}
+      />
+      {reportsError ? (
+        <ZkState
+          kind="error"
+          title="商家信息可用，甄客验暂未加载"
+          description={reportsError}
+          onAction={() => void load()}
+        />
+      ) : reports.length === 0 ? (
+        <ZkState title="暂无公开甄客验" />
+      ) : (
+        <div className={styles.merchantReportGrid}>
+          {reports.map((report) => (
+            <ReportCard
+              key={report.reportId}
+              report={report}
+              onOpen={() => navigate(`/reports/${report.reportId}`)}
+              onUseful={() => void toggleUseful(report)}
+              usefulDisabled={report.shopUserId === user?.id}
+            />
           ))}
         </div>
       )}

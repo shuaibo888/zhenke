@@ -55,9 +55,7 @@ export default function MyPostsPage() {
   return (
     <ZkProfilePage>
       <ZkTaskHeader
-        eyebrow="内容创作"
         title="我的甄客帖"
-        description="查看和管理你发布的甄客帖。"
         backTo="/profile"
         aside={<Button type="primary" icon={<EditOutlined />} onClick={() => startPostPublish()}>发布甄客帖</Button>}
       />
@@ -70,7 +68,6 @@ export default function MyPostsPage() {
         ) : rows.length === 0 ? (
           <ZkState
             title="还没有发布甄客帖"
-            description="选择真实地点，分享自己的城市生活视角。"
             actionText="发布第一篇"
             onAction={() => startPostPublish()}
           />

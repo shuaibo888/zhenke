@@ -2,15 +2,12 @@ import { Carousel, Image } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'umi';
 import { ZhenkeEnjoyCard } from '@/components/ZhenkeEnjoyCard';
-import { ZhenkePostCard } from '@/components/ZhenkePostCard';
-import { usePostPublishLauncher } from '@/components/PostPublishLauncher';
-import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
+import { ServiceDiscoveryMap } from '@/components/ServiceDiscoveryMap';
 import {
   homeContent,
   type Banner,
   type EnjoyCategory,
   type ZhenkeEnjoy,
-  type ZhenkePost,
 } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
 import { CURRENT_LOCATION_CHANGED_EVENT } from '@/utils/currentLocation';
@@ -18,27 +15,22 @@ import { CURRENT_LOCATION_CHANGED_EVENT } from '@/utils/currentLocation';
 const zhenEnjoyEntries: Array<{
   code: EnjoyCategory;
   title: string;
-  caption: string;
 }> = [
   {
     code: 'SCENIC',
     title: '甄必玩',
-    caption: '大家都在玩什么',
   },
   {
     code: 'RESTAURANT',
     title: '甄必吃',
-    caption: '大家都在吃什么',
   },
   {
     code: 'HOTEL',
     title: '甄必住',
-    caption: '大家都在住什么',
   },
   {
     code: 'MALL',
     title: '甄必购',
-    caption: '大家都在买什么',
   },
 ];
 
@@ -53,33 +45,22 @@ type EnjoyLoadErrors = Partial<Record<EnjoyCategory, string>>;
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const { startPostPublish } = usePostPublishLauncher();
-  const [feed, setFeed] = useState<ZhenkePost[]>([]);
   const [bannerRows, setBannerRows] = useState<Banner[]>([]);
   const [enjoyFeeds, setEnjoyFeeds] = useState<Record<EnjoyCategory, ZhenkeEnjoy[]>>(emptyEnjoyFeeds);
   const [enjoyErrors, setEnjoyErrors] = useState<EnjoyLoadErrors>({});
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
   const [bannerError, setBannerError] = useState('');
   const homeRequestVersion = useRef(0);
 
   const loadHome = useCallback(async () => {
     const requestVersion = ++homeRequestVersion.current;
     setLoading(true);
-    setLoadError('');
     setBannerError('');
     setEnjoyErrors({});
     try {
       const result = await homeContent();
       if (requestVersion !== homeRequestVersion.current) return;
-      const featuredPosts = (result.featuredPosts ?? []).slice(0, 3);
-      const featuredPostIds = new Set(featuredPosts.map((post) => post.postId));
-      setFeed([
-        ...featuredPosts.map((post) => ({ ...post, featured: true })),
-        ...(result.posts ?? []).filter((post) => !featuredPostIds.has(post.postId)),
-      ]);
       setBannerRows(result.banners ?? []);
-      setLoadError(result.postError ?? '');
       setBannerError(result.bannerError ?? '');
       const next = { ...emptyEnjoyFeeds };
       zhenEnjoyEntries.forEach((entry) => {
@@ -93,11 +74,9 @@ export default function HomePage() {
         : {});
     } catch (reason) {
       if (requestVersion !== homeRequestVersion.current) return;
-      setFeed([]);
       setBannerRows([]);
       setEnjoyFeeds({ ...emptyEnjoyFeeds });
       const error = reason instanceof Error ? reason.message : '首页内容加载失败';
-      setLoadError(error);
       setBannerError('今日精选暂时没有加载成功，请稍后再试。');
       setEnjoyErrors(Object.fromEntries(
         zhenEnjoyEntries.map((entry) => [entry.code, error]),
@@ -181,41 +160,18 @@ export default function HomePage() {
         ) : (
           <div className={`${styles.bannerFallback} ${loading ? styles.bannerFallbackLoading : ''}`}>
             <div>
-              <span className={styles.eyebrow}>{loading ? '正在准备今日精选' : '甄客行'}</span>
-              <h2>{loading ? '正在打开城市生活…' : '发现城市里值得分享的地方'}</h2>
+              <h2>{loading ? '正在加载' : '发现城市里值得分享的地方'}</h2>
               {!loading && bannerError && <p>{bannerError}</p>}
             </div>
           </div>
         )}
       </section>
 
-      <ZkSectionTitle
-        title="同城甄客帖"
-        description="如果您知道同城哪儿值得推荐，欢迎分享！"
-        action={<button type="button" className={styles.textButton} onClick={() => navigate('/posts')}>查看全部 →</button>}
-      />
-
-      {loading ? (
-        <ZkState kind="loading" title="正在打开城市生活" />
-      ) : loadError ? (
-        <ZkState kind="error" title="首页暂时没有连接成功" description={loadError} onAction={() => void loadHome()} />
-      ) : feed.length > 0 ? (
-        <div className={styles.homePostTrack} aria-label="同城甄客帖，横向滑动查看更多">
-          {feed.map((post) => <ZhenkePostCard key={post.postId} post={post} />)}
-        </div>
-      ) : (
-        <ZkState
-          title="还没有公开甄客帖"
-          description="成为第一个认真记录这座城市的人。"
-          actionText="发布第一篇"
-          onAction={() => startPostPublish()}
-        />
-      )}
+      <ServiceDiscoveryMap />
 
       <section className={styles.zhenEnjoySection} aria-labelledby="zhen-enjoy-title">
         <header className={styles.zhenEnjoyHeader}>
           <div>
-            <span>甄客行官方精选</span>
             <h2 id="zhen-enjoy-title">甄必享</h2>
           </div>
         </header>
@@ -229,7 +185,6 @@ export default function HomePage() {
                 <header className={styles.zhenEnjoyGroupHeader}>
                   <div>
                     <h3 id={titleId}>{entry.title}</h3>
-                    <p>{entry.caption}</p>
                   </div>
                   <button type="button" className={styles.textButton} onClick={() => navigate(`/enjoy?category=${entry.code}`)}>
                     查看全部 →
@@ -238,8 +193,7 @@ export default function HomePage() {
                 {loading ? (
                   <div className={styles.zhenEnjoyEmpty} aria-live="polite">
                     <div>
-                      <strong>正在加载{entry.title}</strong>
-                      <p>内容马上就好。</p>
+                      <strong>正在加载</strong>
                     </div>
                   </div>
                 ) : error ? (
@@ -257,8 +211,7 @@ export default function HomePage() {
                 ) : (
                   <div className={styles.zhenEnjoyEmpty}>
                     <div>
-                      <strong>{entry.title}内容更新中</strong>
-                      <p>稍后再来看看。</p>
+                      <strong>暂无内容</strong>
                     </div>
                   </div>
                 )}

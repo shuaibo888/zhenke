@@ -91,9 +91,7 @@ export default function ProfileUsefulPage() {
   return (
     <ZkProfilePage className={styles.page}>
       <ZkTaskHeader
-        eyebrow="内容创作"
         title="有用反馈"
-        description="查看真正帮助过其他用户做决定的内容。"
         backTo="/profile"
       />
 
@@ -126,7 +124,6 @@ export default function ProfileUsefulPage() {
         ) : rows.length === 0 ? (
           <ZkState
             title={`还没有${typeName}收到有用反馈`}
-            description="继续分享真实、具体的信息，帮助更多人做决定。"
           />
         ) : (
           <>

@@ -19,6 +19,7 @@ import { buildLoginPath, LOGIN_RETURN_TO_SOURCE_STATE } from '@/utils/safeRedire
 import { getCartCount } from '@/utils/shop';
 import {
   CURRENT_LOCATION_CHANGED_EVENT,
+  OPEN_CURRENT_CITY_PICKER_EVENT,
   currentLocationCityLabel,
   ensureCurrentLocation,
   loadCurrentLocation,
@@ -108,6 +109,13 @@ export function AppChrome({ children }: { children: ReactNode }) {
       active = false;
       window.removeEventListener(CURRENT_LOCATION_CHANGED_EVENT, refreshCity);
     };
+  }, [authPage]);
+
+  useEffect(() => {
+    if (authPage) return undefined;
+    const openPicker = () => setCityPickerOpen(true);
+    window.addEventListener(OPEN_CURRENT_CITY_PICKER_EVENT, openPicker);
+    return () => window.removeEventListener(OPEN_CURRENT_CITY_PICKER_EVENT, openPicker);
   }, [authPage]);
 
   const goHome = (search = '') => {

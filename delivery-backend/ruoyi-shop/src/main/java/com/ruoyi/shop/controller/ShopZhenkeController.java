@@ -25,6 +25,7 @@ public class ShopZhenkeController extends BaseController {
   private final com.ruoyi.shop.map.TencentMapService map;
   private final ShopZhenkeCityScopeService cityScope;
   private final ShopZhenkeHomeService homeService;
+  private final ShopServiceMapService serviceMap;
 
   public ShopZhenkeController(
       ShopZhenkeService s,
@@ -33,7 +34,8 @@ public class ShopZhenkeController extends BaseController {
       ShopPublicMediaService publicMedia,
       com.ruoyi.shop.map.TencentMapService map,
       ShopZhenkeCityScopeService cityScope,
-      ShopZhenkeHomeService homeService) {
+      ShopZhenkeHomeService homeService,
+      ShopServiceMapService serviceMap) {
     service = s;
     this.enjoyService = enjoyService;
     resources = r;
@@ -41,6 +43,7 @@ public class ShopZhenkeController extends BaseController {
     this.map = map;
     this.cityScope = cityScope;
     this.homeService = homeService;
+    this.serviceMap = serviceMap;
   }
 
   @Anonymous
@@ -167,6 +170,27 @@ public class ShopZhenkeController extends BaseController {
   public AjaxResult search(
       @RequestParam String keyword, @RequestParam(required = false) String region) {
     return AjaxResult.success(map.search(keyword, region));
+  }
+
+  @Anonymous
+  @GetMapping("/map/browser-config")
+  public AjaxResult browserMapConfig() {
+    return AjaxResult.success(map.browserConfig());
+  }
+
+  @Anonymous
+  @GetMapping("/map/region-center")
+  public AjaxResult regionCenter(@RequestParam String region) {
+    return AjaxResult.success(map.regionCenter(region));
+  }
+
+  @Anonymous
+  @GetMapping("/map/points")
+  public AjaxResult serviceMapPoints(
+      @RequestParam String city,
+      @RequestParam(required = false) BigDecimal latitude,
+      @RequestParam(required = false) BigDecimal longitude) {
+    return AjaxResult.success(serviceMap.points(city, latitude, longitude));
   }
 
   @Anonymous

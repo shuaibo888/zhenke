@@ -489,6 +489,18 @@ export async function fetchPublicMerchant(merchantId: number) {
   return result.data;
 }
 
+export async function fetchPublicMerchantReports(merchantId: number, pageNum = 1, pageSize = 6) {
+  const result = await requestApi<TableResponse<VerificationReportDto>>(
+    `/shop/reports/merchant/${merchantId}?pageNum=${pageNum}&pageSize=${pageSize}`,
+    {},
+    Boolean(getToken()),
+  );
+  return {
+    rows: Array.isArray(result.rows) ? result.rows : [],
+    total: typeof result.total === 'number' ? result.total : 0,
+  };
+}
+
 export function merchantNavigationUrl(merchantId: number) {
   return `/api/shop/merchants/public/${merchantId}/navigation`;
 }

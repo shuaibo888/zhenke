@@ -9,11 +9,11 @@ import styles from '@/styles/zhenke.less';
 import { CURRENT_LOCATION_CHANGED_EVENT } from '@/utils/currentLocation';
 import pageStyles from './index.module.less';
 
-const categories: Array<{ value: EnjoyCategory; label: string; caption: string; icon: React.ReactNode }> = [
-  { value: 'SCENIC', label: '甄必玩', caption: '城市里值得去的地方', icon: <CompassOutlined /> },
-  { value: 'RESTAURANT', label: '甄必吃', caption: '值得专程去吃的味道', icon: <CoffeeOutlined /> },
-  { value: 'HOTEL', label: '甄必住', caption: '安心舒适的住宿体验', icon: <HomeOutlined /> },
-  { value: 'MALL', label: '甄必购', caption: '好物与城市手信', icon: <ShoppingOutlined /> },
+const categories: Array<{ value: EnjoyCategory; label: string; icon: React.ReactNode }> = [
+  { value: 'SCENIC', label: '甄必玩', icon: <CompassOutlined /> },
+  { value: 'RESTAURANT', label: '甄必吃', icon: <CoffeeOutlined /> },
+  { value: 'HOTEL', label: '甄必住', icon: <HomeOutlined /> },
+  { value: 'MALL', label: '甄必购', icon: <ShoppingOutlined /> },
 ];
 
 export default function EnjoyListPage() {
@@ -86,11 +86,10 @@ export default function EnjoyListPage() {
   return (
     <main className={`${styles.page} ${pageStyles.page}`}>
       <header className={pageStyles.intro}>
-        <span className={pageStyles.introMark} aria-hidden="true">甄</span>
         <div className={pageStyles.introCopy}>
-          <span className={pageStyles.kicker}>甄客行官方精选</span>
+          <span className={pageStyles.kicker}>甄客行精选</span>
           <h1>甄必享</h1>
-          <p>首页展示每类最新精选，这里按玩、吃、住、购浏览全部内容。</p>
+          <p>玩、吃、住、购，发现城市里真正值得体验的内容。</p>
         </div>
       </header>
       <nav className={pageStyles.categoryTabs} aria-label="甄必享分类">
@@ -105,7 +104,6 @@ export default function EnjoyListPage() {
             <span className={pageStyles.categoryIcon}>{item.icon}</span>
             <span className={pageStyles.categoryCopy}>
               <strong>{item.label}</strong>
-              <small>{item.caption}</small>
             </span>
           </button>
         ))}
@@ -113,11 +111,7 @@ export default function EnjoyListPage() {
       <section className={pageStyles.listSection} aria-labelledby="active-enjoy-category">
         <header className={pageStyles.listHeader}>
           <div>
-            <span className={pageStyles.activeIcon} aria-hidden="true">{activeMeta.icon}</span>
-            <div>
-              <h2 id="active-enjoy-category">{activeMeta.label}</h2>
-              <p>{activeMeta.caption}</p>
-            </div>
+            <h2 id="active-enjoy-category">{activeMeta.label}</h2>
           </div>
           {!loading && !error && <span className={pageStyles.total}>{total} 篇精选</span>}
         </header>
@@ -142,7 +136,7 @@ export default function EnjoyListPage() {
             )}
           </>
         ) : (
-          <ZkState title={`${activeMeta.label}正在准备`} description="平台运营团队正在整理本期精选内容。" />
+          <ZkState title="暂无内容" />
         )}
       </section>
     </main>

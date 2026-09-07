@@ -76,9 +76,7 @@ export default function PointRecordsPage() {
   return (
     <ZkProfilePage className={styles.pointsPage}>
       <ZkTaskHeader
-        eyebrow="权益资产"
         title="积分明细"
-        description="查看积分获取与使用记录。"
         onBack={goBack}
         backAriaLabel={backTo === '/profile' ? '返回我的' : '返回积分中心'}
       />

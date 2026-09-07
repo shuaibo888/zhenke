@@ -25,6 +25,8 @@ type AuthValues = { username: string; password: string; code?: string };
 type PhoneValues = { phone: string; code: string };
 type AgreementType = 'user' | 'privacy';
 
+const AUTH_PROMO_IMAGE = 'https://img.cboo.cloud/dzshop/zhenkexing.jpg';
+
 const agreementContent: Record<AgreementType, { title: string; sections: Array<{ heading: string; content: string }> }> = {
   user: {
     title: '甄客行用户协议',
@@ -257,13 +259,17 @@ export default function AuthPage() {
           返回甄客行
         </Button>
         <section className={styles.authIntro}>
+          <div className={styles.authVisualGlow} aria-hidden="true" />
           <div className={styles.authBrandRow}>
             <div><strong>甄客行</strong><span>城市生活 · 真实分享</span></div>
           </div>
+          <div className={styles.authPromoArtwork} aria-hidden="true">
+            <img src={AUTH_PROMO_IMAGE} alt="" />
+          </div>
           <div className={styles.authIntroCopy}>
-            <span className={styles.eyebrow}>欢迎来到甄客行</span>
-            <h1>发现好去处，<br />分享真体验。</h1>
-            <p>登录后继续发布甄客帖，管理订单、核销和权益。</p>
+            <span className={styles.eyebrow}>真实地点 · 真实体验</span>
+            <h1>发现城市，<br />也发现生活。</h1>
+            <p>发现值得抵达的地方，也分享属于你的城市故事。</p>
           </div>
         </section>
         <section className={`${styles.authCard} ${phoneMode ? styles.phoneAuthCard : ''}`}>
@@ -276,11 +282,6 @@ export default function AuthPage() {
             <>
               {phoneLoginMethod === 'oneClick' ? (
                 <div className={styles.authOneClickPanel}>
-                  <div className={styles.authProductPreview} aria-label="甄客行内容与服务概览">
-                    <span>城市生活 · 真实分享</span>
-                    <strong>发现好去处，分享真体验</strong>
-                    <p>在甄客行，看见一座城的真实生活。</p>
-                  </div>
                   <Button block type="primary" size="large" loading={oneClickLoading} onClick={retryOneClick} className={styles.authOneClick}>
                     {oneClickLoading ? '正在认证' : '本机号码一键登录'}
                   </Button>

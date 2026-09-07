@@ -68,4 +68,17 @@ class TencentMapServiceTest {
     assertTrue(uri.contains("location=31.230416%2C121.473701"));
     assertTrue(uri.contains("key=server-secret-key"));
   }
+
+  @Test
+  void browserMapConfigIntentionallyReusesConfiguredServerKey() {
+    TencentMapProperties properties = new TencentMapProperties();
+    properties.setKey("shared-map-key");
+    TencentMapService configuredService = new TencentMapService(properties);
+
+    Map<String, Object> config = configuredService.browserConfig();
+
+    assertEquals("TENCENT", config.get("provider"));
+    assertEquals("1.exp", config.get("version"));
+    assertEquals("shared-map-key", config.get("key"));
+  }
 }

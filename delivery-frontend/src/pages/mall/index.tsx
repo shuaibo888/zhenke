@@ -1,4 +1,10 @@
-import { RightOutlined } from '@ant-design/icons';
+import {
+  CoffeeOutlined,
+  CompassOutlined,
+  HomeOutlined,
+  RightOutlined,
+  ShoppingOutlined,
+} from '@ant-design/icons';
 import { message } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'umi';
@@ -17,6 +23,12 @@ import styles from '@/styles/zhenke.less';
 import { BUSINESS_MODULES, type BusinessModuleCode } from './modules';
 
 const PREVIEW_SIZE = 4;
+const moduleIcons: Record<BusinessModuleCode, React.ReactNode> = {
+  MALL: <ShoppingOutlined />,
+  ZHENKE_HOTEL: <HomeOutlined />,
+  ZHENKE_SCENIC: <CompassOutlined />,
+  ZHENKE_RESTAURANT: <CoffeeOutlined />,
+};
 
 export default function MallPage() {
   const navigate = useNavigate();
@@ -131,25 +143,6 @@ export default function MallPage() {
 
   return (
     <main className={styles.page}>
-      <aside className={`${styles.surface} ${styles.mallPromise} ${styles.mallPromiseStandalone}`}>
-        <header className={styles.mallPromiseHeader}>
-          <span>消费服务</span>
-          <strong>下单前看清，购买后好履约</strong>
-        </header>
-        <div className={styles.promiseItem}>
-          <b>01</b>
-          <div><strong>商家信息可查</strong><small>公开展示入驻主体和经营信息</small></div>
-        </div>
-        <div className={styles.promiseItem}>
-          <b>02</b>
-          <div><strong>履约方式明确</strong><small>配送、预约或到店核销提前说明</small></div>
-        </div>
-        <div className={styles.promiseItem}>
-          <b>03</b>
-          <div><strong>使用规则清楚</strong><small>有效期、退款和过期规则集中查看</small></div>
-        </div>
-      </aside>
-
       <ZkSectionTitle title="今天想逛什么" />
       <div className={styles.businessModuleGrid}>
         {BUSINESS_MODULES.map((module) => (
@@ -159,17 +152,19 @@ export default function MallPage() {
             className={styles.businessModuleCard}
             onClick={() => openModule(module.code)}
           >
-            <small className={styles.businessModuleKicker}>{module.kicker}</small>
+            <span className={styles.businessModuleCardTop}>
+              <span className={styles.businessModuleIcon}>{moduleIcons[module.code]}</span>
+              <RightOutlined className={styles.businessModuleArrow} />
+            </span>
             <strong>{module.title}</strong>
             <p>{module.caption}</p>
-            <span className={styles.businessModuleLink}>查看更多 <RightOutlined /></span>
           </button>
         ))}
       </div>
 
       <ZkSectionTitle
         title="商城好物"
-        description={productsLoading ? '正在查询商品' : `全部商品 · 共 ${productTotal} 件`}
+        description={productsLoading ? undefined : `${productTotal} 件商品`}
         action={(
           <button type="button" className={styles.textButton} onClick={() => openModule('MALL')}>
             查看更多 <RightOutlined />
@@ -182,7 +177,7 @@ export default function MallPage() {
         ) : productsError ? (
           <ZkState kind="error" title="商城暂时无法加载" description={productsError} onAction={() => void loadProducts()} />
         ) : products.length === 0 ? (
-          <ZkState title="商城还没有在售商品" description="有新商品上架后，会优先展示在这里。" />
+          <ZkState title="暂无在售商品" />
         ) : (
           <div className={styles.productGrid}>
             {products.map((product) => (
@@ -221,7 +216,6 @@ export default function MallPage() {
 
       <ZkSectionTitle
         title="商城试用与甄客验"
-        description="发现正在招募的试用和消费者分享的甄客验。"
         action={(
           <button type="button" className={styles.textButton} onClick={() => navigate('/mall/content')}>
             查看更多 <RightOutlined />
@@ -234,7 +228,7 @@ export default function MallPage() {
         ) : feedError ? (
           <ZkState kind="error" title="试用与甄客验暂时无法加载" description={feedError} onAction={() => void loadFeed()} />
         ) : feed.length === 0 ? (
-          <ZkState title="商城暂无试用或推荐甄客验" description="有新的试用活动或甄客验时，会展示在这里。" />
+          <ZkState title="暂无试用或甄客验" />
         ) : (
           <div className={styles.commerceFeedGrid}>
             {feed.map((item) => item.contentType === 'REPORT' ? (

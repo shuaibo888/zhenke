@@ -232,7 +232,7 @@ export default function OrderDetailPage() {
   return (
     <>
       <ZkProfilePage className={styles.businessDetailPage}>
-        <ZkTaskHeader eyebrow="消费履约" title="订单详情" description="查看付款、配送或到店核销进度。" backTo="/profile/orders" />
+        <ZkTaskHeader title="订单详情" backTo="/profile/orders" />
         <section className={styles.businessStatusHero}>
           <div>
             <span className={styles.eyebrow}>订单详情</span>

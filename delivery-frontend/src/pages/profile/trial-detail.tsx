@@ -171,7 +171,7 @@ export default function TrialDetailPage() {
   return (
     <>
       <ZkProfilePage className={styles.businessDetailPage}>
-        <ZkTaskHeader eyebrow="参与服务" title="试用详情" description="查看申请、审核、收货或核销进度。" backTo="/profile/trials" />
+        <ZkTaskHeader title="试用详情" backTo="/profile/trials" />
         <section className={styles.businessStatusHero}>
           <div>
             <span className={styles.eyebrow}>试用详情</span>

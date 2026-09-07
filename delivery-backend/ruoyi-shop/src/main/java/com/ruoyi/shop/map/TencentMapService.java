@@ -76,7 +76,58 @@ public class TencentMapService {
     }
   }
 
+  /**
+   * The consumer service map intentionally reuses the configured WebService key in Tencent's
+   * browser SDK. The key is supplied at runtime so it is not baked into the frontend bundle.
+   */
+  public Map<String, Object> browserConfig() {
+    Map<String, Object> value = new LinkedHashMap<>();
+    value.put("provider", "TENCENT");
+    value.put("version", "1.exp");
+    value.put("key", requireKey());
+    return value;
+  }
+
+  public Map<String, Object> regionCenter(String region) {
+    String normalizedRegion = StringUtils.trim(region);
+    if (StringUtils.isEmpty(normalizedRegion) || normalizedRegion.length() > 40) {
+      throw new ServiceException("手选城市名称无效");
+    }
+    String query = "address=" + encode(normalizedRegion) + "&key=" + encode(requireKey());
+    HttpRequest request =
+        HttpRequest.newBuilder(URI.create(GEOCODER_URL + "?" + query))
+            .timeout(Duration.ofSeconds(Math.max(1, properties.getRequestTimeoutSeconds())))
+            .header("Accept", "application/json")
+            .GET()
+            .build();
+    try {
+      HttpResponse<String> response =
+          httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+      if (response.statusCode() / 100 != 2) {
+        throw new ServiceException("手选城市中心点解析失败，请稍后重试");
+      }
+      TencentMapLocation location =
+          parseLocation(response.body(), "地图服务未返回有效的城市中心点");
+      Map<String, Object> value = new LinkedHashMap<>();
+      value.put("latitude", location.getLatitude());
+      value.put("longitude", location.getLongitude());
+      return value;
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      throw new ServiceException("手选城市中心点解析已中断，请重试");
+    } catch (ServiceException exception) {
+      throw exception;
+    } catch (Exception exception) {
+      log.warn("Tencent map region geocoder request failed: {}", exception.getMessage());
+      throw new ServiceException("手选城市中心点解析失败，请稍后重试");
+    }
+  }
+
   TencentMapLocation parseLocation(String responseBody) {
+    return parseLocation(responseBody, "营业执照地址无法准确定位，请核对执照图片后重试");
+  }
+
+  private TencentMapLocation parseLocation(String responseBody, String invalidMessage) {
     try {
       JSONObject payload = JSON.parseObject(responseBody);
       Integer status = payload == null ? null : payload.getInteger("status");
@@ -97,7 +148,7 @@ public class TencentMapService {
             "Tencent map geocoder rejected address, status={}, message={}",
             status,
             safeProviderMessage(providerMessage));
-        throw new ServiceException("营业执照地址无法准确定位，请核对执照图片后重试");
+        throw new ServiceException(invalidMessage);
       }
       return new TencentMapLocation(
           latitude.setScale(6, RoundingMode.HALF_UP), longitude.setScale(6, RoundingMode.HALF_UP));

@@ -60,13 +60,6 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       message.warning('购物车包含已下架或库存不足的商品，请先移除或调整数量');
       return;
     }
-    const merchantCount = new Set(cart.map((item) => item.merchantId)).size;
-    const fulfillmentCount = new Set(cart.map((item) => (
-      cartItemUsesOffline(item) ? 'OFFLINE' : 'ONLINE'
-    ))).size;
-    if (merchantCount > 1 || fulfillmentCount > 1) {
-      message.info('系统将按商家和履约方式拆单；优惠券仅支持单一结算分组使用');
-    }
     onClose();
     navigate('/checkout?source=cart');
   };

@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.shop.mapper.ShopServiceMapMapper">
+  <resultMap id="serviceMapPoint" type="ShopServiceMapPoint">
+    <id property="pointKey" column="point_key"/>
+    <result property="sourceType" column="source_type"/>
+    <result property="category" column="category"/>
+    <result property="targetId" column="target_id"/>
+    <result property="placeId" column="place_id"/>
+    <result property="title" column="title"/>
+    <result property="summary" column="summary"/>
+    <result property="coverUrl" column="cover_url"/>
+    <result property="address" column="address"/>
+    <result property="latitude" column="latitude"/>
+    <result property="longitude" column="longitude"/>
+    <result property="contentCount" column="content_count"/>
+    <result property="relatedCount" column="related_count"/>
+  </resultMap>
+
+  <select id="selectPostPoints" resultMap="serviceMapPoint">
+    select concat('POST:', ranked.place_id) point_key,
+           'POST' source_type,
+           null category,
+           ranked.post_id target_id,
+           ranked.place_id,
+           ranked.place_name title,
+           ranked.post_title summary,
+           ranked.cover_url,
+           ranked.address,
+           ranked.latitude,
+           ranked.longitude,
+           ranked.content_count,
+           0 related_count
+    from (
+      select post.post_id,
+             post.place_id,
+             place.place_name,
+             post.title post_title,
+             place.address,
+             place.latitude,
+             place.longitude,
+             (select resource.resource_url
+                from shop_zhenke_post_resource resource
+               where resource.post_id=post.post_id and resource.resource_type='IMAGE'
+               order by resource.resource_sort,resource.resource_id limit 1) cover_url,
+             row_number() over(partition by post.place_id order by post.published_at desc,post.post_id desc) point_rank,
+             count(*) over(partition by post.place_id) content_count
+      from shop_zhenke_post post
+      join shop_place place on place.place_id=post.place_id and place.status='0'
+      join shop_user author on author.user_id=post.shop_user_id and author.del_flag='0'
+      where post.del_flag='0' and post.status='PUBLISHED'
+        and (trim(place.city)=#{city} or trim(place.city)=#{cityKeyword})
+    ) ranked
+    where ranked.point_rank=1
+    order by ranked.post_id desc
+  </select>
+
+  <select id="selectEnjoyPoints" resultMap="serviceMapPoint">
+    select concat('ENJOY:', ranked.category, ':', ranked.place_id) point_key,
+           'ENJOY' source_type,
+           ranked.category,
+           ranked.enjoy_id target_id,
+           ranked.place_id,
+           ranked.title,
+           ranked.place_name summary,
+           ranked.cover_url,
+           ranked.address,
+           ranked.latitude,
+           ranked.longitude,
+           ranked.content_count,
+           0 related_count
+    from (
+      select enjoy.enjoy_id,
+             enjoy.category,
+             enjoy.place_id,
+             enjoy.title,
+             enjoy.cover_url,
+             place.place_name,
+             place.address,
+             place.latitude,
+             place.longitude,
+             row_number() over(
+               partition by enjoy.category,enjoy.place_id
+               order by enjoy.display_sort,enjoy.published_at desc,enjoy.enjoy_id desc
+             ) point_rank,
+             count(*) over(partition by enjoy.category,enjoy.place_id) content_count
+      from shop_zhenke_enjoy enjoy
+      join shop_place place on place.place_id=enjoy.place_id and place.status='0'
+      where enjoy.del_flag='0' and enjoy.status='0'
+        and (trim(place.city)=#{city} or trim(place.city)=#{cityKeyword})
+    ) ranked
+    where ranked.point_rank=1
+    order by field(ranked.category,'SCENIC','RESTAURANT','HOTEL','MALL'),ranked.enjoy_id desc
+  </select>
+
+  <select id="selectMerchantPoints" resultMap="serviceMapPoint">
+    select concat('MERCHANT:', merchant.merchant_id) point_key,
+           'MERCHANT' source_type,
+           null category,
+           merchant.merchant_id target_id,
+           null place_id,
+           coalesce(nullif(trim(merchant.shop_name),''),merchant.company_name) title,
+           merchant.product_intro summary,
+           (select product.cover_url
+              from shop_product product
+             where product.merchant_id=merchant.merchant_id
+               and product.status='ON_SALE' and product.del_flag='0'
+             order by product.sales_count desc,product.product_id desc limit 1) cover_url,
+           merchant.company_address address,
+           merchant.latitude,
+           merchant.longitude,
+           (select count(*)
+              from shop_product product
+             where product.merchant_id=merchant.merchant_id
+               and product.status='ON_SALE' and product.del_flag='0') content_count,
+           (select count(*)
+              from shop_verification_report report
+              join shop_product product on product.product_id=report.product_id
+             where product.merchant_id=merchant.merchant_id
+               and report.status='PUBLISHED') related_count
+    from shop_merchant merchant
+    where merchant.audit_status='APPROVED' and merchant.status='0' and merchant.del_flag='0'
+      and (merchant.company_address like concat('%',#{city},'%')
+        or merchant.company_address like concat('%',#{cityKeyword},'%'))
+      and merchant.latitude is not null and merchant.longitude is not null
+    order by merchant.update_time desc,merchant.merchant_id desc
+  </select>
+</mapper>

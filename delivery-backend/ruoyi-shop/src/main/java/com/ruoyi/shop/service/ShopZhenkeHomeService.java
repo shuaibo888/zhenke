@@ -42,28 +42,6 @@ public class ShopZhenkeHomeService {
       scopeError = exception.getMessage();
     }
 
-    List<com.ruoyi.shop.domain.ShopZhenkePost> posts = List.of();
-    String postError = scopeError;
-    if (scopeError == null) {
-      try {
-        posts = publicMedia.posts(postService.homePosts(city, 9));
-      } catch (RuntimeException exception) {
-        log.warn("首页甄客帖加载失败", exception);
-        postError = publicMessage(exception, "首页甄客帖暂时没有加载成功");
-      }
-    }
-
-    List<com.ruoyi.shop.domain.ShopZhenkePost> featuredPosts = List.of();
-    String featuredPostError = scopeError;
-    if (scopeError == null) {
-      try {
-        featuredPosts = publicMedia.posts(postService.featuredPosts(city, 3));
-      } catch (RuntimeException exception) {
-        log.warn("首页精选甄客帖加载失败", exception);
-        featuredPostError = publicMessage(exception, "精选甄客帖暂时没有加载成功");
-      }
-    }
-
     List<ShopHomeBannerPublicView> banners = List.of();
     String bannerError = null;
     try {
@@ -89,12 +67,12 @@ public class ShopZhenkeHomeService {
     }
 
     return new ShopZhenkeHomeView(
-        posts,
-        featuredPosts,
+        List.of(),
+        List.of(),
         banners,
         immutableEnjoyGroups(enjoys),
-        postError,
-        featuredPostError,
+        null,
+        null,
         bannerError,
         enjoyError);
   }

@@ -20,6 +20,7 @@ export interface CurrentLocation {
 
 const STORAGE_KEY = 'zhenkexing.current-location';
 export const CURRENT_LOCATION_CHANGED_EVENT = 'zhenke:city-changed';
+export const OPEN_CURRENT_CITY_PICKER_EVENT = 'zhenke:open-city-picker';
 
 let volatileLocation: CurrentLocation | null = null;
 let deviceLocationRequest: Promise<CurrentLocation> | null = null;
@@ -80,6 +81,12 @@ export function currentLocationCityLabel(location = loadCurrentLocation()) {
 export function notifyCurrentLocationChanged() {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event(CURRENT_LOCATION_CHANGED_EVENT));
+  }
+}
+
+export function openCurrentCityPicker() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(OPEN_CURRENT_CITY_PICKER_EVENT));
   }
 }
 

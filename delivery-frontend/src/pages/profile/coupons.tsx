@@ -41,9 +41,7 @@ export default function CouponsPage() {
   return (
     <ZkProfilePage className={styles.couponsPage}>
       <ZkTaskHeader
-        eyebrow="权益资产"
         title="我的优惠券"
-        description="集中查看下单券、到店核销券及其有效状态。"
         backTo="/profile"
       />
       <ZkProfilePanel title="优惠券列表" meta={`共 ${filtered.length} 张`}>

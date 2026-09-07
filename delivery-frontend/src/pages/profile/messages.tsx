@@ -204,9 +204,7 @@ export default function ProfileMessagesPage() {
   return (
     <ZkProfilePage className={styles.page}>
       <ZkTaskHeader
-        eyebrow="互动通知"
         title="消息中心"
-        description="查看别人与你的甄客帖、甄客验和评论产生的互动。"
         backTo="/profile"
         aside={(
           <Button
@@ -236,7 +234,7 @@ export default function ProfileMessagesPage() {
         ) : error ? (
           <ZkState kind="error" title="暂时无法加载消息" description={error} onAction={() => void load(1)} />
         ) : rows.length === 0 ? (
-          <ZkState title="还没有消息" description="有人与你发布的甄客帖、甄客验或评论互动时，会在这里提醒你。" />
+          <ZkState title="还没有消息" />
         ) : (
           <>
             <div className={styles.list}>

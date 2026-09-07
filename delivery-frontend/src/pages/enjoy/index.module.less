@@ -1,48 +1,29 @@
 .page {
-  padding-top: 22px;
+  padding-top: 28px;
 }
 
 .intro {
   position: relative;
   display: flex;
-  gap: 16px;
   align-items: center;
-  min-height: 116px;
-  padding: 20px 22px;
+  min-height: 156px;
+  padding: 30px 34px;
   overflow: hidden;
-  background: #fff;
-  border: 1px solid #e8e3df;
-  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 246, 240, 0.96));
+  border: 1px solid rgba(255, 107, 26, 0.12);
+  border-radius: 24px;
+  box-shadow: 0 18px 46px rgba(56, 42, 36, 0.08);
 }
 
 .intro::after {
   position: absolute;
-  top: -58px;
-  right: -34px;
-  width: 176px;
-  height: 176px;
+  top: -80px;
+  right: -35px;
+  width: 240px;
+  height: 240px;
   content: '';
   pointer-events: none;
-  background:
-    radial-gradient(circle at center, rgba(255, 107, 26, 0.09) 0 31%, transparent 32%),
-    radial-gradient(circle at center, transparent 0 51%, rgba(138, 63, 50, 0.06) 52% 53%, transparent 54%);
-  border-radius: 50%;
-}
-
-.introMark {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  width: 50px;
-  height: 50px;
-  flex: 0 0 50px;
-  color: #d9561d;
-  background: #fff3eb;
-  border: 1px solid #f4d8c8;
-  border-radius: 12px;
-  place-items: center;
-  font-size: 23px;
-  font-weight: 900;
+  background: radial-gradient(circle, rgba(255, 107, 26, 0.11), transparent 68%);
 }
 
 .introCopy {
@@ -53,36 +34,38 @@
 
 .kicker {
   display: block;
-  margin-bottom: 4px;
-  color: #a64b2d;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
+  margin-bottom: 7px;
+  color: #d7551d;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 
 .intro h1 {
   margin: 0;
-  color: #222;
-  font-size: clamp(28px, 3.4vw, 38px);
-  line-height: 1.2;
+  color: #1d1d1f;
+  font-size: clamp(36px, 4.2vw, 52px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
 }
 
 .intro p {
-  margin: 6px 0 0;
-  color: #707070;
-  font-size: 14px;
-  line-height: 1.65;
+  margin: 10px 0 0;
+  color: #6e6e73;
+  font-size: 15px;
+  line-height: 1.55;
 }
 
 .categoryTabs {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  margin: 16px 0 26px;
-  padding: 6px;
-  background: #fff;
-  border: 1px solid #e8e3df;
-  border-radius: 12px;
+  gap: 5px;
+  margin: 18px 0 30px;
+  padding: 5px;
+  background: #ececef;
+  border: 0;
+  border-radius: 17px;
 }
 
 .categoryTabs button {
@@ -92,19 +75,19 @@
   align-items: center;
   min-width: 0;
   min-height: 58px;
-  padding: 8px 10px;
-  color: #5f5a57;
+  padding: 9px 11px;
+  color: #626268;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 13px;
   cursor: pointer;
   text-align: left;
-  transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
+  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
 
 .categoryTabs button:hover {
   color: #8a3f32;
-  background: #fff9f5;
+  background: rgba(255, 255, 255, 0.62);
 }
 
 .categoryTabs button:focus-visible {
@@ -116,14 +99,15 @@
 .activeIcon {
   display: grid;
   place-items: center;
-  color: #9a4b34;
-  background: #f8eee8;
+  color: #bf5128;
+  background: #fff;
 }
 
 .categoryIcon {
   width: 36px;
   height: 36px;
-  border-radius: 9px;
+  border-radius: 11px;
+  box-shadow: 0 3px 10px rgba(60, 47, 41, 0.07);
   font-size: 16px;
 }
 
@@ -132,8 +116,7 @@
   min-width: 0;
 }
 
-.categoryCopy strong,
-.categoryCopy small {
+.categoryCopy strong {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -145,25 +128,17 @@
   font-size: 14px;
 }
 
-.categoryCopy small {
-  margin-top: 3px;
-  color: #8a8581;
-  font-size: 11px;
-}
-
 .categoryTabs .categoryTabActive {
-  color: #b84922;
-  background: #fff4ec;
-  border-color: #f3d7c7;
+  color: #1d1d1f;
+  background: #fff;
+  border-color: transparent;
+  box-shadow: 0 5px 16px rgba(41, 35, 32, 0.1);
 }
 
 .categoryTabActive .categoryIcon {
   color: #fff;
-  background: #e86228;
-}
-
-.categoryTabActive .categoryCopy small {
-  color: #9a6958;
+  background: linear-gradient(145deg, #ff7a32, #e95b1f);
+  box-shadow: 0 5px 14px rgba(233, 91, 31, 0.24);
 }
 
 .listSection {
@@ -175,9 +150,9 @@
   gap: 18px;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
-  padding: 0 2px 14px;
-  border-bottom: 1px solid #e8e3df;
+  margin-bottom: 18px;
+  padding: 0 2px 15px;
+  border-bottom: 1px solid #e1e1e6;
 }
 
 .listHeader > div {
@@ -187,30 +162,20 @@
   align-items: center;
 }
 
-.activeIcon {
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
-  border-radius: 10px;
-  font-size: 18px;
-}
-
 .listHeader h2 {
   margin: 0;
-  color: #282523;
-  font-size: 24px;
+  color: #1d1d1f;
+  font-size: 27px;
+  letter-spacing: -0.02em;
   line-height: 1.25;
-}
-
-.listHeader p {
-  margin: 3px 0 0;
-  color: #76716e;
-  font-size: 13px;
 }
 
 .total {
   flex: none;
-  color: #8b817c;
+  padding: 6px 10px;
+  color: #6e6e73;
+  background: #eeeeF1;
+  border-radius: 999px;
   font-size: 12px;
 }
 
@@ -222,32 +187,27 @@
 
 @media (max-width: 720px) {
   .page {
-    padding-top: 14px;
+    padding-top: 16px;
   }
 
   .intro {
-    min-height: 100px;
-    padding: 16px;
-  }
-
-  .introMark {
-    width: 44px;
-    height: 44px;
-    flex-basis: 44px;
-    font-size: 20px;
+    min-height: 128px;
+    padding: 22px 20px;
+    border-radius: 19px;
   }
 
   .intro h1 {
-    font-size: 28px;
+    font-size: 36px;
   }
 
   .intro p {
-    font-size: 12px;
+    margin-top: 8px;
+    font-size: 13px;
   }
 
   .categoryTabs {
     gap: 3px;
-    margin: 12px 0 22px;
+    margin: 14px 0 24px;
     padding: 4px;
   }
 
@@ -265,7 +225,7 @@
     width: 30px;
     height: 30px;
     flex: 0 0 30px;
-    border-radius: 8px;
+    border-radius: 10px;
     font-size: 14px;
   }
 
@@ -273,34 +233,18 @@
     font-size: 12px;
   }
 
-  .categoryCopy small {
-    display: none;
-  }
-
   .listHeader h2 {
     font-size: 22px;
   }
 
-  .listHeader p {
-    font-size: 12px;
-  }
 }
 
 @media (max-width: 390px) {
-  .intro::after,
-  .introMark {
-    display: none;
-  }
-
   .categoryTabs button {
-    min-height: 58px;
+    min-height: 54px;
   }
 
   .listHeader {
     gap: 8px;
-  }
-
-  .activeIcon {
-    display: none;
   }
 }

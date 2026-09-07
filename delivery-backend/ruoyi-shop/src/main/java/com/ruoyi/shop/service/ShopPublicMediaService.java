@@ -7,6 +7,7 @@ import com.ruoyi.shop.domain.ShopZhenkeEnjoy;
 import com.ruoyi.shop.domain.ShopZhenkeEnjoyComment;
 import com.ruoyi.shop.domain.ShopZhenkePost;
 import com.ruoyi.shop.domain.ShopZhenkePostComment;
+import com.ruoyi.shop.domain.ShopVerificationReport;
 import com.ruoyi.shop.domain.vo.ShopHomeBannerPublicView;
 import com.ruoyi.shop.domain.vo.ShopZhenkeEnjoyPublicView;
 import java.util.List;
@@ -147,5 +148,18 @@ public class ShopPublicMediaService {
       if (value.getReplies() != null) value.getReplies().forEach(this::enjoyComment);
     }
     return value;
+  }
+
+  public List<ShopVerificationReport> reports(List<ShopVerificationReport> rows) {
+    rows.forEach(
+        report -> {
+          report.setProductCoverUrl(publicUrl(report.getProductCoverUrl()));
+          if (report.getResources() != null) {
+            report
+                .getResources()
+                .forEach(resource -> resource.setResourceUrl(publicUrl(resource.getResourceUrl())));
+          }
+        });
+    return rows;
   }
 }

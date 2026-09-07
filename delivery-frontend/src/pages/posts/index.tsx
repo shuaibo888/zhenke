@@ -185,7 +185,6 @@ export default function PostListPage() {
               title={cities.length === 0
                 ? `还没有${perspectives.find((item) => item.value === perspective)?.label}发布过甄客帖`
                 : `${selectedCity}还没有这一视角的分享`}
-              description="来记录一次值得分享的到访吧。"
               actionText="去发布"
               onAction={() => startPostPublish()}
             />

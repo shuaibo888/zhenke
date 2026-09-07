@@ -198,9 +198,7 @@ export default function OrdersPage() {
     <>
       <ZkProfilePage className={styles.ordersPage}>
         <ZkTaskHeader
-          eyebrow="消费履约"
           title="我的订单与核销"
-          description="配送、到店核销、支付、退款和甄客验资格都在这里处理。"
           backTo="/profile"
         />
         <ZkProfilePanel title="订单记录" meta={`共 ${filtered.length} 笔`}>

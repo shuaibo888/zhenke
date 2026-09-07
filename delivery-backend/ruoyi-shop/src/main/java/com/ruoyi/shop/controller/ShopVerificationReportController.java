@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import com.ruoyi.common.annotation.Anonymous;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.core.controller.BaseController;
+import com.ruoyi.common.core.page.TableDataInfo;
+import com.github.pagehelper.PageHelper;
 import com.ruoyi.shop.domain.dto.ShopPurchaseReportBody;
 import com.ruoyi.shop.domain.dto.ShopVerificationReportBody;
 import com.ruoyi.shop.domain.dto.ShopReportCommentBody;
@@ -19,28 +22,36 @@ import com.ruoyi.shop.service.ShopPurchaseReportService;
 import com.ruoyi.shop.service.ShopReportResourceService;
 import com.ruoyi.shop.service.ShopTrialService;
 import com.ruoyi.shop.service.ShopVerificationReportCommentService;
+import com.ruoyi.shop.service.ShopMerchantService;
+import com.ruoyi.shop.service.ShopPublicMediaService;
 import com.ruoyi.framework.config.ServerConfig;
 
 @RestController
 @RequestMapping("/shop/reports")
-public class ShopVerificationReportController
+public class ShopVerificationReportController extends BaseController
 {
     private final ShopTrialService trialService;
     private final ShopPurchaseReportService purchaseReportService;
     private final ShopVerificationReportCommentService commentService;
     private final ShopReportResourceService resourceService;
     private final ServerConfig serverConfig;
+    private final ShopMerchantService merchantService;
+    private final ShopPublicMediaService publicMedia;
     public ShopVerificationReportController(ShopTrialService trialService,
             ShopPurchaseReportService purchaseReportService,
             ShopVerificationReportCommentService commentService,
             ShopReportResourceService resourceService,
-            ServerConfig serverConfig)
+            ServerConfig serverConfig,
+            ShopMerchantService merchantService,
+            ShopPublicMediaService publicMedia)
     {
         this.trialService = trialService;
         this.purchaseReportService = purchaseReportService;
         this.commentService = commentService;
         this.resourceService = resourceService;
         this.serverConfig = serverConfig;
+        this.merchantService = merchantService;
+        this.publicMedia = publicMedia;
     }
 
     @Anonymous
@@ -79,6 +90,20 @@ public class ShopVerificationReportController
     public AjaxResult myReports()
     {
         return AjaxResult.success(trialService.myReports());
+    }
+
+    @Anonymous
+    @GetMapping("/merchant/{merchantId}")
+    public TableDataInfo merchantReports(@PathVariable long merchantId,
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "6") int pageSize)
+    {
+        merchantService.publicDetail(merchantId);
+        PageHelper.startPage(Math.max(1, pageNum), Math.max(1, Math.min(pageSize, 24)));
+        var rows = trialService.merchantReports(merchantId);
+        TableDataInfo result = getDataTable(rows);
+        result.setRows(publicMedia.reports(rows));
+        return result;
     }
 
     @Anonymous

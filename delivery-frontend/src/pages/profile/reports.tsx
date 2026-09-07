@@ -18,9 +18,7 @@ export default function MyReportsPage() {
   return (
     <ZkProfilePage className={styles.profileReportsPage}>
       <ZkTaskHeader
-        eyebrow="内容创作"
         title="我的甄客验"
-        description="查看基于订单、试用或核销资格发布的真实体验。"
         backTo="/profile"
       />
       <ZkProfilePanel title="已发布内容" meta={`共 ${reports.length} 篇`}>

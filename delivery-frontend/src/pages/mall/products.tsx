@@ -272,7 +272,6 @@ export default function MallProductsPage() {
           ) : localLifeModuleUnavailable ? (
             <ZkState
               title={`${activeModuleMeta.title}服务正在准备`}
-              description="平台正在整理可购买的套餐与服务，上线后会在这里展示。"
             />
           ) : products.length === 0 ? (
             <ZkState

@@ -111,9 +111,7 @@ export default function TrialsPage() {
     <>
       <ZkProfilePage className={styles.trialsPage}>
         <ZkTaskHeader
-          eyebrow="参与服务"
           title="我的试用"
-          description="查看申请、审核、配送或到店核销以及甄客验发布进度。"
           backTo="/profile"
         />
         <ZkProfilePanel title="试用记录" meta={`共 ${filtered.length} 项`}>
