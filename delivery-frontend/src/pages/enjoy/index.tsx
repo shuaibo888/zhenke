@@ -89,7 +89,6 @@ export default function EnjoyListPage() {
         <div className={pageStyles.introCopy}>
           <span className={pageStyles.kicker}>甄客行精选</span>
           <h1>甄必享</h1>
-          <p>玩、吃、住、购，发现城市里真正值得体验的内容。</p>
         </div>
       </header>
       <nav className={pageStyles.categoryTabs} aria-label="甄必享分类">
