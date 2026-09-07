@@ -84,12 +84,6 @@ export function notifyCurrentLocationChanged() {
   }
 }
 
-export function openCurrentCityPicker() {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event(OPEN_CURRENT_CITY_PICKER_EVENT));
-  }
-}
-
 function geolocationErrorMessage(error: GeolocationPositionError | DOMException | unknown) {
   if (error instanceof Error && [
     '未获得定位权限，请手动选择城市',

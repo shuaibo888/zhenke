@@ -49,7 +49,6 @@ export default function RedeemScanModal({
   const busyRef = useRef(false);
   const openRef = useRef(open);
   openRef.current = open;
-  const [camReady, setCamReady] = useState(false);
   const [camError, setCamError] = useState('');
   const [camStopped, setCamStopped] = useState(false);
   const [fileLoading, setFileLoading] = useState(false);
@@ -58,7 +57,6 @@ export default function RedeemScanModal({
   const stopScanner = useCallback(async () => {
     const scanner = scannerRef.current;
     scannerRef.current = null;
-    setCamReady(false);
     if (!scanner) return;
     try {
       await scanner.stop();
@@ -81,7 +79,6 @@ export default function RedeemScanModal({
     }
     setCamError('');
     setCamStopped(false);
-    setCamReady(false);
 
     const handleDecode = (decodedText: string) => {
       const code = decodedText.trim();
@@ -121,7 +118,6 @@ export default function RedeemScanModal({
       scannerRef.current = scanner;
       try {
         await scanner.start(config, { fps: 10, qrbox: { width: 250, height: 250 } }, handleDecode, () => {});
-        setCamReady(true);
         return;
       } catch (error) {
         lastError = error;

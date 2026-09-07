@@ -6,7 +6,7 @@ import {
   ShopOutlined,
   TruckOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Checkbox, Drawer, Modal, Select, Space, Spin, Tag, message } from 'antd';
+import { Alert, Button, Checkbox, Drawer, Modal, Select, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';

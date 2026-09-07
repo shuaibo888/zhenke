@@ -1,4 +1,5 @@
 import { ConfigProvider, Spin } from 'antd';
+import zhCN from 'antd/locale/zh_CN';
 import { Outlet, useLocation } from 'umi';
 import { ShopProvider, useShop } from '@/app/ShopContext';
 import { commerceTheme } from '@/app/theme';
@@ -17,7 +18,7 @@ captureWechatEntryUrl();
 // unthemed holder or emit dynamic-theme warnings at runtime.
 ConfigProvider.config({
   holderRender: (children) => (
-    <ConfigProvider theme={commerceTheme}>{children}</ConfigProvider>
+    <ConfigProvider locale={zhCN} theme={commerceTheme}>{children}</ConfigProvider>
   ),
 });
 
@@ -39,7 +40,7 @@ function CommerceApplication() {
 
 export default function Layout() {
   return (
-    <ConfigProvider theme={commerceTheme}>
+    <ConfigProvider locale={zhCN} theme={commerceTheme}>
       <ShopProvider>
         <CommerceApplication />
       </ShopProvider>

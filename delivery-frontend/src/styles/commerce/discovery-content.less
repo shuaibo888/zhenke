@@ -17,8 +17,6 @@
   text-transform: uppercase;
 }
 
-.contentGrid,
-.profileGrid,
 .singleColumn,
 .authShell {
   max-width: 1280px;
@@ -40,12 +38,6 @@
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.88);
   box-shadow: 0 20px 60px rgba(94, 45, 38, 0.1);
-}
-
-.loginModal .authCard {
-  border: 0;
-  box-shadow: none;
-  background: transparent;
 }
 
 .sharePreview {
@@ -258,8 +250,7 @@
   letter-spacing: 0;
 }
 
-.authHeader p,
-.demoAccount {
+.authHeader p {
   margin: 0;
   color: #6b7872;
 }
@@ -721,10 +712,7 @@
   -webkit-overflow-scrolling: touch;
 }
 
-.catalog,
-.trustPanel,
 .singleColumn,
-.profileHero,
 .orderPanel {
   border: 1px solid rgba(138, 63, 50, 0.12);
   border-radius: 8px;
@@ -732,9 +720,7 @@
   box-shadow: 0 20px 60px rgba(94, 45, 38, 0.1);
 }
 
-.catalog,
 .singleColumn,
-.profileHero,
 .orderPanel {
   padding: 22px;
 }
@@ -758,17 +744,14 @@
     border-color 180ms ease;
 }
 
-.productCard:hover,
-.activeProduct {
+.productCard:hover {
   transform: translateY(-2px);
   border-color: rgba(138, 63, 50, 0.44);
   box-shadow: 0 18px 40px rgba(94, 45, 38, 0.14);
 }
 
-.cardTopline,
 .reportMeta,
-.reportFooter,
-.statRow {
+.reportFooter {
   display: flex;
   gap: 8px;
   align-items: center;
@@ -779,8 +762,7 @@
   font-size: 12px;
 }
 
-.reportList,
-.noticeList {
+.reportList {
   display: grid;
   gap: 12px;
 }
@@ -793,39 +775,6 @@
   border-radius: 5px;
   font-size: 12px;
   font-weight: 800;
-}
-
-/* 首页瀑布流（小红书式）：卡片按内容高度自然错落，不强制左右对齐 */
-.masonryFeed {
-  position: relative;
-}
-
-.masonryColumns {
-  display: grid;
-  align-items: start;
-}
-
-.masonryColumn {
-  display: flex;
-  flex-direction: column;
-}
-
-.homeFeedPage .reportGridCard,
-.homeFeedPage .recruitGridCard {
-  height: auto;
-}
-
-.homeFeedPage .reportGridImage {
-  aspect-ratio: auto;
-}
-
-.homeFeedPage .reportGridImage img {
-  position: static;
-  width: 100%;
-  height: auto;
-  display: block;
-  aspect-ratio: 1 / 1; /* 加载前按 1:1 占位防塌陷；加载后由内联 style 覆盖 */
-  object-fit: cover;
 }
 
 .reportGridCard {
@@ -908,8 +857,7 @@
   flex: 1;
 }
 
-.gridAuthorAvatar,
-.gridMerchantAvatar {
+.gridAuthorAvatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1017,10 +965,6 @@
   }
 }
 
-.recruitGridCard .reportGridContent {
-  gap: 6px;
-}
-
 .reportCard {
   padding: 16px;
   border: 1px solid rgba(138, 63, 50, 0.13);
@@ -1082,39 +1026,6 @@
   border-top: 1px solid #eaded7;
   border-bottom: 1px solid #eaded7;
 }
-
-/* 智能评分功能暂时隐藏，恢复时取消注释。
-.aiScoreRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 6px 0 12px;
-
-  :global(.ant-btn-link) {
-    height: auto;
-    padding: 0;
-  }
-}
-
-.aiScoreComment {
-  margin: 0 0 16px;
-  padding: 14px 16px;
-  border: 1px solid fade(#d8ad55, 32%);
-  border-radius: 12px;
-  background: linear-gradient(135deg, #fffaf0, #fff);
-  color: #5e4a22;
-
-  strong {
-    display: block;
-    margin-bottom: 6px;
-  }
-
-  p {
-    margin: 0;
-    line-height: 1.75;
-  }
-}
-*/
 
 .purchaseReportRatings span {
   display: flex;

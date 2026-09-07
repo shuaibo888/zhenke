@@ -138,22 +138,6 @@
   background: #eef2ef;
 }
 
-.demoAccounts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
-  color: #6d7672;
-  font-size: 12px;
-}
-
-.demoAccounts span {
-  padding: 6px 8px;
-  border: 1px solid #dde4df;
-  border-radius: 6px;
-  background: #f8faf8;
-}
-
 .appShell {
   min-height: 100vh;
   min-height: 100dvh;
@@ -356,26 +340,6 @@
   line-height: 1.4;
 }
 
-.metricgreen::before,
-.metricgreen .metricIcon {
-  background: #1f6f5b;
-}
-
-.metricgold::before,
-.metricgold .metricIcon {
-  background: #b8872f;
-}
-
-.metricblue::before,
-.metricblue .metricIcon {
-  background: #2f6690;
-}
-
-.metricred::before,
-.metricred .metricIcon {
-  background: #b1593c;
-}
-
 .chartPanel {
   display: grid;
   gap: 18px;
@@ -523,42 +487,6 @@
     grid-template-columns: 1fr;
     gap: 0;
   }
-}
-
-.uploadBlock {
-  display: grid;
-  grid-template-columns: 128px minmax(0, 1fr);
-  gap: 14px;
-  align-items: center;
-  padding: 12px;
-  border: 1px solid #dfe6e1;
-  border-radius: 8px;
-  background: #f9fbfa;
-}
-
-.uploadPreview {
-  display: grid;
-  place-items: center;
-  width: 128px;
-  height: 96px;
-  border-radius: 8px;
-  background-color: #dde5df;
-  background-position: center;
-  background-size: cover;
-  color: #7a8580;
-  font-size: 12px;
-}
-
-.uploadActions {
-  display: grid;
-  gap: 8px;
-}
-
-.uploadActions p {
-  margin: 0;
-  color: #7a8580;
-  font-size: 12px;
-  line-height: 1.6;
 }
 
 .mediaDropzone :global(.ant-upload-drag) {
@@ -1173,14 +1101,6 @@
     margin-left: 0;
   }
 
-  .uploadBlock {
-    grid-template-columns: 1fr;
-  }
-
-  .uploadPreview {
-    width: 100%;
-  }
-
   .detailGrid {
     grid-template-columns: 1fr;
   }
@@ -1645,8 +1565,7 @@
 .detailGrid div,
 .detailSection,
 .feeBreakdown,
-.addressText,
-.uploadBlock {
+.addressText {
   border-color: rgba(31, 111, 91, 0.11);
   border-radius: 12px;
   background: #f7faf8;

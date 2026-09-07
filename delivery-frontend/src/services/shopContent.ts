@@ -387,12 +387,6 @@ export interface HomeFeedQuery {
   pageSize?: number;
 }
 
-export interface HomeSearchQuery {
-  keyword: string;
-  pageNum?: number;
-  pageSize?: number;
-}
-
 export interface MallProductsQuery {
   categoryId?: number;
   merchantId?: number;
@@ -419,27 +413,6 @@ export async function fetchHomeFeed(query: HomeFeedQuery = {}) {
   if (trialType !== 'ALL') params.set('trialType', trialType);
   const result = await requestApi<TableResponse<HomeFeedItemDto>>(
     `/shop/home/feed?${params.toString()}`,
-    {},
-    Boolean(getToken()),
-  );
-  return {
-    ...result,
-    rows: Array.isArray(result.rows) ? result.rows : [],
-    total: typeof result.total === 'number' ? result.total : 0,
-  };
-}
-
-export async function searchHomeFeed(query: HomeSearchQuery) {
-  const keyword = query.keyword.trim();
-  const pageNum = Math.max(1, Math.trunc(query.pageNum ?? 1));
-  const pageSize = Math.max(1, Math.min(24, Math.trunc(query.pageSize ?? 12)));
-  const params = new URLSearchParams({
-    keyword,
-    pageNum: String(pageNum),
-    pageSize: String(pageSize),
-  });
-  const result = await requestApi<TableResponse<HomeFeedItemDto>>(
-    `/shop/home/search?${params.toString()}`,
     {},
     Boolean(getToken()),
   );
@@ -637,19 +610,6 @@ export async function fetchMyCoupon(userCouponId: number) {
   const result = await requestApi<ApiResponse<ShopCouponDto>>(`/shop/coupons/${userCouponId}`, {}, true);
   if (!result.data) throw new Error('优惠券不存在');
   return result.data;
-}
-
-export async function fetchAvailableCoupons(merchantId: number, subtotal: number) {
-  const params = new URLSearchParams({
-    merchantId: String(merchantId),
-    subtotal: subtotal.toFixed(2),
-  });
-  const result = await requestApi<ApiResponse<ShopCouponDto[]>>(
-    `/shop/coupons/available?${params.toString()}`,
-    {},
-    true,
-  );
-  return Array.isArray(result.data) ? result.data : [];
 }
 
 export async function createShopOrders(body: {

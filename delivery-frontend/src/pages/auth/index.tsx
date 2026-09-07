@@ -151,13 +151,6 @@ export default function AuthPage() {
     return () => window.clearInterval(timer);
   }, [countdown]);
 
-  useEffect(() => {
-    // The account form is not mounted while phone login is active. Calling a
-    // useForm instance before its Form mounts makes Ant Design report a
-    // disconnected form and can leave stale captcha input behind.
-    if (!phoneMode) form.resetFields(['code']);
-  }, [captcha.uuid, form, phoneMode]);
-
   const submit = async (values: AuthValues) => {
     if (!ensureAgreementAccepted()) return;
     try {
@@ -245,18 +238,21 @@ export default function AuthPage() {
   };
 
   const switchAccountMode = (mode: 'login' | 'register') => {
+    if (!phoneMode && mode !== authMode) {
+      // This form is currently mounted, so sensitive and captcha values can be
+      // cleared synchronously without touching a disconnected form instance.
+      form.resetFields(['password', 'code']);
+    }
     setPhoneMode(false);
     setPhoneLoginMethod('oneClick');
-    if (mode === authMode) return;
-    setAuthMode(mode);
-    if (!phoneMode) form.resetFields(['password', 'code']);
+    if (mode !== authMode) setAuthMode(mode);
   };
 
   return (
     <>
       <main className={`${styles.authShell} ${styles.authLayout} ${styles.authSimpleLayout}`}>
         <Button type="text" icon={<ArrowLeftOutlined />} className={styles.authBackButton} aria-label="返回甄客行" onClick={goBack}>
-          返回甄客行
+          返回
         </Button>
         <section className={styles.authIntro}>
           <div className={styles.authVisualGlow} aria-hidden="true" />
@@ -290,9 +286,9 @@ export default function AuthPage() {
                   )}
                 </div>
               ) : (
-                <Form form={phoneForm} layout="vertical" requiredMark={false} className={`${styles.authForm} ${styles.authSmsForm}`} onFinish={submitPhone} onFinishFailed={ensureAgreementAccepted}>
+                <Form form={phoneForm} clearOnDestroy layout="vertical" requiredMark={false} className={`${styles.authForm} ${styles.authSmsForm}`} onFinish={submitPhone} onFinishFailed={ensureAgreementAccepted}>
                   <Form.Item name="phone" label="手机号" rules={[{ required: true, message: '请输入手机号' }, { pattern: /^1\d{10}$/, message: '请输入11位中国大陆手机号' }]}>
-                    <Input size="large" prefix={<MobileOutlined />} inputMode="numeric" maxLength={11} autoComplete="tel" placeholder="请输入11位手机号" />
+                    <Input className={styles.authAffixInput} size="large" prefix={<MobileOutlined aria-hidden="true" />} inputMode="numeric" maxLength={11} autoComplete="tel" placeholder="请输入11位手机号" />
                   </Form.Item>
                   <Form.Item label="验证码" required>
                     <div className={styles.authSmsCodeRow}>
@@ -305,7 +301,7 @@ export default function AuthPage() {
                           { len: 6, message: '请输入 6 位短信验证码' },
                         ]}
                       >
-                        <Input size="large" prefix={<LockOutlined />} inputMode="numeric" maxLength={6} autoComplete="one-time-code" placeholder="6 位短信验证码" />
+                        <Input className={styles.authAffixInput} size="large" prefix={<LockOutlined aria-hidden="true" />} inputMode="numeric" maxLength={6} autoComplete="one-time-code" placeholder="6 位短信验证码" />
                       </Form.Item>
                       <Button size="large" disabled={countdown > 0 || capabilities?.smsEnabled === false} onClick={() => void sendPhoneCode()}>
                         {countdown > 0 ? `${countdown}s` : '获取验证码'}
@@ -329,7 +325,7 @@ export default function AuthPage() {
             </>
           ) : (
             <>
-              <Form form={form} layout="vertical" requiredMark={false} className={styles.authForm} onFinish={submit} onFinishFailed={ensureAgreementAccepted}>
+              <Form key={authMode} form={form} clearOnDestroy layout="vertical" requiredMark={false} className={styles.authForm} onFinish={submit} onFinishFailed={ensureAgreementAccepted}>
                 <Form.Item
                   name="username"
                   label="登录账号名"
@@ -339,8 +335,9 @@ export default function AuthPage() {
                   ]}
                 >
                   <Input
+                    className={styles.authAffixInput}
                     size="large"
-                    prefix={<UserOutlined />}
+                    prefix={<UserOutlined aria-hidden="true" />}
                     autoComplete="username"
                     maxLength={20}
                     placeholder={authMode === 'register' ? '请设置4-20位登录账号名' : '请输入登录账号名'}
@@ -349,11 +346,12 @@ export default function AuthPage() {
                 <Form.Item name="password" label="登录密码" rules={[
                   { required: true, message: '请输入登录密码' },
                   ...(authMode === 'register' ? [{ min: 6, max: 20, message: '密码长度需为6到20位' }] : []),
-                  { validator: (_, value) => !value || (/[A-Za-z]/.test(value) && /\d/.test(value)) ? Promise.resolve() : Promise.reject(new Error('密码必须同时包含字母和数字')) },
+                  ...(authMode === 'register' ? [{ validator: (_: unknown, value?: string) => !value || (/[A-Za-z]/.test(value) && /\d/.test(value)) ? Promise.resolve() : Promise.reject(new Error('密码必须同时包含字母和数字')) }] : []),
                 ]}>
                   <Input.Password
+                    className={styles.authAffixInput}
                     size="large"
-                    prefix={<LockOutlined />}
+                    prefix={<LockOutlined aria-hidden="true" />}
                     maxLength={authMode === 'register' ? 20 : undefined}
                     autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
                     placeholder={authMode === 'register' ? '6-20位，需含字母和数字' : '请输入登录密码'}

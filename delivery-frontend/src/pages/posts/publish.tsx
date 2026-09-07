@@ -4,7 +4,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import { Button, Form, Input, Radio, Select, Upload, message } from 'antd';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
@@ -67,7 +67,6 @@ export default function PublishPostPage() {
   const location = useLocation();
   const { user, authLoading } = useShop();
   const [form] = Form.useForm<PublishValues>();
-  const selectedPlaceKey = Form.useWatch('place', form);
   const [media, setMedia] = useState<PostResource[]>([]);
   const hasCoverImage = media.some((item) => item.resourceType === 'IMAGE');
   const [mediaUploading, setMediaUploading] = useState(false);
@@ -88,11 +87,6 @@ export default function PublishPostPage() {
   const uploadResultsRef = useRef(new Map<number, PostResource | null>());
   const uploadSequenceRef = useRef(0);
   const nextUploadCommitRef = useRef(1);
-  const selectedPlace = useMemo(
-    () => pois.find((item) => `${item.provider}:${item.providerPlaceId}` === selectedPlaceKey),
-    [pois, selectedPlaceKey],
-  );
-
   useEffect(() => {
     const placeId = Number(new URLSearchParams(location.search).get('placeId'));
     if (!Number.isSafeInteger(placeId) || placeId <= 0) return;

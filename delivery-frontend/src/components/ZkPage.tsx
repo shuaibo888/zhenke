@@ -7,26 +7,6 @@ import type { ReactNode } from "react";
 import { useNavigate } from "umi";
 import styles from "@/styles/zhenke.less";
 
-export function ZkPageHeader(props: {
-  eyebrow?: ReactNode;
-  title: ReactNode;
-  description?: ReactNode;
-  action?: ReactNode;
-}) {
-  return (
-    <header className={styles.pageHeader}>
-      <div className={styles.pageHeaderCopy}>
-        {props.eyebrow && (
-          <span className={styles.eyebrow}>{props.eyebrow}</span>
-        )}
-        <h1>{props.title}</h1>
-        {props.description && <p>{props.description}</p>}
-      </div>
-      {props.action}
-    </header>
-  );
-}
-
 export function ZkSectionTitle(props: {
   title: ReactNode;
   description?: ReactNode;

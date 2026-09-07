@@ -112,9 +112,7 @@
   padding: 2px 0;
 }
 
-.reportAuthor,
-.reportDetailActions,
-.purchaseActions {
+.reportAuthor {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -676,17 +674,12 @@
     padding: calc(12px + env(safe-area-inset-top)) 12px calc(92px + env(safe-area-inset-bottom));
   }
 
-  .topNav,
   .headerActions {
     justify-content: flex-start;
     overflow-x: auto;
   }
 
-  .contentGrid,
-  .profileGrid,
-  .authShell,
-  .productHero,
-  .purchasePage {
+  .authShell {
     grid-template-columns: 1fr;
   }
 
@@ -732,13 +725,6 @@
       linear-gradient(180deg, #fff8f3 0%, #f4ebe5 100%);
   }
 
-  .mastheadBrandGroup .profileBackButton {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    margin-top: -22px;
-  }
-
   .headerActions {
     display: none;
   }
@@ -770,56 +756,8 @@
     padding: 0;
   }
 
-  .homeFeedPage .reportGridCard,
-  .homeFeedPage .recruitGridCard {
-    border: 1px solid #e3e7e4;
-    border-radius: 10px;
-    box-shadow: 0 1px 5px rgba(21, 49, 38, 0.05);
-  }
-
-  .homeFeedPage .reportGridImage {
-    border-bottom: 1px solid #eaded7;
-  }
-
-  .homeFeedPage .reportGridFooter {
-    margin-top: auto;
-    padding-top: 8px;
-    border-top: 1px solid #f0f2f0;
-  }
-
-  .homeFeedPage .reportGridImage {
-    aspect-ratio: auto;
-    padding-top: 0;
-    border-radius: 10px 10px 0 0;
-  }
-
-  .homeFeedPage .reportGridContent {
-    padding: 9px 10px 11px;
-  }
-
-  .homeFeedPage .reportGridTitle {
-    margin: 0;
-    color: #171b19;
-    font-size: 14px;
-    font-weight: 700;
-    -webkit-line-clamp: 2;
-  }
-
-  .homeFeedPage .usefulButton,
-  .homeFeedPage .usefulActive {
-    color: #8a3f32;
-    font-size: 13px;
-  }
-
   .productGrid {
     grid-template-columns: 1fr;
-  }
-
-  .profileHeaderCard .profileAvatar {
-    width: 54px;
-    height: 54px;
-    min-width: 54px;
-    font-size: 20px;
   }
 
   .profileDetailToolbar {
@@ -1080,19 +1018,6 @@
     box-shadow: none;
   }
 
-  .profileReportsPage .profileListHeader {
-    align-items: center;
-    flex-direction: row;
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-
-  .profileReportsPage .profileListHeader :global(.ant-btn) {
-    flex-shrink: 0;
-    padding-inline: 0;
-    color: #745148;
-  }
-
   .reportList {
     grid-template-columns: 1fr;
     gap: 10px;
@@ -1134,7 +1059,6 @@
   .reportListCard .profileReportHint {
     display: none;
   }
-
 
   .cartFooter {
     align-items: stretch;
@@ -1222,31 +1146,22 @@
     padding: 38px 16px;
   }
 
-  .productHero h1,
-  .purchasePage h1,
   .reportDetail h1 {
     font-size: 24px;
   }
 
-  .recruitmentHero,
-  .productReportFlow,
-  .evidencePanel,
   .reportDetail {
     padding: 16px;
   }
 
-  .buyConfirmFooter,
   .reviewOrderInfo,
   .reviewStarItem,
-  .reviewRecommendField,
-  .orderItem {
+  .reviewRecommendField {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .buyConfirmFooter :global(.ant-btn),
-  .reviewActions :global(.ant-btn),
-  .purchaseActions :global(.ant-btn) {
+  .reviewActions :global(.ant-btn) {
     flex: 1;
     min-height: 44px;
   }

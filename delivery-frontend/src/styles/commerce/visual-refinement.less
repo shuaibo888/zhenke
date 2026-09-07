@@ -36,7 +36,6 @@
 }
 
 .reportGridCard,
-.recruitGridCard,
 .mallProductCard,
 .orderCard,
 .trialPanel {
@@ -52,7 +51,6 @@
 }
 
 .reportGridCard:hover .reportGridImage img,
-.recruitGridCard:hover .reportGridImage img,
 .mallProductCard:hover .mallProductImage img {
   transform: scale(1.025);
   filter: saturate(1.04);
@@ -164,7 +162,6 @@
   }
 }
 
-.recruitGridCard:focus-visible,
 .mallProductCard:focus-visible,
 .orderCard:focus-within {
   outline: 3px solid rgba(138, 63, 50, 0.2);
@@ -183,16 +180,8 @@
 
 @media (min-width: 641px) {
 
-  .catalog,
-  .trustPanel,
   .singleColumn,
-  .profileHero,
   .orderPanel,
-  .productHero,
-  .purchasePage,
-  .recruitmentHero,
-  .productReportFlow,
-  .evidencePanel,
   .reportDetail {
     border-color: var(--shop-line);
     border-radius: 18px;
@@ -200,7 +189,6 @@
   }
 
   .reportGridCard,
-  .recruitGridCard,
   .mallProductCard {
     border-radius: 16px;
   }
@@ -218,8 +206,6 @@
       linear-gradient(180deg, #fff8f3 0%, #f4ebe5 100%);
   }
 
-  .homeFeedPage .reportGridCard,
-  .homeFeedPage .recruitGridCard,
   .mallProductCard,
   .orderCard,
   .trialPanel {
@@ -249,11 +235,6 @@
 }
 
 @media (max-width: 640px) {
-  .appShell.mallApp {
-    /* 顶部不再留 padding（搜索栏自带顶部间距），底部只留底部导航栏的高度，
-       让 .mallPage 底部正好贴住导航栏，不再有多余横线/空隙 */
-    padding: 0 16px calc(58px + env(safe-area-inset-bottom));
-  }
 
   .mallSearch {
     padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
@@ -300,18 +281,11 @@
   padding-bottom: 112px;
 }
 
-.appShell.mallApp {
-  padding-bottom: 92px;
-}
-
 @media (max-width: 900px) {
   .appShell {
     padding-bottom: calc(104px + env(safe-area-inset-bottom));
   }
 
-  .appShell.mallApp {
-    padding-bottom: calc(90px + env(safe-area-inset-bottom));
-  }
 }
 
 @media (max-width: 640px) {
@@ -319,9 +293,6 @@
     padding-bottom: calc(96px + env(safe-area-inset-bottom));
   }
 
-  .appShell.mallApp {
-    padding: 0 16px calc(84px + env(safe-area-inset-bottom));
-  }
 }
 
 .appShell.authPage {
@@ -777,12 +748,6 @@
     linear-gradient(145deg, #ff8a32 0%, #f15a19 68%, #e94a15 100%);
 }
 
-.authBrandRow .brandMark {
-  color: #ff6b1a;
-  background: #fff;
-  border-radius: 16px;
-}
-
 .authLayout .authIntroCopy .eyebrow,
 .authLayout .authRules svg,
 .checkoutHeader .eyebrow {
@@ -795,8 +760,7 @@
 }
 
 .authSubmit,
-.authOneClick,
-.authOneClickIcon {
+.authOneClick {
   background: #ff6b1a;
   border-color: #ff6b1a;
   box-shadow: 0 8px 20px rgba(255, 107, 26, 0.22);
@@ -853,8 +817,7 @@
 .gridAuthorAvatar,
 .reportDetailAvatar,
 .reportDetailAvatarSmall,
-.trialChoiceTriggerIcon,
-.profileMenuIcon {
+.trialChoiceTriggerIcon {
   background: #ff6b1a;
   box-shadow: none;
 }
@@ -884,16 +847,13 @@
   color: #ff6b1a;
 }
 
-.trialHeroImage,
-.productHero img,
-.purchasePage > img {
+.trialHeroImage {
   border-radius: 16px;
 }
 
 .couponWalletAmount,
 .couponDetailHero,
 .pointBalancePanel,
-.payAmount,
 .businessStatusHero {
   background: linear-gradient(135deg, #ff8a32, #f15a19 72%, #e94a15);
   box-shadow: 0 12px 28px rgba(255, 107, 26, 0.2);
@@ -912,8 +872,6 @@
 .profileReportsPage .orderPanel,
 .productReportsBody,
 .checkoutSuccessCard,
-.profileHeaderCard,
-.profileMenuPanel,
 .logisticsSummaryCard,
 .cartDrawer :global(.ant-drawer-body),
 .addressItem,
@@ -923,7 +881,6 @@
 }
 
 .productCertificationPanel,
-.aiScoreComment,
 .pointTransferBalance,
 .profileEditSection,
 .logisticsSummaryCard {
@@ -931,12 +888,10 @@
   border-color: #eaded5;
 }
 
-.mallSearchSubmit,
 .profileBackIcon,
 .productCertificationIcon,
 .checkoutSuccessIcon,
 .pointCouponAmount,
-.merchantDetailNavigate,
 .pointTransferSourceCover,
 .logisticsCarrierMark {
   color: #fff;
@@ -945,12 +900,7 @@
 }
 
 .orderFilterTabs .orderFilterActive,
-.orderFilterTabs .orderFilterActive:hover,
-.homeCategoryNav button.homeCategoryActive,
-.homeCategoryNav button.homeCategoryActive:hover,
-.homeCategoryNav button.homeCategoryActive:active,
-.mallCategoryRail .mallCategoryActive,
-.mallCategoryRail .mallCategoryActive:hover {
+.orderFilterTabs .orderFilterActive:hover {
   color: #fff;
   background: #ff6b1a;
   border-color: #ff6b1a;
