@@ -137,7 +137,7 @@ export function AddressManager({
         width={620}
         rootClassName={styles.responsiveModal}
       >
-        {!picker && (
+        {!picker && addresses.length > 0 && (
           <div className={styles.addressManagerHeader}>
             <Button type="primary" icon={<PlusOutlined />} onClick={startCreate}>新增地址</Button>
           </div>
@@ -168,31 +168,36 @@ export function AddressManager({
               </button>
             ) : (
               <div className={styles.addressItem} key={address.id}>
-                <Radio
-                  checked={address.isDefault}
-                  disabled={mutatingId !== null}
-                  onChange={() => void setDefault(address.id)}
-                >
-                  设为默认
-                </Radio>
                 <div className={styles.addressContent}>
                   <span>
                     <strong>{address.recipient}</strong>
                     <em>{address.phone}</em>
-                    {address.isDefault && <Tag color="success">默认地址</Tag>}
                   </span>
                   <p>{formatAddress(address)}</p>
                 </div>
-                <Button size="small" onClick={() => startEdit(address)}>编辑</Button>
-                <Button
-                  size="small"
-                  danger
-                  icon={<DeleteOutlined />}
-                  loading={mutatingId === address.id}
-                  onClick={() => confirmRemove(address)}
-                >
-                  删除
-                </Button>
+                <div className={styles.addressActions}>
+                  <Radio
+                    checked={address.isDefault}
+                    disabled={mutatingId !== null}
+                    onChange={() => void setDefault(address.id)}
+                  >
+                    {address.isDefault ? '默认地址' : '设为默认'}
+                  </Radio>
+                  <div className={styles.addressEditActions}>
+                    <Button type="text" size="small" disabled={mutatingId !== null} onClick={() => startEdit(address)}>编辑</Button>
+                    <Button
+                      type="text"
+                      size="small"
+                      danger
+                      icon={<DeleteOutlined />}
+                      loading={mutatingId === address.id}
+                      disabled={mutatingId !== null}
+                      onClick={() => confirmRemove(address)}
+                    >
+                      删除
+                    </Button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>

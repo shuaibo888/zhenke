@@ -1835,6 +1835,51 @@
   padding-top: 24px;
 }
 
+// Personal subpages use a quiet navigation row, separate from content cards.
+.profileSubPage .taskHeader {
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 8px;
+  margin: 0;
+  padding: 0 0 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.profileSubPage .taskHeaderBack {
+  width: 44px;
+  height: 44px;
+  color: @ink;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  font-size: 20px;
+  transition: background 0.16s ease;
+}
+
+.profileSubPage .taskHeaderBack:hover {
+  background: #fff0e8;
+}
+
+.profileSubPage .taskHeaderBack:focus-visible {
+  outline: 2px solid @orange;
+  outline-offset: 2px;
+}
+
+.profileSubPage .taskHeaderCopy h1 {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+@media (max-width: 650px) {
+  .profileSubPage .taskHeaderCopy h1 {
+    font-size: 20px;
+  }
+}
+
 .profileCollectionPanel {
   padding: 18px;
   box-shadow: none;

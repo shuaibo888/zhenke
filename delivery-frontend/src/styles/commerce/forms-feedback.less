@@ -382,11 +382,12 @@
 .addressManagerHeader {
   display: flex;
   justify-content: flex-end;
+  margin: 8px 0 20px;
 }
 
 .addressManagerHeader :global(.ant-btn) {
   min-height: 38px;
-  border-radius: 19px;
+  border-radius: 12px;
   font-weight: 700;
 }
 
@@ -400,10 +401,10 @@
 
 .addressItem {
   display: grid;
-  grid-template-columns: 104px minmax(0, 1fr) auto auto;
-  gap: 10px 8px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
   align-items: center;
-  padding: 14px;
+  padding: 16px;
   border: 1px solid rgba(138, 63, 50, 0.15);
   border-radius: 14px;
   background: linear-gradient(145deg, #fffaf6, #fff8f3);
@@ -416,7 +417,34 @@
 }
 
 .addressItem :global(.ant-btn) {
-  border-radius: 16px;
+  min-height: 36px;
+  padding-inline: 8px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.addressActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 8px;
+  padding-top: 10px;
+  border-top: 1px solid #f0ebe7;
+}
+
+.addressActions :global(.ant-radio-wrapper) {
+  margin: 0;
+  min-height: 36px;
+  align-items: center;
+  color: #736962;
+  font-size: 13px;
+}
+
+.addressEditActions {
+  display: flex;
+  margin-left: auto;
+  gap: 4px;
 }
 
 .addressContent {
@@ -426,10 +454,9 @@
   text-align: left;
   background: transparent;
   border: 0;
-  cursor: pointer;
 }
 
-.addressContent span {
+.addressContent > span {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -442,18 +469,16 @@
 }
 
 .addressContent em {
-  color: #64716b;
+  color: #837a74;
   font-style: normal;
-  font-weight: 800;
+  font-weight: 400;
 }
 
 .addressContent p {
-  overflow: hidden;
   margin: 6px 0 0;
-  color: #64716b;
+  color: #5e554f;
   line-height: 1.55;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .addressPickerList {
@@ -1178,19 +1203,8 @@
   }
 
   .addressItem {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 9px;
-    padding: 13px;
-  }
-
-  .addressItem > :global(.ant-radio-wrapper),
-  .addressItem .addressContent {
-    grid-column: 1 / -1;
-  }
-
-  .addressItem > :global(.ant-btn) {
-    width: 100%;
-    min-height: 36px;
+    gap: 12px;
+    padding: 14px;
   }
 
   .logisticsSummaryCard {
