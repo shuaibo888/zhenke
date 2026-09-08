@@ -36,9 +36,9 @@ type MerchantOption = { merchantId: number; shopName: string };
 type FeaturedFilter = 'ALL' | 'FEATURED' | 'NORMAL';
 
 const perspectiveLabel = {
-  LOCAL: '本地土著',
-  TOURIST: '外地游客',
-  HOMETOWNER: '在外家乡人',
+  LOCAL: '本地大地主',
+  TOURIST: '外来取经人',
+  HOMETOWNER: '家乡驻外使',
 } as const;
 
 export default function ZhenkePostsPage() {

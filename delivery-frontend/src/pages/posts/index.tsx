@@ -11,9 +11,9 @@ import { CURRENT_LOCATION_CHANGED_EVENT } from '@/utils/currentLocation';
 
 const PAGE_SIZE = 12;
 const perspectives = [
-  { value: 'LOCAL', label: '本地土著' },
-  { value: 'TOURIST', label: '外地游客' },
-  { value: 'HOMETOWNER', label: '在外家乡人' },
+  { value: 'LOCAL', label: '本地大地主' },
+  { value: 'TOURIST', label: '外来取经人' },
+  { value: 'HOMETOWNER', label: '家乡驻外使' },
 ] as const;
 
 type PerspectiveFilter = typeof perspectives[number]['value'];

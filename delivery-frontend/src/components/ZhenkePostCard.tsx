@@ -10,9 +10,9 @@ import type { ZhenkePost } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
 
 export const perspectiveNames: Record<ZhenkePost['perspective'], string> = {
-  LOCAL: '本地土著',
-  TOURIST: '外地游客',
-  HOMETOWNER: '在外家乡人',
+  LOCAL: '本地大地主',
+  TOURIST: '外来取经人',
+  HOMETOWNER: '家乡驻外使',
 };
 
 function AuthorAvatar({ post }: { post: ZhenkePost }) {

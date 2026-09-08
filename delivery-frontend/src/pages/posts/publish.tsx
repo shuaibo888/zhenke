@@ -35,9 +35,9 @@ type PublishValues = {
 };
 
 const perspectiveOptions = [
-  { label: '本地土著', value: 'LOCAL' },
-  { label: '外地游客', value: 'TOURIST' },
-  { label: '在外家乡人', value: 'HOMETOWNER' },
+  { label: '本地大地主', value: 'LOCAL' },
+  { label: '外来取经人', value: 'TOURIST' },
+  { label: '家乡驻外使', value: 'HOMETOWNER' },
 ];
 
 const PLACE_SEARCH_DEBOUNCE_MS = 600;
