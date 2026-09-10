@@ -330,7 +330,7 @@ export default function ProfilePage() {
               onClick={() => toggleSection('nickname')}
             >
               <span><EditOutlined /></span>
-              <div><strong>修改昵称</strong><small>只更新个人展示名称</small></div>
+              <div><strong>修改昵称</strong></div>
               <DownOutlined className={`${legacyStyles.profileEditArrow} ${expandedSection === 'nickname' ? legacyStyles.profileEditArrowOpen : ''}`} />
             </button>
             <div className={`${legacyStyles.profileEditBody} ${expandedSection === 'nickname' ? legacyStyles.profileEditBodyOpen : ''}`}>
@@ -350,7 +350,7 @@ export default function ProfilePage() {
               onClick={() => toggleSection('avatar')}
             >
               <span><UploadOutlined /></span>
-              <div><strong>更换头像</strong><small>上传后立即更新头像，不影响昵称和密码</small></div>
+              <div><strong>更换头像</strong></div>
               <DownOutlined className={`${legacyStyles.profileEditArrow} ${expandedSection === 'avatar' ? legacyStyles.profileEditArrowOpen : ''}`} />
             </button>
             <div className={`${legacyStyles.profileEditBody} ${expandedSection === 'avatar' ? legacyStyles.profileEditBodyOpen : ''}`}>

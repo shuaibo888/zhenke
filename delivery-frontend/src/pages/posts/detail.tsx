@@ -35,6 +35,7 @@ import { useWechatShareGuide } from '@/hooks/useWechatShareGuide';
 import { useSafeBack } from '@/hooks/useSafeBack';
 import { buildLoginPath, LOGIN_RETURN_TO_SOURCE_STATE } from '@/utils/safeRedirect';
 import { buildPostShareLink, copyText } from '@/utils/shop';
+import { openPlaceNavigation } from '@/utils/merchantNavigation';
 import styles from '@/styles/zhenke.less';
 
 export default function PostDetailPage() {
@@ -260,7 +261,7 @@ export default function PostDetailPage() {
         <ZkState
           kind="error"
           title="这篇甄客帖已不可见"
-          description={error || '可能已被作者或平台删除。媒体与正文不会继续通过旧分享链接展示。'}
+          description={error || '可能已被作者或平台删除。'}
           actionText={Number.isSafeInteger(postId) && postId > 0 ? '重新加载' : '返回甄客帖'}
           onAction={Number.isSafeInteger(postId) && postId > 0 ? () => void load() : () => navigate('/posts')}
         />
@@ -423,7 +424,6 @@ export default function PostDetailPage() {
       </div>
 
       <article className={`${styles.surface} ${styles.detailContent}`}>
-        <span className={styles.eyebrow}>{detail.featured ? '编辑推荐 · 甄客帖' : '甄客帖 · 发布者主动分享'}</span>
         <h1>{detail.title}</h1>
         <div className={styles.prose}>{detail.content}</div>
         {detail.suggestion && (
@@ -503,17 +503,30 @@ export default function PostDetailPage() {
       <button
         type="button"
         className={`${styles.surface} ${styles.placePanel}`}
-        onClick={() => navigate(`/places/${detail.placeId}`)}
-        aria-label={`查看地点 ${detail.placeName} 的详情与导航`}
+        onClick={() => void openPlaceNavigation(detail.placeId, {
+          latitude: detail.placeLatitude,
+          longitude: detail.placeLongitude,
+          name: detail.placeName,
+          address: detail.placeAddress,
+        }).catch((reason) => message.error(reason instanceof Error ? reason.message : '暂时无法打开导航'))}
+        aria-label={`导航到 ${detail.placeName}`}
       >
         <span className={styles.placePanelIcon} aria-hidden="true"><EnvironmentOutlined /></span>
         <div className={styles.placePanelCopy}>
-          <small>发布者选择的地点</small>
           <strong>{detail.placeName}</strong>
           <p>{detail.placeAddress}</p>
           <PlaceDistance latitude={detail.placeLatitude} longitude={detail.placeLongitude} />
         </div>
-        <span className={styles.placePanelLink}>详情 <RightOutlined aria-hidden="true" /></span>
+        <span className={styles.placePanelLink}>导航 <RightOutlined aria-hidden="true" /></span>
+      </button>
+
+      <button
+        type="button"
+        className={`${styles.surface} ${styles.placePostsLink}`}
+        onClick={() => navigate(`/places/${detail.placeId}`)}
+      >
+        <span>围绕此地发布的甄客帖</span>
+        <RightOutlined aria-hidden="true" />
       </button>
 
       {detail.merchantId && (
@@ -525,7 +538,6 @@ export default function PostDetailPage() {
         >
           <span className={styles.placePanelIcon} aria-hidden="true"><ShopOutlined /></span>
           <div className={styles.placePanelCopy}>
-            <small>用户主动关联的入驻商家</small>
             <strong>{detail.merchantName}</strong>
           </div>
           <span className={styles.placePanelLink}>查看 <RightOutlined aria-hidden="true" /></span>

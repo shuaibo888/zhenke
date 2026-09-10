@@ -160,7 +160,6 @@ export default function MerchantDetailPage() {
       <section className={`${styles.surface} ${styles.profileGroup}`} style={{ marginTop: 16 }}>
         <header className={styles.profileGroupHeader}>
           <h2>商家公开信息</h2>
-          <p>查看商家主体、联系方式与实体店地址。</p>
         </header>
         <div className={styles.profileEntryGrid}>
           <div className={styles.profileEntry}><span className={styles.profileEntryIcon}><BankOutlined /></span><span className={styles.profileEntryCopy}><strong>营业执照主体</strong><small>{merchant.companyName}</small></span></div>

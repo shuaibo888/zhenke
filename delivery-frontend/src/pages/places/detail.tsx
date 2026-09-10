@@ -1,9 +1,5 @@
-import {
-  ArrowLeftOutlined,
-  EnvironmentOutlined,
-  CompassOutlined,
-} from '@ant-design/icons';
-import { Button, message } from 'antd';
+import { ArrowLeftOutlined } from '@ant-design/icons';
+import { Button } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { ZhenkePostCard } from '@/components/ZhenkePostCard';
@@ -12,7 +8,6 @@ import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
 import { useSafeBack } from '@/hooks/useSafeBack';
 import { place, posts, type Place, type ZhenkePost } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
-import { openPlaceNavigation } from '@/utils/merchantNavigation';
 
 const POST_PAGE_SIZE = 20;
 
@@ -123,32 +118,12 @@ export default function PlaceDetailPage() {
         <button type="button" className={styles.backButton} onClick={goBack} aria-label="返回">
           <ArrowLeftOutlined />
         </button>
-        <strong>地点详情</strong>
+        <strong>这个地点的甄客帖</strong>
       </div>
 
-      <section className={`${styles.placeHero} ${styles.surface}`}>
-        <span className={styles.locationLabel}><EnvironmentOutlined /> 地图服务公开地点</span>
+      <section className={`${styles.placeHero} ${styles.placePostsHero} ${styles.surface}`}>
         <h1>{detail.placeName}</h1>
         <p>{detail.address}</p>
-        <div className={styles.placeFacts}>
-          {[...new Set([detail.province, detail.city, detail.district, detail.placeType].filter(Boolean))]
-            .map((item) => <span key={item}>{item}</span>)}
-        </div>
-        <div className={styles.heroActions}>
-          <Button
-            type="primary"
-            size="large"
-            icon={<CompassOutlined />}
-            onClick={() => void openPlaceNavigation(detail.placeId, {
-              latitude: detail.latitude,
-              longitude: detail.longitude,
-              name: detail.placeName,
-              address: detail.address,
-            }).catch((reason) => message.error(reason instanceof Error ? reason.message : '暂时无法打开导航'))}
-          >
-            用腾讯地图导航
-          </Button>
-        </div>
       </section>
 
       <ZkSectionTitle

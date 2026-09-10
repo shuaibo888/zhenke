@@ -16,6 +16,7 @@ import {
   enjoyCommentReplies,
   enjoyComments,
   enjoyDetail,
+  place,
   placePosts,
   toggleEnjoyLike,
   type EnjoyComment,
@@ -27,6 +28,7 @@ import { getWechatShareErrorMessage, isWechatBrowser, useWechatShare } from '@/h
 import { useWechatShareGuide } from '@/hooks/useWechatShareGuide';
 import { useSafeBack } from '@/hooks/useSafeBack';
 import { buildEnjoyShareLink, copyText } from '@/utils/shop';
+import { openPlaceNavigation } from '@/utils/merchantNavigation';
 
 export default function EnjoyDetailPage() {
   const { enjoyId: rawEnjoyId } = useParams<{ enjoyId: string }>();
@@ -298,6 +300,26 @@ export default function EnjoyDetailPage() {
   if (!detail || error) return <main className={`${styles.page} ${styles.enjoyDetailPage}`}><ZkState kind="error" title="这条甄必享内容已不可见" description={error} actionText="返回甄必享" onAction={() => navigate('/enjoy')} /></main>;
 
   const gallery = detail.mediaUrls?.length ? detail.mediaUrls : [detail.coverUrl];
+  const navigateToPlace = () => {
+    if (!detail.placeId) return;
+    const openNavigation = async () => {
+      const target = detail.placeLatitude == null || detail.placeLongitude == null
+        ? await place(detail.placeId!)
+        : {
+          latitude: detail.placeLatitude,
+          longitude: detail.placeLongitude,
+          placeName: detail.placeName || detail.title,
+          address: detail.placeAddress || '',
+        };
+      await openPlaceNavigation(detail.placeId!, {
+        latitude: target.latitude,
+        longitude: target.longitude,
+        name: target.placeName,
+        address: target.address,
+      });
+    };
+    void openNavigation().catch((reason) => message.error(reason instanceof Error ? reason.message : '暂时无法打开导航'));
+  };
   const highlights = detail.highlights?.split(/[、,，\n]/).map((item) => item.trim()).filter(Boolean) ?? [];
   const publishForPlace = () => {
     if (!detail.placeId) return;
@@ -382,14 +404,13 @@ export default function EnjoyDetailPage() {
       <main className={`${styles.page} ${styles.enjoyDetailPage}`}>
       <div className={styles.detailTopbar}>
         <button type="button" className={styles.backButton} aria-label="返回" onClick={goBack}><ArrowLeftOutlined /></button>
-        <div className={styles.enjoyOfficialIdentity}><span>甄</span><div><strong>甄客行官方精选</strong><small>{enjoyCategoryNames[detail.category]} · 地点专题</small></div></div>
+        <div className={styles.enjoyOfficialIdentity}><span>甄</span><div><strong>甄客行官方精选</strong><small>{enjoyCategoryNames[detail.category]}</small></div></div>
         <Button shape="circle" icon={<ShareAltOutlined />} aria-label="分享" onClick={() => void share()} />
       </div>
 
       <header className={styles.enjoyFeatureHeader}>
-        <span className={styles.eyebrow}>{enjoyCategoryNames[detail.category]} · 官方地点精选</span>
         <h1>{detail.title}</h1>
-        <button type="button" className={styles.enjoyFeatureLocation} disabled={!detail.placeId} onClick={() => detail.placeId && navigate(`/places/${detail.placeId}`)}>
+        <button type="button" className={styles.enjoyFeatureLocation} disabled={!detail.placeId} onClick={navigateToPlace} aria-label={`导航到 ${detail.placeName}`}>
           <EnvironmentOutlined />
           <span>{detail.placeName}{detail.placeAddress && ` · ${detail.placeAddress}`}</span>
         </button>
@@ -412,7 +433,7 @@ export default function EnjoyDetailPage() {
         <p className={styles.enjoyServiceSummary}>{detail.serviceSummary}</p>
 
         <div className={styles.enjoyInfoList}>
-          <button type="button" className={styles.enjoyInfoRow} disabled={!detail.placeId} onClick={() => detail.placeId && navigate(`/places/${detail.placeId}`)}>
+          <button type="button" className={styles.enjoyInfoRow} disabled={!detail.placeId} onClick={navigateToPlace} aria-label={`导航到 ${detail.placeName}`}>
             <span><EnvironmentOutlined /> 地址</span>
             <strong>{detail.placeAddress || detail.placeName}<b>›</b></strong>
           </button>
@@ -428,7 +449,6 @@ export default function EnjoyDetailPage() {
         <div className={styles.enjoyFeatureActions}>
           <Button size="large" type="primary" icon={<EditOutlined />} disabled={!detail.placeId} onClick={publishForPlace}>发布甄客帖</Button>
         </div>
-        <p className={styles.enjoyActionHint}>去过这里？发布真实体验，帮助更多人做决定。</p>
       </article>
 
       <article className={`${styles.surface} ${styles.enjoyStorySection}`}>

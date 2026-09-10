@@ -171,12 +171,7 @@ export default function HomePage() {
       {/* 服务地图暂缓上线：恢复时取消本行 JSX 和顶部 ServiceDiscoveryMap import 的注释。 */}
       {/* <ServiceDiscoveryMap /> */}
 
-      <section className={`${styles.zhenEnjoySection} ${homeStyles.enjoySection}`} aria-labelledby="zhen-enjoy-title">
-        <header className={styles.zhenEnjoyHeader}>
-          <div>
-            <h2 id="zhen-enjoy-title">甄必享</h2>
-          </div>
-        </header>
+      <section className={`${styles.zhenEnjoySection} ${homeStyles.enjoySection}`} aria-label="甄必享">
         <div className={styles.zhenEnjoyGroups}>
           {zhenEnjoyEntries.map((entry) => {
             const rows = enjoyFeeds[entry.code];

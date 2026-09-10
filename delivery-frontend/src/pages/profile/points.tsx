@@ -362,7 +362,6 @@ export default function PointsPage() {
           {!couponsLoading && coupons.length === 0 && (
             <div className={styles.pointCouponEmpty}>
               <strong>暂无可兑换优惠券</strong>
-              <p>管理员上架全平台积分券后，会在这里展示。</p>
             </div>
           )}
         </Spin>

@@ -110,7 +110,6 @@ export default function PointRecordsPage() {
           {!recordsLoading && records.length === 0 && (
             <div className={styles.pointRecordEmpty}>
               <strong>暂无积分变更记录</strong>
-              <p>后续产生积分增加或减少时，会在这里显示原因和变更后余额。</p>
             </div>
           )}
         </Spin>
