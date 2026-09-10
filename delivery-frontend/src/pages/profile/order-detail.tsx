@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
+import { AfterSalesEntry } from '@/components/AfterSalesEntry';
 import { ZkProfilePage, ZkTaskHeader } from '@/components/ZkPage';
 import { LogisticsModal } from '@/components/LogisticsModal';
 import { OrderRedeemCodeModal } from '@/components/OrderRedeemCodeModal';
@@ -310,6 +311,8 @@ export default function OrderDetailPage() {
           </dl>
         </section>
 
+        <AfterSalesEntry merchantId={order.merchantId} />
+
         <div className={styles.businessActionBar}>
           <Button onClick={() => navigate('/profile/orders')}>返回列表</Button>
           {order.status === 'PENDING_PAYMENT' && <Button onClick={cancel} loading={mutating}>取消订单</Button>}
@@ -321,11 +324,11 @@ export default function OrderDetailPage() {
           {canRefund && (
             <Button danger disabled={order.refundStatus === 'PENDING'} onClick={() => {
               if (order.status === 'SHIPPED') {
-                message.info('已发货订单请先确认收货，再申请退款');
+                navigate(`/support?merchantId=${order.merchantId}`);
                 return;
               }
               setRefundOpen(true);
-            }}>{order.refundStatus === 'PENDING' ? '退款审核中' : '申请退款'}</Button>
+            }}>{order.refundStatus === 'PENDING' ? '退款审核中' : order.status === 'SHIPPED' ? '联系售后' : '申请退款'}</Button>
           )}
           {order.status === 'SHIPPED' && <Button type="primary" loading={mutating} onClick={receive}>确认收货</Button>}
         </div>

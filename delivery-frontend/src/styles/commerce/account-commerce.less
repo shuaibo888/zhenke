@@ -860,12 +860,13 @@
   display: flex;
   gap: 10px;
   align-items: center;
-  margin: 12px 0;
-  padding: 10px;
-  border: 1px solid rgba(138, 63, 50, 0.16);
-  border-radius: 18px;
-  background: linear-gradient(135deg, #ffffff 0%, #fff5ee 100%);
-  box-shadow: 0 8px 24px rgba(94, 45, 38, 0.08);
+  margin: 0;
+  padding: 18px 20px;
+  border: 0;
+  border-bottom: 1px solid #ededed;
+  border-radius: 0;
+  background: #fff;
+  box-shadow: none;
 }
 
 .merchantInfoMain {
@@ -885,13 +886,13 @@
 
 .merchantInfoIcon {
   display: grid;
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
   place-items: center;
-  border-radius: 13px;
-  color: #ffffff;
-  background: #a94e3a;
+  border-radius: 0;
+  color: #777;
+  background: transparent;
   font-size: 20px;
 }
 
@@ -910,15 +911,16 @@
 
 .merchantInfoCopy strong {
   overflow: hidden;
-  color: #56352f;
-  font-size: 16px;
+  color: #333;
+  font-size: 15px;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .merchantInfoCopy em {
   overflow: hidden;
-  color: #8a746c;
+  color: #888;
   font-size: 12px;
   font-style: normal;
   text-overflow: ellipsis;
@@ -931,12 +933,13 @@
   gap: 5px;
   align-items: center;
   padding: 9px 12px;
-  color: #8a3f32;
-  background: #fff7f1;
-  border: 1px solid #e7c9b9;
-  border-radius: 999px;
+  color: #555;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 400;
+  cursor: pointer;
 }
 
 .merchantInfoArrow {
@@ -946,7 +949,7 @@
 
 @media (max-width: 560px) {
   .merchantInfoBar {
-    margin: 10px 0;
+    margin: 0;
   }
 
   .merchantNavigation {

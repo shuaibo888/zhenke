@@ -1,3 +1,4 @@
+import { StoreProductCard } from '@/components/StoreProductCard';
 import {
   ArrowLeftOutlined,
   BankOutlined,
@@ -6,7 +7,6 @@ import {
   IdcardOutlined,
   PhoneOutlined,
   SafetyCertificateOutlined,
-  ShopOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
 import { Button, message } from 'antd';
@@ -28,6 +28,7 @@ import {
 import { openMerchantNavigation } from '@/utils/merchantNavigation';
 import { buildLoginPath, LOGIN_RETURN_TO_SOURCE_STATE } from '@/utils/safeRedirect';
 import styles from '@/styles/zhenke.less';
+import presentation from '@/styles/storefront.module.less';
 
 export default function MerchantDetailPage() {
   const navigate = useNavigate();
@@ -136,31 +137,26 @@ export default function MerchantDetailPage() {
   };
 
   return (
-    <main className={styles.page}>
+    <main className={`${styles.page} ${presentation.merchantPage}`}>
       <div className={styles.detailTopbar}>
         <button type="button" className={styles.backButton} onClick={goBack} aria-label="返回">
           <ArrowLeftOutlined />
         </button>
-        <strong>入驻商家</strong>
+        <strong>商家详情</strong>
       </div>
 
-      <section className={`${styles.placeHero} ${styles.surface}`}>
-        <span className={styles.locationLabel}><ShopOutlined /> 已审核入驻商家</span>
+      <section className={presentation.merchantHero}>
         <h1>{merchant.shopName}</h1>
         <p>{merchant.storeAddress}</p>
-        <div className={styles.placeFacts}>
-          <span><SafetyCertificateOutlined /> 入驻资料已审核</span>
-          <span><EnvironmentOutlined /> 可导航实体地址</span>
+        <div className={presentation.merchantActions}>
+          {merchant.contactPhone && <a href={`tel:${merchant.contactPhone}`}><PhoneOutlined /> 联系商家</a>}
+          <Button type="text" icon={<CompassOutlined />} loading={openingNavigation} onClick={() => void navigateToStore()}>导航到店</Button>
+          <Link to={`/support?merchantId=${merchantId}`}>客服与售后</Link>
         </div>
-        <Button type="primary" size="large" icon={<CompassOutlined />} loading={openingNavigation} onClick={() => void navigateToStore()}>
-          导航到店
-        </Button>
       </section>
 
-      <section className={`${styles.surface} ${styles.profileGroup}`} style={{ marginTop: 16 }}>
-        <header className={styles.profileGroupHeader}>
-          <h2>商家公开信息</h2>
-        </header>
+      <details className={presentation.credentials}>
+        <summary>商家公开信息与资质</summary>
         <div className={styles.profileEntryGrid}>
           <div className={styles.profileEntry}><span className={styles.profileEntryIcon}><BankOutlined /></span><span className={styles.profileEntryCopy}><strong>营业执照主体</strong><small>{merchant.companyName}</small></span></div>
           <div className={styles.profileEntry}><span className={styles.profileEntryIcon}><IdcardOutlined /></span><span className={styles.profileEntryCopy}><strong>统一社会信用代码</strong><small>{merchant.companyCreditCode}</small></span></div>
@@ -169,9 +165,9 @@ export default function MerchantDetailPage() {
           <a className={styles.profileEntry} href={`tel:${merchant.contactPhone}`}><span className={styles.profileEntryIcon}><PhoneOutlined /></span><span className={styles.profileEntryCopy}><strong>联系电话</strong><small>{merchant.contactPhone}</small></span></a>
           <button type="button" className={styles.profileEntry} onClick={() => void navigateToStore()}><span className={styles.profileEntryIcon}><EnvironmentOutlined /></span><span className={styles.profileEntryCopy}><strong>实体店地址</strong><small>{merchant.storeAddress}</small></span></button>
         </div>
-      </section>
+      </details>
 
-      <ZkSectionTitle title="商家在售商品" />
+      <ZkSectionTitle title="在售商品" />
       {productsError ? (
         <ZkState
           kind="error"
@@ -182,19 +178,16 @@ export default function MerchantDetailPage() {
       ) : products.length === 0 ? (
         <ZkState title="暂无在售商品" />
       ) : (
-        <div className={styles.productGrid}>
+        <div className={presentation.productGrid}>
           {products.map((product) => (
-            <Link key={product.productId} className={styles.productCard} to={`/products/${product.productId}`}>
-              <span className={styles.productCover}><img src={product.coverUrl} alt={product.productName} /><em>{product.categoryName}</em></span>
-              <span className={styles.productCardBody}><small>{product.brandName}</small><h3>{product.productName}</h3><p>{product.subtitle}</p><span className={styles.productCardFooter}><strong className={styles.productPrice}>¥{Number(product.price).toFixed(2)}</strong><span className={styles.productSales}>已售 {product.salesCount}</span></span></span>
-            </Link>
+            <StoreProductCard key={product.productId} product={product} showMerchant={false} />
           ))}
         </div>
       )}
 
       <ZkSectionTitle
-        title="商家甄客验"
-        description={reportTotal > 0 ? `消费者已发布 ${reportTotal} 篇真实履约体验。` : '基于真实订单、试用或核销资格发布的体验内容。'}
+        title="甄客验"
+        description={reportTotal > 0 ? `${reportTotal} 篇体验` : undefined}
       />
       {reportsError ? (
         <ZkState

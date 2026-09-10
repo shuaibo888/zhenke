@@ -1,3 +1,4 @@
+import { PlatformIdentity } from '@/components/PlatformIdentity';
 import {
   AppstoreOutlined,
   DownOutlined,
@@ -26,6 +27,8 @@ import {
 } from '@/utils/currentLocation';
 import { isSharedContentEntry } from '@/utils/wechatEntryUrl';
 import { AddressManager } from './AddressManager';
+import { AfterSalesEntry } from './AfterSalesEntry';
+import supportStyles from '@/styles/customerSupport.module.less';
 import { CartDrawer } from './CartDrawer';
 import { NativePayModal } from './NativePayModal';
 import { usePostPublishLauncher } from './PostPublishLauncher';
@@ -58,7 +61,7 @@ function shouldShowFloatingPublish(pathname: string) {
 function getActiveNav(pathname: string): MainNavItem['key'] {
   if (pathname.startsWith('/posts') || pathname.startsWith('/places')) return 'posts';
   if (pathname.startsWith('/mall') || pathname.startsWith('/products')
-    || pathname.startsWith('/merchants') || pathname.startsWith('/reports')) return 'mall';
+    || pathname.startsWith('/merchants') || pathname.startsWith('/reports') || pathname === '/support') return 'mall';
   if (pathname.startsWith('/profile') || pathname.startsWith('/checkout')) return 'profile';
   return 'home';
 }
@@ -88,11 +91,12 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const cartCount = getCartCount(cart);
   const authPage = location.pathname.startsWith('/auth') || location.pathname.startsWith('/sso/');
   const checkoutPage = location.pathname.startsWith('/checkout');
+  const productPage = location.pathname.startsWith('/products/');
   const publishPage = location.pathname === '/posts/publish';
   const mallProductsPage = location.pathname.startsWith('/mall/products');
-  const hideMobileNav = authPage || checkoutPage || publishPage;
+  const hideMobileNav = authPage || checkoutPage || publishPage || productPage || location.pathname.startsWith('/legal/');
   const showFloatingPublish = shouldShowFloatingPublish(location.pathname);
-  const showCartFloat = !authPage && !checkoutPage
+  const showCartFloat = !authPage && !checkoutPage && !productPage && location.pathname !== '/support'
     && (activeNav === 'mall' || location.pathname.startsWith('/products'));
 
   useEffect(() => {
@@ -281,6 +285,10 @@ export function AppChrome({ children }: { children: ReactNode }) {
       )}
 
       {children}
+
+      {['/', '/mall'].includes(location.pathname) && (
+        <footer className={supportStyles.footer}><AfterSalesEntry /><PlatformIdentity /></footer>
+      )}
 
       {!hideMobileNav && (
         <nav className={styles.mobileNav} aria-label="移动端主导航">

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { HomeFeedReportCard } from '@/components/HomeFeedReportCard';
-import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
+import { ZkState } from '@/components/ZkPage';
 import {
   fetchHomeFeed,
   toggleReportUseful,
@@ -12,6 +12,8 @@ import {
 } from '@/services/shopContent';
 import { buildLoginPath, LOGIN_RETURN_TO_SOURCE_STATE } from '@/utils/safeRedirect';
 import styles from '@/styles/zhenke.less';
+import presentation from '@/styles/storefront.module.less';
+import { normalizeBusinessModule } from './modules';
 
 const PAGE_SIZE = 12;
 
@@ -19,6 +21,7 @@ export default function MallContentPage() {
   const navigate = useNavigate();
   const { user } = useShop();
   const [searchParams, setSearchParams] = useSearchParams();
+  const activeModule = normalizeBusinessModule(searchParams.get('module'));
   const requestedKeyword = searchParams.get('keyword') ?? '';
   const requestedContentType = searchParams.get('content')?.toUpperCase();
   const contentType = requestedContentType === 'TRIAL' || requestedContentType === 'REPORT'
@@ -46,7 +49,8 @@ export default function MallContentPage() {
     setError('');
     try {
       const result = await fetchHomeFeed({
-        businessModule: 'MALL',
+        businessModule: activeModule === 'MALL' ? 'MALL' : undefined,
+        categoryCode: activeModule === 'MALL' ? undefined : activeModule,
         keyword: keyword || undefined,
         contentType,
         trialType: 'ALL',
@@ -63,7 +67,7 @@ export default function MallContentPage() {
     } finally {
       if (requestVersion === requestVersionRef.current) setLoading(false);
     }
-  }, [contentType, keyword]);
+  }, [activeModule, contentType, keyword]);
 
   useEffect(() => {
     void loadFeed();
@@ -74,7 +78,7 @@ export default function MallContentPage() {
   }, []);
 
   const selectContent = (nextContentType: 'ALL' | 'TRIAL' | 'REPORT') => {
-    const next = new URLSearchParams({ content: nextContentType });
+    const next = new URLSearchParams({ module: activeModule, content: nextContentType });
     if (keyword) next.set('keyword', keyword);
     setSearchParams(next);
   };
@@ -83,18 +87,20 @@ export default function MallContentPage() {
     const normalized = keywordInput.trim();
     setKeywordInput(normalized);
     setKeyword(normalized);
-    const next = new URLSearchParams({ content: contentType });
+    const next = new URLSearchParams({ module: activeModule, content: contentType });
     if (normalized) next.set('keyword', normalized);
     setSearchParams(next);
   };
 
   const loadMore = async () => {
     const requestVersion = ++requestVersionRef.current;
+    if (loading || loadingMore || feed.length >= total) return;
     setLoadingMore(true);
     try {
       const nextPage = page + 1;
       const result = await fetchHomeFeed({
-        businessModule: 'MALL',
+        businessModule: activeModule === 'MALL' ? 'MALL' : undefined,
+        categoryCode: activeModule === 'MALL' ? undefined : activeModule,
         keyword: keyword || undefined,
         contentType,
         trialType: 'ALL',
@@ -150,9 +156,9 @@ export default function MallContentPage() {
         : '全部试用与甄客验';
 
   return (
-    <main className={styles.page}>
+    <main className={`${styles.page} ${presentation.contentPage}`}>
       <div className={styles.mallListToolbar}>
-        <button type="button" className={styles.mallListBack} aria-label="返回商城" onClick={() => navigate('/mall')}>
+        <button type="button" className={styles.mallListBack} aria-label="返回商城" onClick={() => navigate(`/mall?module=${activeModule}`)}>
           <ArrowLeftOutlined />
         </button>
         <form
@@ -192,10 +198,7 @@ export default function MallContentPage() {
         ))}
       </nav>
 
-      <ZkSectionTitle
-        title={heading}
-        description={loading ? '正在查询内容' : `共 ${total} 条`}
-      />
+      <header className={presentation.previewHeading}><div><h1>{heading}</h1><span>{loading ? '正在查询内容' : `共 ${total} 条`}</span></div></header>
       <section>
         {loading ? (
           <ZkState kind="loading" title="正在加载试用与甄客验" />
@@ -206,7 +209,7 @@ export default function MallContentPage() {
             title={keyword ? '没有找到相关内容' : contentType === 'TRIAL' ? '暂无正在招募的试用' : contentType === 'REPORT' ? '暂无甄客验' : '暂无试用或甄客验'}
             description={keyword ? '请尝试更换商品、商家或内容关键词。' : '有新内容发布后，会展示在这里。'}
             actionText={keyword ? '清空搜索' : undefined}
-            onAction={keyword ? () => selectContent(contentType) : undefined}
+            onAction={keyword ? () => { setKeywordInput(''); setKeyword(''); setSearchParams({ module: activeModule, content: contentType }); } : undefined}
           />
         ) : (
           <>

@@ -19,6 +19,9 @@ export default defineConfig({
   hash: true,
   routes: [
     { path: '/', component: '@/pages/home' },
+    { path: '/support', component: '@/pages/support' },
+    { path: '/legal/user', component: '@/pages/legal' },
+    { path: '/legal/privacy', component: '@/pages/legal' },
     { path: '/posts/publish', component: '@/pages/posts/publish' },
     { path: '/posts/:postId', component: '@/pages/posts/detail' },
     { path: '/posts', component: '@/pages/posts' },

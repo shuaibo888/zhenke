@@ -108,6 +108,8 @@ export default function CheckoutPage() {
   const [loadedPaymentOrder, setLoadedPaymentOrder] = useState<ShopOrderDto | null>(null);
   const [orderLoading, setOrderLoading] = useState(orderMode);
   const [orderLoadError, setOrderLoadError] = useState('');
+  const [reloadVersion, setReloadVersion] = useState(0);
+  const [productLoadError, setProductLoadError] = useState('');
   const [productLoading, setProductLoading] = useState(!orderMode && source === 'buy');
   const [checkoutRefreshError, setCheckoutRefreshError] = useState('');
   const [selectedCouponIds, setSelectedCouponIds] = useState<number[]>([]);
@@ -131,7 +133,7 @@ export default function CheckoutPage() {
       setCheckoutRefreshError(reason);
       message.error(reason);
     });
-  }, [orderMode, refreshAddresses, refreshCart, refreshCoupons, source, user]);
+  }, [orderMode, refreshAddresses, refreshCart, refreshCoupons, source, user, reloadVersion]);
 
   useEffect(() => {
     if (!orderMode || !orderId || !user) {
@@ -161,15 +163,17 @@ export default function CheckoutPage() {
     return () => {
       mounted = false;
     };
-  }, [orderId, orderMode, user]);
+  }, [orderId, orderMode, user, reloadVersion]);
 
   useEffect(() => {
+    setProductLoadError('');
     if (orderMode || source !== 'buy') {
       setProductLoading(false);
       return;
     }
     if (!Number.isSafeInteger(productId) || productId <= 0) {
       setProduct(null);
+      setProductLoadError('商品编号无效，请返回商城重新选择商品');
       message.error({ key: 'checkout-product-load', content: '商品编号无效' });
       setProductLoading(false);
       return;
@@ -184,6 +188,7 @@ export default function CheckoutPage() {
       .catch((error) => {
         if (mounted) {
           const reason = error instanceof Error ? error.message : '商品加载失败';
+          setProductLoadError(reason);
           message.error({ key: 'checkout-product-load', content: reason });
         }
       })
@@ -193,7 +198,7 @@ export default function CheckoutPage() {
     return () => {
       mounted = false;
     };
-  }, [orderMode, productId, source]);
+  }, [orderMode, productId, source, reloadVersion]);
 
   useEffect(() => {
     if (selectedAddressId && addresses.some((address) => address.id === selectedAddressId)) return;
@@ -475,6 +480,10 @@ export default function CheckoutPage() {
   };
 
   const submit = async () => {
+    if (pageLoading || submitting || productLoadError || orderLoadError || checkoutRefreshError) {
+      message.warning('请等待结算信息加载完成，加载失败时请先重试');
+      return;
+    }
     if (orderMode) {
       if (!paymentOrder) {
         message.warning('订单不存在或尚未加载完成');
@@ -566,6 +575,13 @@ export default function CheckoutPage() {
         </header>
 
         <Spin spinning={pageLoading}>
+          {!pageLoading && (productLoadError || orderLoadError || checkoutRefreshError) && (
+            <Alert className={styles.checkoutOrderState} type="error" showIcon
+              message="结算信息暂时无法加载"
+              description={productLoadError || orderLoadError || checkoutRefreshError}
+              action={<Button onClick={() => setReloadVersion((value) => value + 1)}>重新加载</Button>}
+            />
+          )}
           {!orderMode && source === 'cart' && !pageLoading && lines.length === 0 && !checkoutRefreshError && (
             <Alert
               className={styles.checkoutOrderState}
@@ -861,7 +877,7 @@ export default function CheckoutPage() {
                 type="primary"
                 size="large"
                 loading={submitting || payingOrderId === orderId}
-                disabled={pageLoading || lines.length === 0
+                disabled={pageLoading || Boolean(productLoadError || orderLoadError || checkoutRefreshError) || lines.length === 0
                   || cartHasUnavailableItems
                   || buyStockInsufficient
                   || (orderMode && paymentOrder?.status !== 'PENDING_PAYMENT')}

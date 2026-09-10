@@ -203,7 +203,7 @@ export default function MallProductsPage() {
   return (
     <main className={`${styles.page} ${styles.mallProductsPage}`}>
       <div className={styles.mallListToolbar}>
-        <button type="button" className={styles.mallListBack} aria-label="返回商城" onClick={() => navigate('/mall')}>
+        <button type="button" className={styles.mallListBack} aria-label="返回商城" onClick={() => navigate(`/mall?module=${activeModule}`)}>
           <ArrowLeftOutlined />
         </button>
         <form
@@ -220,7 +220,7 @@ export default function MallProductsPage() {
             maxLength={50}
             value={keywordInput}
             aria-label={`搜索${activeModuleMeta.title}商品`}
-            placeholder="搜索商品、套餐或商家"
+            placeholder={activeModule === 'MALL' ? '搜索商品或商家' : '搜索套餐或商家'}
             onChange={(event) => setKeywordInput(event.target.value)}
           />
           <Button type="primary" htmlType="submit">搜索</Button>
@@ -259,7 +259,6 @@ export default function MallProductsPage() {
         <div ref={productPaneRef} className={styles.mallProductPane} aria-live="polite">
           <header className={styles.mallProductHeading}>
             <div>
-              <small>{activeModuleMeta.kicker}</small>
               <h2>{productHeading}</h2>
             </div>
             <span>{loading ? '正在查询' : `共 ${total} 件`}</span>
@@ -302,7 +301,6 @@ export default function MallProductsPage() {
                   >
                     <span className={styles.mallProductImage}>
                       <img src={product.coverUrl} alt={product.productName} loading="lazy" />
-                      <em>{product.categoryName}</em>
                       {product.stockUnlimited !== '1' && product.stock <= 0 && <b>已售罄</b>}
                     </span>
                     <span className={styles.mallProductInfo}>
@@ -310,10 +308,10 @@ export default function MallProductsPage() {
                         {product.brandName && <small>{product.brandName}</small>}
                         <strong>{product.productName}</strong>
                       </span>
-                      <span className={styles.mallProductSummary}>{product.subtitle || '商品详情与履约规则请进入详情页查看'}</span>
+                      {product.subtitle && <span className={styles.mallProductSummary}>{product.subtitle}</span>}
                       <span className={styles.mallProductMeta}>
                         <b>¥{Number(product.price).toFixed(2)}</b>
-                        <em>已售 {product.salesCount}</em>
+                        {product.salesCount > 0 && <em>已售 {product.salesCount}</em>}
                       </span>
                       <span className={styles.mallProductFooter}>
                         <span>{product.merchantName}</span>

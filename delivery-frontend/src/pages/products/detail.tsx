@@ -1,6 +1,7 @@
 import {
   ArrowLeftOutlined,
   CloudOutlined,
+  CustomerServiceOutlined,
   EnvironmentOutlined,
   LeftOutlined,
   LinkOutlined,
@@ -14,7 +15,7 @@ import {
 } from '@ant-design/icons';
 import { Button, Drawer, Form, Image, Input, Modal, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams, useSearchParams } from 'umi';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { AddressManager } from '@/components/AddressManager';
 import { HomeFeedReportCard } from '@/components/HomeFeedReportCard';
@@ -325,7 +326,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
   };
 
   const startBuy = () => {
-    if (!requireLogin() || !product) return;
+    if (!product) return;
     const params = new URLSearchParams({
       productId: String(product.productId),
       quantity: '1',
@@ -586,10 +587,11 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
             )}
           </div>
           <div className={styles.trialHeroBody}>
-            <span className={styles.productDetailKicker}>甄客行好物 · {product.merchantName}</span>
             <div className={styles.productIdentityTitle}>
-              <span className={styles.productBrandBadge}>{product.brandName}</span>
               <h1>{product.productName}</h1>
+            </div>
+            <div className={styles.productIdentityPriceRow}>
+              <strong className={styles.linkedProductPrice}>{formatPrice(product.price)}</strong>
             </div>
             {(routeCampaign?.trial || product.certificationStatus === 'PASSED') && (
             <div className={styles.productIdentityTopline}>
@@ -609,22 +611,19 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
               {supportsOnlinePurchase && (
                 <span className={`${styles.productFulfillmentItem} ${styles.online}`}>
                   <TruckOutlined />
-                  <span><strong>快递物流</strong><small>送货上门</small></span>
+                  <span>快递配送</span>
                 </span>
               )}
               {supportsOfflinePurchase && (
                 <span className={`${styles.productFulfillmentItem} ${styles.offline}`}>
                   <ShopOutlined />
-                  <span><strong>线下核销</strong><small>到店体验</small></span>
+                  <span>到店核销</span>
                 </span>
               )}
-            </div>
-            <div className={styles.productIdentityPriceRow}>
-              <span className={styles.productPriceBlock}>
-                <small>售价</small>
-                <strong className={styles.linkedProductPrice}>{formatPrice(product.price)}</strong>
-              </span>
               <span className={styles.productCategoryLabel}>{product.categoryName}</span>
+              {product.brandName && product.brandName !== product.merchantName && !product.productName.includes(product.brandName) && (
+                <span className={styles.productCategoryLabel}>{product.brandName}</span>
+              )}
             </div>
           </div>
         </section>
@@ -792,6 +791,9 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
         </section>
 
         <div className={`${styles.reportDetailBottomBar} ${styles.productFixedBar}`}>
+          <Link className={styles.productServiceButton} to={`/support?merchantId=${product.merchantId}`}>
+            <CustomerServiceOutlined /><span>客服</span>
+          </Link>
           <Button
             size="large"
             className={styles.trialBuyGhost}

@@ -4,6 +4,9 @@ const APP_TITLE = '甄客行';
 
 function routeTitle(pathname: string) {
   if (pathname === '/') return APP_TITLE;
+  if (pathname === '/legal/user') return `用户协议｜${APP_TITLE}`;
+  if (pathname === '/legal/privacy') return `隐私政策｜${APP_TITLE}`;
+  if (pathname === '/support') return `客服与售后｜${APP_TITLE}`;
   if (pathname === '/posts/publish') return `发布甄客帖｜${APP_TITLE}`;
   if (pathname.startsWith('/posts/')) return `甄客帖详情｜${APP_TITLE}`;
   if (pathname.startsWith('/posts')) return `甄客帖｜${APP_TITLE}`;

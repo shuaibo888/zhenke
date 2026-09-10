@@ -310,13 +310,13 @@ export default function OrdersPage() {
                       disabled={order.refundStatus === 'PENDING'}
                       onClick={() => {
                         if (order.status === 'SHIPPED') {
-                          message.info('已发货订单请先确认收货，再申请退款');
+                          navigate(`/support?merchantId=${order.merchantId}`);
                           return;
                         }
                         setRefundOrder(order);
                       }}
                     >
-                      {order.refundStatus === 'PENDING' ? '退款审核中' : '申请退款'}
+                      {order.refundStatus === 'PENDING' ? '退款审核中' : order.status === 'SHIPPED' ? '联系售后' : '申请退款'}
                     </Button>
                   )}
                   {order.status === 'SHIPPED' && (

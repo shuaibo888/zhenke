@@ -46,11 +46,11 @@
 
 .productDetailMain .trialHeroBody {
   display: grid;
-  gap: 16px;
+  gap: 14px;
   padding: 28px;
-  background: #fffaf7;
-  border: 1px solid #eee4de;
-  border-radius: 18px;
+  background: #fff;
+  border: 0;
+  border-radius: 0;
   box-shadow: none;
 }
 
@@ -79,8 +79,9 @@
 .productDetailMain .trialHeroBody h1 {
   margin: 0;
   color: #222;
-  font-size: clamp(24px, 3vw, 34px);
-  line-height: 1.28;
+  font-size: clamp(22px, 2.3vw, 28px);
+  font-weight: 650;
+  line-height: 1.5;
 }
 
 .productDetailMain .productIdentitySubtitle {
@@ -91,26 +92,34 @@
 }
 
 .productDetailMain .productFulfillmentSummary {
-  padding-block: 12px;
-  border-block: 1px solid #eadfd9;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 12px 0 0;
+  border: 0;
+  border-top: 1px solid #eee;
 }
 
 .productDetailMain .productFulfillmentItem,
 .productDetailMain .productFulfillmentItem.online,
 .productDetailMain .productFulfillmentItem.offline {
-  padding: 8px 0;
-  color: #56392f;
+  gap: 6px;
+  padding: 0;
+  color: #777;
+  font-size: 12px;
   background: transparent;
   border: 0;
 }
 
 .productDetailMain .productFulfillmentItem > :global(.anticon) {
-  color: #ff6b1a;
+  color: #777;
+  font-size: 15px;
 }
 
 .productDetailMain .productIdentityPriceRow {
-  margin-top: auto;
-  padding-top: 2px;
+  margin: 0;
+  padding: 0;
 }
 
 .productPriceBlock {
@@ -125,25 +134,27 @@
 }
 
 .productDetailMain .productIdentityPriceRow .linkedProductPrice {
-  color: #d94f20;
-  font-size: 29px;
+  color: #ce582b;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -.03em;
 }
 
 .productCategoryLabel {
-  padding: 5px 9px;
-  color: #6f625d;
-  background: #f2efed;
-  border-radius: 999px;
-  font-size: 11px;
+  padding: 0;
+  color: #888;
+  background: transparent;
+  border-radius: 0;
+  font-size: 12px;
 }
 
 .productDetailMain .productContentPanel,
 .productDetailMain .productCertificationPanel,
 .productDetailMain .trialPanel {
   background: #fff;
-  border: 1px solid #e5e5e5;
-  border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(32, 24, 20, 0.05);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
   backdrop-filter: none;
 }
 
@@ -154,7 +165,7 @@
 }
 
 .productDetailMain .productContentTabs button {
-  min-height: 58px;
+  min-height: 50px;
   border-radius: 0;
 }
 
@@ -163,32 +174,57 @@
 }
 
 .productDetailMain .productContentTabs .productContentTabActive {
-  color: #ff6b1a;
+  color: #222;
   background: transparent;
   box-shadow: none;
 }
 
 .productDetailMain .productContentTabs button::after {
-  background: #ff6b1a;
+  background: #222;
 }
 
 .productDetailMain .productFixedBar {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) minmax(0, 1fr);
+  bottom: 0;
   gap: 10px;
   background: rgba(255, 255, 255, 0.97);
   border-top-color: #e5e5e5;
-  box-shadow: 0 -5px 20px rgba(32, 24, 20, 0.07);
+  box-shadow: none;
 }
 
 .productDetailMain .productFixedBar :global(.ant-btn) {
   height: 48px;
   border-radius: 10px;
   box-shadow: none;
-  font-weight: 800;
+  font-weight: 600;
+  font-size: 15px;
 }
 
 .productDetailMain .productFixedBar :global(.ant-btn-primary) {
   background: #ff6b1a;
   border-color: #ff6b1a;
+}
+
+.productDetailMain .productFixedBar .trialBuyGhost {
+  background: #fff;
+  border: 1px solid #dedede;
+  color: #333;
+}
+
+.productServiceButton {
+  display: grid;
+  gap: 3px;
+  justify-items: center;
+  align-content: center;
+  min-height: 44px;
+  padding: 0;
+  color: #444;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-size: 11px;
+  :global(.anticon) { font-size: 21px; }
 }
 
 .checkoutPage {
@@ -504,7 +540,8 @@ button.checkoutFulfillmentOption:focus-visible,
   }
 
   .productDetailMain {
-    gap: 12px;
+    gap: 0;
+    background: #fff;
   }
 
   .productDetailMain .reportDetailBar {
@@ -514,17 +551,17 @@ button.checkoutFulfillmentOption:focus-visible,
 
   .productDetailMain .trialHeroImage {
     border-inline: 0;
-    border-radius: 0 0 14px 14px;
+    border-radius: 0;
   }
 
   .productDetailMain .productGalleryThumbs {
-    padding-inline: 14px;
+    display: none;
   }
 
   .productDetailMain .trialHeroBody {
-    gap: 13px;
-    margin-inline: 14px;
-    padding: 18px 0 16px;
+    gap: 10px;
+    margin-inline: 0;
+    padding: 20px;
     background: #fff;
     border: 0;
     border-bottom: 1px solid #e5e5e5;
@@ -544,14 +581,14 @@ button.checkoutFulfillmentOption:focus-visible,
   }
 
   .productDetailMain .productFulfillmentSummary {
-    padding-block: 9px;
+    padding: 12px 0 0;
   }
 
   .productDetailMain .productContentPanel,
   .productDetailMain .productCertificationPanel,
   .productDetailMain .trialPanel {
-    margin-inline: 14px;
-    border-radius: 12px;
+    margin: 0;
+    border-radius: 0;
     box-shadow: none;
   }
 
@@ -559,6 +596,8 @@ button.checkoutFulfillmentOption:focus-visible,
     gap: 8px;
     padding: 8px 12px max(8px, env(safe-area-inset-bottom));
   }
+
+  .productDetailMain .trialHero { gap: 0; }
 
   .productDetailMain .productFixedBar :global(.ant-btn) {
     height: 46px;

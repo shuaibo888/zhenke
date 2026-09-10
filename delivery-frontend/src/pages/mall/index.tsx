@@ -6,21 +6,24 @@ import {
   ShoppingOutlined,
 } from '@ant-design/icons';
 import { message } from 'antd';
-import { useEffect, useRef, useState } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'umi';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, Navigate, useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { HomeFeedReportCard } from '@/components/HomeFeedReportCard';
-import { ZkSectionTitle, ZkState } from '@/components/ZkPage';
+import { ZkState } from '@/components/ZkPage';
+import { StoreProductCard } from '@/components/StoreProductCard';
 import {
   fetchHomeFeed,
   fetchMallProducts,
+  fetchProductCategories,
   toggleReportUseful,
   type HomeFeedItemDto,
   type MallProductDto,
 } from '@/services/shopContent';
 import { buildLoginPath, LOGIN_RETURN_TO_SOURCE_STATE } from '@/utils/safeRedirect';
 import styles from '@/styles/zhenke.less';
-import { BUSINESS_MODULES, type BusinessModuleCode } from './modules';
+import presentation from '@/styles/storefront.module.less';
+import { BUSINESS_MODULES, normalizeBusinessModule, type BusinessModuleCode } from './modules';
 
 const PREVIEW_SIZE = 4;
 const moduleIcons: Record<BusinessModuleCode, React.ReactNode> = {
@@ -33,7 +36,9 @@ const moduleIcons: Record<BusinessModuleCode, React.ReactNode> = {
 export default function MallPage() {
   const navigate = useNavigate();
   const { user } = useShop();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeModule = normalizeBusinessModule(searchParams.get('module') ?? searchParams.get('scene'));
+  const moduleTitle = BUSINESS_MODULES.find((item) => item.code === activeModule)!.title;
   const [products, setProducts] = useState<MallProductDto[]>([]);
   const [productTotal, setProductTotal] = useState(0);
   const [productsLoading, setProductsLoading] = useState(true);
@@ -42,6 +47,7 @@ export default function MallPage() {
   const [feedLoading, setFeedLoading] = useState(true);
   const [feedError, setFeedError] = useState('');
   const requestVersionRef = useRef(0);
+  const feedRequestVersionRef = useRef(0);
 
   const legacyView = searchParams.get('view');
   const legacyModule = searchParams.get('module') ?? searchParams.get('scene');
@@ -51,12 +57,14 @@ export default function MallPage() {
   const legacyTarget = (() => {
     if (legacyView === 'feed') {
       const next = new URLSearchParams();
+      next.set('module', activeModule);
       if (legacyContent) next.set('content', legacyContent);
       if (legacyKeyword) next.set('keyword', legacyKeyword);
       const query = next.toString();
       return `/mall/content${query ? `?${query}` : ''}`;
     }
-    if (legacyView === 'list' || legacyModule || legacyCategory || legacyKeyword) {
+    if (legacyView === 'list' || legacyCategory || legacyKeyword
+      || (legacyModule && !BUSINESS_MODULES.some((item) => item.code === legacyModule))) {
       const next = new URLSearchParams();
       if (legacyModule) next.set('module', legacyModule);
       if (legacyCategory) next.set('category', legacyCategory);
@@ -67,12 +75,22 @@ export default function MallPage() {
     return '';
   })();
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     const requestVersion = ++requestVersionRef.current;
     setProductsLoading(true);
     setProductsError('');
+    setProducts([]);
+    setProductTotal(0);
     try {
-      const result = await fetchMallProducts({ pageNum: 1, pageSize: PREVIEW_SIZE });
+      const category = activeModule === 'MALL' ? undefined
+        : (await fetchProductCategories()).find((item) => item.categoryCode === activeModule);
+      if (requestVersion !== requestVersionRef.current) return;
+      if (activeModule !== 'MALL' && !category) return;
+      const result = await fetchMallProducts({
+        businessModule: activeModule === 'MALL' ? 'MALL' : undefined,
+        categoryId: category?.categoryId,
+        pageNum: 1, pageSize: PREVIEW_SIZE,
+      });
       if (requestVersion !== requestVersionRef.current) return;
       setProducts(result.rows.slice(0, PREVIEW_SIZE));
       setProductTotal(result.total);
@@ -82,26 +100,30 @@ export default function MallPage() {
     } finally {
       if (requestVersion === requestVersionRef.current) setProductsLoading(false);
     }
-  };
+  }, [activeModule]);
 
-  const loadFeed = async () => {
+  const loadFeed = useCallback(async () => {
+    const requestVersion = ++feedRequestVersionRef.current;
     setFeedLoading(true);
     setFeedError('');
+    setFeed([]);
     try {
       const result = await fetchHomeFeed({
-        businessModule: 'MALL',
+        businessModule: activeModule === 'MALL' ? 'MALL' : undefined,
+        categoryCode: activeModule === 'MALL' ? undefined : activeModule,
         contentType: 'ALL',
         trialType: 'ALL',
         pageNum: 1,
         pageSize: PREVIEW_SIZE,
       });
-      setFeed(result.rows.slice(0, PREVIEW_SIZE));
+      if (requestVersion === feedRequestVersionRef.current) setFeed(result.rows.slice(0, PREVIEW_SIZE));
     } catch (reason) {
+      if (requestVersion !== feedRequestVersionRef.current) return;
       setFeedError(reason instanceof Error ? reason.message : '试用与甄客验加载失败');
     } finally {
-      setFeedLoading(false);
+      if (requestVersion === feedRequestVersionRef.current) setFeedLoading(false);
     }
-  };
+  }, [activeModule]);
 
   useEffect(() => {
     if (legacyTarget) return;
@@ -109,18 +131,24 @@ export default function MallPage() {
     void loadFeed();
     return () => {
       requestVersionRef.current += 1;
+      feedRequestVersionRef.current += 1;
     };
-  }, [legacyTarget]);
+  }, [legacyTarget, loadProducts, loadFeed]);
 
   const openModule = (code: BusinessModuleCode) => {
-    navigate(`/mall/products?module=${encodeURIComponent(code)}`);
+    if (code === activeModule) return;
+    requestVersionRef.current += 1;
+    feedRequestVersionRef.current += 1;
+    setProductsLoading(true);
+    setFeedLoading(true);
+    setSearchParams({ module: code }, { replace: true });
   };
 
   const useful = async (item: HomeFeedItemDto) => {
     if (!item.report) return;
     if (!user) {
       message.info('登录后可以标记有用');
-      navigate(buildLoginPath('/mall'), { state: LOGIN_RETURN_TO_SOURCE_STATE });
+      navigate(buildLoginPath(`/mall?module=${activeModule}`), { state: LOGIN_RETURN_TO_SOURCE_STATE });
       return;
     }
     if (item.report.shopUserId === user.id) {
@@ -142,36 +170,27 @@ export default function MallPage() {
   if (legacyTarget) return <Navigate to={legacyTarget} replace />;
 
   return (
-    <main className={styles.page}>
-      <ZkSectionTitle title="今天想逛什么" />
-      <div className={styles.businessModuleGrid}>
+    <main className={`${styles.page} ${presentation.mallPage}`}>
+      <nav className={presentation.modules} aria-label="营业模块">
         {BUSINESS_MODULES.map((module) => (
           <button
             key={module.code}
             type="button"
-            className={styles.businessModuleCard}
+            className={presentation.moduleCard}
+            aria-pressed={activeModule === module.code}
             onClick={() => openModule(module.code)}
           >
-            <span className={styles.businessModuleCardTop}>
-              <span className={styles.businessModuleIcon}>{moduleIcons[module.code]}</span>
-              <RightOutlined className={styles.businessModuleArrow} />
-            </span>
+            <span className={presentation.moduleIcon}>{moduleIcons[module.code]}</span>
             <strong>{module.title}</strong>
-            <p>{module.caption}</p>
           </button>
         ))}
-      </div>
+      </nav>
 
-      <ZkSectionTitle
-        title="商城好物"
-        description={productsLoading ? undefined : `${productTotal} 件商品`}
-        action={(
-          <button type="button" className={styles.textButton} onClick={() => openModule('MALL')}>
-            查看更多 <RightOutlined />
-          </button>
-        )}
-      />
-      <section className={styles.mallHomeProducts}>
+      <header className={presentation.previewHeading}>
+        <div><h1>{moduleTitle === '商城' ? '在售商品' : `${moduleTitle}精选`}</h1>{!productsLoading && <span>{productTotal} 件商品</span>}</div>
+        <Link to={`/mall/products?module=${activeModule}`} aria-label={`查看更多${moduleTitle}商品`}>查看更多 <RightOutlined /></Link>
+      </header>
+      <section className={presentation.previewSection} aria-label={`${moduleTitle}商品预览`} aria-busy={productsLoading}>
         {productsLoading ? (
           <ZkState kind="loading" title="正在加载商城商品" />
         ) : productsError ? (
@@ -179,50 +198,19 @@ export default function MallPage() {
         ) : products.length === 0 ? (
           <ZkState title="暂无在售商品" />
         ) : (
-          <div className={styles.productGrid}>
+          <div className={presentation.productGrid}>
             {products.map((product) => (
-              <article
-                key={product.productId}
-                className={styles.productCard}
-                role="link"
-                tabIndex={0}
-                onClick={() => navigate(`/products/${product.productId}`)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    navigate(`/products/${product.productId}`);
-                  }
-                }}
-              >
-                <span className={styles.productCover}>
-                  <img src={product.coverUrl} alt={product.productName} loading="lazy" />
-                  <em>{product.categoryName}</em>
-                  {product.stockUnlimited !== '1' && product.stock <= 0 && <b>已售罄</b>}
-                </span>
-                <span className={styles.productCardBody}>
-                  <small>{product.merchantName}</small>
-                  <h3>{product.productName}</h3>
-                  <p>{product.subtitle || product.brandName}</p>
-                  <span className={styles.productCardFooter}>
-                    <strong className={styles.productPrice}>¥{Number(product.price).toFixed(2)}</strong>
-                    <span className={styles.productSales}>已售 {product.salesCount}</span>
-                  </span>
-                </span>
-              </article>
+              <StoreProductCard key={product.productId} product={product} />
             ))}
           </div>
         )}
       </section>
 
-      <ZkSectionTitle
-        title="商城试用与甄客验"
-        action={(
-          <button type="button" className={styles.textButton} onClick={() => navigate('/mall/content')}>
-            查看更多 <RightOutlined />
-          </button>
-        )}
-      />
-      <section>
+      <header className={presentation.previewHeading}>
+        <div><h2>试用与甄客验</h2></div>
+        <Link to={`/mall/content?module=${activeModule}`}>查看更多 <RightOutlined /></Link>
+      </header>
+      <section className={presentation.previewSection} aria-busy={feedLoading}>
         {feedLoading ? (
           <ZkState kind="loading" title="正在加载试用与甄客验" />
         ) : feedError ? (

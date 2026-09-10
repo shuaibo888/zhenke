@@ -46,7 +46,6 @@ export function MerchantInfoBar({
           <ShopOutlined />
         </span>
         <span className={styles.merchantInfoCopy}>
-          <small>甄客行入驻商家</small>
           <strong>{merchant?.shopName || merchantName}</strong>
           {merchant?.storeAddress && (
             <em>
