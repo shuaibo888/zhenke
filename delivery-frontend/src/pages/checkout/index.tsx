@@ -24,6 +24,7 @@ import {
 } from '@/services/shopContent';
 import type { ShopShippingAddress } from '@/services/shopAuth';
 import { formatPrice } from '@/utils/shop';
+import { formatShippingAddress } from '@/utils/shippingAddress';
 import styles from '@/styles/commerce.less';
 
 type CheckoutLine = {
@@ -57,10 +58,6 @@ function isLocalLifeLine(line: CheckoutLine) {
 
 function checkoutGroupKey(line: CheckoutLine, fulfillment = cartLineFulfillment(line)) {
   return `${line.merchantId}:${fulfillment}:${isLocalLifeLine(line) ? line.productId : 'shared'}`;
-}
-
-function addressText(address: ShopShippingAddress) {
-  return `${address.region.join(' ')} ${address.detail}`.trim();
 }
 
 function couponValidity(coupon: ShopCouponDto) {
@@ -741,14 +738,13 @@ export default function CheckoutPage() {
                     <span>
                       <strong>{paymentOrder.address.recipient}　{paymentOrder.address.phone}</strong>
                       <small>
-                        {paymentOrder.address.provinceCode} {paymentOrder.address.cityCode}
-                        {' '}{paymentOrder.address.districtCode} {paymentOrder.address.detail}
+                        {formatShippingAddress(paymentOrder.address)}
                       </small>
                     </span>
                   ) : selectedAddress ? (
                     <span>
                       <strong>{selectedAddress.recipient}　{selectedAddress.phone}</strong>
-                      <small>{addressText(selectedAddress)}</small>
+                      <small>{formatShippingAddress(selectedAddress)}</small>
                     </span>
                   ) : (
                     <span><strong>请选择收货地址</strong><small>还没有可用的收货地址</small></span>

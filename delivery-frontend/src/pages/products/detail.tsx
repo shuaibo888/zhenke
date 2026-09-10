@@ -38,6 +38,7 @@ import {
   type PublicTrialCampaignDto,
 } from '@/services/shopContent';
 import type { ShopShippingAddress } from '@/services/shopAuth';
+import { formatShippingAddress } from '@/utils/shippingAddress';
 import { buildLoginPath, LOGIN_RETURN_TO_SOURCE_STATE } from '@/utils/safeRedirect';
 import { buildProductShareLink, buildTrialShareLink, copyText, formatPrice } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
@@ -66,10 +67,6 @@ function trialCampaignFeedItem(campaign: PublicTrialCampaignDto): HomeFeedItemDt
       applicationDeadline: campaign.applicationDeadline,
     },
   };
-}
-
-function formatAddress(address: ShopShippingAddress) {
-  return `${address.region.join(' ')} ${address.detail}`.trim();
 }
 
 function trialTypeDescription(trialType: 'ONLINE' | 'OFFLINE') {
@@ -366,7 +363,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
         applyReason: values.applyReason.trim(),
         recipientName: online ? shipping?.recipient : undefined,
         recipientPhone: online ? shipping?.phone : undefined,
-        shippingAddress: online && shipping ? formatAddress(shipping) : undefined,
+        shippingAddress: online && shipping ? formatShippingAddress(shipping) : undefined,
       });
       await refreshTrials();
       setTrialOpen(false);

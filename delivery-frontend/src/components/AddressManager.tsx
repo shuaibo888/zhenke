@@ -5,16 +5,13 @@ import pcaCode from 'china-division/dist/pca-code.json';
 import { useShop } from '@/app/ShopContext';
 import type { ShopShippingAddress, ShopShippingAddressBody } from '@/services/shopAuth';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { formatShippingAddress } from '@/utils/shippingAddress';
 import styles from '@/styles/commerce.less';
 
 type RegionNode = { code: string; name: string; children?: RegionNode[] };
 type RegionOption = { value: string; label: string; children?: RegionOption[] };
 
 const emptyAddress: ShopShippingAddressBody = { recipient: '', phone: '', region: [], detail: '' };
-
-function formatAddress(address: ShopShippingAddressBody) {
-  return `${address.region.join(' ')} ${address.detail}`.trim();
-}
 
 export function AddressManager({
   open,
@@ -162,7 +159,7 @@ export function AddressManager({
                     <em>{address.phone}</em>
                     {address.isDefault && <Tag color="success">默认地址</Tag>}
                   </div>
-                  <p>{formatAddress(address)}</p>
+                  <p>{formatShippingAddress(address)}</p>
                 </div>
                 <CheckCircleFilled className={styles.addressPickerCheck} />
               </button>
@@ -173,7 +170,7 @@ export function AddressManager({
                     <strong>{address.recipient}</strong>
                     <em>{address.phone}</em>
                   </span>
-                  <p>{formatAddress(address)}</p>
+                  <p>{formatShippingAddress(address)}</p>
                 </div>
                 <div className={styles.addressActions}>
                   <Radio

@@ -33,6 +33,7 @@ import {
   paymentRemainingSeconds,
 } from '@/utils/shop';
 import styles from '@/styles/commerce.less';
+import { formatShippingAddress } from '@/utils/shippingAddress';
 
 type PurchaseItem = ShopOrderDto['items'][number];
 
@@ -248,7 +249,7 @@ export default function OrderDetailPage() {
             <div className={styles.businessSectionTitle}><EnvironmentOutlined /><h3>收货信息</h3></div>
             <div className={styles.businessAddress}>
               <strong>{order.address.recipient} <span>{order.address.phone}</span></strong>
-              <p>{order.address.provinceCode}{order.address.cityCode}{order.address.districtCode}{order.address.detail}</p>
+              <p>{formatShippingAddress(order.address)}</p>
             </div>
           </section>
         )}
