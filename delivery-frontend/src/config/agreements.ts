@@ -1,5 +1,6 @@
 import { PLATFORM_OPERATOR } from './platformIdentity';
-export const AGREEMENT_UPDATED_DATE = '2026年9月10日';
+// 用户协议与隐私政策统一固定展示此日期，后续内容更新不调整日期。
+export const AGREEMENT_UPDATED_DATE = '2026年9月1日';
 export type AgreementType = 'user' | 'privacy';
 
 export const agreementContent: Record<AgreementType, { title: string; sections: Array<{ heading: string; content: string }> }> = {
