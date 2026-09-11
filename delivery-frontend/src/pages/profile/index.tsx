@@ -18,7 +18,6 @@ import {
   RightOutlined,
   ShoppingCartOutlined,
   SafetyCertificateOutlined,
-  SettingOutlined,
   TrophyOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
@@ -304,7 +303,6 @@ export default function ProfilePage() {
               }),
             })}
             {profileEntry({ icon: <EnvironmentOutlined />, title: '收货地址', description: '配送订单使用', onClick: () => setAddressOpen(true) })}
-            {profileEntry({ icon: <SettingOutlined />, title: '资料与安全', description: '头像、账号与密码', onClick: () => openProfileEditor() })}
             {profileEntry({ icon: <CustomerServiceOutlined />, title: '客服与售后', description: '联系商家与平台', onClick: () => navigate('/support') })}
             {profileEntry({ icon: <LogoutOutlined />, title: '退出登录', description: '安全退出当前账号', onClick: confirmLogout })}
           </nav>
