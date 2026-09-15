@@ -430,7 +430,6 @@ export function ServiceDiscoveryMap() {
       <header className={styles.serviceMapHeader}>
         <div>
           <h2 id="service-map-title">服务地图</h2>
-          <p>发现真实内容与入驻商家。</p>
         </div>
       </header>
 
