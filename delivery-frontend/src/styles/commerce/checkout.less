@@ -398,11 +398,12 @@ button.checkoutFulfillmentOption:focus-visible {
 
 .checkoutCouponList {
   display: grid;
+  align-content: start;
   flex: 1 1 auto;
-  gap: 10px;
+  gap: 0;
   min-height: 0;
   width: 100%;
-  padding-right: 4px;
+  padding-right: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -413,17 +414,18 @@ button.checkoutFulfillmentOption:focus-visible {
   grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: 12px;
-  margin-bottom: 14px;
-  padding: 14px 16px;
-  color: #6d554e;
-  background: #fff5ed;
-  border: 1px solid #cce7d7;
-  border-radius: 12px;
+  flex-shrink: 0;
+  margin-bottom: 0;
+  padding: 0 0 16px;
+  color: #777;
+  font-size: 12px;
+  background: #fff;
+  border-bottom: 1px solid #eee;
 }
 
 .checkoutCouponPreview strong {
-  color: #8a3f32;
-  font-size: 17px;
+  color: #242424;
+  font-size: 14px;
 }
 
 .checkoutCouponAlert {
@@ -494,16 +496,19 @@ button.checkoutFulfillmentOption:focus-visible {
   align-items: center;
   width: 100%;
   margin: 0;
-  padding: 13px 14px;
-  background: #fffaf6;
-  border: 1px solid #e3eae6;
-  border-radius: 12px;
+  padding: 20px 4px;
+  background: #fff;
+  border: 0;
+  border-bottom: 1px solid #eee;
+  border-radius: 0;
 }
 
 .checkoutCouponOption:global(.ant-checkbox-wrapper-checked) {
-  background: #fff5ed;
-  border-color: #c9866f;
-  box-shadow: 0 6px 16px rgba(138, 63, 50, 0.08);
+  background: #fff;
+}
+
+.checkoutCouponOption:global(.ant-checkbox-wrapper-disabled) {
+  .checkoutCouponValue, .checkoutCouponCopy strong, .checkoutCouponCopy small { color: #999; }
 }
 
 .checkoutCouponDrawer :global(.ant-drawer-content-wrapper) {
@@ -530,29 +535,36 @@ button.checkoutFulfillmentOption:focus-visible {
 }
 
 .checkoutCouponValue {
-  min-width: 82px;
-  color: #8a3f32;
-  font-size: 19px;
-  font-weight: 900;
+  display: grid;
+  flex: 0 0 88px;
+  gap: 4px;
+  color: #e65f32;
+  text-align: center;
+
+  strong { font-size: 22px; font-weight: 700; line-height: 1.2; }
+  small { color: #888; font-size: 11px; line-height: 1.4; }
 }
 
 .checkoutCouponCopy {
   display: grid;
   flex: 1;
   min-width: 0;
-  gap: 3px;
+  gap: 7px;
 }
 
 .checkoutCouponCopy strong {
   overflow: hidden;
-  color: #523a35;
+  color: #262626;
+  font-size: 14px;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .checkoutCouponCopy small {
-  color: #718078;
+  color: #888;
   font-size: 11px;
+  line-height: 1.5;
 }
 
 .checkoutSummaryPanel {
@@ -805,16 +817,17 @@ button.checkoutFulfillmentOption:focus-visible {
   }
 
   .checkoutCouponOption :global(.ant-checkbox + span) {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 7px 10px;
   }
 
   .checkoutCouponValue {
-    min-width: auto;
+    flex-basis: 72px;
+    strong { font-size: 20px; }
   }
 
   .checkoutCouponCopy {
-    flex-basis: calc(100% - 88px);
+    flex-basis: 0;
   }
 
   .checkoutCouponPreview {

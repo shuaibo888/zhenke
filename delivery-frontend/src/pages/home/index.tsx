@@ -1,9 +1,10 @@
 import homeStyles from './index.module.less';
+import { HomeProducts } from './HomeProducts';
 import { Carousel, Image } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'umi';
 import { ZhenkeEnjoyCard } from '@/components/ZhenkeEnjoyCard';
-import { ServiceDiscoveryMap } from '@/components/ServiceDiscoveryMap';
+// import { ServiceDiscoveryMap } from '@/components/ServiceDiscoveryMap';
 import {
   homeContent,
   type Banner,
@@ -168,8 +169,9 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* 服务地图暂缓上线：恢复时取消本行 JSX 和顶部 ServiceDiscoveryMap import 的注释。  */}
-       <ServiceDiscoveryMap />
+      <HomeProducts />
+
+      {/* <ServiceDiscoveryMap /> */}
 
       <section className={`${styles.zhenEnjoySection} ${homeStyles.enjoySection}`} aria-label="甄必享">
         <div className={styles.zhenEnjoyGroups}>

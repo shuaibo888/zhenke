@@ -1,3 +1,98 @@
+.productSection {
+  margin-top: 24px;
+
+  + section { margin-top: 24px; }
+}
+
+.productStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  padding: 14px;
+  background: #fff;
+  border-radius: 18px;
+}
+
+.productSlot {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  text-decoration: none;
+  border-radius: 10px;
+
+  &:focus-visible { outline: 2px solid #e54a38; outline-offset: 4px; }
+}
+
+.productHeading {
+  margin: 0 0 16px;
+  padding: 0 2px;
+  color: #292929;
+  font-size: clamp(18px, 2vw, 22px);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+}
+
+.productName {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  width: 100%;
+  min-width: 0;
+  margin-top: 3px;
+  overflow: hidden;
+  color: #4b4b4b;
+  font-size: 13px;
+  line-height: 18px;
+  max-height: 36px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.productCover,
+.productPlaceholder {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #f7f7f7;
+
+  span { color: #999; font-size: 12px; }
+  img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; background: #f7f7f7; }
+  button { padding: 5px; color: #777; font-size: 12px; background: none; border: 0; cursor: pointer; }
+}
+
+.productPrice,
+.productPending {
+  // 同排卡片自动等高，价格贴底；名称全部一行时不预留第二行空间。
+  margin-top: auto;
+  align-self: center;
+}
+
+.productPrice {
+  color: #e33832;
+  font-size: clamp(16px, 2.2vw, 24px);
+  font-weight: 700;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+
+  small { margin-right: 2px; font-size: 0.7em; font-weight: 600; }
+}
+
+.productPending { color: #999; font-size: 12px; line-height: 21px; }
+
+@media (max-width: 600px) {
+  .productStrip { gap: 8px; padding: 10px; border-radius: 14px; }
+  .productName { font-size: 12px; }
+  .productCover, .productPlaceholder { border-radius: 7px; }
+}
+
 .enjoySection.enjoySection {
   margin-top: 32px;
   overflow: visible;

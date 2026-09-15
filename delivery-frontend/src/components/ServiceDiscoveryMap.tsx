@@ -108,7 +108,7 @@ function loadTencentMapSdk(key: string, version: string) {
 
 function markerSvg(color: string, label: string, current = false, selected = false) {
   const svg = current
-    ? `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="14" fill="#fff" fill-opacity=".92"/><circle cx="19" cy="19" r="10" fill="#ff6b1a" fill-opacity=".2"/><circle cx="19" cy="19" r="5" fill="#ff6b1a"/><circle cx="19" cy="19" r="14" fill="none" stroke="#ff6b1a" stroke-width="2"/></svg>`
+    ? `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="18" fill="${color}" fill-opacity=".14"/><circle cx="19" cy="19" r="13" fill="${color}" fill-opacity=".12"/><circle cx="19" cy="19" r="7.5" fill="${color}" stroke="#fff" stroke-width="3"/></svg>`
     : `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="52" viewBox="0 0 44 52"><path d="M22 1C10.4 1 1 10.2 1 21.6 1 37.2 22 51 22 51s21-13.8 21-29.4C43 10.2 33.6 1 22 1Z" fill="${color}" stroke="${selected ? '#3f3029' : '#fff'}" stroke-width="${selected ? '3' : '2'}"/><circle cx="22" cy="21" r="12.5" fill="#fff" fill-opacity=".96"/><text x="22" y="26" text-anchor="middle" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="14" font-weight="700" fill="${color}">${label}</text></svg>`;
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
@@ -326,7 +326,7 @@ export function ServiceDiscoveryMap() {
           width: 38,
           height: 38,
           anchor: { x: 19, y: 19 },
-          src: markerSvg('#ff6b1a', '', true),
+          src: markerSvg('#1677ff', '', true),
         }),
       },
       geometries: [{

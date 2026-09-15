@@ -1,0 +1,179 @@
+/* 用户端交易与账户页共用表面：与首页保持中性色、摄影内容和克制的暖橙强调。 */
+@quiet-ink: #242424;
+@quiet-muted: #777;
+@quiet-line: #ededee;
+@quiet-accent: #f37032;
+
+.appShell {
+  --shop-ink: @quiet-ink;
+  --shop-muted: @quiet-muted;
+  --shop-line: @quiet-line;
+  --shop-soft: #f6f6f7;
+  --shop-shadow: 0 2px 12px rgba(24, 24, 28, 0.035);
+  background: #f5f5f7;
+}
+
+.appShell :global(.ant-btn-primary) { box-shadow: none; }
+
+.ordersPage .orderPanel,
+.trialsPage .orderPanel,
+.profileReportsPage .orderPanel,
+.couponsPage .orderPanel {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.orderCard,
+.ordersPage .orderCard,
+.trialCard,
+.reportListCard,
+.couponWalletCard,
+.pointCouponCard,
+.trialPanel,
+.businessDetailPage .businessInfoCard,
+.couponDetailPanel,
+.couponCodePanel,
+.checkoutSuccessCard,
+.productCertificationPanel {
+  background: #fff;
+  border-color: @quiet-line;
+  border-radius: 16px;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.reportListCard:hover { transform: none; box-shadow: none; border-color: #d6d6d8; }
+.orderShopAvatar,
+.trialProductMark { color: @quiet-muted; background: #f5f5f6; box-shadow: none; }
+
+.orderFilterTabs { background: transparent; border-color: @quiet-line; box-shadow: none; }
+.orderFilterTabs button { color: @quiet-muted; border-radius: 8px; }
+.orderFilterTabs .orderFilterActive,
+.orderFilterTabs .orderFilterActive:hover {
+  color: @quiet-ink;
+  background: #fff;
+  border-color: #dedee0;
+  box-shadow: none;
+}
+
+.couponWalletAmount,
+.pointCouponAmount {
+  color: #c95327;
+  background: #fff8f3;
+  box-shadow: none;
+  border-right: 1px dashed #efd8c8;
+}
+.couponWalletAmount small,
+.pointCouponAmount small { color: #966e57; }
+.couponWalletCardInactive .couponWalletAmount { color: #999; background: #f4f4f5; border-color: #ddd; }
+.couponWalletCardInactive .couponWalletAmount small { color: #999; }
+
+.couponDetailHero,
+.pointBalancePanel,
+.businessStatusHero {
+  color: @quiet-ink;
+  background: #fff;
+  border: 1px solid @quiet-line;
+  border-radius: 16px;
+  box-shadow: none;
+}
+.businessStatusHero { min-height: auto; padding: 26px; }
+.businessStatusHero::after { content: none; }
+.businessStatusHero h2 { font-size: clamp(24px, 3vw, 30px); }
+.businessStatusHero p,
+.businessStatusHero .eyebrow,
+.couponDetailHero p,
+.couponCodePanel p,
+.pointBalancePanel span,
+.pointBalancePanel small { color: @quiet-muted; }
+.couponDetailHero h1 { color: @quiet-ink; }
+.couponDetailHero > strong,
+.pointCurrentBalance > strong { color: #ce582b; font-weight: 650; }
+.pointBalanceIcon { color: @quiet-accent; background: #fff3ea; }
+.pointSummaryStats > div { background: #f7f7f8; border-color: @quiet-line; }
+.pointSummaryStats strong { color: @quiet-ink; }
+.pointTransferLink,
+.pointRecordsLink { color: @quiet-ink; border-color: #ddd; background: #fff; }
+.pointTransferBalance,
+.profileEditSection,
+.logisticsSummaryCard { background: #f8f8f9; border-color: @quiet-line; box-shadow: none; }
+
+/* 结算页以内容分区，避免每一行再次套框。 */
+.checkoutPage { gap: 12px; }
+.checkoutPage .profileDetailToolbar { border: 0; min-height: 40px; }
+.checkoutHeader { padding: 0 0 16px; border: 0; }
+.checkoutHeader h1 { margin: 0; font-size: 26px; font-weight: 700; }
+.checkoutMain { border: 0; border-radius: 16px; box-shadow: none; }
+.checkoutSection { border-radius: 0; border-bottom-color: @quiet-line; }
+.checkoutSectionTitle { align-items: center; gap: 8px; }
+.checkoutSectionTitle > span { display: none; }
+.checkoutSectionTitle strong { font-size: 16px; font-weight: 650; }
+.checkoutSectionTitle small { color: @quiet-muted; }
+.checkoutMerchant { border: 0; border-radius: 0; }
+.checkoutMerchantName { padding-inline: 0; color: @quiet-muted; background: none; border-color: @quiet-line; }
+.checkoutProduct { padding-inline: 0; }
+.checkoutProduct img { border-radius: 8px; }
+.checkoutAddress { border-color: @quiet-line; background: #fafafa; border-radius: 10px; }
+.checkoutFulfillmentOption { border-radius: 10px; }
+.checkoutFulfillmentOptionActive { color: @quiet-ink; background: #fffaf6; border-color: #efab83; box-shadow: none; }
+.checkoutFulfillmentIcon { color: @quiet-muted; background: none; border: 0; }
+.checkoutCouponTrigger { padding: 8px 0; border: 0; background: none; }
+.checkoutCouponTriggerIcon { display: none; }
+.checkoutCouponTriggerCopy strong { font-size: 14px; font-weight: 500; }
+.checkoutSummaryPanel { border: 0; border-radius: 16px; }
+.checkoutSummaryPanel :global(.ant-btn-primary) { border-radius: 12px; background: @quiet-accent; border-color: @quiet-accent; }
+.checkoutPayable strong { font-weight: 650; font-variant-numeric: tabular-nums; }
+.checkoutSuccessAmount { background: #fafafa; border-color: @quiet-line; }
+
+/* 返回入口和页面标题共用一行，不沿用个人中心的大胶囊按钮。 */
+.checkoutNavigation {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  align-items: center;
+  min-height: 64px;
+  margin: 0;
+  padding: 8px 0 16px;
+}
+.checkoutNavigation h1 { margin: 0; color: @quiet-ink; font-size: 20px; line-height: 1.4; font-weight: 650; text-align: center; }
+.checkoutBack { display: grid; width: 40px; height: 40px; padding: 0; place-items: center; color: @quiet-ink; background: transparent; border: 0; border-radius: 8px; cursor: pointer; font-size: 19px; }
+.checkoutBack:hover { background: #ededee; }
+.checkoutBack:focus-visible { outline: 2px solid @quiet-accent; outline-offset: 2px; }
+.checkoutSectionTitle { margin-bottom: 12px; }
+.checkoutSectionTitle > div { gap: 3px; }
+.checkoutSectionTitle small { font-size: 12px; }
+.checkoutAddress { padding: 14px 0; background: transparent; border: 0; border-radius: 0; }
+.checkoutAddress strong { color: @quiet-ink; }
+.checkoutMerchantName { padding: 8px 0; font-size: 13px; border-bottom: 0; }
+.checkoutFulfillmentOption { min-height: 0; padding: 12px; }
+.checkoutFulfillmentOptionActive { background: #fafafa; border-color: #e6e6e7; }
+.checkoutFulfillmentCheck { color: #b95b32; font-weight: 500; }
+
+/* 券面仅用细虚线和轻底色区分金额，不堆叠标签与阴影。 */
+.checkoutCouponDrawer :global(.ant-drawer-content) { border-radius: 20px 20px 0 0; overflow: hidden; }
+.checkoutCouponDrawer :global(.ant-drawer-header) { border-bottom-color: @quiet-line; }
+.checkoutCouponDrawer :global(.ant-drawer-body) { padding: 18px 20px; }
+.checkoutCouponDrawer :global(.ant-drawer-footer) { padding: 12px 20px max(12px, env(safe-area-inset-bottom)); border-top-color: @quiet-line; }
+.checkoutCouponDrawer :global(.ant-drawer-footer .ant-btn) { height: 46px; border-radius: 12px; box-shadow: none; font-weight: 600; }
+.checkoutCouponOption { padding: 18px 4px; border-bottom-color: @quiet-line; }
+.checkoutCouponValue { padding: 10px 4px; border-right: 1px dashed #e9d8ce; background: #fffbf8; border-radius: 8px 0 0 8px; }
+.checkoutCouponOption:global(.ant-checkbox-wrapper-checked) .checkoutCouponValue { background: #fff3e9; }
+.checkoutCouponOption:global(.ant-checkbox-wrapper-disabled) .checkoutCouponValue { background: #f6f6f7; border-color: #ddd; }
+
+@media (max-width: 640px) {
+  .checkoutPage { background: transparent; padding-inline: 14px; gap: 0; }
+  .checkoutPage .profileDetailToolbar { padding-inline: 0; }
+  .checkoutHeader { margin: 0; padding: 8px 0 20px; }
+  .checkoutHeader h1 { font-size: 24px; }
+  .checkoutMain { padding-inline: 16px; border-radius: 16px; }
+  .checkoutSection { padding: 16px 0; }
+  .checkoutNavigation { min-height: 60px; padding: 6px 0 12px; }
+  .checkoutProduct { grid-template-columns: 68px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 12px; row-gap: 4px; padding: 10px 0; align-items: start; }
+  .checkoutProduct img { width: 68px; height: 68px; grid-row: 1 / 3; }
+  .checkoutProduct > div { grid-column: 2; grid-row: 1; gap: 4px; }
+  .checkoutProduct > div strong { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.45; font-size: 14px; }
+  .checkoutProduct > span { grid-column: 2; grid-row: 2; align-self: end; font-size: 15px; font-weight: 650; }
+  .checkoutSummaryPanel { margin: 14px 0 calc(20px + env(safe-area-inset-bottom)); padding: 20px 16px; }
+  .businessStatusHero { padding: 22px 18px; border-radius: 16px; }
+  .checkoutCouponDrawer :global(.ant-drawer-body) { padding: 16px; }
+}

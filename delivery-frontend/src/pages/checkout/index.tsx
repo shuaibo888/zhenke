@@ -1,4 +1,5 @@
 import {
+  LeftOutlined,
   EnvironmentOutlined,
   GiftOutlined,
   RightOutlined,
@@ -12,7 +13,6 @@ import { useNavigate, useSearchParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
 import { LoginRedirect } from '@/components/LoginRedirect';
 import { AddressManager } from '@/components/AddressManager';
-import { ProfileBackButton } from '@/components/ProfileBackButton';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { useSafeBack } from '@/hooks/useSafeBack';
 import {
@@ -559,16 +559,11 @@ export default function CheckoutPage() {
   return (
     <>
       <main className={`${styles.profileDetailPage} ${styles.checkoutPage}`}>
-        <div className={styles.profileDetailToolbar}>
-          <ProfileBackButton onClick={goBack} />
-          <span>确认商品、地址与优惠信息后提交支付</span>
-        </div>
-        <header className={styles.checkoutHeader}>
-          <div>
-            <span className={styles.eyebrow}>安全结算</span>
-            <h1>{orderMode ? '订单支付' : '确认订单'}</h1>
-            <p>{orderMode ? '核对金额后继续支付，页面刷新不会丢失当前订单。' : '依次确认履约、地址、商品和优惠，提交后进入支付。'}</p>
-          </div>
+        <header className={styles.checkoutNavigation}>
+          <button type="button" className={styles.checkoutBack} onClick={goBack} aria-label="返回上一页">
+            <LeftOutlined />
+          </button>
+          <h1>{orderMode ? '订单支付' : '确认订单'}</h1>
         </header>
 
         <Spin spinning={pageLoading}>
@@ -630,10 +625,10 @@ export default function CheckoutPage() {
                 <div className={styles.checkoutSectionTitle}>
                   <span>{source === 'cart' ? <TruckOutlined /> : selectedFulfillmentType === 'ONLINE' ? <TruckOutlined /> : <ShopOutlined />}</span>
                   <div>
-                    <strong>履约方式</strong>
-                    <small>{source === 'cart' && checkoutGroups.length > 1
-                      ? `本次预计生成 ${checkoutGroups.length} 笔独立订单`
-                      : '请确认本次购买的收货方式'}</small>
+                    <strong>配送与服务</strong>
+                    {source === 'cart' && checkoutGroups.length > 1 && (
+                      <small>{`本次预计生成 ${checkoutGroups.length} 笔独立订单`}</small>
+                    )}
                   </div>
                 </div>
                 {source === 'cart' ? (
@@ -726,7 +721,7 @@ export default function CheckoutPage() {
               <section className={styles.checkoutSection}>
                 <div className={styles.checkoutSectionTitle}>
                   <span><EnvironmentOutlined /></span>
-                  <div><strong>收货地址</strong><small>商品将配送至此地址</small></div>
+                  <div><strong>收货地址</strong></div>
                 </div>
                 <button
                   type="button"
@@ -797,7 +792,7 @@ export default function CheckoutPage() {
               <section className={styles.checkoutSection}>
                 <div className={styles.checkoutSectionTitle}>
                   <span><GiftOutlined /></span>
-                  <div><strong>优惠券</strong><small>支持多张叠加，商家券与平台通用券可混合使用</small></div>
+                  <div><strong>优惠券</strong></div>
                 </div>
                 {orderMode ? (
                   <div className={styles.checkoutCouponTrigger}>
@@ -835,7 +830,7 @@ export default function CheckoutPage() {
                     ) : availableCoupons.length > 0 ? (
                       <>
                         <strong>有 {availableCoupons.length} 张可用优惠券</strong>
-                        <small>可多选；每张券自动绑定金额最高的合规子订单</small>
+                        <small>{singleCheckoutGroup ? '支持多张叠加使用' : '支持叠加，可选择优惠券适用订单'}</small>
                       </>
                     ) : (
                       <>
@@ -883,7 +878,6 @@ export default function CheckoutPage() {
                   ? paymentOrder?.status === 'PENDING_PAYMENT' ? '立即支付' : '无需支付'
                   : !singleCheckoutGroup ? `确认生成 ${checkoutGroups.length} 笔订单` : '提交订单并支付'}
               </Button>
-              <p>{orderMode ? '微信授权返回后会继续停留在本支付页面。' : '提交即表示确认商品、地址和优惠信息。'}</p>
             </aside>
           </div>}
         </Spin>
@@ -925,6 +919,7 @@ export default function CheckoutPage() {
         <div className={styles.checkoutCouponList}>
           {coupons.map((coupon) => {
             const target = couponTargetById.get(coupon.userCouponId);
+            const eligibleGroups = couponEligibleGroupsById.get(coupon.userCouponId) ?? [];
             const ineligibleReason = couponIneligibleReason(coupon);
             return (
             <Checkbox
@@ -934,14 +929,16 @@ export default function CheckoutPage() {
               onChange={(event) => toggleDraftCoupon(coupon, event.target.checked)}
               key={coupon.userCouponId}
             >
-              <span className={styles.checkoutCouponValue}>{formatPrice(coupon.discountAmount)}</span>
+              <span className={styles.checkoutCouponValue}>
+                <strong>{formatPrice(coupon.discountAmount)}</strong>
+                <small>{coupon.minimumSpend > 0 ? `满 ${formatPrice(coupon.minimumSpend)} 可用` : '无门槛'}</small>
+              </span>
               <span className={styles.checkoutCouponCopy}>
                 <strong>{coupon.couponName}</strong>
                 <small>
-                  {coupon.minimumSpend > 0 ? `满 ${formatPrice(coupon.minimumSpend)} 可用` : '无门槛'}
-                  {' · '}{couponValidity(coupon)}
+                  {couponValidity(coupon)}
                 </small>
-                {target && (
+                {target && eligibleGroups.length > 1 && (
                   <span
                     className={styles.checkoutCouponTargetSelect}
                     onClick={(event) => event.stopPropagation()}
@@ -951,7 +948,7 @@ export default function CheckoutPage() {
                     <Select
                       size="small"
                       value={target.key}
-                      options={(couponEligibleGroupsById.get(coupon.userCouponId) ?? []).map((group) => ({
+                      options={eligibleGroups.map((group) => ({
                         value: group.key,
                         label: `${group.merchantName} · ${group.localLife
                           ? `${group.lines[0].productName} ${formatPrice(group.amount)}`
@@ -966,7 +963,6 @@ export default function CheckoutPage() {
                 )}
                 {!target && <small>{ineligibleReason || '当前结算不可用'}</small>}
               </span>
-              <Tag color={target ? 'green' : 'default'}>{target ? '可用' : '不可用'}</Tag>
             </Checkbox>
             );
           })}

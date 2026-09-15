@@ -47,6 +47,14 @@ const dashboardMetrics: readonly DashboardMetric[] = [
   { key: 'reportTotal', title: '报告总数', hint: '全部验证报告数量', icon: <SafetyCertificateOutlined />, tone: 'gold' },
 ];
 
+// 显式引用颜色类，避免动态拼接被样式清理误判为未使用。
+const metricToneClasses: Record<DashboardMetric['tone'], string> = {
+  green: styles.metricgreen,
+  gold: styles.metricgold,
+  blue: styles.metricblue,
+  red: styles.metricred,
+};
+
 function formatMoney(value: number) {
   return `¥${value.toFixed(2)}`;
 }
@@ -72,7 +80,7 @@ export default function DashboardModule({ summary, isAdmin }: DashboardModulePro
         {dashboardMetrics.filter((metric) => !isAdmin || metric.key !== 'reportTotal').map((metric) => {
           const value = summary[metric.key];
           return (
-            <div key={metric.key} className={`${styles.metricCard} ${styles[`metric${metric.tone}`]}`}>
+            <div key={metric.key} className={`${styles.metricCard} ${metricToneClasses[metric.tone]}`}>
               <div className={styles.metricIcon}>{metric.icon}</div>
               <div className={styles.metricBody}>
                 <span>{metric.title}</span>

@@ -62,7 +62,6 @@ export default function CheckoutSuccessPage() {
         {!loading && !loadError && order?.status === 'PAID' ? (
           <section className={styles.checkoutSuccessCard}>
             <span className={styles.checkoutSuccessIcon}><CheckCircleFilled /></span>
-            <span className={styles.eyebrow}>PAYMENT SUCCESS</span>
             <h1>支付成功</h1>
             <p>{order.fulfillmentType === 'OFFLINE'
               ? '订单已支付完成，可在订单详情中出示核销码，到店或现场使用。'
