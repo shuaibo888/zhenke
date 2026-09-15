@@ -4,7 +4,7 @@ import { fetchPublicProduct, type PublicProductDto } from '@/services/shopConten
 import styles from './index.module.less';
 
 // 首页固定四个商品位；调整选品时只修改 ID，名称、封面和售价均读取商品实时数据。
-const HOME_PRODUCT_IDS = [1, 4, 5, 7] as const;
+const HOME_PRODUCT_IDS = [12, 13, 14, 15] as const;
 const priceFormatter = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 });
 
 export function HomeProducts() {
