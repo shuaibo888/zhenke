@@ -85,4 +85,17 @@ public class ShopMerchantOrderController extends BaseController {
         return AjaxResult.success("线下订单已核销，用户现在可以发布购买甄客验",
                 orderService.redeem(body.getRedeemCode()));
     }
+    @Log(title = "确认收到退货", businessType = BusinessType.UPDATE)
+    @PutMapping("/{orderId}/refunds/{refundId}/received")
+    public AjaxResult receiveReturn(@PathVariable long orderId, @PathVariable long refundId) {
+        orderService.confirmReturn(orderId, refundId);
+        paymentService.tryInitiateRefund(orderId);
+        return AjaxResult.success(orderService.merchantOrder(orderId));
+    }
+
+    @GetMapping("/{orderId}/refunds/{refundId}/logistics")
+    public AjaxResult returnLogistics(@PathVariable long orderId, @PathVariable long refundId) {
+        return AjaxResult.success(orderService.returnLogistics(orderId, refundId, false));
+    }
+
 }

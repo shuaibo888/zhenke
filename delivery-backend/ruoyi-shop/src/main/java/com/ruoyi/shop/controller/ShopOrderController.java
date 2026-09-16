@@ -78,6 +78,19 @@ public class ShopOrderController
         return AjaxResult.success(orderService.getOrCreateRedeemCode(orderId));
     }
 
+    @PutMapping("/{orderId}/refunds/{refundId}/ship")
+    public AjaxResult shipReturn(@PathVariable long orderId, @PathVariable long refundId,
+            @Valid @RequestBody com.ruoyi.shop.domain.dto.ShopOrderShipBody body)
+    {
+        return AjaxResult.success(orderService.shipReturn(orderId, refundId, body));
+    }
+
+    @GetMapping("/{orderId}/refunds/{refundId}/logistics")
+    public AjaxResult returnLogistics(@PathVariable long orderId, @PathVariable long refundId)
+    {
+        return AjaxResult.success(orderService.returnLogistics(orderId, refundId));
+    }
+
     @PostMapping("/{orderId}/refund")
     public AjaxResult refund(@PathVariable long orderId, @Valid @RequestBody ShopOrderRefundBody body)
     {

@@ -41,6 +41,8 @@ public class ShopAdminOrderService
         order.setItems(orderMapper.selectOrderItems(order.getOrderId()));
         order.setCoupons(orderMapper.selectOrderCoupons(order.getOrderId()));
         order.setAddress(orderMapper.selectOrderAddress(order.getOrderId()));
+        order.setRefundHistory(orderMapper.selectRefundHistory(order.getOrderId()).stream()
+                .map(com.ruoyi.shop.domain.vo.ShopRefundView::from).toList());
         order.setStatusLogs(orderMapper.selectStatusLogs(order.getOrderId()));
         order.setLogisticsEvents(orderMapper.selectLogisticsEvents(order.getOrderId()));
         return order;

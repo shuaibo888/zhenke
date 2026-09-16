@@ -1,3 +1,4 @@
+import type { RefundRecord } from '@/utils/refund';
 import type { AdminSession, CouponRedeemPreview, ManagedCoupon, ManagedCouponGrant, ManagedCouponRedemption, ManagedLogisticsTrace, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, MerchantAuditLog, ProductCategoryOption, ShopMemberLevel, ShopUserAccount } from '@/types';
 import { mediaStoragePath, uploadedMediaPath } from '@/utils/media';
 
@@ -176,7 +177,10 @@ interface ShopOrderDto {
   trackingNo?: string;
   shipTime?: string;
   receiveTime?: string;
-  refundStatus?: 'PENDING' | 'REFUNDING' | 'REFUNDED' | 'REJECTED';
+  refundId?: number;
+  refundType?: 'REFUND_ONLY' | 'RETURN_REFUND';
+  refundHistory?: RefundRecord[];
+  refundStatus?: RefundRecord['refundStatus'];
   refundReason?: string;
   refundReviewRequired?: '0' | '1';
   refundAuditRemark?: string;
@@ -391,6 +395,9 @@ function toManagedOrder(dto: ShopOrderDto): ManagedOrder {
       address.districtCode, address.detail].filter(Boolean).join(' ') : '-',
     returnDays: 0,
     refundRequested: dto.refundStatus === 'PENDING',
+    refundId: dto.refundId,
+    refundType: dto.refundType,
+    refundHistory: dto.refundHistory,
     refundStatus: dto.refundStatus,
     refundReason: dto.refundReason,
     refundReviewRequired: dto.refundReviewRequired === '1',
@@ -949,10 +956,11 @@ export async function auditMerchantOrderRefund(
   orderId: number,
   decision: 'APPROVED' | 'REJECTED',
   auditRemark?: string,
+  details?: { refundId?: number; returnRecipient?: string; returnPhone?: string; returnAddress?: string },
 ) {
   const result = await requestApi<ApiResponse<ShopOrderDto>>(
     `${session.loginType === 'merchant' ? '/shop/merchant/orders' : '/shop/admin/orders'}/${orderId}/refund/audit`,
-    { method: 'PUT', body: JSON.stringify({ decision, auditRemark }) },
+    { method: 'PUT', body: JSON.stringify({ decision, auditRemark, ...details }) },
     true,
   );
   if (!result.data) throw new Error('退款审核失败');
@@ -1207,4 +1215,17 @@ export async function uploadBannerImage(file: File) {
     throw new Error(payload?.msg || '图片上传失败');
   }
   return uploadedMediaPath(payload);
+}
+
+export async function confirmManagedReturn(session: AdminSession, orderId: number, refundId: number) {
+  const path = session.loginType === 'merchant' ? '/shop/merchant/orders' : '/shop/admin/orders';
+  const result = await requestApi<ApiResponse<ShopOrderDto>>(`${path}/${orderId}/refunds/${refundId}/received`, { method: 'PUT' }, true);
+  if (!result.data) throw new Error('确认退货收货失败');
+  return toManagedOrder(result.data);
+}
+export async function fetchManagedReturnLogistics(session: AdminSession, orderId: number, refundId: number) {
+  const path = session.loginType === 'merchant' ? '/shop/merchant/orders' : '/shop/admin/orders';
+  const result = await requestApi<ApiResponse<ManagedLogisticsTrace>>(`${path}/${orderId}/refunds/${refundId}/logistics`, {}, true);
+  if (!result.data) throw new Error('退货物流查询失败');
+  return { ...result.data, events: result.data.events || [] };
 }

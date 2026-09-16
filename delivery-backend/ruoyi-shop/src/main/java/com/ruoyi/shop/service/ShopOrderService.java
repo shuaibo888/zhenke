@@ -255,14 +255,20 @@ public class ShopOrderService
         {
             throw new ServiceException("退款原因长度必须在2到200个字之间");
         }
+        String refundType = body.getRefundType() == null ? "REFUND_ONLY" : body.getRefundType();
+        if (!"REFUND_ONLY".equals(refundType) && !"RETURN_REFUND".equals(refundType))
+            throw new ServiceException("退款方式无效");
+        if ("RETURN_REFUND".equals(refundType)
+                && (!RECEIVED.equals(order.getStatus()) || !"ONLINE".equals(order.getFulfillmentType())))
+            throw new ServiceException("仅已收货的快递订单支持退货退款");
         ShopOrderRefund latest = orderMapper.selectLatestRefund(orderId);
-        if (latest != null && REFUND_PENDING.equals(latest.getRefundStatus()))
+        if (latest != null && !"REJECTED".equals(latest.getRefundStatus()))
         {
-            throw new ServiceException("退款申请正在等待商家审核，请勿重复提交");
+            throw new ServiceException("该订单已有进行中的或已完成的售后申请，请勿重复提交");
         }
         if (SHIPPED.equals(order.getStatus()))
         {
-            throw new ServiceException("订单已发货，请先确认收货后再申请退款");
+            throw new ServiceException("订单已发货，收货后可申请售后；未收到商品请联系商家");
         }
         if (REFUNDING.equals(order.getStatus()) || REFUNDED.equals(order.getStatus()))
         {
@@ -279,17 +285,45 @@ public class ShopOrderService
             {
                 throw new ServiceException("订单状态已变化，请刷新后重试");
             }
-            insertRefund(order, reason, REFUND_STATUS_REFUNDING, "0", "待发货订单无需审核，已发起退款");
+            insertRefund(order, reason, "REFUND_ONLY", REFUND_STATUS_REFUNDING, "0", "待发货订单无需审核，已发起退款");
             insertStatusLog(orderId, PAID, REFUNDING, userId, "用户申请待发货订单退款，等待支付渠道退款结果");
             return hydrate(requireUserOrder(userId, orderId, false));
         }
         if (RECEIVED.equals(order.getStatus()))
         {
-            insertRefund(order, reason, REFUND_PENDING, "1", null);
+            insertRefund(order, reason, refundType, REFUND_PENDING, "1", null);
             return hydrate(requireUserOrder(userId, orderId, false));
         }
         throw new ServiceException(PENDING_PAYMENT.equals(order.getStatus())
                 ? "待付款订单请直接取消" : "当前订单状态不能申请退款");
+    }
+
+    @Transactional
+    public ShopOrder shipReturn(long orderId, long refundId, com.ruoyi.shop.domain.dto.ShopOrderShipBody body)
+    {
+        long userId = ShopAccountIdentity.requireShopUserId();
+        ShopOrder order = requireUserOrder(userId, orderId, true);
+        ShopOrderRefund refund = orderMapper.selectLatestRefund(orderId);
+        if (!RECEIVED.equals(order.getStatus()) || refund == null || !Long.valueOf(refundId).equals(refund.getRefundId())
+                || !"WAITING_RETURN".equals(refund.getRefundStatus()))
+            throw new ServiceException("售后状态已变化，请刷新后重试");
+        String trackingNo = StringUtils.trim(body.getTrackingNo());
+        if (StringUtils.isEmpty(trackingNo) || trackingNo.length() > 100)
+            throw new ServiceException("请填写有效的退货物流单号（最多100字符）");
+        if (orderMapper.shipReturn(refundId, userId, trackingNo) == 0)
+            throw new ServiceException("售后状态已变化，请刷新后重试");
+        return hydrate(requireUserOrder(userId, orderId, false));
+    }
+
+    public ShopLogisticsTrace returnLogistics(long orderId, long refundId)
+    {
+        long userId = ShopAccountIdentity.requireShopUserId();
+        requireUserOrder(userId, orderId, false);
+        ShopOrderRefund refund = orderMapper.selectRefundHistory(orderId).stream()
+                .filter(r -> Long.valueOf(refundId).equals(r.getRefundId())).findFirst()
+                .orElseThrow(() -> new ServiceException("售后记录不存在"));
+        if (StringUtils.isEmpty(refund.getReturnTrackingNo())) throw new ServiceException("尚未填写退货单号");
+        return logisticsService.query(null, refund.getReturnTrackingNo(), java.util.List.of());
     }
 
     /** 仅供验签成功的支付渠道退款成功回调调用。 */
@@ -667,7 +701,7 @@ public class ShopOrderService
         }
     }
 
-    private void insertRefund(ShopOrder order, String reason, String status, String reviewRequired, String auditRemark)
+    private void insertRefund(ShopOrder order, String reason, String refundType, String status, String reviewRequired, String auditRemark)
     {
         ShopOrderRefund refund = new ShopOrderRefund();
         refund.setOrderId(order.getOrderId());
@@ -675,6 +709,7 @@ public class ShopOrderService
         refund.setMerchantId(order.getMerchantId());
         refund.setRefundStatus(status);
         refund.setRefundReason(reason);
+        refund.setRefundType(refundType);
         refund.setReviewRequired(reviewRequired);
         refund.setAuditRemark(auditRemark);
         refund.setOutRefundNo("ZKR" + order.getOrderNo() + "-"
@@ -716,6 +751,8 @@ public class ShopOrderService
         order.setItems(orderMapper.selectOrderItems(order.getOrderId()));
         order.setCoupons(orderMapper.selectOrderCoupons(order.getOrderId()));
         order.setAddress(orderMapper.selectOrderAddress(order.getOrderId()));
+        order.setRefundHistory(orderMapper.selectRefundHistory(order.getOrderId()).stream()
+                .map(com.ruoyi.shop.domain.vo.ShopRefundView::from).toList());
         order.setStatusLogs(orderMapper.selectStatusLogs(order.getOrderId()));
         order.setLogisticsEvents(orderMapper.selectLogisticsEvents(order.getOrderId()));
         return order;

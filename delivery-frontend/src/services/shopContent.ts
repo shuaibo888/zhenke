@@ -1,3 +1,4 @@
+import type { RefundRecord } from '@/utils/refund';
 import { getToken, requestApi, type ApiResponse, type TableResponse } from './apiClient';
 import { extractPlatformMediaPath } from '@/utils/mediaUrl';
 
@@ -302,7 +303,10 @@ export interface ShopOrderDto {
   shipTime?: string;
   receiveTime?: string;
   cancelTime?: string;
-  refundStatus?: 'PENDING' | 'REFUNDING' | 'REFUNDED' | 'REJECTED';
+  refundId?: number;
+  refundType?: 'REFUND_ONLY' | 'RETURN_REFUND';
+  refundHistory?: RefundRecord[];
+  refundStatus?: RefundRecord['refundStatus'];
   refundReason?: string;
   refundReviewRequired?: '0' | '1';
   refundAuditRemark?: string;
@@ -745,10 +749,10 @@ export async function publishVerificationReport(body: {
   return result.data;
 }
 
-export async function requestShopOrderRefund(orderId: number, reason: string) {
+export async function requestShopOrderRefund(orderId: number, reason: string, refundType: 'REFUND_ONLY' | 'RETURN_REFUND' = 'REFUND_ONLY') {
   const result = await requestApi<ApiResponse<ShopOrderDto>>(
     `/shop/orders/${orderId}/refund`,
-    { method: 'POST', body: JSON.stringify({ reason }) },
+    { method: 'POST', body: JSON.stringify({ reason, refundType }) },
     true,
   );
   if (!result.data) throw new Error('退款申请提交失败');
@@ -821,5 +825,17 @@ export async function uploadShopContentFile(file: File) {
 export async function fetchPublicTrialCampaign(campaignId: number) {
   const result = await requestApi<ApiResponse<PublicTrialCampaignDto>>(`/shop/trials/${campaignId}`);
   if (!result.data) throw new Error('试用活动不存在或已结束');
+  return result.data;
+}
+
+export async function shipOrderReturn(orderId: number, refundId: number, trackingNo: string) {
+  const result = await requestApi<ApiResponse<ShopOrderDto>>(`/shop/orders/${orderId}/refunds/${refundId}/ship`,
+    { method: 'PUT', body: JSON.stringify({ trackingNo }) }, true);
+  if (!result.data) throw new Error('退货单号提交失败');
+  return result.data;
+}
+export async function fetchOrderReturnLogistics(orderId: number, refundId: number) {
+  const result = await requestApi<ApiResponse<LogisticsTraceDto>>(`/shop/orders/${orderId}/refunds/${refundId}/logistics`, {}, true);
+  if (!result.data) throw new Error('退货物流查询失败');
   return result.data;
 }

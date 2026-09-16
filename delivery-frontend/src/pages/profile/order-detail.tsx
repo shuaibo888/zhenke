@@ -1,3 +1,6 @@
+import { OrderRefundHistory } from '@/components/OrderRefundHistory';
+import { Radio } from 'antd';
+import { refundInProgress, refundLabels } from '@/utils/refund';
 import {
   EnvironmentOutlined,
   FileTextOutlined,
@@ -77,6 +80,7 @@ export default function OrderDetailPage() {
   const logisticsRequestRef = useRef(0);
   const [refundOpen, setRefundOpen] = useState(false);
   const [refundReason, setRefundReason] = useState('');
+  const [refundType, setRefundType] = useState<'REFUND_ONLY' | 'RETURN_REFUND'>('REFUND_ONLY');
   const [refundSubmitting, setRefundSubmitting] = useState(false);
   const [reportItem, setReportItem] = useState<PurchaseItem | null>(null);
   const [redeemOpen, setRedeemOpen] = useState(false);
@@ -187,7 +191,7 @@ export default function OrderDetailPage() {
     }
     setRefundSubmitting(true);
     try {
-      updateOrder(await requestShopOrderRefund(order.orderId, reason));
+      updateOrder(await requestShopOrderRefund(order.orderId, reason, refundType));
       setRefundOpen(false);
       setRefundReason('');
       message.success('退款申请已提交');
@@ -228,7 +232,9 @@ export default function OrderDetailPage() {
     );
   }
 
-  const status = getOrderStatusMeta(order);
+  const status = order.refundStatus && ['PENDING', 'WAITING_RETURN', 'RETURN_SHIPPED'].includes(order.refundStatus)
+    ? { label: refundLabels[order.refundStatus], color: 'orange' }
+    : getOrderStatusMeta(order);
   const canRefund = ['PAID', 'SHIPPED', 'RECEIVED'].includes(order.status);
 
   return (
@@ -312,6 +318,7 @@ export default function OrderDetailPage() {
           </dl>
         </section>
 
+        <OrderRefundHistory order={order} onUpdate={updateOrder} />
         <AfterSalesEntry merchantId={order.merchantId} />
 
         <div className={styles.businessActionBar}>
@@ -323,13 +330,15 @@ export default function OrderDetailPage() {
           {order.status === 'PAID' && order.fulfillmentType === 'OFFLINE' && <Button type="primary" onClick={() => setRedeemOpen(true)}>出示核销码</Button>}
           {order.fulfillmentType === 'ONLINE' && !['PENDING_PAYMENT', 'CANCELLED'].includes(order.status) && <Button onClick={() => void openLogistics()}>查看物流</Button>}
           {canRefund && (
-            <Button danger disabled={order.refundStatus === 'PENDING'} onClick={() => {
+            <Button danger disabled={refundInProgress(order.refundStatus)} onClick={() => {
               if (order.status === 'SHIPPED') {
                 navigate(`/support?merchantId=${order.merchantId}`);
                 return;
               }
+              setRefundType('REFUND_ONLY');
+              setRefundReason('');
               setRefundOpen(true);
-            }}>{order.refundStatus === 'PENDING' ? '退款审核中' : order.status === 'SHIPPED' ? '联系售后' : '申请退款'}</Button>
+            }}>{refundInProgress(order.refundStatus) ? refundLabels[order.refundStatus!] : order.status === 'SHIPPED' ? '联系售后' : '申请退款'}</Button>
           )}
           {order.status === 'SHIPPED' && <Button type="primary" loading={mutating} onClick={receive}>确认收货</Button>}
         </div>
@@ -351,6 +360,12 @@ export default function OrderDetailPage() {
         }}
       />
       <Modal title="申请退款" open={refundOpen} onCancel={() => setRefundOpen(false)} onOk={() => void submitRefund()} confirmLoading={refundSubmitting} okText="提交申请" cancelText="取消">
+        {order?.status === 'RECEIVED' && order.fulfillmentType === 'ONLINE' && (
+          <Radio.Group value={refundType} onChange={(event) => setRefundType(event.target.value)} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+            <Radio.Button value="REFUND_ONLY" style={{ height: 'auto', whiteSpace: 'normal', lineHeight: '22px', padding: '6px 12px' }}>仅退款（无需退货）</Radio.Button>
+            <Radio.Button value="RETURN_REFUND" style={{ height: 'auto', whiteSpace: 'normal', lineHeight: '22px', padding: '6px 12px' }}>退货退款</Radio.Button>
+          </Radio.Group>
+        )}
         <Input.TextArea value={refundReason} onChange={(event) => setRefundReason(event.target.value)} rows={4} maxLength={200} showCount placeholder="请说明退款原因" />
       </Modal>
       <PublishReportModal open={Boolean(reportItem)} purchaseItem={reportItem} onClose={() => setReportItem(null)} onPublished={(report) => void reportPublished(report)} />

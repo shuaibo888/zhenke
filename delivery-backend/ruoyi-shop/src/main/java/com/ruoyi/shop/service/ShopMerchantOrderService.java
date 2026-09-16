@@ -239,6 +239,8 @@ public class ShopMerchantOrderService
         {
             throw new ServiceException("该订单不是微信支付订单，无法发起微信原路退款");
         }
+        if (body.getRefundId() == null || !body.getRefundId().equals(refund.getRefundId()))
+            throw new ServiceException("售后申请已变化，请刷新后重新审核");
         String decision = StringUtils.trim(body.getDecision());
         String auditRemark = StringUtils.trim(body.getAuditRemark());
         if (!ShopOrderService.REFUND_AUDIT_APPROVED.equals(decision)
@@ -250,14 +252,30 @@ public class ShopMerchantOrderService
         {
             throw new ServiceException("驳回退款时必须填写审核说明");
         }
-        String refundStatus = ShopOrderService.REFUND_AUDIT_APPROVED.equals(decision)
+        boolean returnApproved = ShopOrderService.REFUND_AUDIT_APPROVED.equals(decision)
+                && "RETURN_REFUND".equals(refund.getRefundType());
+        String recipient = StringUtils.trim(body.getReturnRecipient());
+        String phone = StringUtils.trim(body.getReturnPhone());
+        String address = StringUtils.trim(body.getReturnAddress());
+        if (returnApproved && (!"ONLINE".equals(order.getFulfillmentType())
+                || StringUtils.isEmpty(recipient) || recipient.length() > 50
+                || StringUtils.isEmpty(phone) || !phone.matches("[0-9+() -]{5,30}")
+                || StringUtils.isEmpty(address) || address.length() > 500))
+            throw new ServiceException("同意退货时请填写有效的收货人姓名、电话和完整地址");
+        if (auditRemark != null && auditRemark.length() > 200) throw new ServiceException("审核说明不能超过200字");
+        String refundStatus = returnApproved ? "WAITING_RETURN" : ShopOrderService.REFUND_AUDIT_APPROVED.equals(decision)
                 ? ShopOrderService.REFUND_STATUS_REFUNDING : ShopOrderService.REFUND_REJECTED;
         if (orderMapper.updateRefundAudit(refund.getRefundId(), merchantId,
                 ShopOrderService.REFUND_PENDING, refundStatus, auditBy, auditRemark) == 0)
         {
             throw new ServiceException("退款申请状态已变化，请刷新后重试");
         }
-        if (ShopOrderService.REFUND_AUDIT_APPROVED.equals(decision))
+        if (returnApproved)
+        {
+            if (orderMapper.setReturnAddress(refund.getRefundId(), merchantId, recipient, phone, address) == 0)
+                throw new ServiceException("售后状态已变化，请刷新后重试");
+        }
+        if (ShopOrderService.REFUND_AUDIT_APPROVED.equals(decision) && !returnApproved)
         {
             if (orderMapper.updateStatus(order.getUserId(), orderId,
                     ShopOrderService.RECEIVED, ShopOrderService.REFUNDING) == 0)
@@ -268,6 +286,47 @@ public class ShopMerchantOrderService
                     operatorType, operatorId, approvedRemark);
         }
         return hydrate(requireMerchantOrder(merchantId, orderId, false));
+    }
+
+    @Transactional
+    public ShopOrder confirmReturn(long orderId, long refundId)
+    {
+        long merchantId = merchantService.currentMerchantAccount().getMerchantId();
+        return confirmReturnForMerchant(merchantId, orderId, refundId, "MERCHANT", merchantId);
+    }
+
+    @Transactional
+    public ShopOrder adminConfirmReturn(long orderId, long refundId)
+    {
+        return confirmReturnForMerchant(requireAdminOrder(orderId).getMerchantId(), orderId, refundId,
+                "ADMIN", SecurityUtils.getUserId());
+    }
+
+    private ShopOrder confirmReturnForMerchant(long merchantId, long orderId, long refundId, String operator, long actorId)
+    {
+        ShopOrder order = requireMerchantOrder(merchantId, orderId, true);
+        ShopOrderRefund refund = orderMapper.selectLatestRefund(orderId);
+        if (!ShopOrderService.RECEIVED.equals(order.getStatus()) || refund == null
+                || !Long.valueOf(refundId).equals(refund.getRefundId())
+                || !"RETURN_SHIPPED".equals(refund.getRefundStatus()) || !"WECHAT".equals(order.getPaymentChannel()))
+            throw new ServiceException("该售后当前不能确认退货收货，请刷新后重试");
+        if (orderMapper.receiveReturn(refundId, merchantId) == 0
+                || orderMapper.updateStatus(order.getUserId(), orderId, ShopOrderService.RECEIVED, ShopOrderService.REFUNDING) == 0)
+            throw new ServiceException("售后状态已变化，请刷新后重试");
+        insertStatusLog(orderId, ShopOrderService.RECEIVED, ShopOrderService.REFUNDING,
+                operator, actorId, "已确认收到退货，等待支付渠道退款结果");
+        return hydrate(requireMerchantOrder(merchantId, orderId, false));
+    }
+
+    public ShopLogisticsTrace returnLogistics(long orderId, long refundId, boolean admin)
+    {
+        if (admin) requireAdminOrder(orderId);
+        else requireMerchantOrder(merchantService.currentMerchantAccount().getMerchantId(), orderId, false);
+        ShopOrderRefund refund = orderMapper.selectRefundHistory(orderId).stream()
+                .filter(r -> Long.valueOf(refundId).equals(r.getRefundId())).findFirst()
+                .orElseThrow(() -> new ServiceException("售后记录不存在"));
+        if (StringUtils.isEmpty(refund.getReturnTrackingNo())) throw new ServiceException("尚未填写退货单号");
+        return logisticsService.query(null, refund.getReturnTrackingNo(), List.of());
     }
 
     private ShopOrder requireMerchantOrder(long merchantId, long orderId, boolean forUpdate)
@@ -287,6 +346,8 @@ public class ShopMerchantOrderService
         order.setItems(orderMapper.selectOrderItems(order.getOrderId()));
         order.setCoupons(orderMapper.selectOrderCoupons(order.getOrderId()));
         order.setAddress(orderMapper.selectOrderAddress(order.getOrderId()));
+        order.setRefundHistory(orderMapper.selectRefundHistory(order.getOrderId()).stream()
+                .map(com.ruoyi.shop.domain.vo.ShopRefundView::from).toList());
         order.setStatusLogs(orderMapper.selectStatusLogs(order.getOrderId()));
         order.setLogisticsEvents(orderMapper.selectLogisticsEvents(order.getOrderId()));
         return order;

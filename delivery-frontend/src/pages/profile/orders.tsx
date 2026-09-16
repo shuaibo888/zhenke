@@ -1,3 +1,5 @@
+import { Radio } from 'antd';
+import { refundInProgress, refundLabels } from '@/utils/refund';
 import { Button, Input, Modal, Spin, Tag, message } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'umi';
@@ -72,6 +74,7 @@ export default function OrdersPage() {
   const logisticsRequestRef = useRef(0);
   const [refundOrder, setRefundOrder] = useState<ShopOrderDto | null>(null);
   const [refundReason, setRefundReason] = useState('');
+  const [refundType, setRefundType] = useState<'REFUND_ONLY' | 'RETURN_REFUND'>('REFUND_ONLY');
   const [refundSubmitting, setRefundSubmitting] = useState(false);
   const [reportItem, setReportItem] = useState<PurchaseItem | null>(null);
   const [redeemOrder, setRedeemOrder] = useState<ShopOrderDto | null>(null);
@@ -176,7 +179,7 @@ export default function OrdersPage() {
     }
     setRefundSubmitting(true);
     try {
-      replaceOrder(await requestShopOrderRefund(refundOrder.orderId, reason));
+      replaceOrder(await requestShopOrderRefund(refundOrder.orderId, reason, refundType));
       setRefundOrder(null);
       setRefundReason('');
       message.success('退款申请已提交');
@@ -253,7 +256,9 @@ export default function OrdersPage() {
                     {order.fulfillmentType === 'OFFLINE' && <Tag color="purple">到店核销</Tag>}
                     {order.refundStatus === 'PENDING' && <Tag color="gold">退款待审核</Tag>}
                     {order.refundStatus === 'REFUNDING' && <Tag color="blue">退款处理中</Tag>}
-                    {order.refundStatus === 'REJECTED' && <Tag color="red">退款已驳回</Tag>}
+                    {order.refundStatus === 'REJECTED' && <Tag color="red">申请已拒绝</Tag>}
+                    {['WAITING_RETURN', 'RETURN_SHIPPED'].includes(order.refundStatus || '') && <Tag color="blue">{refundLabels[order.refundStatus!]}</Tag>}
+                    {order.refundStatus === 'REJECTED' && <p>拒绝理由：{order.refundAuditRemark}（可重新申请）</p>}
                   </div>
                   <div className={styles.orderPriceCol}>
                     {order.discountAmount > 0 && <del>{formatPrice(order.originalAmount)}</del>}
@@ -303,20 +308,23 @@ export default function OrdersPage() {
                       </Button>
                     </>
                   )}
+                  {order.refundStatus && <Button size="small" onClick={() => navigate(`/profile/orders/${order.orderId}`)}>售后记录</Button>}
                   {['PAID', 'SHIPPED', 'RECEIVED'].includes(order.status) && (
                     <Button
                       size="small"
                       danger
-                      disabled={order.refundStatus === 'PENDING'}
+                      disabled={refundInProgress(order.refundStatus)}
                       onClick={() => {
                         if (order.status === 'SHIPPED') {
                           navigate(`/support?merchantId=${order.merchantId}`);
                           return;
                         }
+                        setRefundType('REFUND_ONLY');
+                        setRefundReason('');
                         setRefundOrder(order);
                       }}
                     >
-                      {order.refundStatus === 'PENDING' ? '退款审核中' : order.status === 'SHIPPED' ? '联系售后' : '申请退款'}
+                      {refundInProgress(order.refundStatus) ? refundLabels[order.refundStatus!] : order.status === 'SHIPPED' ? '联系售后' : '申请退款'}
                     </Button>
                   )}
                   {order.status === 'SHIPPED' && (
@@ -363,6 +371,12 @@ export default function OrdersPage() {
         okText="提交申请"
         cancelText="取消"
       >
+        {refundOrder?.status === 'RECEIVED' && refundOrder.fulfillmentType === 'ONLINE' && (
+          <Radio.Group value={refundType} onChange={(event) => setRefundType(event.target.value)} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+            <Radio.Button value="REFUND_ONLY" style={{ height: 'auto', whiteSpace: 'normal', lineHeight: '22px', padding: '6px 12px' }}>仅退款（无需退货）</Radio.Button>
+            <Radio.Button value="RETURN_REFUND" style={{ height: 'auto', whiteSpace: 'normal', lineHeight: '22px', padding: '6px 12px' }}>退货退款</Radio.Button>
+          </Radio.Group>
+        )}
         <Input.TextArea
           value={refundReason}
           onChange={(event) => setRefundReason(event.target.value)}

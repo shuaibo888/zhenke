@@ -1,3 +1,4 @@
+import type { RefundRecord } from '@/utils/refund';
 export type LoginType = 'admin' | 'merchant';
 
 export type ProductCategory = string;
@@ -153,7 +154,10 @@ export interface ManagedOrder {
   address: string;
   returnDays: number;
   refundRequested: boolean;
-  refundStatus?: 'PENDING' | 'REFUNDING' | 'REFUNDED' | 'REJECTED';
+  refundId?: number;
+  refundType?: 'REFUND_ONLY' | 'RETURN_REFUND';
+  refundHistory?: RefundRecord[];
+  refundStatus?: RefundRecord['refundStatus'];
   refundReason?: string;
   refundReviewRequired?: boolean;
   refundAuditRemark?: string;

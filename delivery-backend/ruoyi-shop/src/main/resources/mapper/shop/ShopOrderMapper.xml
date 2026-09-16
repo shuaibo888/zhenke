@@ -57,6 +57,8 @@
         <result property="shipTime" column="ship_time" />
         <result property="receiveTime" column="receive_time" />
         <result property="cancelTime" column="cancel_time" />
+        <result property="refundId" column="refund_id" />
+        <result property="refundType" column="refund_type" />
         <result property="refundStatus" column="refund_status" />
         <result property="refundReason" column="refund_reason" />
         <result property="refundReviewRequired" column="refund_review_required" />
@@ -83,9 +85,16 @@
 
     <resultMap id="ShopOrderRefundResult" type="ShopOrderRefund">
         <id property="refundId" column="refund_id" />
+        <result property="returnRecipient" column="return_recipient" />
+        <result property="returnPhone" column="return_phone" />
+        <result property="returnAddress" column="return_address" />
+        <result property="returnTrackingNo" column="return_tracking_no" />
+        <result property="returnShipTime" column="return_ship_time" />
+        <result property="returnReceiveTime" column="return_receive_time" />
         <result property="orderId" column="order_id" />
         <result property="userId" column="user_id" />
         <result property="merchantId" column="merchant_id" />
+        <result property="refundType" column="refund_type" />
         <result property="refundStatus" column="refund_status" />
         <result property="refundReason" column="refund_reason" />
         <result property="reviewRequired" column="review_required" />
@@ -164,7 +173,7 @@
                o.payment_channel, o.payment_trade_type, o.payment_mch_id, o.payment_app_id,
                o.wechat_transaction_id, o.pay_time,
                o.carrier, o.tracking_no, o.ship_time, o.receive_time, o.cancel_time,
-               r.refund_status, r.refund_reason, r.review_required as refund_review_required,
+               r.refund_id, r.refund_type, r.refund_status, r.refund_reason, r.review_required as refund_review_required,
                r.audit_remark as refund_audit_remark, r.request_time as refund_request_time,
                r.audit_time as refund_audit_time, r.refund_time as refund_complete_time,
                o.create_time, o.update_time
@@ -293,11 +302,11 @@
 
     <insert id="insertRefund" parameterType="ShopOrderRefund" useGeneratedKeys="true" keyProperty="refundId">
         insert into shop_order_refund
-        (order_id, user_id, merchant_id, refund_status, refund_reason, review_required,
+        (order_id, user_id, merchant_id, refund_type, refund_status, refund_reason, review_required,
          audit_remark, audit_by, request_time, audit_time, refund_time, out_refund_no,
          wechat_refund_id, channel_status, channel_error, channel_last_attempt_time, create_time, update_time)
         values
-         (#{orderId}, #{userId}, #{merchantId}, #{refundStatus}, #{refundReason}, #{reviewRequired},
+         (#{orderId}, #{userId}, #{merchantId}, coalesce(#{refundType}, 'REFUND_ONLY'), #{refundStatus}, #{refundReason}, #{reviewRequired},
          #{auditRemark}, #{auditBy}, sysdate(),
          case when #{refundStatus} = 'REFUNDING' then sysdate() else null end,
          null, #{outRefundNo}, #{wechatRefundId}, #{channelStatus}, #{channelError},
@@ -305,7 +314,8 @@
     </insert>
 
     <select id="selectLatestRefund" parameterType="Long" resultMap="ShopOrderRefundResult">
-        select refund_id, order_id, user_id, merchant_id, refund_status, refund_reason,
+        select refund_type, return_recipient, return_phone, return_address, return_tracking_no, return_ship_time, return_receive_time,
+               refund_id, order_id, user_id, merchant_id, refund_status, refund_reason,
                review_required, audit_remark, audit_by, request_time, audit_time,
                refund_time, out_refund_no, wechat_refund_id, channel_status, channel_error,
                channel_last_attempt_time, create_time, update_time
@@ -316,7 +326,8 @@
     </select>
 
     <select id="selectRefundByOutRefundNo" parameterType="String" resultMap="ShopOrderRefundResult">
-        select refund_id, order_id, user_id, merchant_id, refund_status, refund_reason,
+        select refund_type, return_recipient, return_phone, return_address, return_tracking_no, return_ship_time, return_receive_time,
+               refund_id, order_id, user_id, merchant_id, refund_status, refund_reason,
                review_required, audit_remark, audit_by, request_time, audit_time,
                refund_time, out_refund_no, wechat_refund_id, channel_status, channel_error,
                channel_last_attempt_time, create_time, update_time
@@ -593,4 +604,24 @@
         where o.redeem_code = #{redeemCode} and o.del_flag = '0'
         limit 1
     </select>
+    <select id="selectRefundHistory" resultMap="ShopOrderRefundResult">
+        select * from shop_order_refund where order_id = #{orderId} order by refund_id desc
+    </select>
+    <update id="setReturnAddress">
+        update shop_order_refund set return_recipient = #{recipient}, return_phone = #{phone},
+          return_address = #{address}, update_time = sysdate()
+        where refund_id = #{refundId} and merchant_id = #{merchantId}
+          and refund_type = 'RETURN_REFUND' and refund_status = 'WAITING_RETURN'
+    </update>
+    <update id="shipReturn">
+        update shop_order_refund set return_tracking_no = #{trackingNo}, return_ship_time = sysdate(),
+          refund_status = 'RETURN_SHIPPED', update_time = sysdate()
+        where refund_id = #{refundId} and user_id = #{userId}
+          and refund_type = 'RETURN_REFUND' and refund_status = 'WAITING_RETURN'
+    </update>
+    <update id="receiveReturn">
+        update shop_order_refund set return_receive_time = sysdate(), refund_status = 'REFUNDING', update_time = sysdate()
+        where refund_id = #{refundId} and merchant_id = #{merchantId}
+          and refund_type = 'RETURN_REFUND' and refund_status = 'RETURN_SHIPPED'
+    </update>
 </mapper>

@@ -1,5 +1,5 @@
 import { TruckOutlined } from '@ant-design/icons';
-import { Modal, Spin, Tag } from 'antd';
+import { Alert, Button, Modal, Spin, Tag } from 'antd';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import type { LogisticsTraceDto } from '@/services/shopContent';
 import styles from '@/styles/commerce.less';
@@ -18,6 +18,8 @@ export function LogisticsModal({
   title,
   referenceNo,
   trace,
+  error,
+  onRetry,
   onClose,
 }: {
   open: boolean;
@@ -33,6 +35,7 @@ export function LogisticsModal({
   return (
     <Modal title={title} open={open} onCancel={onClose} footer={null} width={560} rootClassName={styles.responsiveModal}>
       <Spin spinning={loading}>
+        {error && <Alert type="error" showIcon title={error} action={onRetry && <Button size="small" onClick={onRetry}>重试</Button>} />}
         {trace ? (
           <div className={styles.logisticsOverview}>
             <section className={styles.logisticsSummaryCard}>
@@ -53,6 +56,7 @@ export function LogisticsModal({
                 <span>{trace.trackingNo || '暂无运单号'}</span>
               </div>
               <p className={styles.logisticsNotice}>物流信息可能存在短暂延迟，请以最新轨迹和实际签收状态为准。</p>
+              {trace.providerMessage && <p className={styles.logisticsNotice}>{trace.providerMessage}</p>}
             </section>
             <div className={styles.logisticsTimeline}>
               {trace.events.map((event, index) => (
@@ -68,7 +72,7 @@ export function LogisticsModal({
               {trace.events.length === 0 && <p className={styles.empty}>物流轨迹正在更新，请稍后再查看。</p>}
             </div>
           </div>
-        ) : !loading ? <p className={styles.empty}>暂无可展示的物流信息。</p> : null}
+        ) : !loading && !error ? <p className={styles.empty}>暂无可展示的物流信息。</p> : null}
       </Spin>
     </Modal>
   );

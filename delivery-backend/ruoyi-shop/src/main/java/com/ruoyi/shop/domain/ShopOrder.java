@@ -6,6 +6,16 @@ import java.util.List;
 
 public class ShopOrder
 {
+    private Long refundId;
+    public Long getRefundId() { return refundId; }
+    public void setRefundId(Long refundId) { this.refundId = refundId; }
+    private String refundType;
+    public String getRefundType() { return refundType; }
+    public void setRefundType(String refundType) { this.refundType = refundType; }
+    private java.util.List<com.ruoyi.shop.domain.vo.ShopRefundView> refundHistory;
+    public java.util.List<com.ruoyi.shop.domain.vo.ShopRefundView> getRefundHistory() { return refundHistory; }
+    public void setRefundHistory(java.util.List<com.ruoyi.shop.domain.vo.ShopRefundView> refundHistory) { this.refundHistory = refundHistory; }
+
     private Long orderId;
     private String orderNo;
     private Long userId;

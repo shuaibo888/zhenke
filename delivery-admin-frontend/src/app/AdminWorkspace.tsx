@@ -39,6 +39,8 @@ import { Outlet, useLocation, useNavigate } from '@umijs/renderer-react';
 import type { AdminSession, ManagedLogisticsTrace, ManagedOrder, ManagedProduct, ManagedReport, ManagedTrialApplication, ManagedTrialRecruitment, MerchantAccount, NavKey, ProductCategory, ProductCategoryOption, ProductStatus, ShopMemberLevel, ShopUserAccount } from '@/types';
 import {
   auditMerchantOrderRefund,
+  confirmManagedReturn,
+  fetchManagedReturnLogistics,
   auditMerchantTrialApplication,
   createMerchantProduct,
   createProductCategory,
@@ -1128,12 +1130,42 @@ function AdminWorkspace() {
     }
   };
 
+  const confirmReturn = (order: ManagedOrder, refundId: number) => {
+    modal.confirm({
+      title: '确认已收到退货并退款？',
+      content: '请实际收到并检查退回商品后确认。确认后系统将发起微信原路退款。',
+      okText: '已收到退货，确认退款', cancelText: '取消',
+      onOk: async () => {
+        if (!session) return;
+        try {
+          const updated = await confirmManagedReturn(session, order.id, refundId);
+          setOrders((items) => items.map((item) => item.id === updated.id ? updated : item));
+          setDetailOrder((current) => current?.id === updated.id ? updated : current);
+          message.success('已确认收到退货，退款结果以支付渠道处理为准');
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : '确认失败');
+          throw error;
+        }
+      },
+    });
+  };
+  const openReturnLogistics = async (order: ManagedOrder, refundId: number) => {
+    if (!session || orderLogisticsLoading) return;
+    setOrderLogisticsLoading(true);
+    try {
+      const trace = await fetchManagedReturnLogistics(session, order.id, refundId);
+      setOrderLogisticsDialog({ orderNo: order.orderNo, trace });
+    } catch (error) { message.error(error instanceof Error ? error.message : '退货物流查询失败'); }
+    finally { setOrderLogisticsLoading(false); }
+  };
+
   const openRefundAudit = (order: ManagedOrder) => {
     if (order.refundStatus !== 'PENDING') {
       message.warning('当前订单没有待审核的退款申请');
       return;
     }
     setRefundAuditOrder(order);
+    refundAuditForm.resetFields();
     refundAuditForm.setFieldsValue({ decision: 'APPROVED', auditRemark: '' });
   };
 
@@ -1153,13 +1185,14 @@ function AdminWorkspace() {
         refundAuditOrder.id,
         values.decision,
         values.auditRemark?.trim(),
+        { refundId: refundAuditOrder.refundId, returnRecipient: values.returnRecipient, returnPhone: values.returnPhone, returnAddress: values.returnAddress },
       );
       setOrders((items) => items.map((item) => item.id === updated.id ? updated : item));
       setDetailOrder((current) => current?.id === updated.id ? updated : current);
       setRefundAuditOrder(null);
       refundAuditForm.resetFields();
       message.success(values.decision === 'APPROVED'
-        ? '退款申请已通过，订单已进入退款中'
+        ? (updated.refundStatus === 'WAITING_RETURN' ? '已同意退货，等待用户寄回商品' : '退款申请已通过，订单已进入退款中')
         : '退款申请已驳回');
     } catch (error) {
       message.error(error instanceof Error ? error.message : '退款审核失败');
@@ -1465,6 +1498,8 @@ function AdminWorkspace() {
       key: 'refundStatus',
       responsive: ['md'],
       render: (_, order) => {
+        if (order.refundStatus === 'WAITING_RETURN') return <Tag color="blue">待用户寄回</Tag>;
+        if (order.refundStatus === 'RETURN_SHIPPED') return <Tag color="orange">待确认退货收货</Tag>;
         if (order.refundStatus === 'PENDING') return <Tag color="gold">待商家审核</Tag>;
         if (order.refundStatus === 'REFUNDING') return <Tag color="blue">退款中</Tag>;
         if (order.refundStatus === 'REFUNDED') return <Tag color="green">已退款</Tag>;
@@ -1994,6 +2029,8 @@ function AdminWorkspace() {
         orderShipForm={orderShipForm}
         orderShipping={orderShipping}
         getMerchantName={getMerchantName}
+        onConfirmReturn={confirmReturn}
+        onReturnLogistics={(order, refundId) => void openReturnLogistics(order, refundId)}
         onDetailClose={() => setDetailOrder(null)}
         onOpenLogistics={(order) => void openOrderLogistics(order)}
         onLogisticsClose={() => setOrderLogisticsDialog(null)}

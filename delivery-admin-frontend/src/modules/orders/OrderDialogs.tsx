@@ -1,3 +1,4 @@
+import { refundLabels } from '@/utils/refund';
 import { TruckOutlined } from '@ant-design/icons';
 import { Button, Drawer, Form, Input, Modal, Select, Space, Table, Tag } from 'antd';
 import type { FormInstance } from 'antd';
@@ -10,6 +11,9 @@ export interface OrderShipFormValues {
 }
 
 export interface RefundAuditFormValues {
+  returnRecipient?: string;
+  returnPhone?: string;
+  returnAddress?: string;
   decision: 'APPROVED' | 'REJECTED';
   auditRemark?: string;
 }
@@ -32,6 +36,8 @@ export interface OrderDialogsProps {
   orderShipForm: FormInstance<OrderShipFormValues>;
   orderShipping: boolean;
   getMerchantName: (merchantId: number) => string;
+  onConfirmReturn: (order: ManagedOrder, refundId: number) => void;
+  onReturnLogistics: (order: ManagedOrder, refundId: number) => void;
   onDetailClose: () => void;
   onOpenLogistics: (order: ManagedOrder) => void;
   onLogisticsClose: () => void;
@@ -223,6 +229,22 @@ export default function OrderDialogs(props: OrderDialogsProps) {
               </section>
             )}
 
+            {(props.detailOrder.refundHistory?.length ?? 0) > 0 && <section>
+              <h3>售后申请记录</h3>
+              {props.detailOrder.refundHistory?.map((record) => <div key={record.refundId} className={styles.refundNotice}>
+                <div style={{ overflowWrap: 'anywhere' }}>
+                  <strong>申请 #{record.refundId} · {record.refundType === 'RETURN_REFUND' ? '退货退款' : '仅退款'} · {refundLabels[record.refundStatus]}</strong>
+                  <p>申请时间：{record.requestTime ? new Date(record.requestTime).toLocaleString('zh-CN') : '—'}</p>
+                  <p>申请原因：{record.refundReason}</p>
+                  {record.auditRemark && <p>{record.refundStatus === 'REJECTED' ? '拒绝理由' : '审核说明'}：{record.auditRemark}</p>}
+                  {record.returnAddress && <p>退货地址：{record.returnRecipient}　{record.returnPhone}　{record.returnAddress}</p>}
+                  {record.returnTrackingNo && <p>退货单号：{record.returnTrackingNo} <Button type="link" onClick={() => props.onReturnLogistics(props.detailOrder!, record.refundId)}>查看退货物流</Button></p>}
+                  {record.returnReceiveTime && <p>退货收货时间：{new Date(record.returnReceiveTime).toLocaleString('zh-CN')}</p>}
+                  {record.refundTime && <p>退款时间：{new Date(record.refundTime).toLocaleString('zh-CN')}</p>}
+                  {record.refundStatus === 'RETURN_SHIPPED' && <Button danger type="primary" onClick={() => props.onConfirmReturn(props.detailOrder!, record.refundId)}>确认收到退货并退款</Button>}
+                </div>
+              </div>)}
+            </section>}
             {props.detailOrder.refundStatus && (
               <div className={styles.refundNotice}>
                 <div>
@@ -312,6 +334,7 @@ export default function OrderDialogs(props: OrderDialogsProps) {
       >
         {props.refundAuditOrder && (
           <>
+            <p>申请方式：{props.refundAuditOrder.refundType === 'RETURN_REFUND' ? '退货退款' : '仅退款（无需退货）'}</p>
             <p>退款原因：{props.refundAuditOrder.refundReason}</p>
             <Form
               form={props.refundAuditForm}
@@ -321,16 +344,22 @@ export default function OrderDialogs(props: OrderDialogsProps) {
               <Form.Item name="decision" label="审核结果" rules={[{ required: true, message: '请选择审核结果' }]}>
                 <Select
                   options={[
-                    { label: '同意退款', value: 'APPROVED' },
+                    { label: props.refundAuditOrder.refundType === 'RETURN_REFUND' ? '同意退货（收货后退款）' : '同意退款', value: 'APPROVED' },
                     { label: '驳回退款', value: 'REJECTED' },
                   ]}
                 />
               </Form.Item>
+              {props.refundAuditOrder.refundType === 'RETURN_REFUND' && props.refundAuditDecision === 'APPROVED' && <>
+                <p>同意后用户将按以下地址寄回商品；此步骤不会直接退款。</p>
+                <Form.Item name="returnRecipient" label="退货收货人" rules={[{ required: true, whitespace: true }, { max: 50 }]}><Input maxLength={50} /></Form.Item>
+                <Form.Item name="returnPhone" label="收货人电话" rules={[{ required: true }, { pattern: /^[0-9+() -]{5,30}$/, message: '请填写有效联系电话' }]}><Input maxLength={30} /></Form.Item>
+                <Form.Item name="returnAddress" label="完整退货地址" rules={[{ required: true, whitespace: true }, { max: 500 }]}><Input.TextArea rows={3} maxLength={500} placeholder="省、市、区及街道门牌号" /></Form.Item>
+              </>}
               <Form.Item
                 name="auditRemark"
                 label="审核说明"
                 rules={props.refundAuditDecision === 'REJECTED'
-                  ? [{ required: true, message: '驳回退款时必须填写审核说明' }]
+                  ? [{ required: true, whitespace: true, message: '驳回退款时必须填写审核说明' }]
                   : []}
               >
                 <Input.TextArea rows={4} maxLength={200} showCount placeholder="可填写退款处理说明" />

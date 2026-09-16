@@ -4,6 +4,28 @@ import java.util.Date;
 
 public class ShopOrderRefund
 {
+    private String refundType;
+    public String getRefundType() { return refundType; }
+    public void setRefundType(String refundType) { this.refundType = refundType; }
+    private String returnRecipient;
+    public String getReturnRecipient() { return returnRecipient; }
+    public void setReturnRecipient(String returnRecipient) { this.returnRecipient = returnRecipient; }
+    private String returnPhone;
+    public String getReturnPhone() { return returnPhone; }
+    public void setReturnPhone(String returnPhone) { this.returnPhone = returnPhone; }
+    private String returnAddress;
+    public String getReturnAddress() { return returnAddress; }
+    public void setReturnAddress(String returnAddress) { this.returnAddress = returnAddress; }
+    private String returnTrackingNo;
+    public String getReturnTrackingNo() { return returnTrackingNo; }
+    public void setReturnTrackingNo(String returnTrackingNo) { this.returnTrackingNo = returnTrackingNo; }
+    private Date returnShipTime;
+    public Date getReturnShipTime() { return returnShipTime; }
+    public void setReturnShipTime(Date returnShipTime) { this.returnShipTime = returnShipTime; }
+    private Date returnReceiveTime;
+    public Date getReturnReceiveTime() { return returnReceiveTime; }
+    public void setReturnReceiveTime(Date returnReceiveTime) { this.returnReceiveTime = returnReceiveTime; }
+
     private Long refundId;
     private Long orderId;
     private Long userId;

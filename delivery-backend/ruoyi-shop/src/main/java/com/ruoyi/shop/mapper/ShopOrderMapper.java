@@ -26,6 +26,11 @@ public interface ShopOrderMapper
     int insertStatusLog(ShopOrderStatusLog log);
     int insertLogisticsEvent(ShopOrderLogisticsEvent event);
     int insertRefund(ShopOrderRefund refund);
+    List<ShopOrderRefund> selectRefundHistory(Long orderId);
+    int setReturnAddress(@Param("refundId") Long refundId, @Param("merchantId") Long merchantId,
+            @Param("recipient") String recipient, @Param("phone") String phone, @Param("address") String address);
+    int shipReturn(@Param("refundId") Long refundId, @Param("userId") Long userId, @Param("trackingNo") String trackingNo);
+    int receiveReturn(@Param("refundId") Long refundId, @Param("merchantId") Long merchantId);
     ShopOrderRefund selectLatestRefund(Long orderId);
     ShopOrderRefund selectRefundByOutRefundNo(String outRefundNo);
     List<Long> selectRefundingOrderIds(@Param("limit") Integer limit);

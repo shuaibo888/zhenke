@@ -5,6 +5,10 @@ import jakarta.validation.constraints.Size;
 
 public class ShopOrderRefundBody
 {
+    private String refundType;
+    public String getRefundType() { return refundType; }
+    public void setRefundType(String refundType) { this.refundType = refundType; }
+
     @NotBlank(message = "退款原因不能为空")
     @Size(min = 2, max = 200, message = "退款原因长度必须在2到200个字之间")
     private String reason;
