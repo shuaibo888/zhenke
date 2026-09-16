@@ -7,7 +7,7 @@ import { usePostPublishLauncher } from '@/components/PostPublishLauncher';
 import { ZkState } from '@/components/ZkPage';
 import { postCities, posts, type ZhenkePost } from '@/services/zhenke';
 import styles from '@/styles/zhenke.less';
-import { CURRENT_LOCATION_CHANGED_EVENT } from '@/utils/currentLocation';
+import { CURRENT_LOCATION_CHANGED_EVENT, currentLocationCityLabel } from '@/utils/currentLocation';
 
 const PAGE_SIZE = 12;
 const perspectives = [
@@ -21,6 +21,7 @@ type PerspectiveFilter = typeof perspectives[number]['value'];
 export default function PostListPage() {
   const { startPostPublish } = usePostPublishLauncher();
   const [searchParams, setSearchParams] = useSearchParams();
+  const requestedCity = searchParams.get('postCity')?.trim() || '';
   const requestedPerspective = searchParams.get('perspective')?.toUpperCase();
   const perspective: PerspectiveFilter = perspectives.some((item) => item.value === requestedPerspective)
     ? requestedPerspective as PerspectiveFilter
@@ -43,9 +44,13 @@ export default function PostListPage() {
     try {
       const availableCities = await postCities(perspective);
       if (requestVersion !== requestVersionRef.current) return;
-      const requestedCity = new URLSearchParams(window.location.search).get('postCity')?.trim() || '';
-      const activeCity = availableCities.includes(requestedCity) ? requestedCity : (availableCities[0] || '');
-      setCities(availableCities);
+      const currentCity = currentLocationCityLabel().replace(/市$/, '');
+      const preferredCity = availableCities.find((city) => city.replace(/市$/, '') === currentCity);
+      const orderedCities = preferredCity
+        ? [preferredCity, ...availableCities.filter((city) => city !== preferredCity)]
+        : availableCities;
+      const activeCity = availableCities.includes(requestedCity) ? requestedCity : (orderedCities[0] || '');
+      setCities(orderedCities);
       setSelectedCity(activeCity);
       if (!activeCity) {
         setRows([]);
@@ -64,7 +69,7 @@ export default function PostListPage() {
     } finally {
       if (requestVersion === requestVersionRef.current) setLoading(false);
     }
-  }, [perspective]);
+  }, [perspective, requestedCity]);
 
   useEffect(() => {
     void loadPerspective();
@@ -102,28 +107,11 @@ export default function PostListPage() {
     }
   };
 
-  const chooseCity = async (city: string) => {
+  const chooseCity = (city: string) => {
     if (city === selectedCity || loading) return;
-    const requestVersion = ++requestVersionRef.current;
-    setSelectedCity(city);
-    setLoading(true);
-    setLoadingMore(false);
-    setError('');
     const next = new URLSearchParams(searchParams);
     next.set('postCity', city);
     setSearchParams(next, { replace: true });
-    try {
-      const result = await posts(perspective, 1, PAGE_SIZE, undefined, city);
-      if (requestVersion !== requestVersionRef.current) return;
-      setRows(result.rows);
-      setTotal(result.total);
-      setPage(1);
-    } catch (reason) {
-      if (requestVersion !== requestVersionRef.current) return;
-      setError(reason instanceof Error ? reason.message : '甄客帖加载失败');
-    } finally {
-      if (requestVersion === requestVersionRef.current) setLoading(false);
-    }
   };
 
   return (

@@ -223,7 +223,6 @@ export async function posts(
   });
   if (placeId) q.set("placeId", String(placeId));
   if (postCity?.trim()) q.set("postCity", postCity.trim());
-  appendCurrentCity(q);
   const r = await requestApi<TableResponse<ZhenkePost>>(
     `/shop/zhenke/posts?${q}`,
   );
@@ -253,7 +252,6 @@ export async function postCities(
   perspective: Perspective | "RECOMMEND" = "RECOMMEND",
 ) {
   const q = new URLSearchParams({ perspective });
-  appendCurrentCity(q);
   const result = await requestApi<ApiResponse<string[]>>(
     `/shop/zhenke/posts/cities?${q}`,
   );
