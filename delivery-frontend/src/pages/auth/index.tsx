@@ -220,7 +220,7 @@ export default function AuthPage() {
         <section className={`${styles.authCard} ${phoneMode ? styles.phoneAuthCard : ''}`}>
           <div className={styles.authHeader}>
             <h2>{phoneMode ? phoneLoginMethod === 'oneClick' ? '手机号登录' : '验证码登录' : authMode === 'login' ? '账号登录' : '创建用户账号'}</h2>
-            <p>{phoneMode ? phoneLoginMethod === 'oneClick' ? '登录后继续发现和分享城市生活。' : '输入手机号并获取短信验证码，新用户将自动注册。' : authMode === 'login' ? '使用已有账号和密码登录。' : '账号注册后首次登录需要绑定手机号。'}</p>
+            {(phoneMode || authMode === 'register') && <p>{phoneMode ? phoneLoginMethod === 'oneClick' ? '登录后继续发现和分享城市生活。' : '输入手机号并获取短信验证码，新用户将自动注册。' : '账号注册后首次登录需要绑定手机号。'}</p>}
           </div>
 
           {phoneMode ? (
