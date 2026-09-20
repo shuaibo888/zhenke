@@ -63,7 +63,7 @@
   width: 100%;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 14px;
-  align-items: center;
+  align-items: flex-start;
   padding: 20px 22px 18px 28px;
   border: 0;
   color: inherit;
@@ -112,13 +112,18 @@
 }
 
 .copyTop strong {
+  display: -webkit-box;
   overflow: hidden;
   color: var(--message-ink);
   font-size: 15px;
   font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
+
+.activity { color: #635b55; font-size: 13px; line-height: 1.6; }
 
 .copyTop time {
   flex: none;
@@ -145,25 +150,31 @@
   background: #ffede2;
 }
 
-.target span:last-child,
-.preview {
+.target span:last-child {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .preview {
-  color: #958982;
+  display: -webkit-box;
+  overflow: hidden;
+  color: #756d67;
   font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .arrow {
+  align-self: center;
   color: #b9aaa1;
   font-size: 13px;
 }
 
 .read {
-  opacity: 0.74;
+  background: #fff;
 }
 
 .readAction {
@@ -193,9 +204,12 @@
   }
 
   .itemMain {
-    gap: 11px;
-    padding: 17px 16px 24px 24px;
+    gap: 10px;
+    padding: 17px 14px 16px 24px;
   }
+
+  .avatarWrap :global(.ant-avatar) { width: 36px; height: 36px; font-size: 16px; }
+  .eventIcon { width: 18px; height: 18px; font-size: 9px; }
 
   .unread::before {
     top: 21px;
@@ -209,10 +223,11 @@
 
   .copyTop strong {
     white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .copyTop time {
-    order: -1;
+    color: var(--message-muted);
   }
 
   .footer {

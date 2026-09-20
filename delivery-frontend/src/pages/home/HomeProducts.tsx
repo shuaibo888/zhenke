@@ -46,7 +46,7 @@ export function HomeProducts() {
               <img src={product.coverUrl} alt={product.productName} decoding="async" onError={(event) => { event.currentTarget.style.visibility = 'hidden'; }} />
             </div>
             <span className={styles.productName} title={product.productName}>{product.productName}</span>
-            <span className={styles.productPrice}><small>¥</small>{price}</span>
+            <span className={`${styles.productPrice} ${price.length > 7 ? styles.productPriceLong : ''}`}><small>¥</small>{price}</span>
           </Link>
         );
       })}

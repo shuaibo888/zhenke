@@ -660,7 +660,7 @@
   }
 }
 
-.responsiveModal :global(.ant-modal-content) {
+.responsiveModal :global(.ant-modal-container) {
   display: flex;
   max-height: calc(100dvh - 32px);
   flex-direction: column;
@@ -692,8 +692,8 @@
   overflow: hidden;
 }
 
-.merchantModal :global(.ant-modal-content),
-.scrollableFormModal :global(.ant-modal-content) {
+.merchantModal :global(.ant-modal-container),
+.scrollableFormModal :global(.ant-modal-container) {
   max-height: 85vh;
   display: flex;
   flex-direction: column;
@@ -961,7 +961,7 @@
   margin-top: 5px;
 
   :global(.ant-select) {
-    width: min(100%, 360px);
+    width: ~"min(100%, 360px)";
   }
 }
 

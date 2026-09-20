@@ -160,7 +160,7 @@ export default function HomeBannersPage() {
         ]}
       />
 
-      <Modal
+      <Modal rootClassName={styles.responsiveModal}
         width={680}
         open={editorOpen}
         title={editing ? '编辑首页轮播' : '新增首页轮播'}

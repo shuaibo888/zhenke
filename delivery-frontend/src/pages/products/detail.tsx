@@ -862,7 +862,7 @@ export default function ProductDetailPage({ productId: productIdProp }: { produc
             label="申请理由"
             rules={[{ required: true, message: '请填写申请理由' }, { max: 1000 }]}
           >
-            <Input.TextArea rows={5} maxLength={1000} showCount />
+            <Input.TextArea rows={5} maxLength={1000} showCount placeholder="请说明你想试用这款商品的理由" />
           </Form.Item>
           <Button block type="primary" size="large" htmlType="submit" loading={trialSubmitting}>提交申请</Button>
         </Form>

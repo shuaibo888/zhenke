@@ -9,8 +9,8 @@ body,
 body {
   margin: 0;
   overflow-x: hidden;
-  color: #18231f;
-  background: #eef2ef;
+  color: #292521;
+  background: #f5f4f2;
   font-family:
     Inter,
     ui-sans-serif,
@@ -37,4 +37,8 @@ button,
 [role="button"] {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+}
+ :global(button:focus-visible), :global(a:focus-visible) {
+  outline: 2px solid #d95c25;
+  outline-offset: 3px;
 }

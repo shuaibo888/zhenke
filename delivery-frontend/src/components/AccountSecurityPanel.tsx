@@ -200,7 +200,7 @@ export function AccountSecurityPanel({
             <Form.Item label="新手机号验证码" required>
               <Space.Compact block>
                 <Form.Item name="newPhoneCode" noStyle rules={[{ required: true, message: '请输入验证码' }]}>
-                  <Input size="large" placeholder="请输入短信验证码" inputMode="numeric" maxLength={8} autoComplete="one-time-code" />
+                  <Input size="large" placeholder="短信验证码" inputMode="numeric" maxLength={8} autoComplete="one-time-code" />
                 </Form.Item>
                 <Button size="large" disabled={phoneCountdown > 0} onClick={() => void sendNewPhoneCode()}>{phoneCountdown > 0 ? `${phoneCountdown} 秒` : '发送验证码'}</Button>
               </Space.Compact>
@@ -226,9 +226,9 @@ export function AccountSecurityPanel({
         </button>
         <div className={`${styles.profileEditBody} ${expandedSection === 'password' ? styles.profileEditBodyOpen : ''}`}>
           {!user.passwordInitialized && <Alert type="info" showIcon message="请通过手机号验证设置登录密码" style={{ marginBottom: 16 }} />}
-          <Radio.Group value={passwordMethod} onChange={(event) => { setPasswordMethod(event.target.value); passwordForm.resetFields(['oldPassword', 'smsCode']); }} style={{ marginBottom: 16 }}>
-            <Radio.Button value="password" disabled={!user.passwordInitialized}>验证当前密码</Radio.Button>
-            <Radio.Button value="sms">验证绑定手机号</Radio.Button>
+          <Radio.Group className={styles.securityMethod} value={passwordMethod} onChange={(event) => { setPasswordMethod(event.target.value); passwordForm.resetFields(['oldPassword', 'smsCode']); }}>
+            <Radio value="password" disabled={!user.passwordInitialized}>验证当前密码</Radio>
+            <Radio value="sms">验证绑定手机号</Radio>
           </Radio.Group>
           <Form form={passwordForm} layout="vertical" requiredMark={false} onFinish={savePassword}>
             {passwordMethod === 'password' ? (
@@ -239,16 +239,16 @@ export function AccountSecurityPanel({
               <Form.Item label={`短信验证码（${user.phoneMasked || '当前手机号'}）`} required>
                 <Space.Compact block>
                   <Form.Item name="smsCode" noStyle rules={[{ required: true, message: '请输入验证码' }]}>
-                    <Input size="large" placeholder="请输入短信验证码" inputMode="numeric" maxLength={8} autoComplete="one-time-code" />
+                    <Input size="large" placeholder="短信验证码" inputMode="numeric" maxLength={8} autoComplete="one-time-code" />
                   </Form.Item>
                   <Button size="large" disabled={passwordCountdown > 0} onClick={() => void sendPasswordCode()}>{passwordCountdown > 0 ? `${passwordCountdown} 秒` : '发送验证码'}</Button>
                 </Space.Compact>
               </Form.Item>
             )}
-            <Form.Item name="newPassword" label="新密码" rules={[{ required: true, message: '请输入新密码' }, { min: 6, max: 20, message: '请输入6到20位密码' }, { validator: (_, value) => !value || (/[A-Za-z]/.test(value) && /\d/.test(value)) ? Promise.resolve() : Promise.reject(new Error('密码必须同时包含字母和数字')) }]}>
+            <Form.Item name="newPassword" label="新密码" extra="6–20 位，需同时包含字母和数字" rules={[{ required: true, message: '请输入新密码' }, { min: 6, max: 20, message: '请输入6到20位密码' }, { validator: (_, value) => !value || (/[A-Za-z]/.test(value) && /\d/.test(value)) ? Promise.resolve() : Promise.reject(new Error('密码必须同时包含字母和数字')) }]}>
               <Input.Password
                 size="large"
-                placeholder="请输入6-20位密码，需包含字母和数字"
+                placeholder="请输入新密码"
                 maxLength={20}
                 autoComplete="new-password"
               />

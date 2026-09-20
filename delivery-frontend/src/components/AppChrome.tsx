@@ -317,7 +317,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
       {showCartFloat && (
         <div className={styles.cartFloat}>
           <Badge count={cartCount}>
-            <button type="button" className={styles.circleAction} onClick={openCart}>
+              <button type="button" className={styles.circleAction} onClick={openCart} aria-label="打开购物车">
               <ShoppingCartOutlined />
             </button>
           </Badge>

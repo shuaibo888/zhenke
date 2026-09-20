@@ -326,6 +326,7 @@ export default function ProfilePage() {
               type="button"
               className={`${legacyStyles.profileEditHeading} ${legacyStyles.profileEditHeadingBtn}`}
               onClick={() => toggleSection('nickname')}
+              aria-expanded={expandedSection === 'nickname'}
             >
               <span><EditOutlined /></span>
               <div><strong>修改昵称</strong></div>
@@ -346,6 +347,7 @@ export default function ProfilePage() {
               type="button"
               className={`${legacyStyles.profileEditHeading} ${legacyStyles.profileEditHeadingBtn}`}
               onClick={() => toggleSection('avatar')}
+              aria-expanded={expandedSection === 'avatar'}
             >
               <span><UploadOutlined /></span>
               <div><strong>更换头像</strong></div>

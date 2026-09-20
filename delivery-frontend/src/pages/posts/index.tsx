@@ -1,4 +1,3 @@
-import { EditOutlined } from '@ant-design/icons';
 import { Button, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'umi';
@@ -120,7 +119,6 @@ export default function PostListPage() {
         <div>
           <h1>甄客帖</h1>
         </div>
-        <Button type="primary" size="large" icon={<EditOutlined />} onClick={() => startPostPublish()}>发布帖子</Button>
       </header>
 
       <div className={styles.identityFilterBlock}>

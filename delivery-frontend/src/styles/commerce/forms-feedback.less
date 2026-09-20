@@ -1238,6 +1238,38 @@
     grid-template-columns: 1fr;
   }
 
+  .addressRegionPopup {
+    max-width: calc(100vw - 32px);
+  }
+
+  .addressRegionPopup :global(.ant-cascader-menus) {
+    width: calc(100vw - 48px);
+    max-width: 100%;
+  }
+
+  .addressRegionPopup :global(.ant-cascader-menu) {
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+    max-width: none;
+    height: 240px;
+    max-height: 40dvh;
+    overscroll-behavior: contain;
+  }
+
+  .addressRegionPopup :global(.ant-cascader-menu-item) {
+    min-height: 44px;
+    padding: 10px 8px;
+    white-space: normal;
+  }
+
+  .addressRegionPopup :global(.ant-cascader-menu-item-content) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    text-overflow: clip;
+  }
+
   .responsiveModal :global(.ant-modal) {
     top: max(8px, env(safe-area-inset-top));
     width: calc(100vw - 16px) !important;
@@ -1246,7 +1278,7 @@
     padding-bottom: max(8px, env(safe-area-inset-bottom));
   }
 
-  .responsiveModal :global(.ant-modal-content) {
+  .responsiveModal :global(.ant-modal-container) {
     display: flex;
     max-height: calc(100dvh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)));
     flex-direction: column;
@@ -1292,9 +1324,14 @@
   }
 
   .responsiveModal :global(.ant-input),
+  .responsiveModal :global(.ant-input-affix-wrapper),
   .responsiveModal :global(.ant-select-selector),
   .responsiveModal :global(.ant-btn:not(.ant-btn-sm)) {
     min-height: 44px;
+  }
+
+  .responsiveModal :global(.ant-input-affix-wrapper > input.ant-input) {
+    min-height: 0;
   }
 
   .profileEditModal :global(.ant-modal-header) {

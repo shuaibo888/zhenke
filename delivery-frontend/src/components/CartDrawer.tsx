@@ -1,5 +1,5 @@
 import { DeleteOutlined, MinusOutlined, PlusOutlined, ShoppingCartOutlined } from '@ant-design/icons';
-import { Button, Drawer, Spin, Tag, message } from 'antd';
+import { Alert, Button, Drawer, Spin, Tag, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -36,7 +36,6 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     } catch (error) {
       const reason = error instanceof Error ? error.message : '购物车刷新失败';
       setLoadError(reason);
-      message.error(reason);
     }
   }, [refreshCart]);
 
@@ -105,7 +104,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               className={styles.checkoutButton}
               type="primary"
               size="large"
-              disabled={Boolean(loadError) || cart.length === 0 || hasUnavailableItems}
+              disabled={cartLoading || mutatingId !== null || Boolean(loadError) || cart.length === 0 || hasUnavailableItems}
               onClick={checkout}
             >
               结算 {count} 件
@@ -117,6 +116,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           <div className={styles.emptyCart}><Spin /></div>
         ) : (
           <>
+            {loadError && <Alert type="error" showIcon title="购物车暂时无法加载" description={loadError} action={<Button size="small" onClick={() => void loadCart()}>重试</Button>} style={{ marginBottom: 16 }} />}
             {!loadError && cart.length === 0 ? (
               <div className={styles.emptyCart}>
                 <ShoppingCartOutlined />
@@ -131,7 +131,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                     <div className={styles.cartItemBody}>
                       <div className={styles.cartItemTitle}>
                         <span>
-                          <strong>{item.productName}</strong>
+                          <strong title={item.productName}>{item.productName}</strong>
                           {cartItemUsesOffline(item) && <Tag color="volcano">到店核销</Tag>}
                           {item.productStatus !== 'ON_SALE' && <Tag>已下架</Tag>}
                           {item.productStatus === 'ON_SALE' && item.stockUnlimited !== '1' && item.stock < item.quantity && <Tag color="error">库存不足</Tag>}
@@ -140,6 +140,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                           size="small"
                           type="text"
                           icon={<DeleteOutlined />}
+                          aria-label={`移除${item.productName}`}
                           loading={mutatingId === item.cartItemId}
                           onClick={() => void remove(item.cartItemId)}
                         />
@@ -149,6 +150,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                         <Button
                           size="small"
                           icon={<MinusOutlined />}
+                          aria-label={item.quantity === 1 ? `移除${item.productName}` : `减少${item.productName}的数量`}
                           disabled={mutatingId === item.cartItemId}
                           onClick={() => void changeQuantity(item.cartItemId, item.quantity - 1)}
                         />
@@ -156,6 +158,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                         <Button
                           size="small"
                           icon={<PlusOutlined />}
+                          aria-label={`增加${item.productName}的数量`}
                           disabled={mutatingId === item.cartItemId || item.quantity >= 99 || (item.stockUnlimited !== '1' && item.quantity >= item.stock)}
                           onClick={() => void changeQuantity(item.cartItemId, item.quantity + 1)}
                         />

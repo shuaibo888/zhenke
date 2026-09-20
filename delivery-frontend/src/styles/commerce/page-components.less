@@ -8,7 +8,8 @@
 .reportDetailPage,
 .trialDetailPage,
 .profilePage {
-  width: min(1180px, calc(100% - 32px));
+  width: calc(100% - 32px);
+  max-width: 1180px;
   margin: 0 auto;
 }
 
@@ -154,7 +155,7 @@
 }
 
 .merchantLicensePreview {
-  width: min(100%, 360px);
+  width: ~"min(100%, 360px)";
   max-height: 240px;
   object-fit: contain;
   border: 1px solid rgba(138, 63, 50, 0.15);
@@ -342,7 +343,7 @@
 /* Authentication page: isolated full-screen layout with no shared commerce chrome. */
 .authLayout {
   position: relative;
-  width: min(100%, 1040px);
+  width: ~"min(100%, 1040px)";
   max-width: 1040px;
   min-height: min(680px, calc(100dvh - 48px));
   display: grid;
@@ -814,7 +815,7 @@
   border-radius: 3px;
 }
 
-.authAgreementModal :global(.ant-modal-content),
+.authAgreementModal :global(.ant-modal-container),
 .authAgreementModal :global(.ant-modal-container) {
   max-height: min(78vh, 720px);
   overflow: hidden;

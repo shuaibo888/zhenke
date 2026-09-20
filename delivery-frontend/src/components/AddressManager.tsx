@@ -1,5 +1,5 @@
 import { CheckCircleFilled, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Cascader, Form, Input, Modal, Radio, Spin, Tag, message } from 'antd';
+import { Alert, Button, Cascader, Form, Input, Modal, Radio, Spin, Tag, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import pcaCode from 'china-division/dist/pca-code.json';
 import { useShop } from '@/app/ShopContext';
@@ -48,7 +48,6 @@ export function AddressManager({
     } catch (error) {
       const reason = error instanceof Error ? error.message : '收货地址刷新失败';
       setLoadError(reason);
-      message.error(reason);
     }
   }, [refreshAddresses]);
 
@@ -140,6 +139,9 @@ export function AddressManager({
           </div>
         )}
         <Spin spinning={addressesLoading}>
+          {loadError && (
+            <Alert type="error" showIcon title="地址暂时无法加载" description={loadError} action={<Button size="small" onClick={() => void loadAddresses()}>重试</Button>} style={{ marginBottom: 12 }} />
+          )}
           <div className={picker ? styles.addressPickerList : styles.addressList}>
             {!loadError && addresses.length === 0 ? (
               <div className={styles.empty}>
@@ -211,7 +213,7 @@ export function AddressManager({
       >
         <Form form={form} layout="vertical" initialValues={emptyAddress} onFinish={submit}>
           <Form.Item name="recipient" label="收货人" rules={[{ required: true, message: '请输入收货人' }]}>
-            <Input size="large" />
+            <Input size="large" autoComplete="name" placeholder="请输入收货人姓名" />
           </Form.Item>
           <Form.Item
             name="phone"
@@ -221,13 +223,13 @@ export function AddressManager({
               { pattern: /^1\d{10}$/, message: '请输入 11 位手机号' },
             ]}
           >
-            <Input size="large" />
+            <Input size="large" type="tel" inputMode="tel" autoComplete="tel" maxLength={11} placeholder="请输入 11 位手机号" />
           </Form.Item>
           <Form.Item name="region" label="所在地区" rules={[{ required: true, message: '请选择省市区' }]}>
-            <Cascader options={options} size="large" showSearch placeholder="请选择省 / 市 / 区" />
+            <Cascader options={options} size="large" showSearch placeholder="请选择省 / 市 / 区" classNames={{ popup: { root: styles.addressRegionPopup } }} />
           </Form.Item>
           <Form.Item name="detail" label="详细地址" rules={[{ required: true, message: '请输入详细地址' }]}>
-            <Input.TextArea rows={3} />
+            <Input.TextArea rows={3} autoComplete="street-address" placeholder="街道、小区、楼栋及门牌号" />
           </Form.Item>
           <Button block type="primary" size="large" htmlType="submit" loading={submitting}>
             保存地址

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'umi';
 import { LoginRedirect } from '@/components/LoginRedirect';
 import { useShop } from '@/app/ShopContext';
-import { ZkProfilePage, ZkProfilePanel, ZkTaskHeader } from '@/components/ZkPage';
+import { ZkProfilePage, ZkProfilePanel, ZkTaskHeader, ZkState } from '@/components/ZkPage';
 import { useRefreshOnRoute } from '@/hooks/useRefreshOnRoute';
 import { fetchMyPointRecords, type ShopPointRecord } from '@/services/shopAuth';
 import styles from '@/styles/commerce.less';
@@ -27,17 +27,23 @@ export default function PointRecordsPage() {
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [pageNum, setPageNum] = useState(1);
   const [total, setTotal] = useState(0);
+  const [loadError, setLoadError] = useState('');
   const requestVersion = useRef(0);
 
   const loadRecords = useCallback(async (nextPage = 1) => {
     const version = ++requestVersion.current;
     setRecordsLoading(true);
+    setLoadError('');
     try {
       const result = await fetchMyPointRecords(nextPage, PAGE_SIZE);
       if (requestVersion.current !== version) return;
       setRecords(result.rows);
       setTotal(result.total);
       setPageNum(nextPage);
+    } catch (error) {
+      if (requestVersion.current === version) {
+        setLoadError(error instanceof Error ? error.message : '积分记录加载失败');
+      }
     } finally {
       if (requestVersion.current === version) setRecordsLoading(false);
     }
@@ -107,7 +113,10 @@ export default function PointRecordsPage() {
             })}
           </div>
 
-          {!recordsLoading && records.length === 0 && (
+          {!recordsLoading && loadError && (
+            <ZkState kind="error" title="积分记录暂时无法加载" description={loadError} onAction={() => void loadRecords(pageNum)} />
+          )}
+          {!recordsLoading && !loadError && records.length === 0 && (
             <div className={styles.pointRecordEmpty}>
               <strong>暂无积分变更记录</strong>
             </div>

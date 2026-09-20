@@ -6,6 +6,10 @@ import { loginOrRegisterBySsoTicket } from '@/services/shopAuth';
 
 const shellStyle = {
   minHeight: '60vh',
+  width: '100%',
+  maxWidth: 640,
+  margin: '0 auto',
+  padding: '24px 16px',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -22,7 +26,7 @@ export default function SsoCallbackPage() {
     const ticket = new URLSearchParams(window.location.search).get('ticket')?.trim() ?? '';
     window.history.replaceState(null, '', window.location.pathname);
     if (!ticket) {
-      setError('缺少登录票据，请重新从赛事系统进入');
+      setError('登录链接已失效，请重新从赛事系统进入，或使用甄客行账号登录。');
       return;
     }
 

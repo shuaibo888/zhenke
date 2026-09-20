@@ -255,9 +255,10 @@ export default function ProfileMessagesPage() {
                     </span>
                     <span className={styles.copy}>
                       <span className={styles.copyTop}>
-                        <strong>{eventCopy(item.eventType, item.actorName)}</strong>
+                        <strong>{item.eventType === 'POST_FEATURED' ? '你的甄客帖已入选编辑推荐' : item.actorName}</strong>
                         <time dateTime={item.createTime.replace(' ', 'T')}>{formatTime(item.createTime)}</time>
                       </span>
+                      {item.eventType !== 'POST_FEATURED' && <span className={styles.activity}>{eventCopy(item.eventType, '').trim()}</span>}
                       <span className={styles.target}>
                         <em>{eventLabel(item.eventType)}</em>
                         <span>{item.targetTitle || (item.targetType === 'POST' ? '甄客帖' : '甄客验')}</span>

@@ -78,6 +78,7 @@ export default function ProductsModule(props: ProductsModuleProps) {
         <span className={styles.filterSummary}>共 {props.total} 个商品</span>
       </div>
       <Table
+        scroll={{ x: 'max-content' }}
         loading={props.loading}
         rowKey="id"
         columns={props.columns}

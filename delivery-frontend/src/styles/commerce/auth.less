@@ -1,7 +1,7 @@
 /* 登录页：品牌画面负责情绪，表单区域保持安静、清晰和高可用。 */
 .authLayout.authSimpleLayout {
   position: relative;
-  width: min(calc(100% - 48px), 1080px);
+  width: ~"min(calc(100% - 48px), 1080px)";
   max-width: 1080px;
   min-height: min(720px, calc(100dvh - 64px));
   grid-template-columns: minmax(410px, 0.94fr) minmax(480px, 1.06fr);
@@ -78,7 +78,7 @@
 .authPromoArtwork {
   position: relative;
   z-index: 1;
-  width: min(100%, 350px);
+  width: ~"min(100%, 350px)";
   margin: auto auto 34px;
   overflow: hidden;
   aspect-ratio: 846 / 659;
@@ -413,7 +413,7 @@
     position: absolute;
     right: 20px;
     bottom: 18px;
-    width: min(38vw, 150px);
+    width: ~"min(38vw, 150px)";
     margin: 0;
     border-radius: 18px;
     box-shadow: 0 18px 34px rgba(18, 8, 5, 0.3);

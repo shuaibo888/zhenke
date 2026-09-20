@@ -348,9 +348,9 @@ export default function PostDetailPage() {
         <div className={styles.commentMain}>
           <strong>
             {comment.nickName || comment.userName}
-            {comment.postAuthor && ' · 作者'}
+            {comment.postAuthor && <span className={styles.commentAuthorBadge}>作者</span>}
           </strong>
-          <p>{comment.replyToName && `回复 ${comment.replyToName}：`}{comment.content}</p>
+          <p>{comment.replyToName && <span className={styles.commentReplyTo}>回复 {comment.replyToName}：</span>}{comment.content}</p>
           <small>{comment.createTime}</small>
           <div className={styles.actionRow}>
             <Button size="small" type="text" disabled={submittingCommentKey !== undefined} onClick={() => {

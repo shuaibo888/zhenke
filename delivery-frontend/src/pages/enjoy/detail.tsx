@@ -334,7 +334,7 @@ export default function EnjoyDetailPage() {
           <span className={styles.authorAvatar}>{comment.avatar ? <img src={comment.avatar} alt="" /> : (comment.nickName || comment.userName || '甄').slice(0, 1)}</span>
           <div className={styles.commentMain}>
             <strong>{comment.nickName || comment.userName}</strong>
-            <p>{comment.replyToName && `回复 ${comment.replyToName}：`}{comment.content}</p>
+            <p>{comment.replyToName && <span className={styles.commentReplyTo}>回复 {comment.replyToName}：</span>}{comment.content}</p>
             <small>{comment.createTime}</small>
             <div className={styles.actionRow}>
               <Button size="small" type="text" disabled={commentSubmitting || replySubmitting} onClick={() => {

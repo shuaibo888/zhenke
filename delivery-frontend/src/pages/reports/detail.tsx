@@ -62,12 +62,12 @@ function CommentItem({
         <div className={styles.commentMeta}>
           <strong>{displayName}</strong>
           {comment.reportAuthor && <span className={styles.commentAuthorBadge}>作者</span>}
-          <span>{comment.createTime}</span>
         </div>
         <p>
           {reply && replyToName && <em>回复 {replyToName}：</em>}
           {comment.content}
         </p>
+        <time className={styles.commentTime}>{comment.createTime}</time>
         <div className={styles.commentActions}>
           <Button type="link" size="small" onClick={onReply}>回复</Button>
           {currentUserId === comment.shopUserId && (

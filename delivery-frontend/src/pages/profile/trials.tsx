@@ -128,6 +128,7 @@ export default function TrialsPage() {
               <button
                 key={key}
                 type="button"
+                aria-pressed={filter === key}
                 className={filter === key ? styles.orderFilterActive : ''}
                 onClick={() => setFilter(key)}
               >
@@ -148,6 +149,7 @@ export default function TrialsPage() {
                     tabIndex={0}
                     onClick={() => navigate(`/profile/trials/${trial.applicationId}`)}
                     onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget) return;
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
                         navigate(`/profile/trials/${trial.applicationId}`);

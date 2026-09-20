@@ -93,8 +93,8 @@ export default function MallContentPage() {
   };
 
   const loadMore = async () => {
-    const requestVersion = ++requestVersionRef.current;
     if (loading || loadingMore || feed.length >= total) return;
+    const requestVersion = ++requestVersionRef.current;
     setLoadingMore(true);
     try {
       const nextPage = page + 1;

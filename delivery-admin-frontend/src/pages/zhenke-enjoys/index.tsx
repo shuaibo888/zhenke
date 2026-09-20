@@ -338,7 +338,7 @@ export default function ZhenkeEnjoysPage() {
         </div>
         {canAdd && <Button type="primary" icon={<PlusOutlined />} onClick={() => void openEditor()}>新增地点专题</Button>}
       </div>
-      <Space wrap style={{ marginBottom: 16 }}>
+      <Space wrap className={styles.contentToolbar}>
         <Input.Search allowClear placeholder="标题、地点" onSearch={(value) => { setPage(1); setKeyword(value); }} />
         <Select allowClear placeholder="全部分类" value={category} style={{ width: 150 }} options={Object.entries(categoryLabel).map(([value, label]) => ({ value, label }))} onChange={(value) => { setPage(1); setCategory(value); }} />
         <Select allowClear placeholder="全部状态" value={status} style={{ width: 130 }} options={[{ value: '0', label: '已发布' }, { value: '1', label: '已下线' }, { value: 'DELETED', label: '已删除' }]} onChange={(value) => { setPage(1); setStatus(value); }} />
@@ -367,7 +367,7 @@ export default function ZhenkeEnjoysPage() {
         ]}
       />
 
-      <Modal width={900} open={editorOpen} title={editing ? '编辑甄必享地点专题' : '新增甄必享地点专题'} okText="保存专题" cancelText="取消" confirmLoading={saving} loading={editorLoading} onCancel={() => setEditorOpen(false)} onOk={() => form.submit()} destroyOnHidden>
+      <Modal rootClassName={styles.responsiveModal} width={900} open={editorOpen} title={editing ? '编辑甄必享地点专题' : '新增甄必享地点专题'} okText="保存专题" cancelText="取消" confirmLoading={saving} loading={editorLoading} onCancel={() => setEditorOpen(false)} onOk={() => form.submit()} destroyOnHidden>
         <Form form={form} layout="vertical" requiredMark={false} onFinish={(values) => void save(values)}>
           <Form.Item name="mediaUrls" hidden><Input /></Form.Item>
           <Space align="start" wrap>
@@ -444,16 +444,16 @@ export default function ZhenkeEnjoysPage() {
           </Form.Item>
 
           <Form.Item name="serviceSummary" label="首屏服务摘要" rules={[{ required: true, whitespace: true, message: '请输入首屏服务摘要' }]} extra="用户看完图片后第一眼会看到的实用信息。"><Input.TextArea rows={3} maxLength={1000} showCount placeholder="例如：含双早、免费停车及赛事接驳咨询服务，适合家庭与周末短住。" /></Form.Item>
-          <Space align="start" wrap style={{ width: '100%' }}>
-            <Form.Item name="openingHours" label={<><ClockCircleOutlined /> 营业 / 开放时间</>}><Input maxLength={160} style={{ width: 300 }} placeholder="例如：全天开放 / 09:00-21:30" /></Form.Item>
-            <Form.Item name="contactPhone" label={<><PhoneOutlined /> 公开联系电话</>} rules={[{ pattern: /^[0-9+()（）\-\s]{5,40}$/, message: '联系电话格式无效' }]}><Input maxLength={40} style={{ width: 260 }} placeholder="例如：0312-0001001" /></Form.Item>
-          </Space>
+          <div className={styles.certificationTwoColumns}>
+            <Form.Item name="openingHours" label={<><ClockCircleOutlined /> 营业 / 开放时间</>}><Input maxLength={160} placeholder="例如：全天开放 / 09:00-21:30" /></Form.Item>
+            <Form.Item name="contactPhone" label={<><PhoneOutlined /> 公开联系电话</>} rules={[{ pattern: /^[0-9+()（）\-\s]{5,40}$/, message: '联系电话格式无效' }]}><Input maxLength={40} placeholder="例如：0312-0001001" /></Form.Item>
+          </div>
           <Form.Item name="highlights" label="亮点标签" extra="用逗号、顿号或换行分隔，建议 3 至 6 个。"><Input.TextArea rows={2} maxLength={500} showCount placeholder="双早、免费停车、亲子友好、近景区" /></Form.Item>
           <Form.Item name="content" label="官方详细攻略" rules={[{ required: true, whitespace: true, message: '请输入官方详细攻略' }]} extra="建议写清推荐理由、环境与服务、到访方式、适合人群和注意事项。"><Input.TextArea rows={12} maxLength={20000} showCount /></Form.Item>
         </Form>
       </Modal>
 
-      <Modal width={820} open={Boolean(detail)} title={detail?.title} footer={null} onCancel={() => setDetail(undefined)}>
+      <Modal rootClassName={styles.responsiveModal} width={820} open={Boolean(detail)} title={detail?.title} footer={null} onCancel={() => setDetail(undefined)}>
         {detail && <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <Image.PreviewGroup><Space wrap>{(detail.mediaUrls?.length ? detail.mediaUrls : [detail.coverUrl]).map((url, index) => <Image key={`${url}-${index}`} src={mediaPreviewUrl(url)} width={index === 0 ? 360 : 150} height={index === 0 ? 230 : 100} style={{ objectFit: 'cover', borderRadius: 12 }} />)}</Space></Image.PreviewGroup>
           <Space wrap><Tag color="volcano">{categoryLabel[detail.category]}</Tag><Tag>{detail.status === '0' ? '已发布' : '已下线'}</Tag><span>喜欢 {detail.likeCount ?? 0}</span><span>评论 {detail.commentCount ?? 0}</span></Space>

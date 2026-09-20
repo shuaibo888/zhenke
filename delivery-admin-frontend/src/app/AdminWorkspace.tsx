@@ -143,8 +143,13 @@ type LoginFormValues = {
 
 const adminTheme = {
   token: {
-    colorPrimary: '#1f6f5b',
-    borderRadius: 8,
+    colorPrimary: '#d95c25',
+    colorLink: '#a74620',
+    colorText: '#292521',
+    colorTextSecondary: '#756c64',
+    colorBorder: '#e6e0da',
+    borderRadius: 10,
+    controlHeight: 38,
     fontFamily:
       'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
   },
@@ -1373,13 +1378,14 @@ function AdminWorkspace() {
     {
       title: '商品',
       dataIndex: 'title',
+      width: 320,
       render: (_, product) => (
         <div className={styles.productCell}>
           <div className={styles.productThumb} style={{ backgroundImage: `url(${mediaPreviewUrl(product.imageUrl)})` }} />
           <div>
-            <div className={styles.strongText}>{product.title}</div>
-            <div className={styles.subText}>品牌：{product.brandName}</div>
-            <div className={styles.subText}>{product.artisanName}</div>
+            <div className={styles.productTitle} title={product.title}>{product.title}</div>
+            <div className={styles.productBrand} title={product.brandName}>品牌：{product.brandName || '未设置'}</div>
+            <div className={styles.productMerchant} title={product.artisanName}>{product.artisanName}</div>
             {product.certificationStatus && (
               <Tag
                 color={product.certificationStatus === 'PASSED' ? 'success'
@@ -1399,6 +1405,8 @@ function AdminWorkspace() {
       dataIndex: 'merchantId',
       responsive: ['md'],
       render: (merchantId, product) => product.artisanName || getMerchantName(merchantId),
+      width: 180,
+      ellipsis: true,
     },
     {
       title: '分类',
@@ -1434,10 +1442,13 @@ function AdminWorkspace() {
       title: '状态',
       dataIndex: 'status',
       render: (status: ProductStatus) => <Tag color={productStatusMeta[status].color}>{productStatusMeta[status].label}</Tag>,
+      width: 80,
     },
     {
       title: '操作',
       key: 'actions',
+      fixed: 'right',
+      width: 210,
       render: (_, product) => (
         <Space wrap size={6}>
           <Button size="small" icon={<EditOutlined />} onClick={() => void openEditProduct(product)}>
@@ -1956,6 +1967,7 @@ function AdminWorkspace() {
             <div className={styles.headerLeft}>
               <Button
                 icon={<MenuOutlined />}
+                aria-label="打开导航菜单"
                 type="text"
                 className={styles.mobileMenuBtn}
                 onClick={() => setMobileMenuOpen(true)}

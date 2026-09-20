@@ -219,6 +219,7 @@ export default function OrdersPage() {
               <button
                 key={key}
                 type="button"
+                aria-pressed={filter === key}
                 className={filter === key ? styles.orderFilterActive : ''}
                 onClick={() => chooseFilter(key)}
               >
@@ -235,6 +236,7 @@ export default function OrdersPage() {
                 tabIndex={0}
                 onClick={() => navigate(`/profile/orders/${order.orderId}`)}
                 onKeyDown={(event) => {
+                  if (event.target !== event.currentTarget) return;
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
                     navigate(`/profile/orders/${order.orderId}`);

@@ -14,7 +14,7 @@
 .checkoutSuccessCard {
   position: relative;
   display: grid;
-  width: min(100%, 520px);
+  width: ~"min(100%, 520px)";
   justify-items: center;
   padding: 42px 42px 34px;
   overflow: hidden;
@@ -122,7 +122,7 @@
 
 .checkoutSuccessError,
 .checkoutSuccessLoading {
-  width: min(100%, 620px);
+  width: ~"min(100%, 620px)";
 }
 
 .checkoutSuccessLoading {
@@ -515,7 +515,7 @@ button.checkoutFulfillmentOption:focus-visible {
   max-height: min(78dvh, 660px);
 }
 
-.checkoutCouponDrawer :global(.ant-drawer-content) {
+.checkoutCouponDrawer :global(.ant-drawer-section) {
   min-height: 0;
 }
 

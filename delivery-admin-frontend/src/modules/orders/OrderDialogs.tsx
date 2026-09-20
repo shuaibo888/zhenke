@@ -120,11 +120,12 @@ export default function OrderDialogs(props: OrderDialogsProps) {
             <section>
               <h4>商品明细</h4>
               <Table
+                scroll={{ x: 620 }}
                 rowKey={(item) => item.productTitle}
                 dataSource={props.detailOrder.items}
                 pagination={false}
                 columns={[
-                  { title: '商品', dataIndex: 'productTitle' },
+                  { title: '商品', dataIndex: 'productTitle', width: 260 },
                   { title: '数量', dataIndex: 'quantity' },
                   {
                     title: '单价',

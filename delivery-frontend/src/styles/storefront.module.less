@@ -75,19 +75,27 @@
 }
 .previewSection { margin: 0 0 28px; }
 .productGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
-.productCard { display: block; min-width: 0; color: #252525; background: #fff; border-radius: 10px; overflow: hidden; }
+.productCard { display: flex; flex-direction: column; min-width: 0; color: #252525; background: #fff; border: 1px solid #f0ede9; border-radius: 14px; overflow: hidden; }
+.productCard:focus-visible { outline: 2px solid #c45b31; outline-offset: 3px; }
 .productImage {
   position: relative; aspect-ratio: 1; background: #f0efed;
   img { width: 100%; height: 100%; object-fit: cover; }
   > span { position: absolute; right: 8px; bottom: 8px; padding: 3px 8px; background: #ffffffed; border-radius: 4px; color: #777; font-size: 12px; }
 }
 .productBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
   padding: 12px;
-  h3 { margin: 0; color: #252525; font-size: 15px; line-height: 1.5; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  h3 { margin: 0; min-height: 3em; overflow-wrap: anywhere; color: #252525; font-size: 15px; line-height: 1.5; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   > p { margin: 6px 0 12px; color: #999; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   h3 + .productPrice { margin-top: 12px; }
 }
-.productPrice { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; strong { color: #934d36; font-size: 21px; font-weight: 600; } small { margin-right: 2px; font-size: 12px; } > span { color: #999; font-size: 11px; } }
+.productBrand { align-self: flex-start; max-width: 100%; margin-bottom: 7px; padding: 2px 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #996247; background: #fff3eb; border-radius: 4px; font-size: 11px; }
+.productPrice { display: flex; flex-wrap: wrap; margin-top: auto; padding-top: 8px; align-items: baseline; justify-content: space-between; gap: 4px; strong { color: #b65530; font-size: 21px; font-weight: 600; white-space: nowrap; } small { margin-right: 2px; font-size: 12px; } > span { color: #999; font-size: 11px; white-space: nowrap; } }
+.productPriceLong strong { font-size: 16px; }
+@media (max-width: 380px) { .productPriceLong strong { font-size: 14px; } }
 @media (max-width: 600px) {
   .productGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .previewHeading h1, .previewHeading h2 { font-size: 18px; }

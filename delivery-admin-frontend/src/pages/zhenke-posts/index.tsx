@@ -179,7 +179,8 @@ export default function ZhenkePostsPage() {
           <h3>甄客帖管理</h3>
           <p>查看用户主动发布的地点内容；甄客帖不等同于订单或试用形成的甄客验。</p>
         </div>
-        <Space wrap>
+      </div>
+        <Space wrap className={styles.contentToolbar}>
           <Input.Search
             allowClear
             placeholder="标题、作者、地点"
@@ -230,7 +231,6 @@ export default function ZhenkePostsPage() {
           />
           <Button onClick={() => void load()}>刷新</Button>
         </Space>
-      </div>
 
       <Table<Post>
         rowKey="postId"
@@ -272,7 +272,7 @@ export default function ZhenkePostsPage() {
         ]}
       />
 
-      <Modal width={820} open={Boolean(detail)} title={detail?.title} footer={null} onCancel={() => setDetail(undefined)}>
+      <Modal rootClassName={styles.responsiveModal} width={820} open={Boolean(detail)} title={detail?.title} footer={null} onCancel={() => setDetail(undefined)}>
         {detail && (
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
             <Descriptions bordered size="small" column={2}>

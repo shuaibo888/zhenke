@@ -1,7 +1,8 @@
 /* 商城购买链路：延续首页的摄影内容、暖橙强调与清晰留白。 */
 .productDetailMain {
   --product-fixed-bar-height: calc(76px + env(safe-area-inset-bottom));
-  width: min(1080px, calc(100% - 32px));
+  width: calc(100% - 32px);
+  max-width: 1080px;
   gap: 16px;
   padding-bottom: var(--product-fixed-bar-height);
   color: #222;
@@ -228,7 +229,8 @@
 }
 
 .checkoutPage {
-  width: min(1120px, calc(100% - 32px));
+  width: calc(100% - 32px);
+  max-width: 1120px;
   max-width: 1120px;
   gap: 18px;
   color: #222;
@@ -514,7 +516,8 @@ button.checkoutFulfillmentOption:focus-visible,
 @media (min-width: 901px) {
   .productFixedBar {
     left: 50%;
-    width: min(1080px, calc(100% - 32px));
+    width: calc(100% - 32px);
+    max-width: 1080px;
     transform: translateX(-50%);
     border: 1px solid #e5e5e5;
     border-bottom: 0;

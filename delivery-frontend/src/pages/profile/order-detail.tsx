@@ -8,7 +8,7 @@ import {
   ShopOutlined,
   TruckOutlined,
 } from '@ant-design/icons';
-import { Button, Input, Modal, Result, Space, Spin, Tag, message } from 'antd';
+import { Button, Input, Modal, Result, Space, Spin, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'umi';
 import { useShop } from '@/app/ShopContext';
@@ -243,11 +243,11 @@ export default function OrderDetailPage() {
         <ZkTaskHeader title="订单详情" backTo="/profile/orders" />
         <section className={styles.businessStatusHero}>
           <div>
-            <span className={styles.eyebrow}>订单详情</span>
+            <span className={styles.eyebrow}>{order.fulfillmentType === 'OFFLINE' ? '到店核销' : '快递配送'}</span>
             <h2>{status.label}</h2>
             <p>{order.status === 'PENDING_PAYMENT' ? countdown(order.paymentExpireTime) : `订单号 ${order.orderNo}`}</p>
           </div>
-          <Tag color={status.color}>{status.label}</Tag>
+          <div className={styles.businessHeroAmount}><span>订单金额</span><strong>{formatPrice(order.totalAmount)}</strong></div>
         </section>
 
         {order.fulfillmentType === 'ONLINE' && order.address && (
@@ -270,7 +270,7 @@ export default function OrderDetailPage() {
                   <strong>{item.productName}</strong>
                   <small>{formatPrice(item.unitPrice)} × {item.quantity}</small>
                 </span>
-                <b>{formatPrice(item.lineAmount)}</b>
+                <span className={styles.businessProductAmount}><b>{formatPrice(item.lineAmount)}</b><small>共 {item.quantity} 件</small></span>
                 <RightOutlined />
               </button>
             ))}
@@ -293,7 +293,7 @@ export default function OrderDetailPage() {
             <div><dt>商品金额</dt><dd>{formatPrice(order.originalAmount)}</dd></div>
             {order.discountAmount > 0 && <div><dt>优惠金额</dt><dd className={styles.businessDiscount}>-{formatPrice(order.discountAmount)}</dd></div>}
             {order.coupons?.map((coupon) => <div key={coupon.orderCouponId}><dt>{coupon.couponName}</dt><dd>-{formatPrice(coupon.appliedDiscountAmount)}</dd></div>)}
-            <div className={styles.businessTotalRow}><dt>实付款</dt><dd>{formatPrice(order.totalAmount)}</dd></div>
+            <div className={styles.businessTotalRow}><dt>{order.status === 'PENDING_PAYMENT' ? '待付款' : order.status === 'CANCELLED' ? '订单金额' : '实付款'}</dt><dd>{formatPrice(order.totalAmount)}</dd></div>
           </dl>
         </section>
 
@@ -309,6 +309,7 @@ export default function OrderDetailPage() {
             ))}
           </div>
           <dl className={styles.businessDefinitionList}>
+            <div><dt>订单编号</dt><dd>{order.orderNo}</dd></div>
             <div><dt>下单时间</dt><dd>{order.createTime}</dd></div>
             <div><dt>配送方式</dt><dd>{order.fulfillmentType === 'OFFLINE' ? '到店核销' : '快递配送'}</dd></div>
             {order.payTime && <div><dt>支付时间</dt><dd>{order.payTime}</dd></div>}

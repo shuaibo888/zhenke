@@ -1,0 +1,150 @@
+// Transaction details: predictable text columns and natural-height progress rows.
+.businessDetailPage.businessDetailPage {
+  width: calc(100% - 32px);
+  max-width: 880px;
+  gap: 16px;
+  align-content: start;
+  grid-template-columns: minmax(0, 1fr);
+}
+.businessDetailPage > * { min-width: 0; }
+.businessDetailPage .businessStatusHero {
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 0;
+  padding: 26px;
+  background: #fff9f4;
+  border-color: #f2e5d9;
+}
+.businessStatusHero > div { min-width: 0; }
+.businessStatusHero p { overflow-wrap: anywhere; line-height: 1.6; }
+.businessHeroAmount {
+  display: grid;
+  flex-shrink: 0;
+  gap: 6px;
+  text-align: right;
+  span { color: #8c7b6f; font-size: 12px; }
+  strong { color: #b6532e; font-size: 26px; font-weight: 650; font-variant-numeric: tabular-nums; }
+}
+.businessDetailPage .businessInfoCard { min-width: 0; margin-top: 0; padding: 24px; }
+.businessSectionTitle { align-items: flex-start; margin-bottom: 16px; }
+.businessSectionTitle h3 { min-width: 0; overflow-wrap: anywhere; color: #302d2a; font-size: 16px; line-height: 1.5; }
+.businessSectionTitle > :global(.anticon) { margin-top: 3px; flex-shrink: 0; color: #a7785a; }
+.businessAddress strong { display: flex; gap: 6px 12px; flex-wrap: wrap; color: #302d2a; overflow-wrap: anywhere; }
+.businessAddress strong span { margin-left: 0; }
+.businessAddress p, .businessSummary { color: #726b65; overflow-wrap: anywhere; }
+.businessProductRow {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) auto 12px;
+  gap: 14px;
+  align-items: start;
+  border-radius: 8px;
+}
+.businessProductRow:focus-visible { outline: 2px solid #c5653c; outline-offset: 3px; }
+.businessProductCopy { margin: 0; gap: 8px; }
+.businessProductCopy strong, .businessTrialProduct strong {
+  color: #302d2a;
+  line-height: 1.6;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.businessProductCopy small { color: #8c837b; line-height: 1.6; }
+.businessProductAmount { display: grid; gap: 6px; text-align: right; }
+.businessProductAmount b { color: #302d2a; font-size: 15px; font-variant-numeric: tabular-nums; }
+.businessProductAmount small { color: #8c837b; font-size: 12px; }
+.businessProductRow > :global(.anticon) { align-self: center; }
+.businessInlineAction { gap: 12px; }
+.businessInlineAction > span { min-width: 0; white-space: normal; overflow-wrap: anywhere; font-size: 13px; line-height: 1.6; }
+.businessInlineAction > button { flex-shrink: 0; }
+.businessDefinitionList > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 16px; line-height: 1.7; }
+.businessDefinitionList dt { color: #8a8179; overflow-wrap: anywhere; }
+.businessDefinitionList dd { min-width: 0; color: #413b36; font-variant-numeric: tabular-nums; }
+.businessTimeline > div { padding-bottom: 20px; gap: 5px 12px; min-height: 64px; }
+.businessTimeline span, .businessTimeline time { min-width: 0; overflow-wrap: anywhere; }
+.businessTimeline small { color: #8b827b; line-height: 1.7; white-space: pre-wrap; }
+.businessTimeline strong { color: #5f554d; }
+.businessTimeline time { line-height: 1.7; }
+.businessActionBar { flex-wrap: wrap; margin-top: 0; gap: 10px; box-shadow: 0 4px 16px #34231406; }
+.businessActionBar > button { min-height: 40px; }
+.couponDetailHero h1 { overflow-wrap: anywhere; line-height: 1.5; }
+.couponDetailPanel dl > div { gap: 16px; }
+.couponDetailPanel dd { min-width: 0; overflow-wrap: anywhere; line-height: 1.75; }
+.couponDetailPage { width: calc(100% - 32px); max-width: 880px; grid-template-columns: minmax(0, 1fr); }
+.productDetailMain .productIdentityTitle { min-width: 0; }
+.productDetailMain .productBrandBadge { max-width: 100%; white-space: normal; overflow-wrap: anywhere; line-height: 1.6; }
+.productDetailMain .trialHeroBody h1, .productIdentitySubtitle { overflow-wrap: anywhere; }
+.couponMerchantList article, .couponMerchantList article > button, .couponMerchantList article > button > span { min-width: 0; }
+.couponMerchantList strong, .couponMerchantList small { overflow-wrap: anywhere; white-space: normal; }
+
+// Match community comments: neutral body copy, compact identity and quiet replies.
+.reportComments .commentComposer { background: #f8f7f5; }
+.replyingHint { min-width: 0; gap: 12px; align-items: flex-start; }
+.replyingHint > span { min-width: 0; overflow-wrap: anywhere; }
+.replyingHint > button { flex-shrink: 0; }
+.commentThread { padding-bottom: 16px; border-color: #eeece9; }
+.commentMeta { flex-wrap: wrap; gap: 6px; }
+.commentMeta strong { overflow-wrap: anywhere; font-size: 13px; color: #615951; }
+.commentMeta .commentAuthorBadge { background: #fff0e7; color: #ad5931; font-size: 10px; font-weight: 500; }
+.commentBody p { color: #302d2a; font-size: 14px; line-height: 1.8; white-space: pre-wrap; margin: 7px 0 8px; }
+.commentBody p em { color: #996247; }
+.commentTime { display: block; color: #918b85; font-size: 11px; }
+.commentActions { gap: 16px; margin-top: 4px; }
+.commentActions button { min-height: 30px; font-size: 12px; }
+.commentReply { margin-top: 6px; padding: 12px; grid-template-columns: 28px minmax(0, 1fr); gap: 9px; background: #f8f7f5; border: 0; border-radius: 8px; }
+.commentReply .commentAvatar { width: 28px; height: 28px; font-size: 12px; }
+.reportDetailPage .reportDetailBottomBar { margin-inline: 0; flex-wrap: wrap; gap: 12px; border-radius: 12px; }
+.reportDetailPage .reportDetailBottomAction { min-width: 0; flex: 1; }
+
+.checkoutSuccessPage > :global(.ant-spin-nested-loading) { width: 100%; max-width: 520px; }
+.checkoutSuccessCard { padding: 32px; gap: 12px; }
+.checkoutSuccessCard h1 { font-size: 26px; overflow-wrap: anywhere; }
+.checkoutSuccessCard > p { color: #716a64; }
+.checkoutResultIcon { display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto 4px; border-radius: 50%; background: #fff3e8; color: #aa6539; font-size: 32px; }
+.checkoutSuccessAmount { margin: 12px 0; background: #fff7f1; border-color: #f1e0d3; }
+.checkoutSuccessDetails { margin-bottom: 10px; }
+.orderCardHead > .orderStatusText, .orderCardHead > :global(.ant-tag) { flex: none; }
+.orderShopAvatar { flex: none; }
+.orderThumbTitle, .trialCampaignTitle { overflow-wrap: anywhere; }
+.pointRecordCopy { min-width: 0; overflow-wrap: anywhere; }
+.pointRecordAmount { flex: none; font-variant-numeric: tabular-nums; }
+.orderCardFooter :global(.ant-btn) { min-height: 38px; border-radius: 8px; }
+.orderPriceCol { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+.cartItem { align-items: start; }
+.cartItemImage { height: 86px; }
+.cartItemTitle { align-items: flex-start; gap: 4px; }
+.cartItemTitle > span { min-width: 0; flex: 1; }
+.cartItemTitle strong { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; line-height: 1.6; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.cartItemTitle > button { flex: none; }
+.quantityRow { flex-wrap: wrap; gap: 8px; }
+.quantityRow > button { flex: 0 0 32px; width: 32px; min-height: 36px; }
+.quantityRow em { flex: 0 0 100%; margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.cartSummary { min-width: 0; }
+.cartSummary strong { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.checkoutProduct > div strong { display: block; overflow: visible; white-space: normal; overflow-wrap: anywhere; -webkit-line-clamp: unset; }
+.checkoutCouponCopy strong { display: -webkit-box; white-space: normal; overflow-wrap: anywhere; line-height: 1.6; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+
+@media (max-width: 640px) {
+  .cartItem { grid-template-columns: 64px minmax(0, 1fr); gap: 10px; padding: 12px; }
+  .cartItemImage { width: 64px; height: 64px; min-height: 64px; }
+  .cartItemTitle > button { min-width: 32px; min-height: 36px; }
+  .checkoutSuccessPage { padding: 20px 16px; }
+  .checkoutSuccessCard { padding: 26px 18px; }
+  .businessDetailPage.businessDetailPage { width: calc(100% - 24px); gap: 12px; padding-top: 12px; }
+  .businessDetailPage .businessStatusHero { padding: 20px 16px; align-items: flex-start; flex-direction: column; gap: 16px; }
+  .businessHeroAmount { width: 100%; display: flex; align-items: baseline; justify-content: space-between; padding-top: 14px; border-top: 1px solid #efdfd2; }
+  .businessHeroAmount strong { font-size: 24px; }
+  .businessDetailPage .businessInfoCard { padding: 18px 16px; border-radius: 14px; }
+  .businessProductRow { grid-template-columns: 64px minmax(0, 1fr) 12px; gap: 6px 12px; }
+  .businessProductRow > img { grid-row: 1 / 3; }
+  .businessProductCopy { margin: 0; }
+  .businessProductAmount { grid-column: 2; grid-row: 2; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; text-align: left; }
+  .businessProductRow > :global(.anticon) { grid-column: 3; grid-row: 1 / 3; }
+  .businessTimeline > div { grid-template-columns: 16px minmax(0, 1fr); }
+  .businessTimeline time { grid-column: 2; margin-top: 0; }
+  .businessLongValue { grid-template-columns: minmax(0, 1fr) !important; }
+  .businessActionBar { position: static; padding: 12px; }
+  .businessActionBar > button { flex: 1 1 auto; }
+  .commentReply { margin-left: 20px; }
+  .couponDetailPanel dl > div { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .couponDetailPanel dd { margin: 0; text-align: left; }
+}
