@@ -724,7 +724,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         width={420}
       >
         <p style={{ margin: '0 0 12px', lineHeight: 1.8 }}>
-          手机浏览器支付尚在审核。请复制下方链接，发送到微信文件传输助手后点击打开，将自动登录当前账号并进入这笔订单的付款页。
+          手机浏览器支付尚在审核。请复制下方链接，发送到微信任意聊天框后点击打开，将自动登录当前账号并进入这笔订单的付款页。
         </p>
         <p style={{ color: '#8c6b50', fontSize: 13 }}>链接最多 5 分钟内有效，仅可登录一次，请勿转发给他人。打开后也可正常使用账号的其他功能。</p>
         {h5LinkLoading && <p role="status">正在生成免登录链接……</p>}
@@ -752,7 +752,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
                 return;
               }
               void copyText(h5LoginLink.url)
-                .then(() => message.success('链接已复制，请发送到微信文件传输助手后打开'))
+                .then(() => message.success('链接已复制，请发送到微信任意聊天框后点击打开'))
                 .catch(() => message.error('复制失败，请长按上方链接复制'));
             }}
           >

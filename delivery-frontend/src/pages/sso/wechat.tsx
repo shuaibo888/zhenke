@@ -38,7 +38,7 @@ export default function WechatLoginTransferPage() {
     <main style={{ minHeight: '60vh', maxWidth: 640, margin: '0 auto', padding: '32px 16px',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
       {!inWechat ? (
-        <Result status="info" title="请在微信中打开" subTitle="将完整链接发送到微信文件传输助手，再点击打开，即可登录原账号并继续付款。" />
+        <Result status="info" title="请在微信中打开" subTitle="将完整链接发送到微信任意聊天框后点击打开，即可登录原账号并继续付款。" />
       ) : error ? (
         <Result status="warning" title="暂时无法自动登录" subTitle={error}
           extra={<Button href="/auth" type="primary">使用账号登录</Button>} />
