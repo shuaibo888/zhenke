@@ -51,6 +51,7 @@ export default defineConfig({
     { path: '/profile/reports', component: '@/pages/profile/reports' },
     { path: '/auth', component: '@/pages/auth' },
     { path: '/sso/callback', component: '@/pages/sso/callback' },
+    { path: '/sso/wechat', component: '@/pages/sso/wechat' },
     { path: '/*', component: '@/pages/404' },
   ],
   proxy: {

@@ -23,6 +23,7 @@ import {
 } from '@/services/shopContent';
 import { buildLoginPath } from '@/utils/safeRedirect';
 import {
+  createOrderLoginLink,
   createShopShippingAddress,
   deleteShopShippingAddress,
   fetchMyPointBalance,
@@ -141,6 +142,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [nativePayment, setNativePayment] = useState<{ orderId: number; codeUrl: string } | null>(null);
   const [authExpiredOpen, setAuthExpiredOpen] = useState(false);
   const [h5ReviewFallbackOpen, setH5ReviewFallbackOpen] = useState(false);
+  const [h5FallbackOrderId, setH5FallbackOrderId] = useState<number | null>(null);
+  const [h5LoginLink, setH5LoginLink] = useState<{ url: string; expiresAt: number } | null>(null);
+  const [h5LinkLoading, setH5LinkLoading] = useState(false);
+  const [h5LinkError, setH5LinkError] = useState('');
   const paymentReturnHandled = useRef(false);
   const authExpiredRef = useRef(false);
   const userRef = useRef<AuthUser | null>(null);
@@ -491,6 +496,19 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   const clearNativePayment = useCallback(() => setNativePayment(null), []);
 
+  const refreshH5LoginLink = useCallback(async (orderId: number) => {
+    setH5LinkLoading(true);
+    setH5LoginLink(null);
+    setH5LinkError('');
+    try {
+      setH5LoginLink(await createOrderLoginLink(orderId));
+    } catch (error) {
+      setH5LinkError(error instanceof Error ? error.message : '链接生成失败，请重试');
+    } finally {
+      setH5LinkLoading(false);
+    }
+  }, []);
+
   const payOrder = useCallback(async (orderId: number, authorization: { code?: string; state?: string } = {}) => {
     setPayingOrderId(orderId);
     try {
@@ -550,14 +568,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       if (authorization.code || authorization.state) clearWechatPaymentQuery();
       const reason = error instanceof Error ? error.message : '微信支付失败';
       if (reason.includes('H5 支付尚在审核')) {
+        setH5FallbackOrderId(orderId);
         setH5ReviewFallbackOpen(true);
+        await refreshH5LoginLink(orderId);
       } else {
         message.error(reason);
       }
     } finally {
       setPayingOrderId(null);
     }
-  }, []);
+  }, [refreshH5LoginLink]);
 
   useEffect(() => {
     if (!user || paymentReturnHandled.current) return;
@@ -676,7 +696,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     <ShopContext.Provider value={value}>
       {children}
       <PhoneBindingModal
-        open={Boolean(user && !user.phoneBound)}
+        open={Boolean(user && !user.phoneBound && window.location.pathname !== '/sso/wechat')}
         onBound={setUser}
         onLogout={logout}
       />
@@ -697,15 +717,19 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       </Modal>
       <Modal
         open={h5ReviewFallbackOpen}
-        title="H5 支付尚未开通"
+        title="请在微信中继续付款"
         footer={null}
         onCancel={() => setH5ReviewFallbackOpen(false)}
         centered
         width={420}
       >
         <p style={{ margin: '0 0 12px', lineHeight: 1.8 }}>
-          当前 H5 支付尚在审核，手机浏览器暂无法直接唤起微信收银台。请复制官网地址，在微信客户端中打开后即可正常支付。
+          手机浏览器支付尚在审核。请复制下方链接，发送到微信文件传输助手后点击打开，将自动登录当前账号并进入这笔订单的付款页。
         </p>
+        <p style={{ color: '#8c6b50', fontSize: 13 }}>链接最多 5 分钟内有效，仅可登录一次，请勿转发给他人。打开后也可正常使用账号的其他功能。</p>
+        {h5LinkLoading && <p role="status">正在生成免登录链接……</p>}
+        {h5LinkError && <p role="alert">{h5LinkError}</p>}
+        {h5LoginLink && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
           <code
             style={{
@@ -715,18 +739,30 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
               background: 'rgba(0,0,0,0.04)',
               fontSize: 13,
               userSelect: 'all',
+              minWidth: 0,
+              overflowWrap: 'anywhere',
             }}
           >
-            {window.location.origin}
+            {h5LoginLink.url}
           </code>
           <Button
-            onClick={() => void copyText(window.location.origin).then(() => message.success('网址已复制，请在微信中打开'))}
+            onClick={() => {
+              if (Date.now() >= h5LoginLink.expiresAt) {
+                message.info('链接已过期，请重新获取');
+                return;
+              }
+              void copyText(h5LoginLink.url)
+                .then(() => message.success('链接已复制，请发送到微信文件传输助手后打开'))
+                .catch(() => message.error('复制失败，请长按上方链接复制'));
+            }}
           >
             复制
           </Button>
         </div>
+        )}
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Button type="primary" onClick={() => setH5ReviewFallbackOpen(false)}>我知道了</Button>
+          <Button loading={h5LinkLoading} disabled={!h5FallbackOrderId}
+            onClick={() => h5FallbackOrderId && void refreshH5LoginLink(h5FallbackOrderId)}>重新获取链接</Button>
         </div>
       </Modal>
     </ShopContext.Provider>

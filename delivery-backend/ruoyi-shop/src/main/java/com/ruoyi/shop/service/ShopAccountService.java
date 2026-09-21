@@ -495,6 +495,17 @@ public class ShopAccountService
         refreshLoginUser(user);
     }
 
+    /** Only called after a server-issued one-time transfer ticket has been consumed. */
+    public LoginResult loginByVerifiedTransfer(long userId)
+    {
+        ShopUser user = requireUser(userId);
+        if (!"0".equals(user.getStatus()) || !"0".equals(user.getDelFlag()))
+        {
+            throw new ServiceException("账号已停用或不存在，请重新登录");
+        }
+        return issueLogin(user);
+    }
+
     private LoginResult issueLogin(ShopUser user)
     {
         userMapper.updateLoginInfo(user.getUserId(), IpUtils.getIpAddr());

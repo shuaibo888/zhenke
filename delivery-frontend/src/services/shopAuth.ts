@@ -147,6 +147,40 @@ export async function restoreShopSession() {
   }
 }
 
+export async function createOrderLoginLink(orderId: number) {
+  const result = await requestApi<ApiResponse<{ ticket: string; expiresAt: number }>>(
+    `/shop/auth/transfer/orders/${orderId}`, { method: 'POST' }, true,
+  );
+  if (!result.data || !/^[A-Za-z0-9_-]{43}$/.test(result.data.ticket)
+    || !Number.isFinite(result.data.expiresAt)) throw new Error('免登录链接生成失败，请重试');
+  // Fragments are not sent in HTTP requests or Referer headers.
+  const url = new URL('/sso/wechat', window.location.origin);
+  url.hash = new URLSearchParams({ ticket: result.data.ticket }).toString();
+  return { url: url.toString(), expiresAt: result.data.expiresAt };
+}
+
+let transferLoginRequest: { ticket: string; promise: Promise<string> } | null = null;
+
+export function loginByTransferTicket(ticket: string) {
+  if (!/^[A-Za-z0-9_-]{43}$/.test(ticket)) {
+    return Promise.reject(new Error('免登录链接不完整，请回原浏览器重新获取'));
+  }
+  if (transferLoginRequest?.ticket === ticket) return transferLoginRequest.promise;
+  const previousToken = getToken();
+  const promise = requestApi<LoginResponse & { redirectPath: string }>('/shop/auth/transfer/login', {
+    method: 'POST', body: JSON.stringify({ ticket }),
+    headers: previousToken ? { Authorization: `Bearer ${previousToken}` } : undefined,
+  }).then((result) => {
+    if (!result.token || !/^\/checkout\?orderId=[1-9]\d*$/.test(result.redirectPath)) {
+      throw new Error('登录结果不完整，请回原浏览器重新获取链接');
+    }
+    storeToken(result.token);
+    return result.redirectPath;
+  });
+  transferLoginRequest = { ticket, promise };
+  return promise;
+}
+
 export async function logoutShopUser() {
   try {
     if (getToken()) {

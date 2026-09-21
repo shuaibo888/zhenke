@@ -26,6 +26,20 @@ class ShopAccountServiceSsoTest
             mock(ISysConfigService.class));
 
     @Test
+    void transferRejectsDeletedDisabledOrMissingAccount()
+    {
+        assertThrows(ServiceException.class, () -> service.loginByVerifiedTransfer(7));
+        ShopUser user = new ShopUser();
+        user.setStatus("1");
+        user.setDelFlag("0");
+        when(userMapper.selectById(7L)).thenReturn(user);
+        assertThrows(ServiceException.class, () -> service.loginByVerifiedTransfer(7));
+        user.setStatus("0");
+        user.setDelFlag("2");
+        assertThrows(ServiceException.class, () -> service.loginByVerifiedTransfer(7));
+    }
+
+    @Test
     void rejectsDisabledPhoneAccountWithRequiredMessage()
     {
         ShopUser user = new ShopUser();
